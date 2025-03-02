@@ -1,0 +1,10 @@
+{
+	"sqltools.disableErrorHighlighting": true,
+	"sql.linter.run": "off",
+	"files.associations": {
+		"*.sql": "postgres"
+	},
+	"[sql]": {
+		"editor.formatOnSave": false
+	}
+}
