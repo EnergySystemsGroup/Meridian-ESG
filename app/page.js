@@ -1,101 +1,340 @@
-import Image from 'next/image';
-import ClientComponentWrapper from './components/ClientComponentWrapper';
+import MainLayout from '@/app/components/layout/main-layout';
+import {
+	Card,
+	CardContent,
+	CardDescription,
+	CardHeader,
+	CardTitle,
+} from '@/app/components/ui/card';
+import { Button } from '@/app/components/ui/button';
 
 export default function Home() {
 	return (
-		<div className='grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]'>
-			<main className='flex flex-col gap-8 row-start-2 items-center sm:items-start'>
-				<Image
-					className='dark:invert'
-					src='/next.svg'
-					alt='Next.js logo'
-					width={180}
-					height={38}
-					priority
-				/>
+		<MainLayout>
+			<div className='container py-10'>
+				<h1 className='text-4xl font-bold mb-6'>
+					Policy & Funding Intelligence Dashboard
+				</h1>
 
-				{/* Supabase and Edge Function Examples */}
-				<ClientComponentWrapper />
-
-				<ol className='list-inside list-decimal text-sm text-center sm:text-left font-[family-name:var(--font-geist-mono)]'>
-					<li className='mb-2'>
-						Get started by editing{' '}
-						<code className='bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-semibold'>
-							app/page.js
-						</code>
-						.
-					</li>
-					<li>Save and see your changes instantly.</li>
-				</ol>
-
-				<div className='flex gap-4 items-center flex-col sm:flex-row'>
-					<a
-						className='rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5'
-						href='https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app'
-						target='_blank'
-						rel='noopener noreferrer'>
-						<Image
-							className='dark:invert'
-							src='/vercel.svg'
-							alt='Vercel logomark'
-							width={20}
-							height={20}
-						/>
-						Deploy now
-					</a>
-					<a
-						className='rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:min-w-44'
-						href='https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app'
-						target='_blank'
-						rel='noopener noreferrer'>
-						Read our docs
-					</a>
+				<div className='grid gap-6 md:grid-cols-2 lg:grid-cols-4 mb-8'>
+					<DashboardCard
+						title='Open Opportunities'
+						value='24'
+						description='Currently open funding opportunities'
+						href='/funding/opportunities'
+						linkText='View All'
+					/>
+					<DashboardCard
+						title='Upcoming Deadlines'
+						value='8'
+						description='Applications due in the next 30 days'
+						href='/timeline'
+						linkText='View Timeline'
+					/>
+					<DashboardCard
+						title='Active Legislation'
+						value='16'
+						description='Bills and policies being tracked'
+						href='/legislation/bills'
+						linkText='View Bills'
+					/>
+					<DashboardCard
+						title='Total Available Funding'
+						value='$1.2B'
+						description='Across all open opportunities'
+						href='/funding/map'
+						linkText='View Map'
+					/>
 				</div>
-			</main>
-			<footer className='row-start-3 flex gap-6 flex-wrap items-center justify-center'>
-				<a
-					className='flex items-center gap-2 hover:underline hover:underline-offset-4'
-					href='https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app'
-					target='_blank'
-					rel='noopener noreferrer'>
-					<Image
-						aria-hidden
-						src='/file.svg'
-						alt='File icon'
-						width={16}
-						height={16}
-					/>
-					Learn
-				</a>
-				<a
-					className='flex items-center gap-2 hover:underline hover:underline-offset-4'
-					href='https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app'
-					target='_blank'
-					rel='noopener noreferrer'>
-					<Image
-						aria-hidden
-						src='/window.svg'
-						alt='Window icon'
-						width={16}
-						height={16}
-					/>
-					Examples
-				</a>
-				<a
-					className='flex items-center gap-2 hover:underline hover:underline-offset-4'
-					href='https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app'
-					target='_blank'
-					rel='noopener noreferrer'>
-					<Image
-						aria-hidden
-						src='/globe.svg'
-						alt='Globe icon'
-						width={16}
-						height={16}
-					/>
-					Go to nextjs.org →
-				</a>
-			</footer>
-		</div>
+
+				<div className='grid gap-6 md:grid-cols-2 lg:grid-cols-3 mb-8'>
+					<Card>
+						<CardHeader>
+							<CardTitle>Recent Opportunities</CardTitle>
+							<CardDescription>
+								Latest funding opportunities added
+							</CardDescription>
+						</CardHeader>
+						<CardContent>
+							<ul className='space-y-4'>
+								{recentOpportunities.map((item, index) => (
+									<li key={index} className='border-b pb-2 last:border-0'>
+										<div className='font-medium'>{item.title}</div>
+										<div className='text-sm text-muted-foreground'>
+											{item.source}
+										</div>
+										<div className='flex justify-between items-center mt-1'>
+											<span className='text-sm'>Closes: {item.closeDate}</span>
+											<span
+												className={`text-xs px-2 py-1 rounded-full ${
+													item.status === 'Open'
+														? 'bg-green-100 text-green-800'
+														: 'bg-yellow-100 text-yellow-800'
+												}`}>
+												{item.status}
+											</span>
+										</div>
+									</li>
+								))}
+							</ul>
+							<div className='mt-4'>
+								<Button variant='outline' className='w-full' asChild>
+									<a href='/funding/opportunities'>View All Opportunities</a>
+								</Button>
+							</div>
+						</CardContent>
+					</Card>
+
+					<Card>
+						<CardHeader>
+							<CardTitle>Legislative Updates</CardTitle>
+							<CardDescription>
+								Recent changes to tracked legislation
+							</CardDescription>
+						</CardHeader>
+						<CardContent>
+							<ul className='space-y-4'>
+								{legislativeUpdates.map((item, index) => (
+									<li key={index} className='border-b pb-2 last:border-0'>
+										<div className='font-medium'>{item.title}</div>
+										<div className='text-sm text-muted-foreground'>
+											{item.jurisdiction}
+										</div>
+										<div className='flex justify-between items-center mt-1'>
+											<span className='text-sm'>Updated: {item.date}</span>
+											<span
+												className={`text-xs px-2 py-1 rounded-full ${getStatusColor(
+													item.status
+												)}`}>
+												{item.status}
+											</span>
+										</div>
+									</li>
+								))}
+							</ul>
+							<div className='mt-4'>
+								<Button variant='outline' className='w-full' asChild>
+									<a href='/legislation/bills'>View All Legislation</a>
+								</Button>
+							</div>
+						</CardContent>
+					</Card>
+
+					<Card>
+						<CardHeader>
+							<CardTitle>Upcoming Deadlines</CardTitle>
+							<CardDescription>Applications due soon</CardDescription>
+						</CardHeader>
+						<CardContent>
+							<ul className='space-y-4'>
+								{upcomingDeadlines.map((item, index) => (
+									<li key={index} className='border-b pb-2 last:border-0'>
+										<div className='font-medium'>{item.title}</div>
+										<div className='text-sm text-muted-foreground'>
+											{item.source}
+										</div>
+										<div className='flex justify-between items-center mt-1'>
+											<span className='text-sm'>Due: {item.dueDate}</span>
+											<span
+												className={`text-xs px-2 py-1 rounded-full ${getDaysColor(
+													item.daysLeft
+												)}`}>
+												{item.daysLeft} days left
+											</span>
+										</div>
+									</li>
+								))}
+							</ul>
+							<div className='mt-4'>
+								<Button variant='outline' className='w-full' asChild>
+									<a href='/timeline'>View Timeline</a>
+								</Button>
+							</div>
+						</CardContent>
+					</Card>
+				</div>
+
+				<div className='grid gap-6 md:grid-cols-3'>
+					<Card className='md:col-span-2'>
+						<CardHeader>
+							<CardTitle>Funding by Category</CardTitle>
+							<CardDescription>
+								Distribution of available funding by category
+							</CardDescription>
+						</CardHeader>
+						<CardContent>
+							<div className='h-80 flex items-center justify-center border rounded-md bg-muted/20'>
+								<p className='text-muted-foreground'>
+									Chart visualization will be implemented here
+								</p>
+							</div>
+						</CardContent>
+					</Card>
+
+					<Card>
+						<CardHeader>
+							<CardTitle>Quick Actions</CardTitle>
+							<CardDescription>Common tasks and shortcuts</CardDescription>
+						</CardHeader>
+						<CardContent>
+							<div className='space-y-2'>
+								<Button
+									className='w-full justify-start'
+									variant='outline'
+									asChild>
+									<a href='/funding/opportunities'>Browse Opportunities</a>
+								</Button>
+								<Button
+									className='w-full justify-start'
+									variant='outline'
+									asChild>
+									<a href='/funding/map'>View Funding Map</a>
+								</Button>
+								<Button
+									className='w-full justify-start'
+									variant='outline'
+									asChild>
+									<a href='/legislation/bills'>Track Legislation</a>
+								</Button>
+								<Button
+									className='w-full justify-start'
+									variant='outline'
+									asChild>
+									<a href='/clients'>Match Clients</a>
+								</Button>
+								<Button
+									className='w-full justify-start'
+									variant='outline'
+									asChild>
+									<a href='/timeline'>View Timeline</a>
+								</Button>
+							</div>
+						</CardContent>
+					</Card>
+				</div>
+			</div>
+		</MainLayout>
 	);
 }
+
+function DashboardCard({ title, value, description, href, linkText }) {
+	return (
+		<Card>
+			<CardHeader className='flex flex-row items-center justify-between pb-2'>
+				<CardTitle className='text-sm font-medium'>{title}</CardTitle>
+			</CardHeader>
+			<CardContent>
+				<div className='text-2xl font-bold'>{value}</div>
+				<p className='text-xs text-muted-foreground'>{description}</p>
+				<div className='mt-4'>
+					<Button variant='ghost' size='sm' className='px-0' asChild>
+						<a href={href}>{linkText} →</a>
+					</Button>
+				</div>
+			</CardContent>
+		</Card>
+	);
+}
+
+function getStatusColor(status) {
+	switch (status) {
+		case 'Introduced':
+			return 'bg-blue-100 text-blue-800';
+		case 'Committee':
+			return 'bg-purple-100 text-purple-800';
+		case 'Passed':
+			return 'bg-green-100 text-green-800';
+		case 'Failed':
+			return 'bg-red-100 text-red-800';
+		default:
+			return 'bg-gray-100 text-gray-800';
+	}
+}
+
+function getDaysColor(days) {
+	if (days <= 7) return 'bg-red-100 text-red-800';
+	if (days <= 14) return 'bg-yellow-100 text-yellow-800';
+	return 'bg-blue-100 text-blue-800';
+}
+
+// Sample data for the dashboard
+const recentOpportunities = [
+	{
+		title: 'Building Energy Efficiency Grant',
+		source: 'Department of Energy',
+		closeDate: 'Apr 15, 2023',
+		status: 'Open',
+	},
+	{
+		title: 'School Modernization Program',
+		source: 'Department of Education',
+		closeDate: 'May 1, 2023',
+		status: 'Open',
+	},
+	{
+		title: 'Clean Energy Innovation Fund',
+		source: 'California Energy Commission',
+		closeDate: 'Apr 30, 2023',
+		status: 'Open',
+	},
+	{
+		title: 'Community Climate Resilience Grant',
+		source: 'EPA',
+		closeDate: 'May 15, 2023',
+		status: 'Upcoming',
+	},
+];
+
+const legislativeUpdates = [
+	{
+		title: 'H.R. 123: Building Efficiency Act',
+		jurisdiction: 'Federal',
+		date: 'Mar 28, 2023',
+		status: 'Committee',
+	},
+	{
+		title: 'S.B. 456: Clean Energy Schools Initiative',
+		jurisdiction: 'California',
+		date: 'Mar 25, 2023',
+		status: 'Introduced',
+	},
+	{
+		title: 'H.R. 789: Infrastructure Investment Act',
+		jurisdiction: 'Federal',
+		date: 'Mar 22, 2023',
+		status: 'Passed',
+	},
+	{
+		title: 'A.B. 567: Building Standards Update',
+		jurisdiction: 'California',
+		date: 'Mar 20, 2023',
+		status: 'Committee',
+	},
+];
+
+const upcomingDeadlines = [
+	{
+		title: 'Energy Efficiency Block Grants',
+		source: 'Department of Energy',
+		dueDate: 'Apr 5, 2023',
+		daysLeft: 5,
+	},
+	{
+		title: 'School HVAC Improvement Program',
+		source: 'California Energy Commission',
+		dueDate: 'Apr 10, 2023',
+		daysLeft: 10,
+	},
+	{
+		title: 'Clean School Bus Program',
+		source: 'EPA',
+		dueDate: 'Apr 15, 2023',
+		daysLeft: 15,
+	},
+	{
+		title: 'Building Retrofit Incentives',
+		source: 'Department of Energy',
+		dueDate: 'Apr 20, 2023',
+		daysLeft: 20,
+	},
+];
