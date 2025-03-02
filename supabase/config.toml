@@ -1,0 +1,61 @@
+# This is the Supabase CLI configuration file
+# https://supabase.com/docs/reference/cli/config
+
+# The project ID from your Supabase dashboard
+# project_id = "your-project-id"
+
+[api]
+# Port for the API Gateway
+port = 54321
+# Schemas to expose in your API
+schemas = ["public", "storage", "auth"]
+# Extra schemas to add to the search_path of every request
+extra_search_path = ["public", "extensions"]
+# Max rows to return from a view, table, or stored procedure
+max_rows = 1000
+
+[db]
+# Port for the local database
+port = 54322
+# The database major version to use
+major_version = 15
+
+[studio]
+# Port for Supabase Studio
+port = 54323
+
+[inbucket]
+# Port for the email testing server
+port = 54324
+smtp_port = 54325
+pop3_port = 54326
+
+[storage]
+# The maximum file size allowed (e.g. "5MB", "500KB")
+file_size_limit = "50MiB"
+
+[auth]
+# The base URL of your website. Used as an allow-list for redirects and for constructing URLs used
+# in emails.
+site_url = "http://localhost:3000"
+# A list of *exact* URLs that auth providers are permitted to redirect to post authentication.
+additional_redirect_urls = ["https://localhost:3000"]
+# How long tokens are valid for, in seconds. Defaults to 3600 (1 hour), maximum 604,800 (1 week).
+jwt_expiry = 3600
+# Allow/disallow new user signups to your project.
+enable_signup = true
+
+[auth.email]
+# Allow/disallow new user signups via email to your project.
+enable_signup = true
+# If enabled, a user will be required to confirm any email change on both the old, and new email
+# addresses. If disabled, only the new email is required to confirm.
+double_confirm_changes = true
+# If enabled, users need to confirm their email address before signing in.
+enable_confirmations = true
+
+[auth.sms]
+# Allow/disallow new user signups via SMS to your project.
+enable_signup = true
+# If enabled, users need to confirm their phone number before signing in.
+enable_confirmations = false 
