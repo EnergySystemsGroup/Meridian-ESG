@@ -1,3 +1,6 @@
+'use client';
+
+import { useState, useEffect } from 'react';
 import MainLayout from '@/app/components/layout/main-layout';
 import { Button } from '@/app/components/ui/button';
 import {
@@ -7,8 +10,63 @@ import {
 	CardHeader,
 	CardTitle,
 } from '@/app/components/ui/card';
+import { calculateDaysLeft, determineStatus } from '@/app/lib/supabase';
 
 export default function OpportunitiesPage() {
+	const [opportunities, setOpportunities] = useState([]);
+	const [loading, setLoading] = useState(true);
+	const [error, setError] = useState(null);
+	const [filters, setFilters] = useState({
+		status: null,
+		source_type: null,
+		tags: [],
+		page: 1,
+		page_size: 9,
+	});
+
+	useEffect(() => {
+		async function fetchOpportunities() {
+			try {
+				setLoading(true);
+
+				// Build query string from filters
+				const queryParams = new URLSearchParams();
+
+				if (filters.status) {
+					queryParams.append('status', filters.status);
+				}
+
+				if (filters.source_type) {
+					queryParams.append('source_type', filters.source_type);
+				}
+
+				if (filters.tags.length > 0) {
+					queryParams.append('tags', filters.tags.join(','));
+				}
+
+				queryParams.append('page', filters.page.toString());
+				queryParams.append('page_size', filters.page_size.toString());
+
+				// Fetch data from our API
+				const response = await fetch(`/api/funding?${queryParams.toString()}`);
+				const result = await response.json();
+
+				if (!result.success) {
+					throw new Error(result.error || 'Failed to fetch opportunities');
+				}
+
+				setOpportunities(result.data);
+			} catch (err) {
+				console.error('Error fetching opportunities:', err);
+				setError(err.message);
+			} finally {
+				setLoading(false);
+			}
+		}
+
+		fetchOpportunities();
+	}, [filters]);
+
 	return (
 		<MainLayout>
 			<div className='container py-10'>
@@ -21,19 +79,102 @@ export default function OpportunitiesPage() {
 					</div>
 				</div>
 
-				<div className='grid gap-6 md:grid-cols-2 lg:grid-cols-3 mb-8'>
-					{opportunities.map((opportunity, index) => (
-						<OpportunityCard key={index} opportunity={opportunity} />
-					))}
-				</div>
+				{loading ? (
+					<div className='flex justify-center items-center min-h-[400px]'>
+						<div className='animate-spin rounded-full h-12 w-12 border-b-2 border-primary'></div>
+					</div>
+				) : error ? (
+					<div className='bg-red-50 text-red-800 p-4 rounded-md'>
+						<p>Error: {error}</p>
+						<Button
+							variant='outline'
+							className='mt-2'
+							onClick={() => {
+								setError(null);
+								setFilters({ ...filters });
+							}}>
+							Retry
+						</Button>
+					</div>
+				) : opportunities.length === 0 ? (
+					<div className='text-center py-12'>
+						<h3 className='text-xl font-medium mb-2'>No opportunities found</h3>
+						<p className='text-muted-foreground mb-4'>
+							Try adjusting your filters or check back later.
+						</p>
+						<Button
+							onClick={() =>
+								setFilters({
+									status: null,
+									source_type: null,
+									tags: [],
+									page: 1,
+									page_size: 9,
+								})
+							}>
+							Clear Filters
+						</Button>
+					</div>
+				) : (
+					<div className='grid gap-6 md:grid-cols-2 lg:grid-cols-3 mb-8'>
+						{opportunities.map((opportunity) => (
+							<OpportunityCard key={opportunity.id} opportunity={opportunity} />
+						))}
+					</div>
+				)}
+
+				{!loading && !error && opportunities.length > 0 && (
+					<div className='flex justify-center mt-6'>
+						<Button
+							variant='outline'
+							className='mr-2'
+							disabled={filters.page === 1}
+							onClick={() =>
+								setFilters({ ...filters, page: filters.page - 1 })
+							}>
+							Previous
+						</Button>
+						<Button
+							variant='outline'
+							onClick={() =>
+								setFilters({ ...filters, page: filters.page + 1 })
+							}>
+							Next
+						</Button>
+					</div>
+				)}
 			</div>
 		</MainLayout>
 	);
 }
 
 function OpportunityCard({ opportunity }) {
-	const { title, source, amount, closeDate, status, description, tags } =
-		opportunity;
+	// Format the data from our database to match the UI expectations
+	const title = opportunity.title;
+	const source = opportunity.source_name;
+	const amount =
+		opportunity.minimum_award && opportunity.maximum_award
+			? `$${opportunity.minimum_award.toLocaleString()} - $${opportunity.maximum_award.toLocaleString()}`
+			: opportunity.maximum_award
+			? `Up to $${opportunity.maximum_award.toLocaleString()}`
+			: opportunity.minimum_award
+			? `From $${opportunity.minimum_award.toLocaleString()}`
+			: 'Amount not specified';
+
+	const closeDate = new Date(opportunity.close_date).toLocaleDateString(
+		'en-US',
+		{
+			month: 'short',
+			day: 'numeric',
+			year: 'numeric',
+		}
+	);
+
+	const status =
+		opportunity.status ||
+		determineStatus(opportunity.open_date, opportunity.close_date);
+	const description = opportunity.description || 'No description available';
+	const tags = opportunity.tags || [];
 
 	return (
 		<Card>
@@ -44,7 +185,7 @@ function OpportunityCard({ opportunity }) {
 						className={`text-xs px-2 py-1 rounded-full ${
 							status === 'Open'
 								? 'bg-green-100 text-green-800'
-								: status === 'Upcoming'
+								: status === 'Upcoming' || status === 'Anticipated'
 								? 'bg-yellow-100 text-yellow-800'
 								: 'bg-gray-100 text-gray-800'
 						}`}>
@@ -60,13 +201,14 @@ function OpportunityCard({ opportunity }) {
 					</p>
 
 					<div className='flex flex-wrap gap-1'>
-						{tags.map((tag, index) => (
-							<span
-								key={index}
-								className='text-xs bg-secondary text-secondary-foreground px-2 py-1 rounded-full'>
-								{tag}
-							</span>
-						))}
+						{tags &&
+							tags.map((tag, index) => (
+								<span
+									key={index}
+									className='text-xs bg-secondary text-secondary-foreground px-2 py-1 rounded-full'>
+									{tag}
+								</span>
+							))}
 					</div>
 
 					<div className='grid grid-cols-2 gap-2 text-sm'>
@@ -80,103 +222,30 @@ function OpportunityCard({ opportunity }) {
 						</div>
 					</div>
 
-					<Button className='w-full'>View Details</Button>
+					<Button className='w-full' asChild>
+						<a href={`/funding/opportunities/${opportunity.id}`}>
+							View Details
+						</a>
+					</Button>
 				</div>
 			</CardContent>
 		</Card>
 	);
 }
 
-// Sample data
-const opportunities = [
+// Fallback data in case the API is not available
+const fallbackOpportunities = [
 	{
+		id: 1,
 		title: 'Building Energy Efficiency Grant',
-		source: 'Department of Energy',
-		amount: '$500K - $2M',
-		closeDate: 'Apr 15, 2023',
+		source_name: 'Department of Energy',
+		min_amount: 500000,
+		max_amount: 2000000,
+		close_date: '2023-04-15',
 		status: 'Open',
 		description:
 			'Funding for commercial building energy efficiency improvements including HVAC upgrades, lighting retrofits, and building envelope enhancements.',
 		tags: ['Energy Efficiency', 'Commercial', 'Federal'],
 	},
-	{
-		title: 'School Modernization Program',
-		source: 'Department of Education',
-		amount: '$1M - $5M',
-		closeDate: 'May 1, 2023',
-		status: 'Open',
-		description:
-			'Grants for K-12 schools to modernize facilities with a focus on energy efficiency, indoor air quality, and sustainability improvements.',
-		tags: ['K-12', 'Modernization', 'Federal'],
-	},
-	{
-		title: 'Clean Energy Innovation Fund',
-		source: 'California Energy Commission',
-		amount: '$250K - $1M',
-		closeDate: 'Apr 30, 2023',
-		status: 'Open',
-		description:
-			'Funding for innovative clean energy projects that reduce greenhouse gas emissions and promote energy independence.',
-		tags: ['Clean Energy', 'Innovation', 'California'],
-	},
-	{
-		title: 'Community Climate Resilience Grant',
-		source: 'EPA',
-		amount: '$100K - $500K',
-		closeDate: 'May 15, 2023',
-		status: 'Upcoming',
-		description:
-			'Support for communities to develop and implement climate resilience strategies, including building upgrades and infrastructure improvements.',
-		tags: ['Climate', 'Resilience', 'Federal'],
-	},
-	{
-		title: 'Municipal Building Retrofit Program',
-		source: 'Department of Energy',
-		amount: '$500K - $3M',
-		closeDate: 'Jun 1, 2023',
-		status: 'Upcoming',
-		description:
-			'Funding for local governments to retrofit municipal buildings for improved energy efficiency and reduced operational costs.',
-		tags: ['Municipal', 'Retrofit', 'Federal'],
-	},
-	{
-		title: 'Solar for Schools Initiative',
-		source: 'California Energy Commission',
-		amount: '$100K - $750K',
-		closeDate: 'May 20, 2023',
-		status: 'Open',
-		description:
-			'Grants to install solar photovoltaic systems on K-12 school facilities to reduce energy costs and provide educational opportunities.',
-		tags: ['Solar', 'K-12', 'California'],
-	},
-	{
-		title: 'Building Electrification Program',
-		source: 'Oregon Department of Energy',
-		amount: '$50K - $250K',
-		closeDate: 'Jun 15, 2023',
-		status: 'Upcoming',
-		description:
-			'Incentives for building owners to convert from fossil fuel systems to electric alternatives for heating, cooling, and water heating.',
-		tags: ['Electrification', 'Oregon', 'State'],
-	},
-	{
-		title: 'Energy Storage Demonstration Grant',
-		source: 'Department of Energy',
-		amount: '$1M - $4M',
-		closeDate: 'Jul 1, 2023',
-		status: 'Upcoming',
-		description:
-			'Funding for demonstration projects that integrate energy storage with renewable energy systems in commercial and institutional buildings.',
-		tags: ['Energy Storage', 'Renewable', 'Federal'],
-	},
-	{
-		title: 'Zero Emission School Bus Program',
-		source: 'EPA',
-		amount: '$300K - $2M',
-		closeDate: 'May 30, 2023',
-		status: 'Open',
-		description:
-			'Grants to replace diesel school buses with zero-emission electric buses and install necessary charging infrastructure.',
-		tags: ['Electric Vehicles', 'K-12', 'Federal'],
-	},
+	// ... other opportunities can be added here
 ];

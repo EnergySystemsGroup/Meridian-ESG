@@ -11,7 +11,7 @@ import {
 	NavigationMenuTrigger,
 } from '@/app/components/ui/navigation-menu';
 import { cn } from '@/app/utils/cn';
-import { HelpCircle, Settings, ChevronDown } from 'lucide-react';
+import { HelpCircle, Settings } from 'lucide-react';
 
 const ClientSideActiveLink = ({ href, children, className, ...props }) => {
 	const [isActive, setIsActive] = React.useState(false);
@@ -38,19 +38,16 @@ const MainLayout = ({ children }) => {
 	return (
 		<div className='flex min-h-screen flex-col'>
 			<header className='sticky top-0 z-40 border-b border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-950 shadow-md'>
-				<div className='max-w-[1400px] mx-auto w-full px-8'>
-					<div className='flex h-20 items-center justify-between'>
-						{/* Added a spacer div before the logo */}
-						<div className='w-4 h-full'></div>
-
+				<div className='max-w-[1400px] mx-auto w-full px-4 sm:px-6 md:px-8'>
+					<div className='flex h-16 items-center justify-between'>
 						{/* Logo and Brand Section */}
 						<div className='flex items-center'>
 							<Link href='/' className='flex items-center group'>
 								<div className='flex flex-col'>
-									<span className='font-extrabold text-3xl tracking-tight text-blue-600 dark:text-blue-400 group-hover:text-blue-700 dark:group-hover:text-blue-300 transition-colors'>
+									<span className='font-extrabold text-2xl md:text-3xl tracking-tight text-blue-600 dark:text-blue-400 group-hover:text-blue-700 dark:group-hover:text-blue-300 transition-colors'>
 										Meridian
 									</span>
-									<span className='text-xs text-neutral-500 dark:text-neutral-400 mt-0.5 tracking-wide'>
+									<span className='text-xs text-neutral-500 dark:text-neutral-400 tracking-wide'>
 										Policy & Funding Intelligence
 									</span>
 								</div>
@@ -58,28 +55,28 @@ const MainLayout = ({ children }) => {
 						</div>
 
 						{/* Navigation Section - Centered */}
-						<div className='flex-1 flex justify-center'>
+						<div className='hidden md:flex flex-1 justify-center ml-8'>
 							<MainNav />
 						</div>
 
 						{/* Actions Section */}
-						<div className='flex items-center gap-4'>
-							<button className='text-sm font-medium px-4 py-2.5 text-neutral-600 dark:text-neutral-300 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-neutral-50 dark:hover:bg-neutral-800/50 rounded-md transition-colors flex items-center gap-1.5'>
+						<div className='flex items-center gap-3'>
+							<button className='text-sm font-medium px-3 py-2 md:px-4 md:py-2 text-neutral-600 dark:text-neutral-300 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-neutral-50 dark:hover:bg-neutral-800/50 rounded-md transition-colors flex items-center gap-1.5'>
 								<HelpCircle size={16} />
-								<span>Help</span>
+								<span className='hidden sm:inline'>Help</span>
 							</button>
-							<button className='text-sm font-medium px-4 py-2.5 bg-blue-50 text-blue-600 rounded-md hover:bg-blue-100 dark:bg-blue-900/20 dark:text-blue-400 dark:hover:bg-blue-900/30 transition-colors flex items-center gap-1.5'>
+							<button className='text-sm font-medium px-3 py-2 md:px-4 md:py-2 bg-blue-50 text-blue-600 rounded-md hover:bg-blue-100 dark:bg-blue-900/20 dark:text-blue-400 dark:hover:bg-blue-900/30 transition-colors flex items-center gap-1.5'>
 								<Settings size={16} />
-								<span>Settings</span>
+								<span className='hidden sm:inline'>Settings</span>
 							</button>
 						</div>
-
-						{/* Added a spacer div after the actions */}
-						<div className='w-4 h-full'></div>
 					</div>
 				</div>
 			</header>
-			<main className='flex-1 w-full px-8 py-8 mx-auto'>{children}</main>
+
+			<main className='max-w-[1400px] mx-auto w-full px-4 sm:px-6 md:px-8 py-6 md:py-8 flex-1'>
+				{children}
+			</main>
 		</div>
 	);
 };
@@ -87,12 +84,12 @@ const MainLayout = ({ children }) => {
 const MainNav = () => {
 	return (
 		<NavigationMenu>
-			<NavigationMenuList className='gap-6'>
+			<NavigationMenuList className='gap-2 md:gap-4'>
 				<NavigationMenuItem>
 					<ClientSideActiveLink href='/' passHref>
 						<NavigationMenuLink
 							className={cn(
-								'inline-flex h-10 items-center justify-center rounded-md px-4 py-2.5 text-sm font-medium transition-all duration-200',
+								'inline-flex h-9 md:h-10 items-center justify-center rounded-md px-3 md:px-4 py-2 text-sm font-medium transition-all duration-200',
 								'hover:bg-blue-50 hover:text-blue-600 dark:hover:bg-blue-900/20 dark:hover:text-blue-400',
 								'focus:bg-blue-50 focus:text-blue-600 dark:focus:bg-blue-900/20 dark:focus:text-blue-400 focus:outline-none',
 								'text-neutral-700 dark:text-neutral-200'
@@ -104,16 +101,12 @@ const MainNav = () => {
 				<NavigationMenuItem>
 					<NavigationMenuTrigger
 						className={cn(
-							'inline-flex h-10 items-center justify-center rounded-md px-4 py-2.5 text-sm font-medium transition-all duration-200',
+							'inline-flex h-9 md:h-10 items-center justify-center rounded-md px-3 md:px-4 py-2 text-sm font-medium transition-all duration-200',
 							'hover:bg-blue-50 hover:text-blue-600 dark:hover:bg-blue-900/20 dark:hover:text-blue-400',
 							'focus:bg-blue-50 focus:text-blue-600 dark:focus:bg-blue-900/20 dark:focus:text-blue-400 focus:outline-none',
 							'text-neutral-700 dark:text-neutral-200 group'
 						)}>
 						Funding
-						<ChevronDown
-							size={16}
-							className='ml-1 text-neutral-400 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-transform group-data-[state=open]:rotate-180'
-						/>
 					</NavigationMenuTrigger>
 					<NavigationMenuContent>
 						<ul className='grid w-[400px] gap-4 p-6 md:w-[500px] md:grid-cols-2 lg:w-[600px] animate-in fade-in-50 zoom-in-95 duration-200'>
@@ -128,16 +121,12 @@ const MainNav = () => {
 				<NavigationMenuItem>
 					<NavigationMenuTrigger
 						className={cn(
-							'inline-flex h-10 items-center justify-center rounded-md px-4 py-2.5 text-sm font-medium transition-all duration-200',
+							'inline-flex h-9 md:h-10 items-center justify-center rounded-md px-3 md:px-4 py-2 text-sm font-medium transition-all duration-200',
 							'hover:bg-blue-50 hover:text-blue-600 dark:hover:bg-blue-900/20 dark:hover:text-blue-400',
 							'focus:bg-blue-50 focus:text-blue-600 dark:focus:bg-blue-900/20 dark:focus:text-blue-400 focus:outline-none',
 							'text-neutral-700 dark:text-neutral-200 group'
 						)}>
 						Legislation
-						<ChevronDown
-							size={16}
-							className='ml-1 text-neutral-400 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-transform group-data-[state=open]:rotate-180'
-						/>
 					</NavigationMenuTrigger>
 					<NavigationMenuContent>
 						<ul className='grid w-[400px] gap-4 p-6 md:w-[500px] md:grid-cols-2 lg:w-[600px] animate-in fade-in-50 zoom-in-95 duration-200'>
@@ -153,7 +142,7 @@ const MainNav = () => {
 					<ClientSideActiveLink href='/clients' passHref>
 						<NavigationMenuLink
 							className={cn(
-								'inline-flex h-10 items-center justify-center rounded-md px-4 py-2.5 text-sm font-medium transition-all duration-200',
+								'inline-flex h-9 md:h-10 items-center justify-center rounded-md px-3 md:px-4 py-2 text-sm font-medium transition-all duration-200',
 								'hover:bg-blue-50 hover:text-blue-600 dark:hover:bg-blue-900/20 dark:hover:text-blue-400',
 								'focus:bg-blue-50 focus:text-blue-600 dark:focus:bg-blue-900/20 dark:focus:text-blue-400 focus:outline-none',
 								'text-neutral-700 dark:text-neutral-200'
@@ -166,7 +155,7 @@ const MainNav = () => {
 					<ClientSideActiveLink href='/timeline' passHref>
 						<NavigationMenuLink
 							className={cn(
-								'inline-flex h-10 items-center justify-center rounded-md px-4 py-2.5 text-sm font-medium transition-all duration-200',
+								'inline-flex h-9 md:h-10 items-center justify-center rounded-md px-3 md:px-4 py-2 text-sm font-medium transition-all duration-200',
 								'hover:bg-blue-50 hover:text-blue-600 dark:hover:bg-blue-900/20 dark:hover:text-blue-400',
 								'focus:bg-blue-50 focus:text-blue-600 dark:focus:bg-blue-900/20 dark:focus:text-blue-400 focus:outline-none',
 								'text-neutral-700 dark:text-neutral-200'
@@ -225,7 +214,7 @@ const fundingNavItems = [
 	},
 	{
 		title: 'Map View',
-		href: '/funding/map',
+		href: '/map',
 		description: 'Visualize funding opportunities by geographic region.',
 	},
 	{
