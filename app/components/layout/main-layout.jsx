@@ -214,7 +214,7 @@ const fundingNavItems = [
 	},
 	{
 		title: 'Map View',
-		href: '/funding/map',
+		href: '/map',
 		description: 'Visualize funding opportunities by geographic region.',
 	},
 	{
