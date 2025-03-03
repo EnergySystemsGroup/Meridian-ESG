@@ -1,3 +1,6 @@
+'use client';
+
+import { useState, useEffect } from 'react';
 import MainLayout from '@/app/components/layout/main-layout';
 import {
 	Card,
@@ -9,6 +12,35 @@ import {
 import { Button } from '@/app/components/ui/button';
 
 export default function Home() {
+	const [upcomingDeadlines, setUpcomingDeadlines] = useState([]);
+	const [deadlinesLoading, setDeadlinesLoading] = useState(true);
+	const [deadlinesError, setDeadlinesError] = useState(null);
+
+	useEffect(() => {
+		async function fetchDeadlines() {
+			try {
+				setDeadlinesLoading(true);
+				const response = await fetch('/api/deadlines?limit=5');
+				const result = await response.json();
+
+				if (!result.success) {
+					throw new Error(result.error || 'Failed to fetch deadlines');
+				}
+
+				setUpcomingDeadlines(result.data);
+			} catch (err) {
+				console.error('Error fetching deadlines:', err);
+				setDeadlinesError(err.message);
+				// Fall back to sample data if API fails
+				setUpcomingDeadlines(sampleUpcomingDeadlines);
+			} finally {
+				setDeadlinesLoading(false);
+			}
+		}
+
+		fetchDeadlines();
+	}, []);
+
 	return (
 		<MainLayout>
 			<div className='container py-10'>
@@ -33,7 +65,7 @@ export default function Home() {
 					/>
 					<DashboardCard
 						title='Upcoming Deadlines'
-						value='8'
+						value={upcomingDeadlines.length || '8'}
 						description='Applications due in the next 30 days'
 						href='/timeline'
 						linkText='View Timeline'
@@ -133,25 +165,37 @@ export default function Home() {
 							<CardDescription>Applications due soon</CardDescription>
 						</CardHeader>
 						<CardContent>
-							<ul className='space-y-4'>
-								{upcomingDeadlines.map((item, index) => (
-									<li key={index} className='border-b pb-2 last:border-0'>
-										<div className='font-medium'>{item.title}</div>
-										<div className='text-sm text-muted-foreground'>
-											{item.source}
-										</div>
-										<div className='flex justify-between items-center mt-1'>
-											<span className='text-sm'>Due: {item.dueDate}</span>
-											<span
-												className={`text-xs px-2 py-1 rounded-full ${getDaysColor(
-													item.daysLeft
-												)}`}>
-												{item.daysLeft} days left
-											</span>
-										</div>
-									</li>
-								))}
-							</ul>
+							{deadlinesLoading ? (
+								<div className='flex justify-center items-center h-40'>
+									<div className='animate-spin rounded-full h-8 w-8 border-b-2 border-primary'></div>
+								</div>
+							) : deadlinesError ? (
+								<div className='text-sm text-red-600 p-2'>
+									<p>Error loading deadlines. Using sample data.</p>
+								</div>
+							) : (
+								<ul className='space-y-4'>
+									{upcomingDeadlines.map((item, index) => (
+										<li key={index} className='border-b pb-2 last:border-0'>
+											<div className='font-medium'>{item.title}</div>
+											<div className='text-sm text-muted-foreground'>
+												{item.source_name || 'Unknown Source'}
+											</div>
+											<div className='flex justify-between items-center mt-1'>
+												<span className='text-sm'>
+													Due: {item.formattedDate}
+												</span>
+												<span
+													className={`text-xs px-2 py-1 rounded-full ${getDaysColor(
+														item.daysLeft
+													)}`}>
+													{item.daysLeft} days left
+												</span>
+											</div>
+										</li>
+									))}
+								</ul>
+							)}
 							<div className='mt-4'>
 								<Button variant='outline' className='w-full' asChild>
 									<a href='/timeline'>View Timeline</a>
@@ -253,45 +297,6 @@ export default function Home() {
 								</div>
 							))}
 						</div>
-					</div>
-				</div>
-
-				{/* Upcoming Deadlines Section */}
-				<div className='mb-8'>
-					<h2 className='text-xl font-semibold mb-4'>Upcoming Deadlines</h2>
-					<div className='grid gap-4 md:grid-cols-2 lg:grid-cols-3'>
-						{upcomingDeadlines.map((deadline, index) => (
-							<Card key={index} className='overflow-hidden'>
-								<div className={`h-1 ${getDaysColor(deadline.daysLeft)}`}></div>
-								<CardHeader className='pb-2'>
-									<div className='flex justify-between'>
-										<CardTitle className='text-base'>
-											{deadline.title}
-										</CardTitle>
-										<span
-											className={`text-xs px-2 py-1 rounded-full ${getDaysColor(
-												deadline.daysLeft
-											)} bg-opacity-10`}>
-											{deadline.daysLeft} days left
-										</span>
-									</div>
-									<CardDescription className='text-xs'>
-										{deadline.agency}
-									</CardDescription>
-								</CardHeader>
-								<CardContent>
-									<p className='text-sm mb-3'>{deadline.description}</p>
-									<div className='flex justify-between items-center'>
-										<span className='text-xs text-neutral-500'>
-											Due: {deadline.dueDate}
-										</span>
-										<Button size='sm' variant='outline'>
-											View Details
-										</Button>
-									</div>
-								</CardContent>
-							</Card>
-						))}
 					</div>
 				</div>
 			</div>
@@ -451,37 +456,46 @@ const legislativeUpdates = [
 	},
 ];
 
-const upcomingDeadlines = [
+// Sample data for upcoming deadlines (fallback if API fails)
+const sampleUpcomingDeadlines = [
 	{
-		title: 'Energy Efficiency Block Grants',
-		agency: 'Department of Energy',
-		dueDate: 'Apr 5, 2023',
+		id: 1,
+		title: 'Clean Energy Innovation Fund',
+		source_name: 'California Energy Commission',
+		formattedDate: 'Apr 30, 2023',
 		daysLeft: 5,
-		description:
-			'Funding for local governments to implement energy efficiency improvements in public buildings and facilities.',
+		urgency: 'high',
 	},
 	{
-		title: 'School HVAC Improvement Program',
-		agency: 'California Energy Commission',
-		dueDate: 'Apr 10, 2023',
-		daysLeft: 10,
-		description:
-			'Grants for K-12 schools to upgrade HVAC systems for improved energy efficiency and indoor air quality.',
+		id: 2,
+		title: 'School Modernization Program',
+		source_name: 'Department of Education',
+		formattedDate: 'May 1, 2023',
+		daysLeft: 6,
+		urgency: 'high',
 	},
 	{
-		title: 'Clean School Bus Program',
-		agency: 'EPA',
-		dueDate: 'Apr 15, 2023',
-		daysLeft: 15,
-		description:
-			'Funding to replace existing diesel school buses with zero-emission and clean alternatives.',
-	},
-	{
-		title: 'Building Retrofit Incentives',
-		agency: 'Department of Energy',
-		dueDate: 'Apr 20, 2023',
+		id: 3,
+		title: 'Community Climate Resilience Grant',
+		source_name: 'EPA',
+		formattedDate: 'May 15, 2023',
 		daysLeft: 20,
-		description:
-			'Financial incentives for commercial building owners to implement energy-saving retrofits and upgrades.',
+		urgency: 'medium',
+	},
+	{
+		id: 4,
+		title: 'Solar for Schools Initiative',
+		source_name: 'California Energy Commission',
+		formattedDate: 'May 20, 2023',
+		daysLeft: 25,
+		urgency: 'medium',
+	},
+	{
+		id: 5,
+		title: 'Zero Emission School Bus Program',
+		source_name: 'EPA',
+		formattedDate: 'May 30, 2023',
+		daysLeft: 35,
+		urgency: 'low',
 	},
 ];

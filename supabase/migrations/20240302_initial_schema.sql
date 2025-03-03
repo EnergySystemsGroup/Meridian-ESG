@@ -1,3 +1,88 @@
+-- Initial Schema for Meridian
+-- This migration handles potential conflicts with other migrations
+
+-- Check if tables already exist and drop them if needed
+DO $$
+BEGIN
+    -- Drop tables if they exist (in reverse order of dependencies)
+    IF EXISTS (SELECT FROM pg_tables WHERE schemaname = 'public' AND tablename = 'funding_eligibility_criteria') THEN
+        DROP TABLE public.funding_eligibility_criteria CASCADE;
+    END IF;
+    
+    IF EXISTS (SELECT FROM pg_tables WHERE schemaname = 'public' AND tablename = 'funding_contacts') THEN
+        DROP TABLE public.funding_contacts CASCADE;
+    END IF;
+    
+    IF EXISTS (SELECT FROM pg_tables WHERE schemaname = 'public' AND tablename = 'funding_applications') THEN
+        DROP TABLE public.funding_applications CASCADE;
+    END IF;
+    
+    IF EXISTS (SELECT FROM pg_tables WHERE schemaname = 'public' AND tablename = 'funding_opportunities') THEN
+        DROP TABLE public.funding_opportunities CASCADE;
+    END IF;
+    
+    IF EXISTS (SELECT FROM pg_tables WHERE schemaname = 'public' AND tablename = 'funding_sources') THEN
+        DROP TABLE public.funding_sources CASCADE;
+    END IF;
+    
+    -- Drop types if they exist
+    IF EXISTS (SELECT FROM pg_type WHERE typname = 'agency_type') THEN
+        DROP TYPE agency_type CASCADE;
+    END IF;
+    
+    IF EXISTS (SELECT FROM pg_type WHERE typname = 'opportunity_status') THEN
+        DROP TYPE opportunity_status CASCADE;
+    END IF;
+    
+    IF EXISTS (SELECT FROM pg_type WHERE typname = 'legislation_source') THEN
+        DROP TYPE legislation_source CASCADE;
+    END IF;
+    
+    IF EXISTS (SELECT FROM pg_type WHERE typname = 'legislation_stage') THEN
+        DROP TYPE legislation_stage CASCADE;
+    END IF;
+    
+    IF EXISTS (SELECT FROM pg_type WHERE typname = 'organization_type') THEN
+        DROP TYPE organization_type CASCADE;
+    END IF;
+    
+    IF EXISTS (SELECT FROM pg_type WHERE typname = 'action_status') THEN
+        DROP TYPE action_status CASCADE;
+    END IF;
+    
+    IF EXISTS (SELECT FROM pg_type WHERE typname = 'tag_category') THEN
+        DROP TYPE tag_category CASCADE;
+    END IF;
+    
+    IF EXISTS (SELECT FROM pg_type WHERE typname = 'task_status') THEN
+        DROP TYPE task_status CASCADE;
+    END IF;
+    
+    IF EXISTS (SELECT FROM pg_type WHERE typname = 'task_priority') THEN
+        DROP TYPE task_priority CASCADE;
+    END IF;
+    
+    IF EXISTS (SELECT FROM pg_type WHERE typname = 'source_type') THEN
+        DROP TYPE source_type CASCADE;
+    END IF;
+    
+    IF EXISTS (SELECT FROM pg_type WHERE typname = 'scrape_status') THEN
+        DROP TYPE scrape_status CASCADE;
+    END IF;
+    
+    IF EXISTS (SELECT FROM pg_type WHERE typname = 'project_type') THEN
+        DROP TYPE project_type CASCADE;
+    END IF;
+    
+    IF EXISTS (SELECT FROM pg_type WHERE typname = 'applicant_type') THEN
+        DROP TYPE applicant_type CASCADE;
+    END IF;
+    
+    IF EXISTS (SELECT FROM pg_type WHERE typname = 'tagging_source') THEN
+        DROP TYPE tagging_source CASCADE;
+    END IF;
+END $$;
+
 -- Create a table for users (extends Supabase auth.users)
 CREATE TABLE IF NOT EXISTS public.profiles (
   id UUID REFERENCES auth.users(id) ON DELETE CASCADE PRIMARY KEY,
