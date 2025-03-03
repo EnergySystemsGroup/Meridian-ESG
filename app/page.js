@@ -12,9 +12,16 @@ export default function Home() {
 	return (
 		<MainLayout>
 			<div className='container py-10'>
-				<h1 className='text-4xl font-bold mb-6'>
-					Policy & Funding Intelligence Dashboard
-				</h1>
+				<div className='flex flex-col gap-2 mb-8'>
+					<h1 className='text-3xl font-bold text-neutral-900 dark:text-neutral-50'>
+						Welcome to Meridian
+					</h1>
+					<p className='text-neutral-500 dark:text-neutral-400 max-w-3xl'>
+						Your centralized platform for policy and funding intelligence. Track
+						opportunities, monitor legislation, and match clients to relevant
+						funding sources.
+					</p>
+				</div>
 
 				<div className='grid gap-6 md:grid-cols-2 lg:grid-cols-4 mb-8'>
 					<DashboardCard
@@ -33,17 +40,17 @@ export default function Home() {
 					/>
 					<DashboardCard
 						title='Active Legislation'
-						value='16'
-						description='Bills and policies being tracked'
+						value='12'
+						description='Bills and policies in progress'
 						href='/legislation/bills'
 						linkText='View Bills'
 					/>
 					<DashboardCard
-						title='Total Available Funding'
-						value='$1.2B'
-						description='Across all open opportunities'
-						href='/funding/map'
-						linkText='View Map'
+						title='Client Matches'
+						value='36'
+						description='New potential matches for clients'
+						href='/clients'
+						linkText='View Matches'
 					/>
 				</div>
 
@@ -212,6 +219,81 @@ export default function Home() {
 						</CardContent>
 					</Card>
 				</div>
+
+				{/* Recent Activity Section */}
+				<div className='mb-8'>
+					<h2 className='text-xl font-semibold mb-4'>Recent Activity</h2>
+					<div className='border rounded-lg overflow-hidden'>
+						<div className='bg-neutral-50 dark:bg-neutral-800/50 px-4 py-3 border-b'>
+							<div className='flex justify-between items-center'>
+								<span className='font-medium'>Latest Updates</span>
+								<Button variant='outline' size='sm'>
+									View All
+								</Button>
+							</div>
+						</div>
+						<div className='divide-y'>
+							{activityItems.map((item, index) => (
+								<div key={index} className='p-4 flex items-start gap-3'>
+									<div
+										className={`w-2 h-2 rounded-full mt-2 ${getStatusColor(
+											item.type
+										)}`}></div>
+									<div className='flex-1'>
+										<div className='flex justify-between'>
+											<span className='font-medium text-sm'>{item.title}</span>
+											<span className='text-xs text-neutral-500'>
+												{item.date}
+											</span>
+										</div>
+										<p className='text-sm text-neutral-600 dark:text-neutral-400 mt-1'>
+											{item.description}
+										</p>
+									</div>
+								</div>
+							))}
+						</div>
+					</div>
+				</div>
+
+				{/* Upcoming Deadlines Section */}
+				<div className='mb-8'>
+					<h2 className='text-xl font-semibold mb-4'>Upcoming Deadlines</h2>
+					<div className='grid gap-4 md:grid-cols-2 lg:grid-cols-3'>
+						{upcomingDeadlines.map((deadline, index) => (
+							<Card key={index} className='overflow-hidden'>
+								<div className={`h-1 ${getDaysColor(deadline.daysLeft)}`}></div>
+								<CardHeader className='pb-2'>
+									<div className='flex justify-between'>
+										<CardTitle className='text-base'>
+											{deadline.title}
+										</CardTitle>
+										<span
+											className={`text-xs px-2 py-1 rounded-full ${getDaysColor(
+												deadline.daysLeft
+											)} bg-opacity-10`}>
+											{deadline.daysLeft} days left
+										</span>
+									</div>
+									<CardDescription className='text-xs'>
+										{deadline.agency}
+									</CardDescription>
+								</CardHeader>
+								<CardContent>
+									<p className='text-sm mb-3'>{deadline.description}</p>
+									<div className='flex justify-between items-center'>
+										<span className='text-xs text-neutral-500'>
+											Due: {deadline.dueDate}
+										</span>
+										<Button size='sm' variant='outline'>
+											View Details
+										</Button>
+									</div>
+								</CardContent>
+							</Card>
+						))}
+					</div>
+				</div>
 			</div>
 		</MainLayout>
 	);
@@ -219,15 +301,24 @@ export default function Home() {
 
 function DashboardCard({ title, value, description, href, linkText }) {
 	return (
-		<Card>
-			<CardHeader className='flex flex-row items-center justify-between pb-2'>
+		<Card className='overflow-hidden'>
+			<div className='h-1 bg-blue-500'></div>
+			<CardHeader className='pb-2'>
 				<CardTitle className='text-sm font-medium'>{title}</CardTitle>
 			</CardHeader>
 			<CardContent>
-				<div className='text-2xl font-bold'>{value}</div>
-				<p className='text-xs text-muted-foreground'>{description}</p>
+				<div className='text-2xl font-bold text-blue-600 dark:text-blue-400'>
+					{value}
+				</div>
+				<p className='text-xs text-neutral-500 dark:text-neutral-400 mt-1'>
+					{description}
+				</p>
 				<div className='mt-4'>
-					<Button variant='ghost' size='sm' className='px-0' asChild>
+					<Button
+						variant='ghost'
+						size='sm'
+						className='px-0 text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300'
+						asChild>
 						<a href={href}>{linkText} →</a>
 					</Button>
 				</div>
@@ -238,6 +329,16 @@ function DashboardCard({ title, value, description, href, linkText }) {
 
 function getStatusColor(status) {
 	switch (status) {
+		case 'opportunity':
+			return 'bg-blue-500';
+		case 'legislation':
+			return 'bg-purple-500';
+		case 'match':
+			return 'bg-green-500';
+		case 'deadline':
+			return 'bg-red-500';
+		case 'policy':
+			return 'bg-amber-500';
 		case 'Introduced':
 			return 'bg-blue-100 text-blue-800';
 		case 'Committee':
@@ -258,6 +359,44 @@ function getDaysColor(days) {
 }
 
 // Sample data for the dashboard
+const activityItems = [
+	{
+		title: 'New Funding Opportunity',
+		date: '2 hours ago',
+		type: 'opportunity',
+		description:
+			'Department of Energy released a new $50M funding opportunity for building electrification projects.',
+	},
+	{
+		title: 'Legislation Update',
+		date: '4 hours ago',
+		type: 'legislation',
+		description:
+			'H.R. 123: Building Efficiency Act has moved to committee review.',
+	},
+	{
+		title: 'Client Match',
+		date: 'Yesterday',
+		type: 'match',
+		description:
+			'Springfield School District matched with 3 new funding opportunities.',
+	},
+	{
+		title: 'Deadline Approaching',
+		date: 'Yesterday',
+		type: 'deadline',
+		description:
+			'Energy Efficiency Block Grants application deadline is in 5 days.',
+	},
+	{
+		title: 'New Policy Brief',
+		date: '2 days ago',
+		type: 'policy',
+		description:
+			'New analysis on the impact of recent energy efficiency legislation on funding availability.',
+	},
+];
+
 const recentOpportunities = [
 	{
 		title: 'Building Energy Efficiency Grant',
@@ -315,26 +454,34 @@ const legislativeUpdates = [
 const upcomingDeadlines = [
 	{
 		title: 'Energy Efficiency Block Grants',
-		source: 'Department of Energy',
+		agency: 'Department of Energy',
 		dueDate: 'Apr 5, 2023',
 		daysLeft: 5,
+		description:
+			'Funding for local governments to implement energy efficiency improvements in public buildings and facilities.',
 	},
 	{
 		title: 'School HVAC Improvement Program',
-		source: 'California Energy Commission',
+		agency: 'California Energy Commission',
 		dueDate: 'Apr 10, 2023',
 		daysLeft: 10,
+		description:
+			'Grants for K-12 schools to upgrade HVAC systems for improved energy efficiency and indoor air quality.',
 	},
 	{
 		title: 'Clean School Bus Program',
-		source: 'EPA',
+		agency: 'EPA',
 		dueDate: 'Apr 15, 2023',
 		daysLeft: 15,
+		description:
+			'Funding to replace existing diesel school buses with zero-emission and clean alternatives.',
 	},
 	{
 		title: 'Building Retrofit Incentives',
-		source: 'Department of Energy',
+		agency: 'Department of Energy',
 		dueDate: 'Apr 20, 2023',
 		daysLeft: 20,
+		description:
+			'Financial incentives for commercial building owners to implement energy-saving retrofits and upgrades.',
 	},
 ];
