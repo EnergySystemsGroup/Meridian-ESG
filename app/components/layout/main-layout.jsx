@@ -38,7 +38,7 @@ const MainLayout = ({ children }) => {
 	return (
 		<div className='flex min-h-screen flex-col'>
 			<header className='sticky top-0 z-40 border-b border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-950 shadow-md'>
-				<div className='max-w-[1400px] mx-auto w-full px-8'>
+				<div className='max-w-[1400px] mx-auto w-full px-4 sm:px-6 md:px-8'>
 					<div className='flex h-16 items-center justify-between'>
 						{/* Logo and Brand Section */}
 						<div className='flex items-center'>
