@@ -7,12 +7,12 @@ export async function GET(request) {
 		// Get URL parameters
 		const { searchParams } = new URL(request.url);
 
-		// Build filters from query parameters
+		// Build filters from query parameters with correct parameter names
 		const filters = {
-			status: searchParams.get('status'),
-			source_type: searchParams.get('source_type'),
-			min_amount: searchParams.get('min_amount'),
-			max_amount: searchParams.get('max_amount'),
+			p_status: searchParams.get('status'),
+			p_source_type: searchParams.get('source_type'),
+			p_min_amount: searchParams.get('min_amount'),
+			p_max_amount: searchParams.get('max_amount'),
 		};
 
 		// Fetch aggregated funding data by state

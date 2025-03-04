@@ -2,11 +2,11 @@ import { NextResponse } from 'next/server';
 import { supabase } from '@/app/lib/supabase';
 
 // Make sure this is exported as a named export for Next.js 15
-export async function GET(request, { params }) {
+export async function GET(request, context) {
 	try {
 		// Properly await the params object before accessing its properties
-		const resolvedParams = await Promise.resolve(params);
-		const stateCode = resolvedParams.stateCode;
+		const params = await context.params;
+		const stateCode = params.stateCode;
 
 		if (!stateCode) {
 			return NextResponse.json(

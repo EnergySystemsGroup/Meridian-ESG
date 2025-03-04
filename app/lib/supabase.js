@@ -16,7 +16,7 @@ export const fundingApi = {
 	getOpportunities: async (filters = {}) => {
 		try {
 			let query = supabase
-				.from('funding_opportunities_with_source')
+				.from('funding_opportunities_with_geography')
 				.select('*');
 
 			// Apply filters
@@ -74,7 +74,7 @@ export const fundingApi = {
 	getOpportunityById: async (id) => {
 		try {
 			const { data, error } = await supabase
-				.from('funding_opportunities_with_source')
+				.from('funding_opportunities_with_geography')
 				.select('*')
 				.eq('id', id)
 				.single();
