@@ -11,7 +11,8 @@ import {
 	NavigationMenuTrigger,
 } from '@/app/components/ui/navigation-menu';
 import { cn } from '@/app/utils/cn';
-import { HelpCircle, Settings } from 'lucide-react';
+import { HelpCircle, Moon, Settings, Sun } from 'lucide-react';
+import { useTheme } from '@/app/components/theme-provider';
 
 const ClientSideActiveLink = ({ href, children, className, ...props }) => {
 	const [isActive, setIsActive] = React.useState(false);
@@ -35,6 +36,12 @@ const ClientSideActiveLink = ({ href, children, className, ...props }) => {
 };
 
 const MainLayout = ({ children }) => {
+	const { theme, setTheme } = useTheme();
+
+	const toggleTheme = () => {
+		setTheme(theme === 'dark' ? 'light' : 'dark');
+	};
+
 	return (
 		<div className='flex min-h-screen flex-col'>
 			<header className='sticky top-0 z-40 border-b border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-950 shadow-md'>
@@ -61,6 +68,14 @@ const MainLayout = ({ children }) => {
 
 						{/* Actions Section */}
 						<div className='flex items-center gap-3'>
+							<button
+								onClick={toggleTheme}
+								className='text-sm font-medium px-3 py-2 md:px-4 md:py-2 text-neutral-600 dark:text-neutral-300 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-neutral-50 dark:hover:bg-neutral-800/50 rounded-md transition-colors flex items-center gap-1.5'>
+								{theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
+								<span className='hidden sm:inline'>
+									{theme === 'dark' ? 'Light' : 'Dark'}
+								</span>
+							</button>
 							<button className='text-sm font-medium px-3 py-2 md:px-4 md:py-2 text-neutral-600 dark:text-neutral-300 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-neutral-50 dark:hover:bg-neutral-800/50 rounded-md transition-colors flex items-center gap-1.5'>
 								<HelpCircle size={16} />
 								<span className='hidden sm:inline'>Help</span>
