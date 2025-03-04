@@ -104,27 +104,77 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- Create triggers to automatically update the updated_at column
-CREATE TRIGGER update_funding_opportunities_updated_at
-BEFORE UPDATE ON funding_opportunities
-FOR EACH ROW
-EXECUTE FUNCTION update_updated_at_column();
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_trigger 
+        WHERE tgname = 'update_funding_opportunities_updated_at'
+        AND tgrelid = 'funding_opportunities'::regclass
+    ) THEN
+        CREATE TRIGGER update_funding_opportunities_updated_at
+        BEFORE UPDATE ON funding_opportunities
+        FOR EACH ROW
+        EXECUTE FUNCTION update_updated_at_column();
+    END IF;
+END
+$$;
 
-CREATE TRIGGER update_funding_sources_updated_at
-BEFORE UPDATE ON funding_sources
-FOR EACH ROW
-EXECUTE FUNCTION update_updated_at_column();
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_trigger 
+        WHERE tgname = 'update_funding_sources_updated_at'
+        AND tgrelid = 'funding_sources'::regclass
+    ) THEN
+        CREATE TRIGGER update_funding_sources_updated_at
+        BEFORE UPDATE ON funding_sources
+        FOR EACH ROW
+        EXECUTE FUNCTION update_updated_at_column();
+    END IF;
+END
+$$;
 
-CREATE TRIGGER update_funding_applications_updated_at
-BEFORE UPDATE ON funding_applications
-FOR EACH ROW
-EXECUTE FUNCTION update_updated_at_column();
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_trigger 
+        WHERE tgname = 'update_funding_applications_updated_at'
+        AND tgrelid = 'funding_applications'::regclass
+    ) THEN
+        CREATE TRIGGER update_funding_applications_updated_at
+        BEFORE UPDATE ON funding_applications
+        FOR EACH ROW
+        EXECUTE FUNCTION update_updated_at_column();
+    END IF;
+END
+$$;
 
-CREATE TRIGGER update_funding_contacts_updated_at
-BEFORE UPDATE ON funding_contacts
-FOR EACH ROW
-EXECUTE FUNCTION update_updated_at_column();
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_trigger 
+        WHERE tgname = 'update_funding_contacts_updated_at'
+        AND tgrelid = 'funding_contacts'::regclass
+    ) THEN
+        CREATE TRIGGER update_funding_contacts_updated_at
+        BEFORE UPDATE ON funding_contacts
+        FOR EACH ROW
+        EXECUTE FUNCTION update_updated_at_column();
+    END IF;
+END
+$$;
 
-CREATE TRIGGER update_funding_eligibility_criteria_updated_at
-BEFORE UPDATE ON funding_eligibility_criteria
-FOR EACH ROW
-EXECUTE FUNCTION update_updated_at_column(); 
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_trigger 
+        WHERE tgname = 'update_funding_eligibility_criteria_updated_at'
+        AND tgrelid = 'funding_eligibility_criteria'::regclass
+    ) THEN
+        CREATE TRIGGER update_funding_eligibility_criteria_updated_at
+        BEFORE UPDATE ON funding_eligibility_criteria
+        FOR EACH ROW
+        EXECUTE FUNCTION update_updated_at_column();
+    END IF;
+END
+$$;
