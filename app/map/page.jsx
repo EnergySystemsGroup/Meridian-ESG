@@ -95,35 +95,113 @@ export default function Page() {
 		async function fetchFundingData() {
 			try {
 				setLoading(true);
-				// In a real implementation, this would fetch from an API
-				// For now, we'll use mock data
-				const mockData = generateMockStateData();
-				setFundingData(mockData);
+				// Fetch from the API with filters
+				const queryParams = new URLSearchParams();
+				if (filters.status !== 'all')
+					queryParams.append('status', filters.status);
+				if (filters.minAmount > 0)
+					queryParams.append('min_amount', filters.minAmount);
+				if (filters.maxAmount < 10000000)
+					queryParams.append('max_amount', filters.maxAmount);
+
+				const response = await fetch(
+					`/api/map/funding-by-state?${queryParams}`
+				);
+				const result = await response.json();
+
+				if (result.success) {
+					setFundingData(result.data);
+				} else {
+					console.error('Error in API response:', result.error);
+					// Fallback to mock data if API fails
+					setFundingData(generateMockStateData());
+				}
 				setLoading(false);
 			} catch (err) {
 				console.error('Error fetching funding data:', err);
 				setError(err.message);
+				// Fallback to mock data if API fails
+				setFundingData(generateMockStateData());
 				setLoading(false);
 			}
 		}
 
 		fetchFundingData();
-	}, []);
+	}, [filters]);
 
 	// When a state is selected, fetch opportunities for that state
 	useEffect(() => {
-		if (selectedState) {
-			// In a real implementation, this would fetch from an API with the state as a parameter
-			// For now, we'll generate mock data
-			const mockOpportunities = generateMockOpportunitiesForState(
-				selectedState,
-				activeLayer
-			);
-			setStateOpportunities(mockOpportunities);
-		} else {
-			setStateOpportunities([]);
+		async function fetchStateOpportunities() {
+			if (!selectedState) {
+				setStateOpportunities([]);
+				return;
+			}
+
+			try {
+				const stateCode = stateAbbreviations[selectedState];
+				if (!stateCode) {
+					console.error('No state code found for:', selectedState);
+					return;
+				}
+
+				// Build query parameters
+				const queryParams = new URLSearchParams();
+				if (filters.status !== 'all')
+					queryParams.append('status', filters.status);
+				if (filters.minAmount > 0)
+					queryParams.append('min_amount', filters.minAmount);
+				if (filters.maxAmount < 10000000)
+					queryParams.append('max_amount', filters.maxAmount);
+
+				// Add source type filter based on active layer
+				if (activeLayer === 'federal') {
+					queryParams.append('source_type', 'Federal');
+				} else if (activeLayer === 'state') {
+					queryParams.append('source_type', 'State');
+				}
+
+				const response = await fetch(
+					`/api/map/opportunities/${stateCode}?${queryParams}`
+				);
+				const result = await response.json();
+
+				if (result.success) {
+					// Format the data for display
+					const formattedOpportunities = result.data.map((opp) => ({
+						id: opp.id,
+						title: opp.title,
+						amount: `$${
+							opp.minimum_award
+								? (opp.minimum_award / 1000).toLocaleString()
+								: '0'
+						}K - $${
+							opp.maximum_award
+								? (opp.maximum_award / 1000).toLocaleString()
+								: '0'
+						}K`,
+						closeDate: new Date(opp.close_date).toLocaleDateString(),
+						source: opp.source_name,
+						isFederal: opp.source_type === 'Federal',
+					}));
+					setStateOpportunities(formattedOpportunities);
+				} else {
+					console.error('Error in API response:', result.error);
+					// Fallback to mock data if API fails
+					setStateOpportunities(
+						generateMockOpportunitiesForState(selectedState, activeLayer)
+					);
+				}
+			} catch (err) {
+				console.error('Error fetching state opportunities:', err);
+				// Fallback to mock data if API fails
+				setStateOpportunities(
+					generateMockOpportunitiesForState(selectedState, activeLayer)
+				);
+			}
 		}
-	}, [selectedState, activeLayer]);
+
+		fetchStateOpportunities();
+	}, [selectedState, activeLayer, filters]);
 
 	// Generate color scale based on funding amounts
 	const colorScale = scaleQuantile()
