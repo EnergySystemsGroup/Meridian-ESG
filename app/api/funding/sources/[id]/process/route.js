@@ -1,0 +1,97 @@
+import { NextResponse } from 'next/server';
+import { createSupabaseClient } from '@/app/lib/supabase';
+import { sourceManagerAgent } from '@/app/lib/agents/sourceManagerAgent';
+import { apiHandlerAgent } from '@/app/lib/agents/apiHandlerAgent';
+import { dataProcessorAgent } from '@/app/lib/agents/dataProcessorAgent';
+
+// POST /api/funding/sources/[id]/process - Process a specific API source
+export async function POST(request, context) {
+	try {
+		const supabase = createSupabaseClient();
+		const { id } = await context.params;
+
+		// Get the source with configurations
+		const { data: source, error: sourceError } = await supabase
+			.from('api_sources')
+			.select('*')
+			.eq('id', id)
+			.single();
+
+		if (sourceError) {
+			if (sourceError.code === 'PGRST116') {
+				return NextResponse.json(
+					{ error: 'API source not found' },
+					{ status: 404 }
+				);
+			}
+			throw sourceError;
+		}
+
+		// Get the source configurations
+		const { data: configurations, error: configError } = await supabase
+			.from('api_source_configurations')
+			.select('*')
+			.eq('source_id', id);
+
+		if (configError) {
+			throw configError;
+		}
+
+		// Format configurations as an object
+		const configObject = {};
+		configurations.forEach((config) => {
+			configObject[config.config_type] = config.configuration;
+		});
+
+		// Add configurations to the source
+		const sourceWithConfig = {
+			...source,
+			configurations: configObject,
+		};
+
+		// Process the source with the Source Manager Agent
+		const processingDetails = await sourceManagerAgent(sourceWithConfig);
+
+		// Process the source with the API Handler Agent
+		const handlerResult = await apiHandlerAgent(
+			sourceWithConfig,
+			processingDetails
+		);
+
+		// Process the extracted opportunities with the Data Processor Agent
+		const processorResult = await dataProcessorAgent(
+			handlerResult.opportunities,
+			id,
+			handlerResult.rawResponseId
+		);
+
+		return NextResponse.json({
+			success: true,
+			source: id,
+			processingDetails,
+			handlerResult: {
+				opportunitiesCount: handlerResult.opportunities.length,
+				rawResponseId: handlerResult.rawResponseId,
+			},
+			processorResult: {
+				totalProcessed: processorResult.totalProcessed,
+				inserted: processorResult.results.filter((r) => r.action === 'insert')
+					.length,
+				updated: processorResult.results.filter((r) => r.action === 'update')
+					.length,
+				ignored: processorResult.results.filter((r) => r.action === 'ignore')
+					.length,
+			},
+		});
+	} catch (error) {
+		console.error('Error processing API source:', error);
+		return NextResponse.json(
+			{
+				error: 'Failed to process API source',
+				details: error.message || String(error),
+				stack: error.stack,
+			},
+			{ status: 500 }
+		);
+	}
+}

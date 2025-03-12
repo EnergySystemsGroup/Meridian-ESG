@@ -1,14 +1,94 @@
 import { createClient } from '@supabase/supabase-js';
 
-// Initialize the Supabase client
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+// Initialize the Supabase client with environment variables
+export function createSupabaseClient() {
+	const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+	const supabaseKey =
+		process.env.SUPABASE_SERVICE_ROLE_KEY ||
+		process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-if (!supabaseUrl || !supabaseAnonKey) {
-	throw new Error('Missing Supabase environment variables');
+	if (!supabaseUrl || !supabaseKey) {
+		throw new Error('Missing Supabase environment variables');
+	}
+
+	return createClient(supabaseUrl, supabaseKey, {
+		auth: {
+			persistSession: false,
+		},
+	});
 }
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+// Initialize the Supabase client with admin privileges for server-side operations
+export function createAdminSupabaseClient() {
+	const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+	const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+	if (!supabaseUrl || !supabaseServiceRoleKey) {
+		throw new Error('Missing Supabase admin environment variables');
+	}
+
+	return createClient(supabaseUrl, supabaseServiceRoleKey, {
+		auth: {
+			persistSession: false,
+		},
+	});
+}
+
+// Initialize the Supabase client for client-side operations
+export function createClientSupabaseClient() {
+	const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+	const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+	if (!supabaseUrl || !supabaseAnonKey) {
+		throw new Error('Missing Supabase client environment variables');
+	}
+
+	return createClient(supabaseUrl, supabaseAnonKey);
+}
+
+// Helper function to log API activity
+export async function logApiActivity(
+	supabase,
+	sourceId,
+	action,
+	status,
+	details = {}
+) {
+	try {
+		await supabase.from('api_activity_logs').insert({
+			source_id: sourceId,
+			action,
+			status,
+			details,
+		});
+	} catch (error) {
+		console.error('Error logging API activity:', error);
+	}
+}
+
+// Helper function to log agent execution
+export async function logAgentExecution(
+	supabase,
+	agentType,
+	input,
+	output,
+	executionTime,
+	tokenUsage,
+	error = null
+) {
+	try {
+		await supabase.from('agent_executions').insert({
+			agent_type: agentType,
+			input,
+			output,
+			execution_time: executionTime,
+			token_usage: tokenUsage,
+			error: error ? String(error) : null,
+		});
+	} catch (logError) {
+		console.error('Error logging agent execution:', logError);
+	}
+}
 
 // Funding Opportunities API
 export const fundingApi = {
