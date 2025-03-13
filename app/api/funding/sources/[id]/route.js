@@ -35,7 +35,51 @@ export async function GET(request, { params }) {
 		}
 
 		// Format configurations as an object
-		const configObject = {};
+		const configObject = {
+			query_params: {},
+			request_body: {},
+			request_config: {
+				method: 'GET',
+				headers: {
+					'Content-Type': 'application/json',
+				},
+			},
+			pagination_config: {
+				enabled: false,
+				type: 'offset',
+				limitParam: 'limit',
+				offsetParam: 'offset',
+				pageSize: 100,
+				maxPages: 5,
+				responseDataPath: '',
+				totalCountPath: '',
+			},
+			detail_config: {
+				enabled: false,
+				endpoint: '',
+				method: 'GET',
+				headers: {
+					'Content-Type': 'application/json',
+				},
+				idField: '',
+				idParam: '',
+			},
+			response_mapping: {
+				title: '',
+				description: '',
+				fundingType: '',
+				agency: '',
+				totalFunding: '',
+				minAward: '',
+				maxAward: '',
+				openDate: '',
+				closeDate: '',
+				eligibility: '',
+				url: '',
+			},
+		};
+
+		// Populate the config object with the actual configurations
 		configurations.forEach((config) => {
 			configObject[config.config_type] = config.configuration;
 		});
@@ -76,6 +120,7 @@ export async function PUT(request, { params }) {
 				auth_type: body.auth_type,
 				auth_details: body.auth_details,
 				update_frequency: body.update_frequency,
+				handler_type: body.handler_type || 'standard',
 				notes: body.notes,
 				active: body.active,
 			})
@@ -102,15 +147,86 @@ export async function PUT(request, { params }) {
 				.eq('source_id', id);
 
 			// Insert new configurations
-			const configInserts = Object.entries(body.configurations).map(
-				([configType, configuration]) => ({
-					source_id: id,
-					config_type: configType,
-					configuration,
-				})
-			);
+			const configInserts = [];
 
-			await supabase.from('api_source_configurations').insert(configInserts);
+			// Process query_params if provided
+			if (
+				body.configurations.query_params &&
+				Object.keys(body.configurations.query_params).length > 0
+			) {
+				configInserts.push({
+					source_id: id,
+					config_type: 'query_params',
+					configuration: body.configurations.query_params,
+				});
+			}
+
+			// Process request_body if provided
+			if (
+				body.configurations.request_body &&
+				Object.keys(body.configurations.request_body).length > 0
+			) {
+				configInserts.push({
+					source_id: id,
+					config_type: 'request_body',
+					configuration: body.configurations.request_body,
+				});
+			}
+
+			// Process request_config if provided
+			if (body.configurations.request_config) {
+				configInserts.push({
+					source_id: id,
+					config_type: 'request_config',
+					configuration: body.configurations.request_config,
+				});
+			}
+
+			// Process pagination_config if provided
+			if (
+				body.configurations.pagination_config &&
+				body.configurations.pagination_config.enabled
+			) {
+				configInserts.push({
+					source_id: id,
+					config_type: 'pagination_config',
+					configuration: body.configurations.pagination_config,
+				});
+			}
+
+			// Process detail_config if provided
+			if (
+				body.configurations.detail_config &&
+				body.configurations.detail_config.enabled
+			) {
+				configInserts.push({
+					source_id: id,
+					config_type: 'detail_config',
+					configuration: body.configurations.detail_config,
+				});
+			}
+
+			// Process response_mapping if provided
+			if (body.configurations.response_mapping) {
+				// Filter out empty mappings
+				const filteredMapping = Object.fromEntries(
+					Object.entries(body.configurations.response_mapping).filter(
+						([_, value]) => value
+					)
+				);
+
+				if (Object.keys(filteredMapping).length > 0) {
+					configInserts.push({
+						source_id: id,
+						config_type: 'response_mapping',
+						configuration: filteredMapping,
+					});
+				}
+			}
+
+			if (configInserts.length > 0) {
+				await supabase.from('api_source_configurations').insert(configInserts);
+			}
 		}
 
 		return NextResponse.json({ source });

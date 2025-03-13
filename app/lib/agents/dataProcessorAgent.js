@@ -116,9 +116,12 @@ const processingResultSchema = z.object({
 				.describe('Whether this is a national opportunity'),
 			program_id: z
 				.string()
+				.uuid()
 				.optional()
 				.nullable()
-				.describe('ID of the funding program this belongs to'),
+				.describe(
+					'UUID of the funding program this belongs to (not the external ID)'
+				),
 		})
 		.describe('The normalized data to store in the database'),
 	eligibleApplicants: z
@@ -150,6 +153,11 @@ Based on your analysis:
 2. Correct any inconsistencies or formatting issues
 3. Flag for human review if there are significant uncertainties
 4. Prepare the normalized data structure for database storage
+
+IMPORTANT NOTES:
+- For program_id, always use the program ID provided in the function call, NOT the source ID or external ID from the opportunity
+- Store the external ID from the source system in the opportunity_number field
+- The program_id must be a valid UUID
 
 For eligible applicants, use these standardized types:
 - K12
@@ -186,19 +194,19 @@ For status, use these standardized values:
 /**
  * Checks for potential duplicate opportunities in the database
  * @param {Object} opportunity - The extracted opportunity
- * @param {string} sourceId - The ID of the source
+ * @param {string} programId - The ID of the funding program
  * @returns {Promise<Array>} - Potential matching opportunities
  */
-async function checkForDuplicates(opportunity, sourceId) {
+async function checkForDuplicates(opportunity, programId) {
 	const supabase = createSupabaseClient();
 
 	try {
-		// First, try to find exact matches by title and source
+		// First, try to find exact matches by title and program
 		const { data: exactMatches } = await supabase
 			.from('funding_opportunities')
 			.select('*')
 			.eq('title', opportunity.title)
-			.eq('program_id', sourceId)
+			.eq('program_id', programId)
 			.limit(5);
 
 		if (exactMatches && exactMatches.length > 0) {
@@ -231,10 +239,58 @@ async function processOpportunity(opportunity, sourceId, rawResponseId) {
 	const supabase = createSupabaseClient();
 
 	try {
+		// Get the program ID for this source
+		let { data: programData, error: programError } = await supabase
+			.from('funding_programs')
+			.select('id')
+			.eq('source_id', sourceId)
+			.single();
+
+		let programId;
+
+		if (programError) {
+			console.log('No funding program found, creating one automatically...');
+
+			// Get the source details to use for the program name
+			const { data: sourceData, error: sourceError } = await supabase
+				.from('api_sources')
+				.select('name')
+				.eq('id', sourceId)
+				.single();
+
+			if (sourceError) {
+				console.error('Error getting source details:', sourceError);
+				throw new Error(`Could not find API source with ID: ${sourceId}`);
+			}
+
+			// Create a funding program automatically
+			const { data: newProgram, error: createError } = await supabase
+				.from('funding_programs')
+				.insert({
+					name: `${sourceData.name} Program`,
+					source_id: sourceId,
+					description: `Auto-generated program for ${sourceData.name}`,
+				})
+				.select('id')
+				.single();
+
+			if (createError) {
+				console.error('Error creating funding program:', createError);
+				throw new Error(
+					`Failed to create funding program for source ID: ${sourceId}`
+				);
+			}
+
+			programId = newProgram.id;
+			console.log(`Created new funding program with ID: ${programId}`);
+		} else {
+			programId = programData.id;
+		}
+
 		// Check for potential duplicates
 		const existingOpportunities = await checkForDuplicates(
 			opportunity,
-			sourceId
+			programId
 		);
 
 		// Check if Anthropic API key is available
@@ -253,7 +309,7 @@ async function processOpportunity(opportunity, sourceId, rawResponseId) {
 				needsReview: false,
 				normalizedData: {
 					title: opportunity.title,
-					opportunity_number: opportunity.opportunityNumber || null,
+					opportunity_number: opportunity.externalId || null,
 					source_name: opportunity.agency || 'Unknown',
 					source_type: 'federal',
 					min_amount: opportunity.minAward || null,
@@ -272,7 +328,7 @@ async function processOpportunity(opportunity, sourceId, rawResponseId) {
 					tags: [],
 					url: opportunity.url || null,
 					is_national: true,
-					program_id: sourceId,
+					program_id: programId,
 				},
 				eligibleApplicants: opportunity.eligibility || [
 					'Municipal',
@@ -323,6 +379,16 @@ async function processOpportunity(opportunity, sourceId, rawResponseId) {
 		// Parse the response
 		const result = await parser.parse(response.content);
 
+		// Ensure program_id is always the programId
+		if (result.normalizedData) {
+			result.normalizedData.program_id = programId;
+
+			// If opportunity has an externalId but no opportunity_number, use externalId
+			if (!result.normalizedData.opportunity_number && opportunity.externalId) {
+				result.normalizedData.opportunity_number = opportunity.externalId;
+			}
+		}
+
 		// Calculate execution time
 		const executionTime = Date.now() - startTime;
 
@@ -333,6 +399,7 @@ async function processOpportunity(opportunity, sourceId, rawResponseId) {
 			{
 				opportunity: opportunity.title,
 				sourceId,
+				programId,
 			},
 			result,
 			executionTime,

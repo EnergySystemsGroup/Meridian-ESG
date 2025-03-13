@@ -7,11 +7,12 @@ import {
 	logApiActivity,
 } from '../supabase';
 import {
-	makeApiRequest,
+	makeApiRequest as makeExternalApiRequest,
 	makePaginatedApiRequest,
 	getNestedValue,
 } from '../apiRequest';
 import { z } from 'zod';
+import axios from 'axios';
 
 // Define the funding opportunity schema
 const fundingOpportunitySchema = z.object({
@@ -67,522 +68,401 @@ const fundingOpportunitySchema = z.object({
 		.describe('Confidence score for this extraction (0-100)'),
 });
 
-// Create the prompt template for the standard API handler
-const standardHandlerPromptTemplate = PromptTemplate.fromTemplate(`
+// Define the output schema for the agent
+const apiResponseProcessingSchema = z.object({
+	opportunities: z
+		.array(
+			z.object({
+				title: z.string().describe('Title of the funding opportunity'),
+				description: z
+					.string()
+					.optional()
+					.nullable()
+					.describe('Description of the opportunity'),
+				fundingType: z
+					.string()
+					.optional()
+					.nullable()
+					.describe('Type of funding (grant, loan, etc.)'),
+				agency: z
+					.string()
+					.optional()
+					.nullable()
+					.describe('Funding agency or organization'),
+				totalFunding: z
+					.number()
+					.optional()
+					.nullable()
+					.describe('Total funding amount available'),
+				minAward: z
+					.number()
+					.optional()
+					.nullable()
+					.describe('Minimum award amount'),
+				maxAward: z
+					.number()
+					.optional()
+					.nullable()
+					.describe('Maximum award amount'),
+				openDate: z
+					.string()
+					.optional()
+					.nullable()
+					.describe('Opening date for applications'),
+				closeDate: z
+					.string()
+					.optional()
+					.nullable()
+					.describe('Closing date for applications'),
+				eligibility: z
+					.string()
+					.optional()
+					.nullable()
+					.describe('Eligibility requirements'),
+				url: z
+					.string()
+					.optional()
+					.nullable()
+					.describe('URL to the opportunity details'),
+				sourceId: z
+					.string()
+					.describe('ID of the source this opportunity came from'),
+				externalId: z
+					.string()
+					.optional()
+					.nullable()
+					.describe('External ID from the source system'),
+				rawData: z.any().optional().describe('Raw data from the API response'),
+			})
+		)
+		.describe('Array of funding opportunities extracted from the API response'),
+	totalCount: z.number().describe('Total number of opportunities found'),
+	nextCursor: z
+		.string()
+		.optional()
+		.nullable()
+		.describe('Cursor for the next page of results'),
+	reasoning: z
+		.string()
+		.describe('Brief explanation of how you processed the data'),
+});
+
+// Create the prompt template for standard API handler
+const standardApiPromptTemplate = PromptTemplate.fromTemplate(`
 You are the API Handler Agent for a funding intelligence system that collects information about energy infrastructure funding opportunities.
 
-Your task is to analyze the following API response from {sourceName} and extract all funding opportunities that match our criteria.
+Your task is to process the following API response and extract structured funding opportunity data.
 
-For context, this source typically provides funding for:
-{sourceFocus}
+SOURCE INFORMATION:
+{sourceInfo}
 
 API RESPONSE:
 {apiResponse}
 
-For each funding opportunity you identify, extract the following information:
-1. Title
-2. Description
-3. Funding type (grant, loan, incentive, etc.)
-4. Agency/organization providing the funding
-5. Total funding amount (if available)
-6. Minimum and maximum award amounts (if available)
-7. Application open and close dates
-8. Eligibility requirements
-9. URL for more information
-10. Matching fund requirements
-11. Relevant categories from our taxonomy
-12. Current status (open, upcoming, closed)
+RESPONSE MAPPING:
+{responseMapping}
 
-If information is not explicitly provided, use your judgment to infer it from context, and assign a confidence score to each field.
-
-Our funding categories include:
-- Energy efficiency and conservation
-- Renewable energy generation
-- Energy storage and battery systems
-- Building modernization and retrofits
-- HVAC systems and technologies
-- Building envelope improvements
-- Lighting systems and controls
-- Building automation and smart building technologies
-- Electric vehicle infrastructure and charging
-- Climate adaptation and resilience
-- Water conservation and efficiency
-- Sustainable transportation
+Based on this information, extract all funding opportunities from the API response.
+Use the response mapping to map fields from the API response to our standard fields.
+If a field is not available in the API response, leave it as null or undefined.
 
 {formatInstructions}
 `);
 
-// Create the prompt template for the document API handler
-const documentHandlerPromptTemplate = PromptTemplate.fromTemplate(`
-You are the Document API Handler Agent for a funding intelligence system that collects information about energy infrastructure funding opportunities.
+// Create the prompt template for document handler
+const documentApiPromptTemplate = PromptTemplate.fromTemplate(`
+You are the Document Handler Agent for a funding intelligence system that collects information about energy infrastructure funding opportunities.
 
-Your task is to analyze the following document-style API response from {sourceName} and extract all funding opportunities that match our criteria.
+Your task is to process the following document content and extract structured funding opportunity data.
 
-For context, this source typically provides funding for:
-{sourceFocus}
+SOURCE INFORMATION:
+{sourceInfo}
 
 DOCUMENT CONTENT:
-{apiResponse}
+{documentContent}
 
-This content may contain one or more funding opportunities described in prose format. Your job is to carefully read through the document and identify any funding opportunities related to energy, buildings, infrastructure, sustainability, or climate.
-
-For each funding opportunity you identify, extract the following information:
-1. Title
-2. Description
-3. Funding type (grant, loan, incentive, etc.)
-4. Agency/organization providing the funding
-5. Total funding amount (if available)
-6. Minimum and maximum award amounts (if available)
-7. Application open and close dates
-8. Eligibility requirements
-9. URL for more information
-10. Matching fund requirements
-11. Relevant categories from our taxonomy
-12. Current status (open, upcoming, closed)
-
-If information is not explicitly provided, use your judgment to infer it from context, and assign a confidence score to each field.
-
-Our funding categories include:
-- Energy efficiency and conservation
-- Renewable energy generation
-- Energy storage and battery systems
-- Building modernization and retrofits
-- HVAC systems and technologies
-- Building envelope improvements
-- Lighting systems and controls
-- Building automation and smart building technologies
-- Electric vehicle infrastructure and charging
-- Climate adaptation and resilience
-- Water conservation and efficiency
-- Sustainable transportation
+Based on this information, extract all funding opportunities from the document.
+Look for key information such as:
+- Opportunity title
+- Description
+- Funding amount
+- Eligibility requirements
+- Application deadlines
+- Contact information
 
 {formatInstructions}
 `);
 
-// Create the prompt template for the state portal API handler
-const statePortalHandlerPromptTemplate = PromptTemplate.fromTemplate(`
-You are the State Portal API Handler Agent for a funding intelligence system that collects information about energy infrastructure funding opportunities.
+// Create the prompt template for state portal handler
+const statePortalPromptTemplate = PromptTemplate.fromTemplate(`
+You are the State Portal Handler Agent for a funding intelligence system that collects information about energy infrastructure funding opportunities.
 
-Your task is to analyze the following state portal API response from {sourceName} and extract all funding opportunities that match our criteria.
+Your task is to process the following state portal content and extract structured funding opportunity data.
 
-For context, this source typically provides funding for:
-{sourceFocus}
+SOURCE INFORMATION:
+{sourceInfo}
 
-STATE PORTAL RESPONSE:
-{apiResponse}
+PORTAL CONTENT:
+{portalContent}
 
-State portals often have unique structures and terminology. Look for grants, incentives, rebates, loans, or other funding programs related to energy, buildings, infrastructure, sustainability, or climate.
-
-For each funding opportunity you identify, extract the following information:
-1. Title
-2. Description
-3. Funding type (grant, loan, incentive, etc.)
-4. Agency/organization providing the funding
-5. Total funding amount (if available)
-6. Minimum and maximum award amounts (if available)
-7. Application open and close dates
-8. Eligibility requirements
-9. URL for more information
-10. Matching fund requirements
-11. Relevant categories from our taxonomy
-12. Current status (open, upcoming, closed)
-
-If information is not explicitly provided, use your judgment to infer it from context, and assign a confidence score to each field.
-
-Our funding categories include:
-- Energy efficiency and conservation
-- Renewable energy generation
-- Energy storage and battery systems
-- Building modernization and retrofits
-- HVAC systems and technologies
-- Building envelope improvements
-- Lighting systems and controls
-- Building automation and smart building technologies
-- Electric vehicle infrastructure and charging
-- Climate adaptation and resilience
-- Water conservation and efficiency
-- Sustainable transportation
-
-{formatInstructions}
-`);
-
-// Create the prompt template specifically for Grants.gov
-const grantsGovHandlerPromptTemplate = PromptTemplate.fromTemplate(`
-You are the Grants.gov API Handler Agent for a funding intelligence system that collects information about energy infrastructure funding opportunities.
-
-Your task is to analyze the following API response from Grants.gov and extract all funding opportunities that match our criteria.
-
-The Grants.gov API response includes both search results and detailed information for each opportunity. The search results are in the "oppHits" array, and the detailed information is nested within each opportunity under the "details" property.
-
-API RESPONSE:
-{apiResponse}
-
-For each funding opportunity you identify, extract the following information:
-1. Title - Use the "opportunityTitle" field
-2. Description - Use the "synopsisDesc" field from the details
-3. Funding type - Usually "grant" or based on "fundingInstruments" in the details
-4. Agency - Use the "agency" or "agencyName" field
-5. Total funding amount - Use "estimatedFunding" if available
-6. Minimum award amount - Use "awardFloor" if available
-7. Maximum award amount - Use "awardCeiling" if available
-8. Application open date - Use "openDate" or "postingDate"
-9. Application close date - Use "closeDate" or "responseDate"
-10. Eligibility requirements - Extract from "applicantTypes" or "applicantEligibilityDesc"
-11. URL - Construct from the opportunity number or use provided URLs
-12. Matching fund requirements - Check for "costSharing" field
-13. Relevant categories - Map from "fundingActivityCategories" to our taxonomy
-14. Current status - Determine from "oppStatus" and dates
-
-Our funding categories include:
-- Energy efficiency and conservation
-- Renewable energy generation
-- Energy storage and battery systems
-- Building modernization and retrofits
-- HVAC systems and technologies
-- Building envelope improvements
-- Lighting systems and controls
-- Building automation and smart building technologies
-- Electric vehicle infrastructure and charging
-- Climate adaptation and resilience
-- Water conservation and efficiency
-- Sustainable transportation
+Based on this information, extract all funding opportunities from the state portal.
+State portals often have unique structures, so look carefully for:
+- Grant programs
+- Loan programs
+- Incentives
+- Rebates
+- Technical assistance programs
 
 {formatInstructions}
 `);
 
 /**
- * Makes an API request and stores the raw response
- * @param {Object} source - The API source information
- * @param {Object} processingDetails - Details from the Source Manager Agent
- * @returns {Promise<Object>} - The API response and raw response ID
+ * Makes an API request with the given configuration
+ * @param {Object} config - The API request configuration
+ * @returns {Promise<Object>} - The API response
  */
-async function makeAndStoreApiRequest(source, processingDetails) {
-	const supabase = createSupabaseClient();
-
+async function makeConfiguredApiRequest(config) {
 	try {
-		// Determine if pagination is needed
-		const paginationConfig = source.configurations?.pagination_config;
-
-		// Get request configuration if available
-		const requestConfig = source.configurations?.request_config || {};
-		const method = requestConfig.method || 'GET';
-		const headers = requestConfig.headers || {};
-
-		// Special handling for Grants.gov
-		if (source.name === 'Grants.gov') {
-			console.log('Using special handling for Grants.gov API');
-
-			// Step 1: Make the search request
-			console.log('Making search request to Grants.gov API');
-			const searchResponse = await makeApiRequest(
-				processingDetails.apiEndpoint,
-				{}, // Empty query params for POST request
-				processingDetails.authMethod,
-				processingDetails.authDetails,
-				headers,
-				'POST', // Always use POST for Grants.gov
-				processingDetails.queryParameters // Send query params in the request body
-			);
-
-			console.log('Search response received:', searchResponse.status);
-
-			// Extract opportunities from the search response
-			const opportunities =
-				getNestedValue(searchResponse.data, 'data.oppHits') || [];
-			console.log(
-				`Found ${opportunities.length} opportunities in search results`
-			);
-
-			// Step 2: If detail_config is enabled, fetch details for each opportunity
-			const detailConfig = source.configurations?.detail_config;
-			const detailedOpportunities = [];
-
-			if (detailConfig && detailConfig.enabled && opportunities.length > 0) {
-				console.log('Fetching detailed information for opportunities...');
-
-				// Limit to first 10 opportunities for testing
-				const limitedOpportunities = opportunities.slice(0, 10);
-
-				for (const opportunity of limitedOpportunities) {
-					// Get the opportunity ID
-					const opportunityId = opportunity[detailConfig.idField];
-					if (!opportunityId) {
-						console.warn(
-							`No ID found for opportunity: ${JSON.stringify(opportunity)}`
-						);
-						continue;
-					}
-
-					console.log(`Fetching details for opportunity ${opportunityId}`);
-
-					// Prepare the request body
-					const detailParams = {
-						[detailConfig.idParam]: opportunityId,
-					};
-
-					try {
-						// Make the detail request
-						const detailResponse = await makeApiRequest(
-							detailConfig.endpoint,
-							{},
-							processingDetails.authMethod,
-							processingDetails.authDetails,
-							detailConfig.headers || headers,
-							detailConfig.method || 'POST',
-							detailParams
-						);
-
-						// Add the detailed information to the opportunity
-						detailedOpportunities.push({
-							...opportunity,
-							details: detailResponse.data,
-						});
-
-						console.log(
-							`Successfully fetched details for opportunity ${opportunityId}`
-						);
-					} catch (detailError) {
-						console.error(
-							`Error fetching details for opportunity ${opportunityId}:`,
-							detailError
-						);
-						// Add the opportunity without details
-						detailedOpportunities.push(opportunity);
-					}
-				}
-			}
-
-			// Store the raw response with the detailed opportunities
-			const responseData =
-				detailedOpportunities.length > 0
-					? detailedOpportunities
-					: opportunities;
-
-			const { data: rawResponse, error } = await supabase
-				.from('api_raw_responses')
-				.insert({
-					source_id: source.id,
-					content: responseData,
-					request_details: {
-						url: processingDetails.apiEndpoint,
-						method: 'POST',
-						body: processingDetails.queryParameters,
-						headers: headers,
-					},
-				})
-				.select('id')
-				.single();
-
-			if (error) {
-				throw error;
-			}
-
-			return {
-				response: { data: responseData },
-				rawResponseId: rawResponse.id,
-			};
-		}
-
-		// Standard handling for other APIs
-		let response;
-		if (paginationConfig && paginationConfig.enabled) {
-			// Make a paginated request
-			response = await makePaginatedApiRequest({
-				url: processingDetails.apiEndpoint,
-				params: processingDetails.queryParameters,
-				authType: processingDetails.authMethod,
-				authDetails: processingDetails.authDetails,
-				paginationConfig,
-				method,
-				headers,
-				data: method === 'POST' ? processingDetails.queryParameters : null,
-			});
-		} else {
-			// Make a single request
-			response = await makeApiRequest(
-				processingDetails.apiEndpoint,
-				processingDetails.queryParameters,
-				processingDetails.authMethod,
-				processingDetails.authDetails,
-				headers,
-				method,
-				method === 'POST' ? processingDetails.queryParameters : null
-			);
-		}
-
-		// Step 2: If detail_config is enabled, fetch details for each opportunity
-		const detailConfig = source.configurations?.detail_config;
-		if (detailConfig && detailConfig.enabled) {
-			console.log('Fetching detailed information for opportunities...');
-
-			// Get the list of opportunities from the response
-			let opportunities = [];
-			if (paginationConfig && paginationConfig.enabled) {
-				opportunities = response.data;
-			} else {
-				const responseDataPath =
-					paginationConfig?.responseDataPath || 'oppHits';
-				opportunities = getNestedValue(response.data, responseDataPath) || [];
-			}
-
-			// Fetch details for each opportunity
-			const detailedOpportunities = [];
-			for (const opportunity of opportunities) {
-				// Get the opportunity ID
-				const opportunityId = opportunity[detailConfig.idField];
-				if (!opportunityId) {
-					console.warn(
-						`No ID found for opportunity: ${JSON.stringify(opportunity)}`
-					);
-					continue;
-				}
-
-				// Prepare the request body
-				const detailParams = {
-					[detailConfig.idParam]: opportunityId,
-				};
-
-				try {
-					// Make the detail request
-					const detailResponse = await makeApiRequest(
-						detailConfig.endpoint,
-						{},
-						processingDetails.authMethod,
-						processingDetails.authDetails,
-						detailConfig.headers || headers,
-						detailConfig.method || 'POST',
-						detailParams
-					);
-
-					// Add the detailed information to the opportunity
-					detailedOpportunities.push({
-						...opportunity,
-						details: detailResponse.data,
-					});
-				} catch (detailError) {
-					console.error(
-						`Error fetching details for opportunity ${opportunityId}:`,
-						detailError
-					);
-					// Add the opportunity without details
-					detailedOpportunities.push(opportunity);
-				}
-			}
-
-			// Replace the original opportunities with the detailed ones
-			if (paginationConfig && paginationConfig.enabled) {
-				response.data = detailedOpportunities;
-			} else {
-				// Update the nested data
-				const responseDataPath =
-					paginationConfig?.responseDataPath || 'oppHits';
-				const pathParts = responseDataPath.split('.');
-				let current = response.data;
-
-				// Navigate to the parent object
-				for (let i = 0; i < pathParts.length - 1; i++) {
-					if (!current[pathParts[i]]) {
-						current[pathParts[i]] = {};
-					}
-					current = current[pathParts[i]];
-				}
-
-				// Update the opportunities array
-				current[pathParts[pathParts.length - 1]] = detailedOpportunities;
-			}
-		}
-
-		// Store the raw response
-		const { data: rawResponse, error } = await supabase
-			.from('api_raw_responses')
-			.insert({
-				source_id: source.id,
-				content: response.data,
-				request_details: response.requestDetails,
-			})
-			.select('id')
-			.single();
-
-		if (error) {
-			throw error;
-		}
-
-		return {
-			response,
-			rawResponseId: rawResponse.id,
-		};
-	} catch (error) {
-		console.error('Error making API request:', error);
-
-		// Log the API activity with error
-		await logApiActivity(supabase, source.id, 'api_check', 'failure', {
-			error: String(error),
+		const response = await axios({
+			method: config.method || 'GET',
+			url: config.url,
+			params: config.queryParameters,
+			data: config.requestBody,
+			headers: config.headers || {},
 		});
 
+		return response.data;
+	} catch (error) {
+		console.error('API request error:', error);
 		throw error;
 	}
 }
 
 /**
- * Extracts funding opportunities from an API response
- * @param {Object} source - The API source information
- * @param {Object} processingDetails - Details from the Source Manager Agent
- * @param {Object} apiResponse - The API response
- * @param {string} rawResponseId - The ID of the stored raw response
- * @returns {Promise<Array>} - The extracted opportunities
+ * Extracts data from a nested object using a path string
+ * @param {Object} obj - The object to extract data from
+ * @param {String} path - The path to the data (e.g., "data.items")
+ * @returns {Any} - The extracted data
  */
-async function extractOpportunities(
-	source,
-	processingDetails,
-	apiResponse,
-	rawResponseId
-) {
+function extractDataByPath(obj, path) {
+	if (!path) return obj;
+
+	const keys = path.split('.');
+	let result = obj;
+
+	for (const key of keys) {
+		if (result === null || result === undefined) return undefined;
+		result = result[key];
+	}
+
+	return result;
+}
+
+/**
+ * Processes a paginated API response
+ * @param {Object} source - The API source
+ * @param {Object} processingDetails - The processing details from the source manager
+ * @returns {Promise<Array>} - The combined results from all pages
+ */
+async function processPaginatedApi(source, processingDetails) {
+	const results = [];
+	const paginationConfig = processingDetails.paginationConfig;
+	const detailConfig = processingDetails.detailConfig;
+
+	if (!paginationConfig || !paginationConfig.enabled) {
+		// If pagination is not enabled, make a single request
+		const response = await makeConfiguredApiRequest({
+			method: processingDetails.requestConfig.method,
+			url: processingDetails.apiEndpoint,
+			queryParameters: processingDetails.queryParameters,
+			requestBody: processingDetails.requestBody,
+			headers: processingDetails.requestConfig.headers,
+		});
+
+		// If detail config is enabled, fetch details for each item
+		if (detailConfig && detailConfig.enabled && response) {
+			const items = extractDataByPath(
+				response,
+				paginationConfig?.responseDataPath || ''
+			);
+			if (Array.isArray(items)) {
+				const detailedItems = [];
+				for (const item of items) {
+					const itemId = extractDataByPath(item, detailConfig.idField);
+					if (itemId) {
+						try {
+							const detailRequestBody = {};
+							detailRequestBody[detailConfig.idParam] = itemId;
+
+							const detailResponse = await makeConfiguredApiRequest({
+								method: detailConfig.method || 'GET',
+								url: detailConfig.endpoint,
+								queryParameters: {},
+								requestBody: detailRequestBody,
+								headers:
+									detailConfig.headers ||
+									processingDetails.requestConfig.headers,
+							});
+
+							detailedItems.push({
+								...item,
+								_detailResponse: detailResponse,
+							});
+						} catch (error) {
+							console.error(
+								`Error fetching details for item ${itemId}:`,
+								error
+							);
+							detailedItems.push(item); // Keep the original item if detail fetch fails
+						}
+					} else {
+						detailedItems.push(item);
+					}
+				}
+
+				// Replace the items in the response with the detailed items
+				const responseDataPath = paginationConfig?.responseDataPath || '';
+				if (responseDataPath) {
+					const pathParts = responseDataPath.split('.');
+					let current = response;
+					for (let i = 0; i < pathParts.length - 1; i++) {
+						current = current[pathParts[i]];
+					}
+					current[pathParts[pathParts.length - 1]] = detailedItems;
+				}
+			}
+		}
+
+		return [response];
+	}
+
+	// Initialize pagination variables
+	let currentPage = 0;
+	let hasMorePages = true;
+	let offset = 0;
+	let cursor = null;
+
+	// Get the page size
+	const pageSize = paginationConfig.pageSize || 100;
+	const maxPages = paginationConfig.maxPages || 5;
+
+	while (hasMorePages && currentPage < maxPages) {
+		// Prepare query parameters for this page
+		const queryParams = { ...processingDetails.queryParameters };
+
+		// Add pagination parameters based on the pagination type
+		if (paginationConfig.type === 'offset') {
+			queryParams[paginationConfig.limitParam] = pageSize;
+			queryParams[paginationConfig.offsetParam] = offset;
+		} else if (paginationConfig.type === 'page') {
+			queryParams[paginationConfig.limitParam] = pageSize;
+			queryParams[paginationConfig.pageParam] = currentPage + 1; // Pages usually start at 1
+		} else if (paginationConfig.type === 'cursor' && cursor) {
+			queryParams[paginationConfig.limitParam] = pageSize;
+			queryParams[paginationConfig.cursorParam] = cursor;
+		}
+
+		// Make the API request
+		const response = await makeConfiguredApiRequest({
+			method: processingDetails.requestConfig.method,
+			url: processingDetails.apiEndpoint,
+			queryParameters: queryParams,
+			requestBody: processingDetails.requestBody,
+			headers: processingDetails.requestConfig.headers,
+		});
+
+		// If detail config is enabled, fetch details for each item
+		if (detailConfig && detailConfig.enabled && response) {
+			const items = extractDataByPath(
+				response,
+				paginationConfig.responseDataPath
+			);
+			if (Array.isArray(items)) {
+				const detailedItems = [];
+				for (const item of items) {
+					const itemId = extractDataByPath(item, detailConfig.idField);
+					if (itemId) {
+						try {
+							const detailRequestBody = {};
+							detailRequestBody[detailConfig.idParam] = itemId;
+
+							const detailResponse = await makeConfiguredApiRequest({
+								method: detailConfig.method || 'GET',
+								url: detailConfig.endpoint,
+								queryParameters: {},
+								requestBody: detailRequestBody,
+								headers:
+									detailConfig.headers ||
+									processingDetails.requestConfig.headers,
+							});
+
+							detailedItems.push({
+								...item,
+								_detailResponse: detailResponse,
+							});
+						} catch (error) {
+							console.error(
+								`Error fetching details for item ${itemId}:`,
+								error
+							);
+							detailedItems.push(item); // Keep the original item if detail fetch fails
+						}
+					} else {
+						detailedItems.push(item);
+					}
+				}
+
+				// Replace the items in the response with the detailed items
+				const pathParts = paginationConfig.responseDataPath.split('.');
+				let current = response;
+				for (let i = 0; i < pathParts.length - 1; i++) {
+					current = current[pathParts[i]];
+				}
+				current[pathParts[pathParts.length - 1]] = detailedItems;
+			}
+		}
+
+		// Add the response to the results
+		results.push(response);
+
+		// Extract the data and total count
+		const data = extractDataByPath(response, paginationConfig.responseDataPath);
+		const totalCount = extractDataByPath(
+			response,
+			paginationConfig.totalCountPath
+		);
+
+		// Update pagination variables
+		currentPage++;
+
+		if (paginationConfig.type === 'offset') {
+			offset += pageSize;
+			hasMorePages = data && data.length > 0 && offset < totalCount;
+		} else if (paginationConfig.type === 'page') {
+			hasMorePages =
+				data && data.length > 0 && currentPage * pageSize < totalCount;
+		} else if (paginationConfig.type === 'cursor') {
+			// For cursor-based pagination, we need to extract the next cursor from the response
+			// This is highly API-specific, so we'll assume it's in the response as "nextCursor"
+			cursor = response.nextCursor || response.next_cursor;
+			hasMorePages = !!cursor && data && data.length > 0;
+		}
+	}
+
+	return results;
+}
+
+/**
+ * Processes an API source using the appropriate handler
+ * @param {Object} source - The API source
+ * @param {Object} processingDetails - The processing details from the source manager
+ * @returns {Promise<Object>} - The processed opportunities
+ */
+export async function apiHandlerAgent(source, processingDetails) {
 	const startTime = Date.now();
 	const supabase = createSupabaseClient();
 
 	try {
-		// Check if Anthropic API key is available
-		if (
-			!process.env.ANTHROPIC_API_KEY ||
-			process.env.ANTHROPIC_API_KEY.includes('xxxxxxxx')
-		) {
-			console.log(
-				'No valid Anthropic API key found. Using mock response for API Handler Agent.'
-			);
-
-			// Return a mock opportunity for testing purposes
-			const mockOpportunity = {
-				title: 'Sample Funding Opportunity',
-				description:
-					'This is a mock opportunity generated for testing purposes.',
-				fundingType: 'grant',
-				agency: source.name || 'Sample Agency',
-				totalFunding: 1000000,
-				minAward: 50000,
-				maxAward: 200000,
-				openDate: new Date().toISOString(),
-				closeDate: new Date(
-					Date.now() + 30 * 24 * 60 * 60 * 1000
-				).toISOString(),
-				eligibility: ['Municipal', 'Nonprofit'],
-				url: source.url || 'https://example.com',
-				matchingRequired: false,
-				categories: ['Energy efficiency and conservation'],
-				status: 'open',
-				confidence: 100,
-			};
-
-			// Store the mock opportunity
-			await supabase.from('api_extracted_opportunities').insert({
-				raw_response_id: rawResponseId,
-				source_id: source.id,
-				data: mockOpportunity,
-				confidence_score: 100,
-			});
-
-			return [mockOpportunity];
-		}
-
 		// Initialize the LLM
 		const model = new ChatAnthropic({
 			temperature: 0,
@@ -592,44 +472,153 @@ async function extractOpportunities(
 
 		// Create the output parser
 		const parser = StructuredOutputParser.fromZodSchema(
-			z.array(fundingOpportunitySchema)
+			apiResponseProcessingSchema
 		);
 		const formatInstructions = parser.getFormatInstructions();
 
-		// Select the appropriate prompt template based on the source and handler type
+		// Select the appropriate handler based on the handler type
 		let promptTemplate;
-		if (source.name === 'Grants.gov') {
-			// Use the Grants.gov-specific prompt template
-			promptTemplate = grantsGovHandlerPromptTemplate;
-		} else {
-			// Use the standard prompt templates based on handler type
-			switch (processingDetails.handlerType) {
-				case 'document':
-					promptTemplate = documentHandlerPromptTemplate;
-					break;
-				case 'statePortal':
-					promptTemplate = statePortalHandlerPromptTemplate;
-					break;
-				case 'standard':
-				default:
-					promptTemplate = standardHandlerPromptTemplate;
-					break;
+		let promptVariables = {
+			sourceInfo: JSON.stringify(source, null, 2),
+			formatInstructions,
+		};
+
+		let apiResponses;
+		let rawResponseId;
+
+		// Process the API based on the handler type
+		if (processingDetails.handlerType === 'standard') {
+			// Process a standard API
+			apiResponses = await processPaginatedApi(source, processingDetails);
+
+			// Store the raw response in the database
+			const { data: rawResponse, error: rawResponseError } = await supabase
+				.from('api_raw_responses')
+				.insert({
+					source_id: source.id,
+					content: apiResponses,
+					request_details: {
+						url: processingDetails.apiEndpoint,
+						method: processingDetails.requestConfig.method,
+						params: processingDetails.queryParameters,
+						body: processingDetails.requestBody,
+						headers: processingDetails.requestConfig.headers,
+					},
+				})
+				.select('id')
+				.single();
+
+			if (rawResponseError) {
+				console.error('Error storing raw response:', rawResponseError);
+			} else {
+				rawResponseId = rawResponse.id;
 			}
+
+			// Combine all responses for processing
+			promptTemplate = standardApiPromptTemplate;
+			promptVariables.apiResponse = JSON.stringify(apiResponses, null, 2);
+			promptVariables.responseMapping = JSON.stringify(
+				processingDetails.responseMapping || {},
+				null,
+				2
+			);
+		} else if (processingDetails.handlerType === 'document') {
+			// Process a document API
+			// This would typically involve downloading and extracting text from documents
+			// For simplicity, we'll assume the API returns document content directly
+			const response = await makeConfiguredApiRequest({
+				method: processingDetails.requestConfig.method,
+				url: processingDetails.apiEndpoint,
+				queryParameters: processingDetails.queryParameters,
+				requestBody: processingDetails.requestBody,
+				headers: processingDetails.requestConfig.headers,
+			});
+
+			// Store the raw response in the database
+			const { data: rawResponse, error: rawResponseError } = await supabase
+				.from('api_raw_responses')
+				.insert({
+					source_id: source.id,
+					content: response,
+					request_details: {
+						url: processingDetails.apiEndpoint,
+						method: processingDetails.requestConfig.method,
+						params: processingDetails.queryParameters,
+						body: processingDetails.requestBody,
+						headers: processingDetails.requestConfig.headers,
+					},
+				})
+				.select('id')
+				.single();
+
+			if (rawResponseError) {
+				console.error('Error storing raw response:', rawResponseError);
+			} else {
+				rawResponseId = rawResponse.id;
+			}
+
+			promptTemplate = documentApiPromptTemplate;
+			promptVariables.documentContent = JSON.stringify(response, null, 2);
+		} else if (processingDetails.handlerType === 'statePortal') {
+			// Process a state portal
+			// This would typically involve web scraping or specialized handling
+			// For simplicity, we'll assume the API returns portal content directly
+			const response = await makeConfiguredApiRequest({
+				method: processingDetails.requestConfig.method,
+				url: processingDetails.apiEndpoint,
+				queryParameters: processingDetails.queryParameters,
+				requestBody: processingDetails.requestBody,
+				headers: processingDetails.requestConfig.headers,
+			});
+
+			// Store the raw response in the database
+			const { data: rawResponse, error: rawResponseError } = await supabase
+				.from('api_raw_responses')
+				.insert({
+					source_id: source.id,
+					content: response,
+					request_details: {
+						url: processingDetails.apiEndpoint,
+						method: processingDetails.requestConfig.method,
+						params: processingDetails.queryParameters,
+						body: processingDetails.requestBody,
+						headers: processingDetails.requestConfig.headers,
+					},
+				})
+				.select('id')
+				.single();
+
+			if (rawResponseError) {
+				console.error('Error storing raw response:', rawResponseError);
+			} else {
+				rawResponseId = rawResponse.id;
+			}
+
+			promptTemplate = statePortalPromptTemplate;
+			promptVariables.portalContent = JSON.stringify(response, null, 2);
+		} else {
+			throw new Error(
+				`Unsupported handler type: ${processingDetails.handlerType}`
+			);
 		}
 
 		// Create the prompt
-		const prompt = await promptTemplate.format({
-			sourceName: source.name,
-			sourceFocus: source.notes || 'various energy and infrastructure projects',
-			apiResponse: JSON.stringify(apiResponse.data, null, 2),
-			formatInstructions,
-		});
+		const prompt = await promptTemplate.format(promptVariables);
 
 		// Get the LLM response
 		const response = await model.invoke(prompt);
 
 		// Parse the response
-		const opportunities = await parser.parse(response.content);
+		const parsedOutput = await parser.parse(response.content);
+
+		// Add the source ID and raw response ID to each opportunity
+		parsedOutput.opportunities = parsedOutput.opportunities.map(
+			(opportunity) => ({
+				...opportunity,
+				sourceId: source.id,
+				rawResponseId: rawResponseId,
+			})
+		);
 
 		// Calculate execution time
 		const executionTime = Date.now() - startTime;
@@ -638,11 +627,8 @@ async function extractOpportunities(
 		await logAgentExecution(
 			supabase,
 			'api_handler',
-			{
-				source: source.id,
-				handlerType: processingDetails.handlerType,
-			},
-			{ opportunitiesCount: opportunities.length },
+			{ source, processingDetails },
+			parsedOutput,
 			executionTime,
 			{
 				promptTokens: response.usage?.prompt_tokens,
@@ -650,83 +636,96 @@ async function extractOpportunities(
 			}
 		);
 
-		// Store each extracted opportunity
-		for (const opportunity of opportunities) {
-			await supabase.from('api_extracted_opportunities').insert({
-				raw_response_id: rawResponseId,
-				source_id: source.id,
-				data: opportunity,
-				confidence_score: opportunity.confidence,
-			});
+		// Log the API activity
+		await logApiActivity(supabase, source.id, 'api_process', 'success', {
+			opportunitiesFound: parsedOutput.opportunities.length,
+			totalCount: parsedOutput.totalCount,
+			rawResponseId: rawResponseId,
+		});
+
+		// Update the last processed timestamp
+		await supabase
+			.from('api_sources')
+			.update({ last_processed: new Date().toISOString() })
+			.eq('id', source.id);
+
+		// Store extracted opportunities in the database
+		if (parsedOutput.opportunities.length > 0) {
+			const opportunitiesToInsert = parsedOutput.opportunities.map(
+				(opportunity) => ({
+					raw_response_id: rawResponseId,
+					source_id: source.id,
+					data: opportunity,
+					confidence_score: 100, // Default confidence score
+				})
+			);
+
+			const { error: opportunitiesError } = await supabase
+				.from('api_extracted_opportunities')
+				.insert(opportunitiesToInsert);
+
+			if (opportunitiesError) {
+				console.error(
+					'Error storing extracted opportunities:',
+					opportunitiesError
+				);
+			}
 		}
 
-		return opportunities;
+		return {
+			...parsedOutput,
+			rawResponseId,
+		};
 	} catch (error) {
 		// Calculate execution time even if there was an error
 		const executionTime = Date.now() - startTime;
 
 		// Log the error
-		console.error('Error extracting opportunities:', error);
+		console.error('Error in API Handler Agent:', error);
 
 		// Log the agent execution with error
 		await logAgentExecution(
 			supabase,
 			'api_handler',
-			{
-				source: source.id,
-				handlerType: processingDetails.handlerType,
-			},
+			{ source, processingDetails },
 			null,
 			executionTime,
 			{},
 			error
 		);
 
-		throw error;
-	}
-}
-
-/**
- * API Handler Agent that processes an API source and extracts opportunities
- * @param {Object} source - The API source information
- * @param {Object} processingDetails - Details from the Source Manager Agent
- * @returns {Promise<Object>} - The processing results
- */
-export async function apiHandlerAgent(source, processingDetails) {
-	const supabase = createSupabaseClient();
-
-	try {
-		// Make the API request and store the raw response
-		const { response, rawResponseId } = await makeAndStoreApiRequest(
-			source,
-			processingDetails
-		);
-
-		// Extract opportunities from the response
-		const opportunities = await extractOpportunities(
-			source,
-			processingDetails,
-			response,
-			rawResponseId
-		);
-
-		// Log the API activity
-		await logApiActivity(supabase, source.id, 'processing', 'success', {
-			opportunitiesCount: opportunities.length,
-			rawResponseId,
-		});
-
-		return {
-			opportunities,
-			rawResponseId,
-			source: source.id,
-		};
-	} catch (error) {
 		// Log the API activity with error
-		await logApiActivity(supabase, source.id, 'processing', 'failure', {
+		await logApiActivity(supabase, source.id, 'api_process', 'failure', {
 			error: String(error),
 		});
 
 		throw error;
 	}
+}
+
+/**
+ * Processes the next API source in the queue
+ * @returns {Promise<Object|null>} - The processing result, or null if no source was processed
+ */
+export async function processNextSourceWithHandler() {
+	const { processNextSource } = require('./sourceManagerAgent');
+
+	// Get the next source to process
+	const result = await processNextSource();
+
+	if (!result) {
+		console.log('No sources to process');
+		return null;
+	}
+
+	// Process the source with the API Handler Agent
+	const { source, processingDetails } = result;
+	const handlerResult = await apiHandlerAgent(source, processingDetails);
+
+	// Return the complete result
+	return {
+		source,
+		processingDetails,
+		handlerResult,
+	};
 }

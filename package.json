@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "next lint",
     "add-grants-gov-source": "node scripts/insert-grants-gov-source.js",
-    "insert-grants-gov": "node scripts/insert-grants-gov-source.js"
+    "insert-grants-gov": "node scripts/insert-grants-gov-source.js",
+    "test-config": "node scripts/test-configuration-system.js"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.39.0",

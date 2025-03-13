@@ -11,15 +11,60 @@ import { z } from 'zod';
 // Define the output schema for the agent
 const sourceProcessingSchema = z.object({
 	apiEndpoint: z.string().describe('The full URL to call'),
+	requestConfig: z
+		.object({
+			method: z.enum(['GET', 'POST', 'PUT', 'DELETE']).default('GET'),
+			headers: z.record(z.string()).default({}),
+		})
+		.describe('HTTP method and headers for the request'),
 	queryParameters: z
 		.record(z.string())
-		.describe('Key-value pairs of parameters to include'),
+		.optional()
+		.describe('Key-value pairs of parameters to include in the URL'),
+	requestBody: z
+		.record(z.any())
+		.optional()
+		.describe('JSON body to send with the request'),
+	paginationConfig: z
+		.object({
+			enabled: z.boolean().default(false),
+			type: z
+				.enum(['offset', 'page', 'cursor'])
+				.optional()
+				.nullable()
+				.transform((val) => (val === null ? undefined : val)),
+			limitParam: z.string().optional(),
+			offsetParam: z.string().optional(),
+			pageParam: z.string().optional(),
+			cursorParam: z.string().optional(),
+			pageSize: z.number().optional(),
+			maxPages: z.number().optional(),
+			responseDataPath: z.string().optional(),
+			totalCountPath: z.string().optional(),
+		})
+		.describe('Configuration for handling paginated responses'),
+	detailConfig: z
+		.object({
+			enabled: z.boolean().default(false),
+			endpoint: z.string().optional(),
+			method: z.enum(['GET', 'POST', 'PUT', 'DELETE']).optional(),
+			headers: z.record(z.string()).optional(),
+			idField: z.string().optional(),
+			idParam: z.string().optional(),
+		})
+		.describe('Configuration for fetching detailed information'),
+	responseMapping: z
+		.record(z.string())
+		.optional()
+		.describe('Mapping of API response fields to standard fields'),
 	authMethod: z
 		.enum(['none', 'apikey', 'oauth', 'basic'])
 		.describe('How to authenticate'),
 	authDetails: z
 		.record(z.any())
 		.optional()
+		.nullable()
+		.transform((val) => (val === null ? {} : val))
 		.describe('Authentication details like keys, tokens, etc.'),
 	handlerType: z
 		.enum(['standard', 'document', 'statePortal'])
@@ -31,14 +76,13 @@ const sourceProcessingSchema = z.object({
 const promptTemplate = PromptTemplate.fromTemplate(`
 You are the Source Manager Agent for a funding intelligence system that collects information about energy infrastructure funding opportunities.
 
-Your task is to analyze the following API source and determine:
-1. The optimal API endpoint to call
-2. The appropriate query parameters to use
-3. The authentication method required
-4. The type of API Handler to use
+Your task is to analyze the following API source and determine the best approach for retrieving funding opportunities.
 
 SOURCE INFORMATION:
 {sourceInfo}
+
+CONFIGURATIONS:
+{configurations}
 
 Based on this information, determine the best approach for retrieving funding opportunities from this source. Consider:
 - The type of organization (federal, state, local, utility, private)
@@ -47,8 +91,45 @@ Based on this information, determine the best approach for retrieving funding op
 - The frequency of updates
 - The relevance to our target funding categories
 
+Use the provided configurations if they exist, but feel free to suggest improvements or modifications.
+
 {formatInstructions}
 `);
+
+/**
+ * Formats the configurations for the prompt
+ * @param {Object} source - The API source with configurations
+ * @returns {String} - Formatted configurations
+ */
+function formatConfigurations(source) {
+	if (!source.configurations) {
+		return 'No configurations found for this source.';
+	}
+
+	const configTypes = [
+		'query_params',
+		'request_body',
+		'request_config',
+		'pagination_config',
+		'detail_config',
+		'response_mapping',
+	];
+
+	const formattedConfigs = configTypes
+		.filter((type) => source.configurations[type])
+		.map((type) => {
+			return `${type.toUpperCase()}: ${JSON.stringify(
+				source.configurations[type],
+				null,
+				2
+			)}`;
+		})
+		.join('\n\n');
+
+	return (
+		formattedConfigs || 'No specific configurations found for this source.'
+	);
+}
 
 /**
  * Source Manager Agent that determines how to process an API source
@@ -60,26 +141,6 @@ export async function sourceManagerAgent(source) {
 	const supabase = createSupabaseClient();
 
 	try {
-		// Check if Anthropic API key is available
-		if (
-			!process.env.ANTHROPIC_API_KEY ||
-			process.env.ANTHROPIC_API_KEY.includes('xxxxxxxx')
-		) {
-			console.log(
-				'No valid Anthropic API key found. Using mock response for Source Manager Agent.'
-			);
-
-			// Return a mock response for testing purposes
-			return {
-				apiEndpoint: source.api_endpoint,
-				queryParameters: source.configurations?.query_params || {},
-				authMethod: source.auth_type || 'none',
-				authDetails: source.auth_details || {},
-				handlerType: 'standard',
-				reasoning: 'Mock response generated due to missing API key.',
-			};
-		}
-
 		// Initialize the LLM
 		const model = new ChatAnthropic({
 			temperature: 0,
@@ -91,9 +152,13 @@ export async function sourceManagerAgent(source) {
 		const parser = StructuredOutputParser.fromZodSchema(sourceProcessingSchema);
 		const formatInstructions = parser.getFormatInstructions();
 
+		// Format the configurations
+		const formattedConfigurations = formatConfigurations(source);
+
 		// Create the prompt
 		const prompt = await promptTemplate.format({
 			sourceInfo: JSON.stringify(source, null, 2),
+			configurations: formattedConfigurations,
 			formatInstructions,
 		});
 
@@ -173,6 +238,27 @@ export async function getNextSourceToProcess() {
 
 		if (error) {
 			throw error;
+		}
+
+		if (data.length > 0) {
+			// Fetch the configurations for this source
+			const { data: configData, error: configError } = await supabase
+				.from('api_source_configurations')
+				.select('*')
+				.eq('source_id', data[0].id);
+
+			if (configError) {
+				throw configError;
+			}
+
+			// Group configurations by type
+			const configurations = {};
+			configData.forEach((config) => {
+				configurations[config.config_type] = config.config_value;
+			});
+
+			// Add configurations to the source
+			data[0].configurations = configurations;
 		}
 
 		return data.length > 0 ? data[0] : null;

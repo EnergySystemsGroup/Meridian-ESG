@@ -89,6 +89,7 @@ export async function POST(request) {
 				auth_type: body.auth_type || 'none',
 				auth_details: body.auth_details,
 				update_frequency: body.update_frequency,
+				handler_type: body.handler_type || 'standard',
 				notes: body.notes,
 				active: body.active !== undefined ? body.active : true,
 			})
@@ -108,15 +109,86 @@ export async function POST(request) {
 
 		// If configurations are provided, insert them
 		if (body.configurations && Object.keys(body.configurations).length > 0) {
-			const configInserts = Object.entries(body.configurations).map(
-				([configType, configuration]) => ({
-					source_id: data.id,
-					config_type: configType,
-					configuration,
-				})
-			);
+			const configInserts = [];
 
-			await supabase.from('api_source_configurations').insert(configInserts);
+			// Process query_params if provided
+			if (
+				body.configurations.query_params &&
+				Object.keys(body.configurations.query_params).length > 0
+			) {
+				configInserts.push({
+					source_id: data.id,
+					config_type: 'query_params',
+					configuration: body.configurations.query_params,
+				});
+			}
+
+			// Process request_body if provided
+			if (
+				body.configurations.request_body &&
+				Object.keys(body.configurations.request_body).length > 0
+			) {
+				configInserts.push({
+					source_id: data.id,
+					config_type: 'request_body',
+					configuration: body.configurations.request_body,
+				});
+			}
+
+			// Process request_config if provided
+			if (body.configurations.request_config) {
+				configInserts.push({
+					source_id: data.id,
+					config_type: 'request_config',
+					configuration: body.configurations.request_config,
+				});
+			}
+
+			// Process pagination_config if provided
+			if (
+				body.configurations.pagination_config &&
+				body.configurations.pagination_config.enabled
+			) {
+				configInserts.push({
+					source_id: data.id,
+					config_type: 'pagination_config',
+					configuration: body.configurations.pagination_config,
+				});
+			}
+
+			// Process detail_config if provided
+			if (
+				body.configurations.detail_config &&
+				body.configurations.detail_config.enabled
+			) {
+				configInserts.push({
+					source_id: data.id,
+					config_type: 'detail_config',
+					configuration: body.configurations.detail_config,
+				});
+			}
+
+			// Process response_mapping if provided
+			if (body.configurations.response_mapping) {
+				// Filter out empty mappings
+				const filteredMapping = Object.fromEntries(
+					Object.entries(body.configurations.response_mapping).filter(
+						([_, value]) => value
+					)
+				);
+
+				if (Object.keys(filteredMapping).length > 0) {
+					configInserts.push({
+						source_id: data.id,
+						config_type: 'response_mapping',
+						configuration: filteredMapping,
+					});
+				}
+			}
+
+			if (configInserts.length > 0) {
+				await supabase.from('api_source_configurations').insert(configInserts);
+			}
 		}
 
 		return NextResponse.json({ source: data }, { status: 201 });

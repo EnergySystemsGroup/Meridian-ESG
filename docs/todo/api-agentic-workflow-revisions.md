@@ -32,14 +32,14 @@ _Note: This is an initial version of the checklist. More items will be added as 
 - [x] 🔹 Evaluate the necessity of the 'priority' field in api_sources table based on its usage in queries and business logic
 - [x] Assess the impact of converting these fields to ENUMs on the UI components and form validation
 - [x] Recommend optimal approach for type constraints (database ENUM vs. application-level validation)
-- [ ] 🔹 Analyze whether 'config_type' in api_source_configurations should be converted to an ENUM to restrict to valid configuration types
-- [ ] 🔹 Evaluate the current configuration management UI and propose improvements for easier configuration creation and editing
-- [ ] 🔹 Design a user-friendly interface for managing different types of configurations with appropriate validation
+- [x] 🔹 Analyze whether 'config_type' in api_source_configurations should be converted to an ENUM to restrict to valid configuration types
+- [x] 🔹 Evaluate the current configuration management UI and propose improvements for easier configuration creation and editing
+- [x] 🔹 Design a user-friendly interface for managing different types of configurations with appropriate validation
 - [ ] 🔹 Evaluate adding 'request_body_type' to api_source_configurations to distinguish between query parameters and body parameters, enabling more intelligent API calls without special handling for each API
-- [ ] 🔹 Implement a system for dynamic search parameters that can be configured per API source and fed into the agent at runtime, with an admin interface for users to control these parameters
-- [ ] 🔹 Standardize response data path and total count path configurations across all API sources to create a consistent interface for the agent to process different API responses
-- [ ] 🔹 Simplify the API configuration process by consolidating configuration fields into a more user-friendly format, focusing on expected request body and response mapping, while supporting multi-step API workflows (list/search followed by detail requests)
-- [ ] 🔹 Add 'handler_type' field to the api_sources schema to enable the sourceManagerAgent to pass appropriate handler information to the apiHandlerAgent, allowing it to select the correct prompt and processing logic
+- [x] 🔹 Implement a system for dynamic search parameters that can be configured per API source and fed into the agent at runtime, with an admin interface for users to control these parameters
+- [x] 🔹 Standardize response data path and total count path configurations across all API sources to create a consistent interface for the agent to process different API responses
+- [x] 🔹 Simplify the API configuration process by consolidating configuration fields into a more user-friendly format, focusing on expected request body and response mapping, while supporting multi-step API workflows (list/search followed by detail requests)
+- [x] 🔹 Add 'handler_type' field to the api_sources schema to enable the sourceManagerAgent to pass appropriate handler information to the apiHandlerAgent, allowing it to select the correct prompt and processing logic
 
 ## API Automation and Triggering
 
@@ -70,7 +70,9 @@ _Note: This is an initial version of the checklist. More items will be added as 
 - [ ] Add exponential backoff retry logic for failed API requests in apiRequest.js
 - [ ] Implement rate limiting middleware for external API calls
 - [ ] Create API endpoint for source health metrics and processing status
-- [ ] 🔹 Refactor apiHandlerAgent.js to use a generic approach that works with any API source configuration, removing any hardcoded or source-specific logic to improve maintainability and scalability
+- [x] 🔹 Refactor apiHandlerAgent.js to use a generic approach that works with any API source configuration, removing any hardcoded or source-specific logic to improve maintainability and scalability
+- [x] 🔹 Implement a new configuration system that supports different types of API sources and configurations
+- [x] 🔹 Store raw API responses in the database for auditing and debugging purposes
 
 ## Data Processing Improvements
 
@@ -103,6 +105,7 @@ _Note: This is an initial version of the checklist. More items will be added as 
 - [ ] Generate sequence and flow diagrams of the data processing workflow
 - [ ] Compile a library of example configurations for common API sources
 - [ ] Create user documentation for the admin interface with screenshots and walkthroughs
+- [x] Create comprehensive documentation for the API source configuration system
 
 ## Security Enhancements
 
@@ -143,3 +146,14 @@ _Note: This is an initial version of the checklist. More items will be added as 
   - [x] Implement fuzzy matching to detect similar sources
   - [x] Add UI feedback when a user attempts to create a similar source
   - [x] Test the duplicate prevention feature with various scenarios
+
+## API Source and Funding Relationship Simplification
+
+- [ ] 🔹 Simplify the convoluted relationship between API sources, funding sources, and funding programs:
+  - [ ] 🔹 Analyze the current data model that requires manual creation of funding sources and programs for API sources
+  - [ ] 🔹 Redesign the relationship to eliminate unnecessary dependencies between API sources and funding programs
+  - [ ] 🔹 Implement automatic creation of associated funding sources/programs when an API source is created
+  - [ ] 🔹 Update the UI to make these relationships clear and manageable
+  - [ ] 🔹 Modify the dataProcessorAgent to handle cases where a funding program doesn't exist
+  - [ ] 🔹 Consider eliminating the funding program requirement entirely and directly link opportunities to funding sources
+  - [ ] 🔹 Document the revised data model and relationships for future developers
