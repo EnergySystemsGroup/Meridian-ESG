@@ -27,7 +27,7 @@ _Note: This is an initial version of the checklist. More items will be added as 
 
 ## Schema Field Type Analysis
 
-- [ ] 🔹 Analyze whether the 'type' field in api_sources table should be converted to an ENUM in the database schema
+- [x] 🔹 Analyze whether the 'type' field in api_sources table should be converted to an ENUM in the database schema
 - [ ] 🔹 Analyze whether the 'priority' field in api_sources table should be converted to an ENUM with predefined priority levels
 - [ ] 🔹 Evaluate the necessity of the 'priority' field in api_sources table based on its usage in queries and business logic
 - [ ] Assess the impact of converting these fields to ENUMs on the UI components and form validation
