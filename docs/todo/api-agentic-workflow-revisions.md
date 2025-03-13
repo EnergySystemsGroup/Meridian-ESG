@@ -25,6 +25,30 @@ _Note: This is an initial version of the checklist. More items will be added as 
   - [ ] 🔹 API source health categorized by source type
   - [ ] 🔹 Recent alerts with severity levels and timestamps
 
+## API Handler Agent Prompt Optimization
+
+- [ ] 🔹 Review and enhance the API Handler Agent prompt to maximize data extraction:
+  - [ ] 🔹 Analyze current prompt limitations and potential missed opportunities
+  - [ ] 🔹 Expand prompt to better handle diverse funding data structures
+  - [ ] 🔹 Add specific instructions for extracting eligibility criteria, deadlines, and funding amounts
+  - [ ] 🔹 Improve handling of nested or complex API responses
+
+## Testing and Validation
+
+- [ ] 🔹 Comprehensive testing of data extraction quality:
+  - [ ] 🔹 Test with various API sources to ensure consistent extraction
+  - [ ] 🔹 Compare extracted data with source websites to verify completeness
+  - [ ] 🔹 Create test cases for edge cases (partial data, unusual formats)
+  - [ ] 🔹 Test adding a source from the UI and verify extraction results
+
+## Data Model Relationships
+
+- [ ] 🔹 Document and optimize relationships between entities:
+  - [ ] 🔹 Clarify the connection flow from API sources to funding opportunities
+  - [ ] 🔹 Review how funding sources are created and linked when adding API sources
+  - [ ] 🔹 Ensure consistent source_id propagation throughout the system
+  - [ ] 🔹 Create diagrams illustrating the relationships between these entities
+
 ## Schema Field Type Analysis
 
 - [x] 🔹 Analyze whether the 'type' field in api_sources table should be converted to an ENUM in the database schema
