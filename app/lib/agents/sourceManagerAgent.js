@@ -24,7 +24,6 @@ const sourceProcessingSchema = z.object({
 	handlerType: z
 		.enum(['standard', 'document', 'statePortal'])
 		.describe('The type of handler to use'),
-	priority: z.number().min(1).max(10).describe('Numeric priority (1-10)'),
 	reasoning: z.string().describe('Brief explanation of your choices'),
 });
 
@@ -37,7 +36,6 @@ Your task is to analyze the following API source and determine:
 2. The appropriate query parameters to use
 3. The authentication method required
 4. The type of API Handler to use
-5. The priority of this source (1-10)
 
 SOURCE INFORMATION:
 {sourceInfo}
@@ -78,7 +76,6 @@ export async function sourceManagerAgent(source) {
 				authMethod: source.auth_type || 'none',
 				authDetails: source.auth_details || {},
 				handlerType: 'standard',
-				priority: source.priority || 5,
 				reasoning: 'Mock response generated due to missing API key.',
 			};
 		}

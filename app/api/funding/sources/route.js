@@ -54,6 +54,28 @@ export async function POST(request) {
 			);
 		}
 
+		// Check for similar sources
+		const { data: similarSources, error: similarError } = await supabase.rpc(
+			'check_similar_sources',
+			{
+				p_name: body.name,
+				p_organization: body.organization || null,
+			}
+		);
+
+		if (similarError) {
+			console.error('Error checking for similar sources:', similarError);
+		} else if (similarSources && similarSources.length > 0) {
+			// Return the similar sources with a 409 Conflict status
+			return NextResponse.json(
+				{
+					error: 'Similar sources already exist',
+					similarSources,
+				},
+				{ status: 409 }
+			);
+		}
+
 		// Insert the new source
 		const { data, error } = await supabase
 			.from('api_sources')
@@ -67,7 +89,6 @@ export async function POST(request) {
 				auth_type: body.auth_type || 'none',
 				auth_details: body.auth_details,
 				update_frequency: body.update_frequency,
-				priority: body.priority || 5,
 				notes: body.notes,
 				active: body.active !== undefined ? body.active : true,
 			})
@@ -75,6 +96,13 @@ export async function POST(request) {
 			.single();
 
 		if (error) {
+			// Check if this is a unique constraint violation
+			if (error.code === '23505') {
+				return NextResponse.json(
+					{ error: 'A source with this name and organization already exists' },
+					{ status: 409 }
+				);
+			}
 			throw error;
 		}
 

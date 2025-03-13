@@ -76,7 +76,6 @@ export async function PUT(request, { params }) {
 				auth_type: body.auth_type,
 				auth_details: body.auth_details,
 				update_frequency: body.update_frequency,
-				priority: body.priority,
 				notes: body.notes,
 				active: body.active,
 			})

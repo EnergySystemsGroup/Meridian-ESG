@@ -28,10 +28,10 @@ _Note: This is an initial version of the checklist. More items will be added as 
 ## Schema Field Type Analysis
 
 - [x] 🔹 Analyze whether the 'type' field in api_sources table should be converted to an ENUM in the database schema
-- [ ] 🔹 Analyze whether the 'priority' field in api_sources table should be converted to an ENUM with predefined priority levels
-- [ ] 🔹 Evaluate the necessity of the 'priority' field in api_sources table based on its usage in queries and business logic
-- [ ] Assess the impact of converting these fields to ENUMs on the UI components and form validation
-- [ ] Recommend optimal approach for type constraints (database ENUM vs. application-level validation)
+- [x] 🔹 Analyze whether the 'priority' field in api_sources table should be converted to an ENUM with predefined priority levels
+- [x] 🔹 Evaluate the necessity of the 'priority' field in api_sources table based on its usage in queries and business logic
+- [x] Assess the impact of converting these fields to ENUMs on the UI components and form validation
+- [x] Recommend optimal approach for type constraints (database ENUM vs. application-level validation)
 - [ ] 🔹 Analyze whether 'config_type' in api_source_configurations should be converted to an ENUM to restrict to valid configuration types
 - [ ] 🔹 Evaluate the current configuration management UI and propose improvements for easier configuration creation and editing
 - [ ] 🔹 Design a user-friendly interface for managing different types of configurations with appropriate validation
@@ -43,6 +43,7 @@ _Note: This is an initial version of the checklist. More items will be added as 
 
 ## API Automation and Triggering
 
+- [x] 🔹 Create a prioritization algorithm that determines which sources to process first based on last check time, update frequency, and time elapsed since last check
 - [ ] 🔹 Analyze optimal frequency patterns for different API source types (federal, state, local, etc.) based on their typical update schedules
 - [ ] 🔹 Implement a configurable scheduling system that allows setting different frequencies per API source
 - [ ] 🔹 Develop multiple triggering methodologies including:
@@ -50,13 +51,13 @@ _Note: This is an initial version of the checklist. More items will be added as 
   - [ ] 🔹 Event-based triggers (e.g., when new sources are added)
   - [ ] 🔹 Manual triggers from the admin interface
   - [ ] 🔹 Webhook-based triggers for APIs that support push notifications
-- [ ] 🔹 Create a prioritization algorithm that determines which sources to process first based on last check time, priority, and expected update frequency
 - [ ] 🔹 Implement a monitoring system to track successful/failed API calls and adjust frequency accordingly
 - [ ] 🔹 Ensure sourceManagerAgent outputs the appropriate information format required by the apiHandlerAgent, with alignment to the final configuration schema design
 
 ## Database Schema Improvements
 
-- [ ] Analyze all table names containing "source" or "sources" and propose standardization
+- [x] Analyze all table names containing "source" or "sources" and propose standardization
+- [x] Implement duplicate prevention for API sources with fuzzy matching and UI feedback
 - [ ] Generate documentation comments for each table in the schema based on its structure and relationships
 - [ ] Verify foreign key constraints between related tables (api_sources, api_source_configurations, etc.)
 - [ ] Analyze query patterns from application code and suggest additional indexes

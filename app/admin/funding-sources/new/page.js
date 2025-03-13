@@ -17,7 +17,6 @@ export default function NewSourcePage() {
 		auth_type: 'none',
 		auth_details: {},
 		update_frequency: 'daily',
-		priority: 5,
 		notes: '',
 		active: true,
 		configurations: {
@@ -33,6 +32,9 @@ export default function NewSourcePage() {
 			},
 		},
 	});
+	const [similarSources, setSimilarSources] = useState(null);
+	const [error, setError] = useState(null);
+	const [submitting, setSubmitting] = useState(false);
 
 	// Handle form input changes
 	const handleChange = (e) => {
@@ -129,6 +131,9 @@ export default function NewSourcePage() {
 	// Handle form submission
 	const handleSubmit = async (e) => {
 		e.preventDefault();
+		setSubmitting(true);
+		setError(null);
+		setSimilarSources(null);
 
 		try {
 			setLoading(true);
@@ -141,18 +146,29 @@ export default function NewSourcePage() {
 				body: JSON.stringify(formData),
 			});
 
+			const data = await response.json();
+
 			if (!response.ok) {
-				const errorData = await response.json();
-				throw new Error(errorData.error || 'Failed to create source');
+				// Check if this is a duplicate/similar source error
+				if (response.status === 409 && data.similarSources) {
+					setSimilarSources(data.similarSources);
+					setError(
+						'Similar sources already exist. Please review before proceeding.'
+					);
+				} else {
+					setError(data.error || 'Failed to create source');
+				}
+				return;
 			}
 
 			// Redirect to the sources list page
 			router.push('/admin/funding-sources');
-		} catch (error) {
-			console.error('Error creating source:', error);
-			alert(`Error creating source: ${error.message}`);
+		} catch (err) {
+			console.error('Error creating source:', err);
+			setError('An unexpected error occurred');
 		} finally {
 			setLoading(false);
+			setSubmitting(false);
 		}
 	};
 
@@ -166,6 +182,46 @@ export default function NewSourcePage() {
 					Back to Sources
 				</Link>
 			</div>
+
+			{similarSources && (
+				<div className='mb-6 p-4 border border-yellow-400 bg-yellow-50 rounded'>
+					<h3 className='text-lg font-semibold text-yellow-800 mb-2'>
+						Similar Sources Found
+					</h3>
+					<p className='mb-2'>
+						The following similar sources already exist in the database:
+					</p>
+					<ul className='list-disc pl-5 mb-4'>
+						{similarSources.map((source) => (
+							<li key={source.id} className='mb-1'>
+								<strong>{source.name}</strong>
+								{source.organization && ` (${source.organization})`} -
+								<span className='text-sm text-gray-600'>
+									{Math.round(source.similarity * 100)}% similar
+								</span>
+							</li>
+						))}
+					</ul>
+					<div className='flex space-x-4'>
+						<button
+							type='button'
+							className='bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-2 rounded'
+							onClick={() => {
+								// Force create anyway
+								setSimilarSources(null);
+								handleSubmit({ preventDefault: () => {} });
+							}}>
+							Create Anyway
+						</button>
+						<button
+							type='button'
+							className='bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded'
+							onClick={() => setSimilarSources(null)}>
+							Cancel
+						</button>
+					</div>
+				</div>
+			)}
 
 			<form onSubmit={handleSubmit} className='space-y-6'>
 				{/* Basic Information */}
@@ -232,21 +288,6 @@ export default function NewSourcePage() {
 								<option value='monthly'>Monthly</option>
 								<option value='quarterly'>Quarterly</option>
 							</select>
-						</div>
-
-						<div>
-							<label className='block text-sm font-medium text-gray-700 mb-1'>
-								Priority (1-10)
-							</label>
-							<input
-								type='number'
-								name='priority'
-								value={formData.priority}
-								onChange={handleChange}
-								min='1'
-								max='10'
-								className='w-full px-3 py-2 border border-gray-300 rounded-md'
-							/>
 						</div>
 
 						<div>
