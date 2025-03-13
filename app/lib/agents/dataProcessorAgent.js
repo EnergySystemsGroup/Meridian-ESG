@@ -114,14 +114,6 @@ const processingResultSchema = z.object({
 				.boolean()
 				.optional()
 				.describe('Whether this is a national opportunity'),
-			program_id: z
-				.string()
-				.uuid()
-				.optional()
-				.nullable()
-				.describe(
-					'UUID of the funding program this belongs to (not the external ID)'
-				),
 		})
 		.describe('The normalized data to store in the database'),
 	eligibleApplicants: z
@@ -155,9 +147,8 @@ Based on your analysis:
 4. Prepare the normalized data structure for database storage
 
 IMPORTANT NOTES:
-- For program_id, always use the program ID provided in the function call, NOT the source ID or external ID from the opportunity
 - Store the external ID from the source system in the opportunity_number field
-- The program_id must be a valid UUID
+- Each opportunity is associated with a funding source, which is handled automatically by the system
 
 For eligible applicants, use these standardized types:
 - K12
@@ -192,38 +183,55 @@ For status, use these standardized values:
 `);
 
 /**
- * Checks for potential duplicate opportunities in the database
- * @param {Object} opportunity - The extracted opportunity
- * @param {string} programId - The ID of the funding program
- * @returns {Promise<Array>} - Potential matching opportunities
+ * Check for potential duplicates of an opportunity
+ * @param {Object} opportunity - The opportunity to check
+ * @param {string} sourceId - The ID of the source
+ * @returns {Promise<Object>} - Object containing any exact or fuzzy matches
  */
-async function checkForDuplicates(opportunity, programId) {
+async function checkForDuplicates(opportunity, sourceId) {
 	const supabase = createSupabaseClient();
+	const result = { exactMatch: null, fuzzyMatch: null };
 
 	try {
-		// First, try to find exact matches by title and program
-		const { data: exactMatches } = await supabase
+		// First, check for exact matches by title and source ID
+		const { data: exactMatches, error: exactError } = await supabase
 			.from('funding_opportunities')
 			.select('*')
 			.eq('title', opportunity.title)
-			.eq('program_id', programId)
-			.limit(5);
+			.eq('source_id', sourceId);
 
-		if (exactMatches && exactMatches.length > 0) {
-			return exactMatches;
+		if (exactError) {
+			console.error('Error checking for exact matches:', exactError);
+		} else if (exactMatches && exactMatches.length > 0) {
+			result.exactMatch = exactMatches[0];
+			return result;
 		}
 
-		// If no exact matches, try fuzzy matching on title
-		const { data: fuzzyMatches } = await supabase
+		// If no exact match, try fuzzy matching on title
+		const { data: fuzzyMatches, error: fuzzyError } = await supabase
 			.from('funding_opportunities')
 			.select('*')
-			.ilike('title', `%${opportunity.title.substring(0, 50)}%`)
-			.limit(10);
+			.ilike('title', `%${opportunity.title}%`)
+			.eq('source_id', sourceId);
 
-		return fuzzyMatches || [];
+		if (fuzzyError) {
+			console.error('Error checking for fuzzy matches:', fuzzyError);
+		} else if (fuzzyMatches && fuzzyMatches.length > 0) {
+			// Find the best fuzzy match
+			result.fuzzyMatch = fuzzyMatches.reduce((best, current) => {
+				if (!best) return current;
+
+				const bestSimilarity = similarity(best.title, opportunity.title);
+				const currentSimilarity = similarity(current.title, opportunity.title);
+
+				return currentSimilarity > bestSimilarity ? current : best;
+			}, null);
+		}
+
+		return result;
 	} catch (error) {
 		console.error('Error checking for duplicates:', error);
-		return [];
+		return result;
 	}
 }
 
@@ -239,306 +247,173 @@ async function processOpportunity(opportunity, sourceId, rawResponseId) {
 	const supabase = createSupabaseClient();
 
 	try {
-		// Get the program ID for this source
-		let { data: programData, error: programError } = await supabase
-			.from('funding_programs')
-			.select('id')
-			.eq('source_id', sourceId)
-			.single();
-
-		let programId;
-
-		if (programError) {
-			console.log('No funding program found, creating one automatically...');
-
-			// Get the source details to use for the program name
-			const { data: sourceData, error: sourceError } = await supabase
-				.from('api_sources')
-				.select('name')
-				.eq('id', sourceId)
-				.single();
-
-			if (sourceError) {
-				console.error('Error getting source details:', sourceError);
-				throw new Error(`Could not find API source with ID: ${sourceId}`);
-			}
-
-			// Create a funding program automatically
-			const { data: newProgram, error: createError } = await supabase
-				.from('funding_programs')
-				.insert({
-					name: `${sourceData.name} Program`,
-					source_id: sourceId,
-					description: `Auto-generated program for ${sourceData.name}`,
-				})
-				.select('id')
-				.single();
-
-			if (createError) {
-				console.error('Error creating funding program:', createError);
-				throw new Error(
-					`Failed to create funding program for source ID: ${sourceId}`
-				);
-			}
-
-			programId = newProgram.id;
-			console.log(`Created new funding program with ID: ${programId}`);
-		} else {
-			programId = programData.id;
-		}
-
-		// Check for potential duplicates
+		// Check for potential duplicates using sourceId
 		const existingOpportunities = await checkForDuplicates(
 			opportunity,
-			programId
+			sourceId
 		);
 
-		// Check if Anthropic API key is available
-		if (
-			!process.env.ANTHROPIC_API_KEY ||
-			process.env.ANTHROPIC_API_KEY.includes('xxxxxxxx')
-		) {
-			console.log(
-				'No valid Anthropic API key found. Using mock response for Data Processor Agent.'
-			);
+		// If we found an exact match, update it
+		if (existingOpportunities.exactMatch) {
+			console.log(`Found exact match for opportunity: ${opportunity.title}`);
 
-			// Return a mock processing result for testing purposes
-			const mockResult = {
-				action: 'insert',
-				confidence: 100,
-				needsReview: false,
-				normalizedData: {
+			// Update the existing opportunity
+			const { error: updateError } = await supabase
+				.from('funding_opportunities')
+				.update({
 					title: opportunity.title,
-					opportunity_number: opportunity.externalId || null,
+					description: opportunity.description,
 					source_name: opportunity.agency || 'Unknown',
-					source_type: 'federal',
+					source_type: opportunity.fundingType || 'Unknown',
 					min_amount: opportunity.minAward || null,
 					max_amount: opportunity.maxAward || null,
-					minimum_award: opportunity.minAward || null,
-					maximum_award: opportunity.maxAward || null,
-					cost_share_required: opportunity.matchingRequired || false,
-					cost_share_percentage: opportunity.matchingPercentage || null,
-					posted_date: opportunity.postDate || null,
 					open_date: opportunity.openDate || null,
 					close_date: opportunity.closeDate || null,
-					description: opportunity.description || null,
-					objectives: null,
-					eligibility: opportunity.eligibilityText || null,
-					status: opportunity.status || 'Open',
-					tags: [],
+					eligibility: opportunity.eligibility || null,
 					url: opportunity.url || null,
-					is_national: true,
-					program_id: programId,
-				},
-				eligibleApplicants: opportunity.eligibility || [
-					'Municipal',
-					'Nonprofit',
-				],
-				eligibleProjectTypes: ['Energy_Efficiency'],
-			};
-
-			// Update the extracted opportunity record
-			await supabase
-				.from('api_extracted_opportunities')
-				.update({
-					processed: true,
-					processing_result: mockResult.action,
-					processing_details: mockResult,
-				})
-				.eq('source_id', sourceId)
-				.eq('data->title', opportunity.title);
-
-			return {
-				action: 'insert',
-				opportunityId: 'mock-id',
-				result: mockResult,
-			};
-		}
-
-		// Initialize the LLM
-		const model = new ChatAnthropic({
-			temperature: 0,
-			modelName: 'claude-3-5-haiku-20241022',
-			anthropicApiKey: process.env.ANTHROPIC_API_KEY,
-		});
-
-		// Create the output parser
-		const parser = StructuredOutputParser.fromZodSchema(processingResultSchema);
-		const formatInstructions = parser.getFormatInstructions();
-
-		// Create the prompt
-		const prompt = await promptTemplate.format({
-			extractedOpportunity: JSON.stringify(opportunity, null, 2),
-			existingOpportunities: JSON.stringify(existingOpportunities, null, 2),
-			formatInstructions,
-		});
-
-		// Get the LLM response
-		const response = await model.invoke(prompt);
-
-		// Parse the response
-		const result = await parser.parse(response.content);
-
-		// Ensure program_id is always the programId
-		if (result.normalizedData) {
-			result.normalizedData.program_id = programId;
-
-			// If opportunity has an externalId but no opportunity_number, use externalId
-			if (!result.normalizedData.opportunity_number && opportunity.externalId) {
-				result.normalizedData.opportunity_number = opportunity.externalId;
-			}
-		}
-
-		// Calculate execution time
-		const executionTime = Date.now() - startTime;
-
-		// Log the agent execution
-		await logAgentExecution(
-			supabase,
-			'data_processor',
-			{
-				opportunity: opportunity.title,
-				sourceId,
-				programId,
-			},
-			result,
-			executionTime,
-			{
-				promptTokens: response.usage?.prompt_tokens,
-				completionTokens: response.usage?.completion_tokens,
-			}
-		);
-
-		// Update the extracted opportunity record
-		await supabase
-			.from('api_extracted_opportunities')
-			.update({
-				processed: true,
-				processing_result: result.action,
-				processing_details: result,
-			})
-			.eq('source_id', sourceId)
-			.eq('data->title', opportunity.title);
-
-		// Take the appropriate action based on the result
-		if (result.action === 'insert') {
-			// Insert the new opportunity with tags directly in the record
-			const { data: newOpportunity, error } = await supabase
-				.from('funding_opportunities')
-				.insert({
-					...result.normalizedData,
-					tags: result.tags || [], // Include tags directly in the record
-				})
-				.select('id')
-				.single();
-
-			if (error) {
-				console.error('Error processing opportunity:', error);
-				throw error;
-			}
-
-			// Insert eligible applicants
-			if (result.eligibleApplicants && result.eligibleApplicants.length > 0) {
-				const applicantInserts = result.eligibleApplicants.map(
-					(applicantType) => ({
-						opportunity_id: newOpportunity.id,
-						entity_type: applicantType,
-					})
-				);
-
-				await supabase
-					.from('funding_eligibility_criteria')
-					.insert(applicantInserts);
-			}
-
-			// Insert eligible project types
-			if (
-				result.eligibleProjectTypes &&
-				result.eligibleProjectTypes.length > 0
-			) {
-				const projectTypeInserts = result.eligibleProjectTypes.map(
-					(projectType) => ({
-						opportunity_id: newOpportunity.id,
-						entity_type: `Project:${projectType}`,
-					})
-				);
-
-				await supabase
-					.from('funding_eligibility_criteria')
-					.insert(projectTypeInserts);
-			}
-
-			return {
-				action: 'insert',
-				opportunityId: newOpportunity.id,
-				result,
-			};
-		} else if (result.action === 'update') {
-			// Update the existing opportunity
-			const existingOpportunity = existingOpportunities[0];
-
-			const { error } = await supabase
-				.from('funding_opportunities')
-				.update({
-					...result.normalizedData,
-					tags: result.tags || [], // Include tags directly in the record
+					source_id: sourceId,
 					updated_at: new Date().toISOString(),
 				})
-				.eq('id', existingOpportunity.id);
+				.eq('id', existingOpportunities.exactMatch.id);
 
-			if (error) {
-				console.error('Error updating opportunity:', error);
-				throw error;
+			if (updateError) {
+				console.error('Error updating opportunity:', updateError);
+				throw updateError;
 			}
 
-			// Update eligible applicants (remove existing and add new)
-			await supabase
-				.from('funding_eligibility_criteria')
-				.delete()
-				.eq('opportunity_id', existingOpportunity.id);
-
-			if (result.eligibleApplicants && result.eligibleApplicants.length > 0) {
-				const applicantInserts = result.eligibleApplicants.map(
-					(applicantType) => ({
-						opportunity_id: existingOpportunity.id,
-						entity_type: applicantType,
-					})
-				);
-
-				await supabase
-					.from('funding_eligibility_criteria')
-					.insert(applicantInserts);
-			}
-
-			// Update eligible project types (now part of eligibility criteria)
-			if (
-				result.eligibleProjectTypes &&
-				result.eligibleProjectTypes.length > 0
-			) {
-				const projectTypeInserts = result.eligibleProjectTypes.map(
-					(projectType) => ({
-						opportunity_id: existingOpportunity.id,
-						entity_type: `Project:${projectType}`,
-					})
-				);
-
-				await supabase
-					.from('funding_eligibility_criteria')
-					.insert(projectTypeInserts);
-			}
+			// Log the agent execution
+			await logAgentExecution(
+				supabase,
+				'dataProcessor',
+				{
+					opportunity,
+					sourceId,
+					rawResponseId,
+				},
+				{
+					action: 'update',
+					opportunityId: existingOpportunities.exactMatch.id,
+				},
+				Date.now() - startTime,
+				null
+			);
 
 			return {
 				action: 'update',
-				opportunityId: existingOpportunity.id,
-				result,
-			};
-		} else {
-			// Ignore the opportunity (duplicate or not relevant)
-			return {
-				action: 'ignore',
-				result,
+				opportunityId: existingOpportunities.exactMatch.id,
 			};
 		}
+
+		// If we found a fuzzy match, update it
+		if (existingOpportunities.fuzzyMatch) {
+			console.log(`Found fuzzy match for opportunity: ${opportunity.title}`);
+
+			// Update the existing opportunity
+			const { error: updateError } = await supabase
+				.from('funding_opportunities')
+				.update({
+					title: opportunity.title,
+					description: opportunity.description,
+					source_name: opportunity.agency || 'Unknown',
+					source_type: opportunity.fundingType || 'Unknown',
+					min_amount: opportunity.minAward || null,
+					max_amount: opportunity.maxAward || null,
+					open_date: opportunity.openDate || null,
+					close_date: opportunity.closeDate || null,
+					eligibility: opportunity.eligibility || null,
+					url: opportunity.url || null,
+					source_id: sourceId,
+					updated_at: new Date().toISOString(),
+				})
+				.eq('id', existingOpportunities.fuzzyMatch.id);
+
+			if (updateError) {
+				console.error('Error updating opportunity:', updateError);
+				throw updateError;
+			}
+
+			// Log the agent execution
+			await logAgentExecution(
+				supabase,
+				'dataProcessor',
+				{
+					opportunity,
+					sourceId,
+					rawResponseId,
+				},
+				{
+					action: 'update',
+					opportunityId: existingOpportunities.fuzzyMatch.id,
+				},
+				Date.now() - startTime,
+				null
+			);
+
+			return {
+				action: 'update',
+				opportunityId: existingOpportunities.fuzzyMatch.id,
+			};
+		}
+
+		// If we didn't find a match, insert a new opportunity
+		console.log(`Inserting new opportunity: ${opportunity.title}`);
+
+		// Insert the new opportunity with tags directly in the record
+		const { data: newOpportunity, error } = await supabase
+			.from('funding_opportunities')
+			.insert({
+				title: opportunity.title,
+				opportunity_number: opportunity.opportunityNumber || null,
+				description: opportunity.description,
+				source_name: opportunity.agency || 'Unknown',
+				source_type: opportunity.fundingType || 'Unknown',
+				min_amount: opportunity.minAward || null,
+				max_amount: opportunity.maxAward || null,
+				open_date: opportunity.openDate || null,
+				close_date: opportunity.closeDate || null,
+				eligibility: opportunity.eligibility || null,
+				url: opportunity.url || null,
+				source_id: sourceId,
+				tags: opportunity.tags || [],
+			})
+			.select('id')
+			.single();
+
+		if (error) {
+			console.error('Error inserting opportunity:', error);
+			throw error;
+		}
+
+		// Insert eligible applicants
+		if (opportunity.eligibility && opportunity.eligibility.length > 0) {
+			const applicantInserts = opportunity.eligibility.map((applicantType) => ({
+				opportunity_id: newOpportunity.id,
+				entity_type: applicantType,
+			}));
+
+			await supabase
+				.from('funding_eligibility_criteria')
+				.insert(applicantInserts);
+		}
+
+		// Insert eligible project types
+		if (opportunity.projectTypes && opportunity.projectTypes.length > 0) {
+			const projectTypeInserts = opportunity.projectTypes.map(
+				(projectType) => ({
+					opportunity_id: newOpportunity.id,
+					entity_type: `Project:${projectType}`,
+				})
+			);
+
+			await supabase
+				.from('funding_eligibility_criteria')
+				.insert(projectTypeInserts);
+		}
+
+		return {
+			action: 'insert',
+			opportunityId: newOpportunity.id,
+		};
 	} catch (error) {
 		// Calculate execution time even if there was an error
 		const executionTime = Date.now() - startTime;

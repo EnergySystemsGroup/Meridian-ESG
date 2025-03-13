@@ -486,7 +486,6 @@ export type Database = {
           open_date: string | null
           opportunity_number: string | null
           posted_date: string | null
-          program_id: string | null
           source_name: string
           source_type: string | null
           status: string | null
@@ -512,7 +511,6 @@ export type Database = {
           open_date?: string | null
           opportunity_number?: string | null
           posted_date?: string | null
-          program_id?: string | null
           source_name: string
           source_type?: string | null
           status?: string | null
@@ -538,7 +536,6 @@ export type Database = {
           open_date?: string | null
           opportunity_number?: string | null
           posted_date?: string | null
-          program_id?: string | null
           source_name?: string
           source_type?: string | null
           status?: string | null
@@ -547,50 +544,7 @@ export type Database = {
           updated_at?: string | null
           url?: string | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "funding_opportunities_program_id_fkey"
-            columns: ["program_id"]
-            isOneToOne: false
-            referencedRelation: "funding_programs"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      funding_programs: {
-        Row: {
-          created_at: string | null
-          description: string | null
-          id: string
-          name: string
-          source_id: string | null
-          updated_at: string | null
-        }
-        Insert: {
-          created_at?: string | null
-          description?: string | null
-          id?: string
-          name: string
-          source_id?: string | null
-          updated_at?: string | null
-        }
-        Update: {
-          created_at?: string | null
-          description?: string | null
-          id?: string
-          name?: string
-          source_id?: string | null
-          updated_at?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "funding_programs_source_id_fkey"
-            columns: ["source_id"]
-            isOneToOne: false
-            referencedRelation: "funding_sources"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       funding_sources: {
         Row: {
@@ -840,8 +794,6 @@ export type Database = {
           open_date: string | null
           opportunity_number: string | null
           posted_date: string | null
-          program_id: string | null
-          program_name: string | null
           source_name: string | null
           source_type: string | null
           status: string | null
@@ -850,15 +802,7 @@ export type Database = {
           updated_at: string | null
           url: string | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "funding_opportunities_program_id_fkey"
-            columns: ["program_id"]
-            isOneToOne: false
-            referencedRelation: "funding_programs"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
     }
     Functions: {
@@ -935,10 +879,8 @@ export type Database = {
           minimum_award: number
           maximum_award: number
           is_national: boolean
-          program_id: string
           created_at: string
           updated_at: string
-          program_name: string
           eligible_states: string[]
         }[]
       }
