@@ -271,6 +271,7 @@ export default function NewSourcePage() {
 								<option value='local'>Local</option>
 								<option value='utility'>Utility</option>
 								<option value='private'>Private</option>
+								<option value='nonprofit'>Nonprofit</option>
 							</select>
 						</div>
 
