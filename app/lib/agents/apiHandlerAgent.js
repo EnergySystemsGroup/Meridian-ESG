@@ -169,6 +169,54 @@ If a field is not available in the API response, leave it as null or undefined.
 {formatInstructions}
 `);
 
+// Create the prompt template for first-stage filtering (two-step API sources)
+const firstStageFilteringPromptTemplate = PromptTemplate.fromTemplate(`
+You are an expert funding opportunity analyst for energy and infrastructure projects.
+Your task is to analyze a list of funding opportunities and identify those most relevant to our organization's focus areas.
+
+Our organization helps the following types of entities secure funding:
+- K-12 schools
+- Community colleges and universities
+- Municipal, county, and state governments
+- Federal facilities
+- Tribal governments
+- Nonprofit organizations
+- For-profit businesses
+- Special districts
+- Healthcare facilities
+
+We focus on funding in these categories:
+- Energy & Buildings
+- Transportation & Mobility
+- Water & Resources
+- Climate & Resilience
+- Community & Economic Development
+- Infrastructure & Planning
+
+For each opportunity in the provided list, assign a relevance score from 1-10 based on:
+1. Alignment with our focus areas (0-5 points)
+2. Applicability to our client types (0-3 points)
+3. Funding amount and accessibility (0-2 points)
+
+If information is limited, use the title and/or description, or any available information to make a determination as to how relevant the opportunity is to our organization. In the absence of information, make assumptions to lean on the side of inclusion.
+
+Only opportunities scoring 6 or higher should proceed to detailed analysis.
+
+For each selected opportunity, provide:
+1. Opportunity ID
+2. Title
+3. Relevance score
+4. Brief justification (1-2 sentences)
+
+Source Information:
+{sourceInfo}
+
+API Response:
+{apiResponse}
+
+{formatInstructions}
+`);
+
 // Create the prompt template for document handler
 const documentApiPromptTemplate = PromptTemplate.fromTemplate(`
 You are the Document Handler Agent for a funding intelligence system that collects information about energy infrastructure funding opportunities.
@@ -485,11 +533,177 @@ export async function apiHandlerAgent(source, processingDetails) {
 
 		let apiResponses;
 		let rawResponseId;
+		let allOpportunities = [];
+		let totalCount = 0;
 
 		// Process the API based on the handler type
 		if (processingDetails.handlerType === 'standard') {
 			// Process a standard API
-			apiResponses = await processPaginatedApi(source, processingDetails);
+			try {
+				// For Grants.gov API, handle pagination manually
+				if (source.name === 'Grants.gov') {
+					console.log('Processing Grants.gov API source');
+
+					// Get pagination configuration
+					const paginationConfig = processingDetails.paginationConfig;
+					const pageSize = paginationConfig?.pageSize || 100;
+					const maxPages = paginationConfig?.maxPages || 20;
+
+					// Initialize responses array
+					apiResponses = [];
+
+					// Make first request to get total count
+					console.log('Making initial request to Grants.gov API...');
+					const firstResponse = await axios({
+						method: processingDetails.requestConfig.method,
+						url: processingDetails.apiEndpoint,
+						data: processingDetails.requestBody,
+						headers: processingDetails.requestConfig.headers || {},
+					});
+
+					apiResponses.push(firstResponse.data);
+
+					// Extract total count and first page of opportunities
+					if (firstResponse.data && firstResponse.data.data) {
+						totalCount = firstResponse.data.data.hitCount || 0;
+						console.log(
+							`API reports total of ${totalCount} opportunities available`
+						);
+
+						if (
+							firstResponse.data.data.oppHits &&
+							Array.isArray(firstResponse.data.data.oppHits)
+						) {
+							allOpportunities = [...firstResponse.data.data.oppHits];
+							console.log(
+								`First page: fetched ${allOpportunities.length} opportunities`
+							);
+						}
+
+						// Calculate number of pages needed
+						const totalPages = Math.min(
+							maxPages,
+							Math.ceil(totalCount / pageSize)
+						);
+						console.log(`Will fetch up to ${totalPages} pages of results`);
+
+						// Fetch remaining pages
+						for (let page = 1; page < totalPages; page++) {
+							// Create request body with updated startRecordNum
+							const pageRequestBody = {
+								...processingDetails.requestBody,
+								startRecordNum: page * pageSize,
+							};
+
+							console.log(
+								`Fetching page ${page + 1}/${totalPages}, starting at record ${
+									page * pageSize
+								}`
+							);
+
+							try {
+								const pageResponse = await axios({
+									method: processingDetails.requestConfig.method,
+									url: processingDetails.apiEndpoint,
+									data: pageRequestBody,
+									headers: processingDetails.requestConfig.headers || {},
+								});
+
+								apiResponses.push(pageResponse.data);
+
+								// Extract opportunities from this page
+								if (
+									pageResponse.data &&
+									pageResponse.data.data &&
+									pageResponse.data.data.oppHits &&
+									Array.isArray(pageResponse.data.data.oppHits)
+								) {
+									const pageOpps = pageResponse.data.data.oppHits;
+									allOpportunities = [...allOpportunities, ...pageOpps];
+									console.log(
+										`Page ${page + 1}: fetched ${
+											pageOpps.length
+										} opportunities. Running total: ${allOpportunities.length}`
+									);
+								} else {
+									console.log(
+										`Page ${page + 1}: No opportunities found in response`
+									);
+								}
+							} catch (pageError) {
+								console.error(`Error fetching page ${page + 1}:`, pageError);
+								// Continue with the opportunities we have so far
+								break;
+							}
+						}
+
+						console.log(
+							`FINAL COUNT: Total opportunities fetched: ${allOpportunities.length} out of ${totalCount} reported by API`
+						);
+
+						// Log the first 5 opportunity titles to verify content
+						console.log('Sample of opportunities fetched:');
+						allOpportunities.slice(0, 5).forEach((opp, index) => {
+							console.log(
+								`  ${index + 1}. ${opp.title || opp.id || 'Untitled'}`
+							);
+						});
+
+						// Log the last 5 opportunity titles to verify we have different content
+						if (allOpportunities.length > 10) {
+							console.log('Last few opportunities fetched:');
+							allOpportunities.slice(-5).forEach((opp, index) => {
+								const realIndex = allOpportunities.length - 5 + index;
+								console.log(
+									`  ${realIndex + 1}. ${opp.title || opp.id || 'Untitled'}`
+								);
+							});
+						}
+					} else {
+						console.log('No opportunities found in Grants.gov API response');
+						console.log(
+							'Response structure:',
+							JSON.stringify(firstResponse.data, null, 2).substring(0, 500) +
+								'...'
+						);
+					}
+				} else {
+					// For other APIs, use the standard pagination process
+					apiResponses = await processPaginatedApi(source, processingDetails);
+
+					// Extract all opportunities from all pages
+					if (Array.isArray(apiResponses) && apiResponses.length > 0) {
+						const responseDataPath =
+							processingDetails.paginationConfig?.responseDataPath || '';
+						const totalCountPath =
+							processingDetails.paginationConfig?.totalCountPath || '';
+
+						// Get total count from the first page
+						if (totalCountPath && apiResponses[0]) {
+							totalCount =
+								extractDataByPath(apiResponses[0], totalCountPath) || 0;
+						}
+
+						// Extract opportunities from each page
+						for (const response of apiResponses) {
+							const pageOpportunities = extractDataByPath(
+								response,
+								responseDataPath
+							);
+							if (Array.isArray(pageOpportunities)) {
+								allOpportunities = [...allOpportunities, ...pageOpportunities];
+							}
+						}
+
+						console.log(
+							`Extracted ${allOpportunities.length} total opportunities from ${apiResponses.length} pages (API reported total: ${totalCount})`
+						);
+					}
+				}
+			} catch (apiError) {
+				console.error('Error making API request:', apiError);
+				throw apiError;
+			}
 
 			// Store the raw response in the database
 			const { data: rawResponse, error: rawResponseError } = await supabase
@@ -514,9 +728,27 @@ export async function apiHandlerAgent(source, processingDetails) {
 				rawResponseId = rawResponse.id;
 			}
 
-			// Combine all responses for processing
-			promptTemplate = standardApiPromptTemplate;
-			promptVariables.apiResponse = JSON.stringify(apiResponses, null, 2);
+			// Check if this is a two-step API source
+			const isDetailEnabled =
+				processingDetails.detailConfig &&
+				processingDetails.detailConfig.enabled;
+
+			if (isDetailEnabled) {
+				// For two-step API sources, use the first-stage filtering prompt
+				promptTemplate = firstStageFilteringPromptTemplate;
+			} else {
+				// For single-API sources, use the comprehensive filtering prompt
+				promptTemplate = standardApiPromptTemplate;
+			}
+
+			promptVariables.apiResponse = JSON.stringify(
+				{
+					totalCount: totalCount || allOpportunities.length,
+					opportunities: allOpportunities,
+				},
+				null,
+				2
+			);
 			promptVariables.responseMapping = JSON.stringify(
 				processingDetails.responseMapping || {},
 				null,
