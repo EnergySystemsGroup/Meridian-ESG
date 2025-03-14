@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { fundingApi, calculateDaysLeft } from '@/app/lib/supabase';
+import { supabase, calculateDaysLeft } from '@/app/lib/supabase';
 
 export async function GET(request) {
 	try {
@@ -8,10 +8,21 @@ export async function GET(request) {
 		const limit = parseInt(searchParams.get('limit') || '5');
 
 		// Fetch upcoming deadlines
-		const deadlines = await fundingApi.getUpcomingDeadlines(limit);
+		const today = new Date().toISOString();
+
+		const { data, error } = await supabase
+			.from('funding_opportunities')
+			.select('*')
+			.gte('close_date', today)
+			.order('close_date', { ascending: true })
+			.limit(limit);
+
+		if (error) {
+			throw error;
+		}
 
 		// Enhance the data with additional information
-		const enhancedDeadlines = deadlines.map((deadline) => {
+		const enhancedDeadlines = data.map((deadline) => {
 			const daysLeft = calculateDaysLeft(deadline.close_date);
 
 			return {
@@ -34,7 +45,7 @@ export async function GET(request) {
 			data: enhancedDeadlines,
 		});
 	} catch (error) {
-		console.error('API Error:', error);
+		console.error('Error fetching upcoming deadlines:', error);
 		return NextResponse.json(
 			{ success: false, error: error.message },
 			{ status: 500 }
