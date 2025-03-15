@@ -103,6 +103,10 @@ export default function FundingSourceDetail() {
 				`/api/admin/funding-sources/${params.id}/process`,
 				{
 					method: 'POST',
+					credentials: 'include',
+					headers: {
+						'Content-Type': 'application/json',
+					},
 				}
 			);
 

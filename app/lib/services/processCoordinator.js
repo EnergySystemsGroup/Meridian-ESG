@@ -1,5 +1,5 @@
 import { RunManager } from './runManager';
-import { processNextSource } from '../agents/sourceManagerAgent';
+import { sourceManagerAgent } from '../agents/sourceManagerAgent';
 import { apiHandlerAgent } from '../agents/apiHandlerAgent';
 import { processDetailedInfo } from '../agents/detailProcessorAgent';
 import { processUnprocessedOpportunities } from '../agents/dataProcessorAgent';

@@ -1,11 +1,13 @@
 import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
 import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
-import { processApiSource } from '@/lib/processCoordinator';
+import { processApiSource } from '@/app/lib/services/processCoordinator';
 
 export async function POST(request, { params }) {
 	try {
-		const supabase = createRouteHandlerClient({ cookies });
+		// Await both params and cookies
+		const [{ id }, cookieStore] = await Promise.all([params, cookies()]);
+		const supabase = createRouteHandlerClient({ cookies: () => cookieStore });
 
 		// Check if user is authenticated and has admin access
 		const {
@@ -20,7 +22,7 @@ export async function POST(request, { params }) {
 		const { data: run, error: runError } = await supabase
 			.from('api_source_runs')
 			.insert({
-				api_source_id: params.id,
+				source_id: id,
 				status: 'started',
 				source_manager_status: 'pending',
 				api_handler_status: 'pending',
@@ -33,7 +35,7 @@ export async function POST(request, { params }) {
 		if (runError) throw runError;
 
 		// Start processing in the background
-		processApiSource(params.id, run.id).catch((error) => {
+		processApiSource(id, run.id).catch((error) => {
 			console.error('Error processing source:', error);
 			// Update run status to failed
 			supabase
