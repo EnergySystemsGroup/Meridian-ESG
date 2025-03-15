@@ -104,11 +104,20 @@ export class RunManager {
 	async updateRunError(error) {
 		if (!this.runId) throw new Error('No active run');
 
+		const errorDetails =
+			error instanceof Error
+				? {
+						message: error.message,
+						stack: error.stack,
+						...(error.cause && { cause: String(error.cause) }),
+				  }
+				: String(error);
+
 		return await this.supabase
 			.from('api_source_runs')
 			.update({
 				status: 'failed',
-				error_details: error.toString(),
+				error_details: JSON.stringify(errorDetails, null, 2),
 				completed_at: new Date().toISOString(),
 				updated_at: new Date().toISOString(),
 			})

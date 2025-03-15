@@ -1,22 +1,17 @@
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
-import { cookies } from 'next/headers';
+import { createClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
 import { processApiSource } from '@/app/lib/services/processCoordinator';
 
 export async function POST(request, { params }) {
 	try {
-		// Await both params and cookies
-		const [{ id }, cookieStore] = await Promise.all([params, cookies()]);
-		const supabase = createRouteHandlerClient({ cookies: () => cookieStore });
+		// Await params before accessing id
+		const { id } = await params;
 
-		// Check if user is authenticated and has admin access
-		const {
-			data: { user },
-		} = await supabase.auth.getUser();
-
-		if (!user) {
-			return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-		}
+		// Initialize Supabase client
+		const supabase = createClient(
+			process.env.NEXT_PUBLIC_SUPABASE_URL,
+			process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+		);
 
 		// Create a new run record
 		const { data: run, error: runError } = await supabase

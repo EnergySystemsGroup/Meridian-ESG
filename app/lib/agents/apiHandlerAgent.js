@@ -327,25 +327,16 @@ async function processPaginatedApi(source, processingDetails, runManager) {
 		initialApiMetrics.retrievedCount = 1;
 		initialApiMetrics.totalPages = 1;
 
-		// Extract data for metrics
-		const items = extractDataByPath(
-			response,
-			paginationConfig?.responseDataPath || ''
-		);
-		if (Array.isArray(items)) {
-			initialApiMetrics.firstPageCount = items.length;
-			initialApiMetrics.totalHitCount = items.length;
+		// Extract data for metrics - handle Grants.gov specific response structure
+		const items = response.data?.data?.oppHits || [];
+		initialApiMetrics.firstPageCount = items.length;
+		initialApiMetrics.totalHitCount =
+			response.data?.data?.hitCount || items.length;
 
-			// Add sample opportunities
-			initialApiMetrics.sampleOpportunities = items.slice(0, 3).map((item) => {
-				// Extract basic info for sample
-				const title =
-					typeof item === 'object'
-						? item.title || item.name || 'Untitled'
-						: 'Unknown';
-				return { title };
-			});
-		}
+		// Add sample opportunities
+		initialApiMetrics.sampleOpportunities = items.slice(0, 3).map((item) => {
+			return { title: item.title || 'Untitled' };
+		});
 
 		// Update run manager with initial API call metrics
 		if (runManager) {
@@ -363,6 +354,7 @@ async function processPaginatedApi(source, processingDetails, runManager) {
 	let hasMorePages = true;
 	let offset = 0;
 	let cursor = null;
+	let totalCount = 0; // Initialize totalCount
 
 	// Get the page size
 	const pageSize = paginationConfig.pageSize || 100;
@@ -407,10 +399,15 @@ async function processPaginatedApi(source, processingDetails, runManager) {
 
 		// Extract the data and total count
 		const data = extractDataByPath(response, paginationConfig.responseDataPath);
-		const totalCount = extractDataByPath(
+		const currentTotalCount = extractDataByPath(
 			response,
 			paginationConfig.totalCountPath
 		);
+
+		// Update total count if available
+		if (currentTotalCount !== undefined && currentTotalCount !== null) {
+			totalCount = currentTotalCount;
+		}
 
 		// Update metrics
 		if (currentPage === 0) {
@@ -767,12 +764,36 @@ export async function apiHandlerAgent(
 				runManager
 			);
 
-		// Store the raw API response
+		// Store the raw API responses
 		const { data: rawResponseData, error: rawResponseError } = await supabase
 			.from('api_raw_responses')
 			.insert({
 				source_id: source.id,
-				response_data: apiResults,
+				content: {
+					list_responses: apiResults,
+					detail_responses: detailedItems
+						.map((item) => item._detailResponse)
+						.filter(Boolean),
+				},
+				request_details: {
+					list_request: {
+						endpoint: processingDetails.apiEndpoint,
+						method: processingDetails.requestConfig.method,
+						headers: processingDetails.requestConfig.headers,
+						queryParams: processingDetails.queryParameters,
+						requestBody: processingDetails.requestBody,
+					},
+					detail_requests: processingDetails.detailConfig?.enabled
+						? {
+								endpoint: processingDetails.detailConfig.endpoint,
+								method: processingDetails.detailConfig.method || 'GET',
+								headers: processingDetails.detailConfig.headers,
+								idField: processingDetails.detailConfig.idField,
+								idParam: processingDetails.detailConfig.idParam,
+						  }
+						: null,
+				},
+				timestamp: new Date().toISOString(),
 				created_at: new Date().toISOString(),
 			})
 			.select('id')
@@ -783,16 +804,42 @@ export async function apiHandlerAgent(
 			throw rawResponseError;
 		}
 
-		const rawResponseId = rawResponseData.id;
-
 		// Calculate execution time
 		const executionTime = Date.now() - startTime;
 
 		// Prepare the result
 		const result = {
-			opportunities: detailedItems,
+			opportunities: detailedItems.map((item) => {
+				// Remove the _detailResponse from items before passing them on
+				const { _detailResponse, ...cleanItem } = item;
+				return cleanItem;
+			}),
 			totalCount: initialApiMetrics.totalHitCount,
-			rawResponseId,
+			rawApiResponse: {
+				list_responses: apiResults,
+				detail_responses: detailedItems
+					.map((item) => item._detailResponse)
+					.filter(Boolean),
+			},
+			requestDetails: {
+				list_request: {
+					endpoint: processingDetails.apiEndpoint,
+					method: processingDetails.requestConfig.method,
+					headers: processingDetails.requestConfig.headers,
+					queryParams: processingDetails.queryParameters,
+					requestBody: processingDetails.requestBody,
+				},
+				detail_requests: processingDetails.detailConfig?.enabled
+					? {
+							endpoint: processingDetails.detailConfig.endpoint,
+							method: processingDetails.detailConfig.method || 'GET',
+							headers: processingDetails.detailConfig.headers,
+							idField: processingDetails.detailConfig.idField,
+							idParam: processingDetails.detailConfig.idParam,
+					  }
+					: null,
+			},
+			rawResponseId: rawResponseData.id,
 			sourceId: source.id,
 		};
 
@@ -810,7 +857,6 @@ export async function apiHandlerAgent(
 		await logApiActivity(supabase, source.id, 'api_process', 'success', {
 			opportunitiesFound: detailedItems.length,
 			totalCount: initialApiMetrics.totalHitCount,
-			rawResponseId: rawResponseId,
 		});
 
 		// Update the last processed timestamp
@@ -818,28 +864,6 @@ export async function apiHandlerAgent(
 			.from('api_sources')
 			.update({ last_processed: new Date().toISOString() })
 			.eq('id', source.id);
-
-		// Store extracted opportunities in the database
-		if (detailedItems.length > 0) {
-			const opportunitiesToInsert = detailedItems.map((opportunity) => ({
-				raw_response_id: rawResponseId,
-				source_id: source.id,
-				data: opportunity,
-				confidence_score: opportunity.relevanceScore * 10, // Convert 1-10 to 10-100
-				processed: false,
-			}));
-
-			const { error: opportunitiesError } = await supabase
-				.from('api_extracted_opportunities')
-				.insert(opportunitiesToInsert);
-
-			if (opportunitiesError) {
-				console.error(
-					'Error storing extracted opportunities:',
-					opportunitiesError
-				);
-			}
-		}
 
 		return {
 			...result,

@@ -1,16 +1,17 @@
 import { RunManager } from './runManager';
-import { sourceManagerAgent } from '../agents/sourceManagerAgent';
-import { apiHandlerAgent } from '../agents/apiHandlerAgent';
-import { processDetailedInfo } from '../agents/detailProcessorAgent';
-import { processUnprocessedOpportunities } from '../agents/dataProcessorAgent';
-import { createSupabaseClient, logApiActivity } from '../supabase';
+import { sourceManagerAgent } from '@/app/lib/agents/sourceManagerAgent';
+import { apiHandlerAgent } from '@/app/lib/agents/apiHandlerAgent';
+import { processDetailedInfo } from '@/app/lib/agents/detailProcessorAgent';
+import { processUnprocessedOpportunities } from '@/app/lib/agents/dataProcessorAgent';
+import { createSupabaseClient, logApiActivity } from '@/app/lib/supabase';
 
 /**
  * Coordinates the complete processing pipeline for an API source
  * @param {string} sourceId - Optional specific source ID to process
+ * @param {string} runId - Optional existing run ID to use
  * @returns {Promise<Object>} - The complete processing results
  */
-export async function processApiSource(sourceId = null) {
+export async function processApiSource(sourceId = null, runId = null) {
 	const startTime = Date.now();
 	const supabase = createSupabaseClient();
 	let runManager = null;
@@ -28,9 +29,11 @@ export async function processApiSource(sourceId = null) {
 
 			if (error) throw error;
 
-			// Create a new run manager
-			runManager = new RunManager();
-			await runManager.startRun(source.id);
+			// Create or use existing run manager
+			runManager = new RunManager(runId);
+			if (!runId) {
+				await runManager.startRun(source.id);
+			}
 
 			// Process the source with the Source Manager Agent
 			const processingDetails = await sourceManagerAgent(source, runManager);
@@ -81,6 +84,8 @@ export async function processApiSource(sourceId = null) {
 		);
 		const storageResult = await processUnprocessedOpportunities(
 			source.id,
+			handlerResult.rawApiResponse,
+			handlerResult.requestDetails,
 			runManager
 		);
 
@@ -97,7 +102,7 @@ export async function processApiSource(sourceId = null) {
 			'complete_processing',
 			'success',
 			{
-				initialCount: handlerResult.totalCount,
+				initialCount: handlerResult.initialApiMetrics.totalHitCount,
 				firstStageCount: handlerResult.opportunities.length,
 				secondStageCount: detailResult.opportunities.length,
 				storedCount: storageResult.metrics.storedCount,

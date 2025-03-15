@@ -122,7 +122,7 @@ export default function FundingSourceDetail() {
 			setTimeout(fetchRuns, 2000);
 		} catch (error) {
 			console.error('Error processing source:', error);
-			toast.error('Failed to process source');
+			toast.error(error.message || 'Failed to process source');
 		} finally {
 			setProcessing(false);
 		}

@@ -5,8 +5,8 @@ import {
 	createSupabaseClient,
 	logAgentExecution,
 	logApiActivity,
-} from '../supabase';
-import { RunManager } from '../services/runManager';
+} from '@/app/lib/supabase';
+import { RunManager } from '@/app/lib/services/runManager';
 import { z } from 'zod';
 
 // Define the output schema for the agent

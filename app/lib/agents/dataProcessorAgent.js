@@ -191,20 +191,42 @@ For status, use these standardized values:
  * Data Processor Agent that processes a single opportunity
  * @param {Object} opportunity - The opportunity to process
  * @param {string} sourceId - The ID of the source
- * @param {string} rawResponseId - The ID of the raw response
+ * @param {string} rawApiResponse - The raw API response
+ * @param {Object} requestDetails - The details of the request
  * @param {Object} runManager - Optional RunManager instance for tracking
  * @returns {Promise<Object>} - The processing result
  */
 export async function dataProcessorAgent(
 	opportunity,
 	sourceId,
-	rawResponseId,
+	rawApiResponse,
+	requestDetails,
 	runManager = null
 ) {
 	const supabase = createSupabaseClient();
 	const startTime = Date.now();
 
 	try {
+		// Store the raw API response first
+		const { data: rawResponseData, error: rawResponseError } = await supabase
+			.from('api_raw_responses')
+			.insert({
+				source_id: sourceId,
+				content: rawApiResponse,
+				request_details: requestDetails,
+				timestamp: new Date().toISOString(),
+				created_at: new Date().toISOString(),
+			})
+			.select('id')
+			.single();
+
+		if (rawResponseError) {
+			console.error('Error storing raw API response:', rawResponseError);
+			throw rawResponseError;
+		}
+
+		const rawResponseId = rawResponseData.id;
+
 		// Get the source information
 		const { data: sourceData, error: sourceError } = await supabase
 			.from('api_sources')
@@ -389,11 +411,15 @@ export async function dataProcessorAgent(
 /**
  * Processes all unprocessed extracted opportunities for a source
  * @param {string} sourceId - The ID of the source
+ * @param {string} rawApiResponse - The raw API response
+ * @param {Object} requestDetails - The details of the request
  * @param {Object} runManager - Optional RunManager instance for tracking
  * @returns {Promise<Object>} - The processing results
  */
 export async function processUnprocessedOpportunities(
 	sourceId,
+	rawApiResponse,
+	requestDetails,
 	runManager = null
 ) {
 	const supabase = createSupabaseClient();
@@ -430,18 +456,7 @@ export async function processUnprocessedOpportunities(
 			};
 		}
 
-		// Group opportunities by raw response ID
-		const opportunitiesByResponse = {};
-		for (const opportunity of unprocessedOpportunities) {
-			if (!opportunitiesByResponse[opportunity.raw_response_id]) {
-				opportunitiesByResponse[opportunity.raw_response_id] = [];
-			}
-			opportunitiesByResponse[opportunity.raw_response_id].push(
-				opportunity.data
-			);
-		}
-
-		// Process each group of opportunities
+		// Process each opportunity
 		const results = [];
 		const storageMetrics = {
 			attemptedCount: unprocessedOpportunities.length,
@@ -452,49 +467,46 @@ export async function processUnprocessedOpportunities(
 			processingTime: 0,
 		};
 
-		for (const rawResponseId in opportunitiesByResponse) {
-			const opportunities = opportunitiesByResponse[rawResponseId];
+		for (const opportunity of unprocessedOpportunities) {
+			const result = await dataProcessorAgent(
+				opportunity.data,
+				sourceId,
+				rawApiResponse,
+				requestDetails,
+				runManager
+			);
 
-			for (const opportunity of opportunities) {
-				const result = await dataProcessorAgent(
-					opportunity,
-					sourceId,
-					rawResponseId,
-					runManager
-				);
+			results.push(result);
 
-				results.push(result);
-
-				// Update metrics based on the result
-				if (result.storageResult.success) {
-					if (
-						result.action === 'insert' ||
-						result.storageResult.action === 'insert_fallback'
-					) {
-						storageMetrics.storedCount++;
-					} else if (result.action === 'update') {
-						storageMetrics.updatedCount++;
-					} else if (result.action === 'ignore') {
-						storageMetrics.skippedCount++;
-
-						// Track skip reasons
-						const reason = result.reviewReason || 'No reason provided';
-						if (!storageMetrics.skippedReasons[reason]) {
-							storageMetrics.skippedReasons[reason] = 0;
-						}
-						storageMetrics.skippedReasons[reason]++;
-					}
-				} else {
-					// Count failed operations as skipped
+			// Update metrics based on the result
+			if (result.storageResult.success) {
+				if (
+					result.action === 'insert' ||
+					result.storageResult.action === 'insert_fallback'
+				) {
+					storageMetrics.storedCount++;
+				} else if (result.action === 'update') {
+					storageMetrics.updatedCount++;
+				} else if (result.action === 'ignore') {
 					storageMetrics.skippedCount++;
 
-					// Track error as skip reason
-					const reason = result.storageResult.error || 'Unknown error';
+					// Track skip reasons
+					const reason = result.reviewReason || 'No reason provided';
 					if (!storageMetrics.skippedReasons[reason]) {
 						storageMetrics.skippedReasons[reason] = 0;
 					}
 					storageMetrics.skippedReasons[reason]++;
 				}
+			} else {
+				// Count failed operations as skipped
+				storageMetrics.skippedCount++;
+
+				// Track error as skip reason
+				const reason = result.storageResult.error || 'Unknown error';
+				if (!storageMetrics.skippedReasons[reason]) {
+					storageMetrics.skippedReasons[reason] = 0;
+				}
+				storageMetrics.skippedReasons[reason]++;
 			}
 		}
 
@@ -505,7 +517,6 @@ export async function processUnprocessedOpportunities(
 		// Update run manager with storage results
 		if (runManager) {
 			await runManager.updateStorageResults(storageMetrics);
-			await runManager.completeRun(executionTime);
 		}
 
 		return {
