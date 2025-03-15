@@ -77,7 +77,7 @@ const processingResultSchema = z.object({
 				.string()
 				.optional()
 				.nullable()
-				.describe('The date when applications open (ISO format)'),
+				.describe('The date when applications open'),
 			close_date: z
 				.string()
 				.optional()
@@ -93,11 +93,15 @@ const processingResultSchema = z.object({
 				.optional()
 				.nullable()
 				.describe('The objectives of the funding opportunity'),
-			eligibility: z
-				.string()
-				.optional()
-				.nullable()
-				.describe('Eligibility requirements as text'),
+			eligibleApplicants: z
+				.array(z.string())
+				.describe('List of eligible applicant types'),
+			eligibleProjectTypes: z
+				.array(z.string())
+				.describe('List of eligible project types'),
+			eligibleLocations: z
+				.array(z.string())
+				.describe('List of eligible locations'),
 			status: z
 				.string()
 				.describe('Current status (Anticipated, Open, Closed, Awarded)'),
@@ -105,63 +109,64 @@ const processingResultSchema = z.object({
 				.array(z.string())
 				.optional()
 				.describe('Tags to apply to this opportunity'),
-			url: z
+			categories: z
+				.array(z.string())
+				.describe('Relevant categories from our taxonomy'),
+			description: z.string().describe('Description of the opportunity'),
+			url: z.string().describe('URL for more information'),
+			funding_type: z
 				.string()
-				.optional()
-				.nullable()
-				.describe('URL for the application or more information'),
+				.describe('The type of funding (grant, loan, incentive, etc.)'),
 			is_national: z
 				.boolean()
 				.optional()
 				.describe('Whether this is a national opportunity'),
 		})
-		.describe('The normalized data to store in the database'),
-	eligibleApplicants: z
-		.array(z.string())
-		.describe('List of eligible applicant types'),
-	eligibleProjectTypes: z
-		.array(z.string())
-		.describe('List of eligible project types'),
+		.describe('The normalized data for this opportunity'),
 });
 
 // Create the prompt template
 const promptTemplate = PromptTemplate.fromTemplate(`
-You are the Data Processor Agent for a funding intelligence system that collects information about energy infrastructure funding opportunities.
+You are an expert funding opportunity data processor for a funding intelligence system.
+Your task is to analyze a funding opportunity and determine how to process it for our database.
 
-Your task is to analyze the following extracted opportunity and determine:
-1. Whether it is a new opportunity or an update to an existing one
-2. Whether any fields need enrichment or correction
-3. If the opportunity requires human review
-4. How to normalize the data for storage
+OPPORTUNITY DATA:
+{opportunityData}
 
-EXTRACTED OPPORTUNITY:
-{extractedOpportunity}
+SOURCE INFORMATION:
+{sourceInfo}
 
-POTENTIAL MATCHING OPPORTUNITIES IN DATABASE:
-{existingOpportunities}
+For this opportunity, determine:
+1. Whether to insert it as a new opportunity, update an existing one, or ignore it
+2. How confident you are in this decision (0-100)
+3. Whether it needs human review
+4. Normalize the data according to our standard schema
 
-Based on your analysis:
-1. Determine if this is a new entry, an update, or a duplicate
-2. Correct any inconsistencies or formatting issues
-3. Flag for human review if there are significant uncertainties
-4. Prepare the normalized data structure for database storage
+Our standard categories include:
+- Energy & Buildings
+- Transportation & Mobility
+- Water & Resources
+- Climate & Resilience
+- Community & Economic Development
+- Infrastructure & Planning
 
 IMPORTANT NOTES:
 - Store the external ID from the source system in the opportunity_number field
 - Each opportunity is associated with a funding source, which is handled automatically by the system
 
-For eligible applicants, use these standardized types:
-- K12
-- Municipal
-- County
-- State
-- Higher_Ed
+Our standard eligible applicants include:
+- K-12 Schools
+- Higher Education
+- Local Government
+- State Government
+- Federal Government
+- Tribal Government
 - Nonprofit
-- For-profit
-- Tribal
-- Other
+- For-profit Business
+- Special District
+- Healthcare
 
-For eligible project types, use these standardized types:
+Eligible project types include :
 - Energy_Efficiency
 - Renewable_Energy
 - HVAC
@@ -183,305 +188,199 @@ For status, use these standardized values:
 `);
 
 /**
- * Check for potential duplicates of an opportunity
- * @param {Object} opportunity - The opportunity to check
- * @param {string} sourceId - The ID of the source
- * @returns {Promise<Object>} - Object containing any exact or fuzzy matches
- */
-async function checkForDuplicates(opportunity, sourceId) {
-	const supabase = createSupabaseClient();
-	const result = { exactMatch: null, fuzzyMatch: null };
-
-	try {
-		// First, check for exact matches by title and source ID
-		const { data: exactMatches, error: exactError } = await supabase
-			.from('funding_opportunities')
-			.select('*')
-			.eq('title', opportunity.title)
-			.eq('source_id', sourceId);
-
-		if (exactError) {
-			console.error('Error checking for exact matches:', exactError);
-		} else if (exactMatches && exactMatches.length > 0) {
-			result.exactMatch = exactMatches[0];
-			return result;
-		}
-
-		// If no exact match, try fuzzy matching on title
-		const { data: fuzzyMatches, error: fuzzyError } = await supabase
-			.from('funding_opportunities')
-			.select('*')
-			.ilike('title', `%${opportunity.title}%`)
-			.eq('source_id', sourceId);
-
-		if (fuzzyError) {
-			console.error('Error checking for fuzzy matches:', fuzzyError);
-		} else if (fuzzyMatches && fuzzyMatches.length > 0) {
-			// Find the best fuzzy match
-			result.fuzzyMatch = fuzzyMatches.reduce((best, current) => {
-				if (!best) return current;
-
-				const bestSimilarity = similarity(best.title, opportunity.title);
-				const currentSimilarity = similarity(current.title, opportunity.title);
-
-				return currentSimilarity > bestSimilarity ? current : best;
-			}, null);
-		}
-
-		return result;
-	} catch (error) {
-		console.error('Error checking for duplicates:', error);
-		return result;
-	}
-}
-
-/**
- * Processes a single extracted opportunity
- * @param {Object} opportunity - The extracted opportunity
+ * Data Processor Agent that processes a single opportunity
+ * @param {Object} opportunity - The opportunity to process
  * @param {string} sourceId - The ID of the source
  * @param {string} rawResponseId - The ID of the raw response
+ * @param {Object} runManager - Optional RunManager instance for tracking
  * @returns {Promise<Object>} - The processing result
  */
-async function processOpportunity(opportunity, sourceId, rawResponseId) {
-	const startTime = Date.now();
+export async function dataProcessorAgent(
+	opportunity,
+	sourceId,
+	rawResponseId,
+	runManager = null
+) {
 	const supabase = createSupabaseClient();
+	const startTime = Date.now();
 
 	try {
-		// Check for potential duplicates using sourceId
-		const existingOpportunities = await checkForDuplicates(
-			opportunity,
-			sourceId
-		);
-
-		// If we found an exact match, update it
-		if (existingOpportunities.exactMatch) {
-			console.log(`Found exact match for opportunity: ${opportunity.title}`);
-
-			// Update the existing opportunity
-			const { error: updateError } = await supabase
-				.from('funding_opportunities')
-				.update({
-					title: opportunity.title,
-					description: opportunity.description,
-					source_name: opportunity.agency || 'Unknown',
-					source_type: opportunity.fundingType || 'Unknown',
-					min_amount: opportunity.minAward || null,
-					max_amount: opportunity.maxAward || null,
-					open_date: opportunity.openDate || null,
-					close_date: opportunity.closeDate || null,
-					eligibility: opportunity.eligibility || null,
-					url: opportunity.url || null,
-					source_id: sourceId,
-					updated_at: new Date().toISOString(),
-				})
-				.eq('id', existingOpportunities.exactMatch.id);
-
-			if (updateError) {
-				console.error('Error updating opportunity:', updateError);
-				throw updateError;
-			}
-
-			// Log the agent execution
-			await logAgentExecution(
-				supabase,
-				'dataProcessor',
-				{
-					opportunity,
-					sourceId,
-					rawResponseId,
-				},
-				{
-					action: 'update',
-					opportunityId: existingOpportunities.exactMatch.id,
-				},
-				Date.now() - startTime,
-				null
-			);
-
-			return {
-				action: 'update',
-				opportunityId: existingOpportunities.exactMatch.id,
-			};
-		}
-
-		// If we found a fuzzy match, update it
-		if (existingOpportunities.fuzzyMatch) {
-			console.log(`Found fuzzy match for opportunity: ${opportunity.title}`);
-
-			// Update the existing opportunity
-			const { error: updateError } = await supabase
-				.from('funding_opportunities')
-				.update({
-					title: opportunity.title,
-					description: opportunity.description,
-					source_name: opportunity.agency || 'Unknown',
-					source_type: opportunity.fundingType || 'Unknown',
-					min_amount: opportunity.minAward || null,
-					max_amount: opportunity.maxAward || null,
-					open_date: opportunity.openDate || null,
-					close_date: opportunity.closeDate || null,
-					eligibility: opportunity.eligibility || null,
-					url: opportunity.url || null,
-					source_id: sourceId,
-					updated_at: new Date().toISOString(),
-				})
-				.eq('id', existingOpportunities.fuzzyMatch.id);
-
-			if (updateError) {
-				console.error('Error updating opportunity:', updateError);
-				throw updateError;
-			}
-
-			// Log the agent execution
-			await logAgentExecution(
-				supabase,
-				'dataProcessor',
-				{
-					opportunity,
-					sourceId,
-					rawResponseId,
-				},
-				{
-					action: 'update',
-					opportunityId: existingOpportunities.fuzzyMatch.id,
-				},
-				Date.now() - startTime,
-				null
-			);
-
-			return {
-				action: 'update',
-				opportunityId: existingOpportunities.fuzzyMatch.id,
-			};
-		}
-
-		// If we didn't find a match, insert a new opportunity
-		console.log(`Inserting new opportunity: ${opportunity.title}`);
-
-		// Insert the new opportunity with tags directly in the record
-		const { data: newOpportunity, error } = await supabase
-			.from('funding_opportunities')
-			.insert({
-				title: opportunity.title,
-				opportunity_number: opportunity.opportunityNumber || null,
-				description: opportunity.description,
-				source_name: opportunity.agency || 'Unknown',
-				source_type: opportunity.fundingType || 'Unknown',
-				min_amount: opportunity.minAward || null,
-				max_amount: opportunity.maxAward || null,
-				open_date: opportunity.openDate || null,
-				close_date: opportunity.closeDate || null,
-				eligibility: opportunity.eligibility || null,
-				url: opportunity.url || null,
-				source_id: sourceId,
-				tags: opportunity.tags || [],
-			})
-			.select('id')
+		// Get the source information
+		const { data: sourceData, error: sourceError } = await supabase
+			.from('api_sources')
+			.select('*')
+			.eq('id', sourceId)
 			.single();
 
-		if (error) {
-			console.error('Error inserting opportunity:', error);
-			throw error;
+		if (sourceError) {
+			throw sourceError;
 		}
 
-		// Insert eligible applicants
-		if (opportunity.eligibility && opportunity.eligibility.length > 0) {
-			const applicantInserts = opportunity.eligibility.map((applicantType) => ({
-				opportunity_id: newOpportunity.id,
-				entity_type: applicantType,
-			}));
+		// Create the output parser
+		const parser = StructuredOutputParser.fromZodSchema(processingResultSchema);
+		const formatInstructions = parser.getFormatInstructions();
 
-			await supabase
-				.from('funding_eligibility_criteria')
-				.insert(applicantInserts);
-		}
+		// Create the model
+		const model = new ChatAnthropic({
+			temperature: 0.2,
+			modelName: 'claude-3-5-sonnet-20240620',
+			anthropicApiKey: process.env.ANTHROPIC_API_KEY,
+		});
 
-		// Insert eligible project types
-		if (opportunity.projectTypes && opportunity.projectTypes.length > 0) {
-			const projectTypeInserts = opportunity.projectTypes.map(
-				(projectType) => ({
-					opportunity_id: newOpportunity.id,
-					entity_type: `Project:${projectType}`,
-				})
-			);
+		// Format the prompt
+		const prompt = await promptTemplate.format({
+			opportunityData: JSON.stringify(opportunity, null, 2),
+			sourceInfo: JSON.stringify(sourceData, null, 2),
+			formatInstructions,
+		});
 
-			await supabase
-				.from('funding_eligibility_criteria')
-				.insert(projectTypeInserts);
-		}
+		// Get the LLM response
+		const response = await model.invoke(prompt);
 
-		return {
-			action: 'insert',
-			opportunityId: newOpportunity.id,
-		};
-	} catch (error) {
-		// Calculate execution time even if there was an error
+		// Parse the response
+		const result = await parser.parse(response.content);
+
+		// Calculate execution time
 		const executionTime = Date.now() - startTime;
 
-		// Log the error
-		console.error('Error processing opportunity:', error);
-
-		// Log the agent execution with error
+		// Log the agent execution
 		await logAgentExecution(
 			supabase,
 			'data_processor',
-			{
-				opportunity: opportunity.title,
-				sourceId,
-			},
-			null,
+			{ opportunity, sourceId },
+			result,
 			executionTime,
-			{},
-			error
+			{
+				promptTokens: response.usage?.prompt_tokens,
+				completionTokens: response.usage?.completion_tokens,
+			}
 		);
 
-		throw error;
-	}
-}
+		// Process the opportunity based on the action
+		let storageResult = {
+			action: result.action,
+			opportunityId: null,
+			success: false,
+			error: null,
+		};
 
-/**
- * Data Processor Agent that processes extracted opportunities
- * @param {Array} opportunities - The extracted opportunities
- * @param {string} sourceId - The ID of the source
- * @param {string} rawResponseId - The ID of the raw response
- * @returns {Promise<Object>} - The processing results
- */
-export async function dataProcessorAgent(
-	opportunities,
-	sourceId,
-	rawResponseId
-) {
-	const supabase = createSupabaseClient();
-	const results = [];
+		if (result.action === 'insert') {
+			// Insert the opportunity
+			const { data: insertData, error: insertError } = await supabase
+				.from('funding_opportunities')
+				.insert({
+					...result.normalizedData,
+					source_id: sourceId,
+					raw_response_id: rawResponseId,
+					confidence_score: result.confidence,
+					needs_review: result.needsReview,
+					review_reason: result.reviewReason,
+				})
+				.select('id')
+				.single();
 
-	try {
-		// Process each opportunity
-		for (const opportunity of opportunities) {
-			const result = await processOpportunity(
-				opportunity,
-				sourceId,
-				rawResponseId
-			);
-			results.push(result);
+			if (insertError) {
+				console.error('Error inserting opportunity:', insertError);
+				storageResult.error = insertError.message;
+			} else {
+				storageResult.opportunityId = insertData.id;
+				storageResult.success = true;
+			}
+		} else if (result.action === 'update') {
+			// Find the existing opportunity by title and source
+			const { data: existingData, error: existingError } = await supabase
+				.from('funding_opportunities')
+				.select('id')
+				.eq('title', result.normalizedData.title)
+				.eq('source_name', result.normalizedData.source_name)
+				.limit(1);
+
+			if (existingError) {
+				console.error('Error finding existing opportunity:', existingError);
+				storageResult.error = existingError.message;
+			} else if (existingData && existingData.length > 0) {
+				// Update the existing opportunity
+				const { error: updateError } = await supabase
+					.from('funding_opportunities')
+					.update({
+						...result.normalizedData,
+						raw_response_id: rawResponseId,
+						confidence_score: result.confidence,
+						needs_review: result.needsReview,
+						review_reason: result.reviewReason,
+						updated_at: new Date().toISOString(),
+					})
+					.eq('id', existingData[0].id);
+
+				if (updateError) {
+					console.error('Error updating opportunity:', updateError);
+					storageResult.error = updateError.message;
+				} else {
+					storageResult.opportunityId = existingData[0].id;
+					storageResult.success = true;
+				}
+			} else {
+				// Existing opportunity not found, insert instead
+				const { data: insertData, error: insertError } = await supabase
+					.from('funding_opportunities')
+					.insert({
+						...result.normalizedData,
+						source_id: sourceId,
+						raw_response_id: rawResponseId,
+						confidence_score: result.confidence,
+						needs_review: result.needsReview,
+						review_reason: result.reviewReason,
+					})
+					.select('id')
+					.single();
+
+				if (insertError) {
+					console.error('Error inserting opportunity:', insertError);
+					storageResult.error = insertError.message;
+					storageResult.action = 'insert_fallback';
+				} else {
+					storageResult.opportunityId = insertData.id;
+					storageResult.success = true;
+					storageResult.action = 'insert_fallback';
+				}
+			}
+		} else {
+			// Ignore the opportunity
+			storageResult.success = true;
 		}
 
-		// Log the API activity
-		await logApiActivity(supabase, sourceId, 'processing', 'success', {
-			processedCount: opportunities.length,
-			insertedCount: results.filter((r) => r.action === 'insert').length,
-			updatedCount: results.filter((r) => r.action === 'update').length,
-			ignoredCount: results.filter((r) => r.action === 'ignore').length,
-		});
+		// Mark the extracted opportunity as processed
+		const { error: markProcessedError } = await supabase
+			.from('api_extracted_opportunities')
+			.update({ processed: true, processing_result: storageResult })
+			.eq('raw_response_id', rawResponseId)
+			.eq('data->title', opportunity.title);
+
+		if (markProcessedError) {
+			console.error(
+				'Error marking opportunity as processed:',
+				markProcessedError
+			);
+		}
 
 		return {
-			totalProcessed: opportunities.length,
-			results,
+			...result,
+			storageResult,
+			executionTime,
 		};
 	} catch (error) {
+		// Log the error
+		console.error('Error in Data Processor Agent:', error);
+
 		// Log the API activity with error
 		await logApiActivity(supabase, sourceId, 'processing', 'failure', {
 			error: String(error),
 		});
+
+		// Update run with error if runManager is provided
+		if (runManager) {
+			await runManager.updateRunError(error);
+		}
 
 		throw error;
 	}
@@ -490,10 +389,15 @@ export async function dataProcessorAgent(
 /**
  * Processes all unprocessed extracted opportunities for a source
  * @param {string} sourceId - The ID of the source
+ * @param {Object} runManager - Optional RunManager instance for tracking
  * @returns {Promise<Object>} - The processing results
  */
-export async function processUnprocessedOpportunities(sourceId) {
+export async function processUnprocessedOpportunities(
+	sourceId,
+	runManager = null
+) {
 	const supabase = createSupabaseClient();
+	const startTime = Date.now();
 
 	try {
 		// Get all unprocessed opportunities for this source
@@ -508,6 +412,18 @@ export async function processUnprocessedOpportunities(sourceId) {
 		}
 
 		if (!unprocessedOpportunities || unprocessedOpportunities.length === 0) {
+			// No opportunities to process
+			if (runManager) {
+				await runManager.updateStorageResults({
+					attemptedCount: 0,
+					storedCount: 0,
+					updatedCount: 0,
+					skippedCount: 0,
+					skippedReasons: {},
+					processingTime: 0,
+				});
+			}
+
 			return {
 				message: 'No unprocessed opportunities found',
 				count: 0,
@@ -527,23 +443,85 @@ export async function processUnprocessedOpportunities(sourceId) {
 
 		// Process each group of opportunities
 		const results = [];
+		const storageMetrics = {
+			attemptedCount: unprocessedOpportunities.length,
+			storedCount: 0,
+			updatedCount: 0,
+			skippedCount: 0,
+			skippedReasons: {},
+			processingTime: 0,
+		};
+
 		for (const rawResponseId in opportunitiesByResponse) {
 			const opportunities = opportunitiesByResponse[rawResponseId];
-			const result = await dataProcessorAgent(
-				opportunities,
-				sourceId,
-				rawResponseId
-			);
-			results.push(result);
+
+			for (const opportunity of opportunities) {
+				const result = await dataProcessorAgent(
+					opportunity,
+					sourceId,
+					rawResponseId,
+					runManager
+				);
+
+				results.push(result);
+
+				// Update metrics based on the result
+				if (result.storageResult.success) {
+					if (
+						result.action === 'insert' ||
+						result.storageResult.action === 'insert_fallback'
+					) {
+						storageMetrics.storedCount++;
+					} else if (result.action === 'update') {
+						storageMetrics.updatedCount++;
+					} else if (result.action === 'ignore') {
+						storageMetrics.skippedCount++;
+
+						// Track skip reasons
+						const reason = result.reviewReason || 'No reason provided';
+						if (!storageMetrics.skippedReasons[reason]) {
+							storageMetrics.skippedReasons[reason] = 0;
+						}
+						storageMetrics.skippedReasons[reason]++;
+					}
+				} else {
+					// Count failed operations as skipped
+					storageMetrics.skippedCount++;
+
+					// Track error as skip reason
+					const reason = result.storageResult.error || 'Unknown error';
+					if (!storageMetrics.skippedReasons[reason]) {
+						storageMetrics.skippedReasons[reason] = 0;
+					}
+					storageMetrics.skippedReasons[reason]++;
+				}
+			}
+		}
+
+		// Calculate total processing time
+		const executionTime = Date.now() - startTime;
+		storageMetrics.processingTime = executionTime;
+
+		// Update run manager with storage results
+		if (runManager) {
+			await runManager.updateStorageResults(storageMetrics);
+			await runManager.completeRun(executionTime);
 		}
 
 		return {
 			message: 'Successfully processed opportunities',
 			count: unprocessedOpportunities.length,
 			results,
+			metrics: storageMetrics,
 		};
 	} catch (error) {
 		console.error('Error processing unprocessed opportunities:', error);
+
+		// Update run with error if runManager is provided
+		if (runManager) {
+			await runManager.updateRunError(error);
+		}
+
 		throw error;
 	}
 }

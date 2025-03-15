@@ -44,6 +44,12 @@ const detailProcessingSchema = z.object({
 		.describe('Number of opportunities that were filtered out'),
 	processingMetrics: z
 		.object({
+			inputCount: z.number().describe('Number of items in the input'),
+			passedCount: z.number().describe('Number of items that passed filtering'),
+			rejectedCount: z.number().describe('Number of items that were rejected'),
+			rejectionReasons: z
+				.array(z.string())
+				.describe('Common reasons for rejection'),
 			averageScoreBeforeFiltering: z
 				.number()
 				.optional()
@@ -52,6 +58,9 @@ const detailProcessingSchema = z.object({
 				.number()
 				.optional()
 				.describe('Average relevance score after filtering'),
+			processingTime: z
+				.number()
+				.describe('Time spent processing in milliseconds'),
 			tokenUsage: z
 				.number()
 				.optional()
@@ -88,7 +97,8 @@ For each opportunity, analyze:
 2. Funding purpose - Does it align with our focus areas?
 3. Award amounts - Is the funding significant enough to pursue?
 4. Timeline - Is the opportunity currently active or upcoming?
-5. Match requirements - Are the cost-share requirements reasonable?
+5. Matching requirements - Are they reasonable for our clients?
+6. Application complexity - Is it worth the effort?
 
 For each opportunity in the provided list, assign a relevance score from 1-10 based on:
 1. Alignment with our focus areas (0-5 points):
@@ -110,7 +120,7 @@ For each opportunity in the provided list, assign a relevance score from 1-10 ba
    - 1 point: Moderate funding with reasonable match requirements
    - 2 points: Substantial funding with minimal match requirements
 
-Only include opportunities that score 7 or higher in your final output. In the absence of information, make assumptions to lean on the side of inclusion.
+Only include opportunities with a {minRelevanceScore} or higher in your final output. In the absence of information, make assumptions to lean on the side of inclusion.
 
 For each selected opportunity, provide:
 1. Opportunity ID and title
@@ -127,64 +137,97 @@ Source Information:
 Detailed Opportunities:
 {detailedOpportunities}
 
-{formatInstructions}`;
+{formatInstructions}
+`;
 
 /**
- * Processes detailed opportunity information for second-stage filtering
+ * Detail Processor Agent that performs detailed analysis of opportunities
  * @param {Array} detailedOpportunities - The detailed opportunities from the API Handler Agent
  * @param {Object} source - The API source
+ * @param {Object} runManager - Optional RunManager instance for tracking
+ * @param {Object} config - Configuration for the detail processor
  * @returns {Promise<Object>} - The filtered opportunities
  */
-export async function detailProcessorAgent(detailedOpportunities, source) {
-	const startTime = Date.now();
+export async function detailProcessorAgent(
+	detailedOpportunities,
+	source,
+	runManager = null,
+	config = {}
+) {
 	const supabase = createSupabaseClient();
+	const startTime = Date.now();
+
+	// Default configuration
+	const defaultConfig = {
+		minScoreThreshold: 7,
+		batchSize: 40,
+		maxConcurrentBatches: 5,
+		model: 'claude-3-5-haiku-20241022',
+		temperature: 0,
+		maxTokensPerRequest: 16000,
+	};
+
+	// Merge with provided config
+	const processingConfig = { ...defaultConfig, ...config };
 
 	try {
-		// Initialize the LLM
-		const model = new ChatAnthropic({
-			temperature: 0.2,
-			modelName: 'claude-3-5-sonnet-20240620',
-			anthropicApiKey: process.env.ANTHROPIC_API_KEY,
-		});
-
 		// Create the output parser
 		const parser = StructuredOutputParser.fromZodSchema(detailProcessingSchema);
 		const formatInstructions = parser.getFormatInstructions();
 
-		// Create the prompt template
-		const prompt = PromptTemplate.fromTemplate(detailProcessorPromptTemplate);
+		// Create the model
+		const model = new ChatAnthropic({
+			temperature: processingConfig.temperature,
+			modelName: processingConfig.model,
+			anthropicApiKey: process.env.ANTHROPIC_API_KEY,
+		});
 
-		// Process opportunities in batches to avoid token limits
-		const batchSize = 40;
-		const batches = [];
-		for (let i = 0; i < detailedOpportunities.length; i += batchSize) {
-			batches.push(detailedOpportunities.slice(i, i + batchSize));
-		}
+		// Calculate the average score before filtering
+		const averageScoreBeforeFiltering =
+			detailedOpportunities.reduce(
+				(sum, opp) => sum + (opp.relevanceScore || 5),
+				0
+			) / detailedOpportunities.length;
 
-		// Process each batch
+		// Initialize the combined results
 		const allResults = {
 			opportunities: [],
 			filteredCount: 0,
 			processingMetrics: {
-				averageScoreBeforeFiltering: 0,
+				inputCount: detailedOpportunities.length,
+				passedCount: 0,
+				rejectedCount: 0,
+				rejectionReasons: [],
+				averageScoreBeforeFiltering,
 				averageScoreAfterFiltering: 0,
+				processingTime: 0,
 				tokenUsage: 0,
 			},
 		};
 
+		// Process in batches
+		const batches = [];
+		for (
+			let i = 0;
+			i < detailedOpportunities.length;
+			i += processingConfig.batchSize
+		) {
+			batches.push(
+				detailedOpportunities.slice(i, i + processingConfig.batchSize)
+			);
+		}
+
+		// Process each batch
 		for (const batch of batches) {
-			// Format the prompt variables
-			const promptVariables = {
-				sourceInfo: JSON.stringify(source, null, 2),
+			// Format the prompt
+			const prompt = await detailProcessorPromptTemplate.format({
 				detailedOpportunities: JSON.stringify(batch, null, 2),
+				minRelevanceScore: processingConfig.minScoreThreshold,
 				formatInstructions,
-			};
+			});
 
-			// Generate the prompt
-			const formattedPrompt = await prompt.format(promptVariables);
-
-			// Call the LLM
-			const response = await model.invoke(formattedPrompt);
+			// Get the LLM response
+			const response = await model.invoke(prompt);
 
 			// Parse the response
 			const result = await parser.parse(response.content);
@@ -195,12 +238,29 @@ export async function detailProcessorAgent(detailedOpportunities, source) {
 				...result.opportunities,
 			];
 			allResults.filteredCount += result.filteredCount;
+			allResults.processingMetrics.passedCount += result.opportunities.length;
+			allResults.processingMetrics.rejectedCount += result.filteredCount;
+
+			// Collect rejection reasons
+			if (
+				result.processingMetrics &&
+				result.processingMetrics.rejectionReasons
+			) {
+				allResults.processingMetrics.rejectionReasons = [
+					...allResults.processingMetrics.rejectionReasons,
+					...result.processingMetrics.rejectionReasons,
+				];
+			}
 
 			// Update the processing metrics
 			if (result.processingMetrics) {
 				if (result.processingMetrics.tokenUsage) {
 					allResults.processingMetrics.tokenUsage +=
 						result.processingMetrics.tokenUsage;
+				}
+				if (result.processingMetrics.processingTime) {
+					allResults.processingMetrics.processingTime +=
+						result.processingMetrics.processingTime;
 				}
 			}
 		}
@@ -214,8 +274,11 @@ export async function detailProcessorAgent(detailedOpportunities, source) {
 				) / allResults.opportunities.length;
 		}
 
-		// Log the execution
+		// Calculate total processing time
 		const executionTime = Date.now() - startTime;
+		allResults.processingMetrics.processingTime = executionTime;
+
+		// Log the execution
 		await logAgentExecution(
 			supabase,
 			'detail_processor',
@@ -232,6 +295,23 @@ export async function detailProcessorAgent(detailedOpportunities, source) {
 			executionTime,
 		});
 
+		// Update run with second stage filter metrics if runManager is provided
+		if (runManager) {
+			await runManager.updateSecondStageFilter({
+				inputCount: detailedOpportunities.length,
+				passedCount: allResults.opportunities.length,
+				rejectedCount: allResults.filteredCount,
+				rejectionReasons: allResults.processingMetrics.rejectionReasons,
+				averageScoreBeforeFiltering:
+					allResults.processingMetrics.averageScoreBeforeFiltering,
+				averageScoreAfterFiltering:
+					allResults.processingMetrics.averageScoreAfterFiltering,
+				processingTime: executionTime,
+				filterReasoning: 'Detailed LLM analysis of opportunity content',
+				sampleOpportunities: allResults.opportunities.slice(0, 3),
+			});
+		}
+
 		return allResults;
 	} catch (error) {
 		// Log the error
@@ -242,6 +322,11 @@ export async function detailProcessorAgent(detailedOpportunities, source) {
 			error: String(error),
 		});
 
+		// Update run with error if runManager is provided
+		if (runManager) {
+			await runManager.updateRunError(error);
+		}
+
 		throw error;
 	}
 }
@@ -250,12 +335,14 @@ export async function detailProcessorAgent(detailedOpportunities, source) {
  * Processes detailed opportunity information in batches with adaptive sizing
  * @param {Array} detailedOpportunities - The detailed opportunities from the API Handler Agent
  * @param {Object} source - The API source
+ * @param {Object} runManager - Optional RunManager instance for tracking
  * @param {Object} config - Configuration for the detail processor
  * @returns {Promise<Object>} - The filtered opportunities
  */
 export async function processDetailedInfo(
 	detailedOpportunities,
 	source,
+	runManager = null,
 	config = {}
 ) {
 	// Default configuration
@@ -272,7 +359,12 @@ export async function processDetailedInfo(
 	const processingConfig = { ...defaultConfig, ...config };
 
 	// Process with the Detail Processor Agent
-	const result = await detailProcessorAgent(detailedOpportunities, source);
+	const result = await detailProcessorAgent(
+		detailedOpportunities,
+		source,
+		runManager,
+		processingConfig
+	);
 
 	return result;
 }

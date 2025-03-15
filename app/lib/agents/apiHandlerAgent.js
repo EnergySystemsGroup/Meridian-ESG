@@ -115,64 +115,70 @@ const apiResponseProcessingSchema = z.object({
 					.nullable()
 					.describe('Closing date for applications'),
 				eligibility: z
-					.string()
-					.optional()
-					.nullable()
-					.describe('Eligibility requirements'),
+					.array(z.string())
+					.describe('List of eligible entity types'),
 				url: z
 					.string()
 					.optional()
 					.nullable()
-					.describe('URL to the opportunity details'),
-				sourceId: z
-					.string()
-					.describe('ID of the source this opportunity came from'),
-				externalId: z
-					.string()
+					.describe('URL for more information'),
+				matchingRequired: z
+					.boolean()
+					.optional()
+					.describe('Whether matching funds are required'),
+				matchingPercentage: z
+					.number()
 					.optional()
 					.nullable()
-					.describe('External ID from the source system'),
-				rawData: z.any().optional().describe('Raw data from the API response'),
+					.describe('Required matching percentage'),
+				categories: z
+					.array(z.string())
+					.optional()
+					.describe('Relevant categories from our taxonomy'),
+				status: z
+					.string()
+					.optional()
+					.describe('Current status (open, upcoming, closed)'),
+				relevanceScore: z
+					.number()
+					.min(1)
+					.max(10)
+					.describe('Relevance score from 1-10'),
+				relevanceReasoning: z
+					.string()
+					.optional()
+					.describe('Reasoning for the relevance score'),
 			})
 		)
-		.describe('Array of funding opportunities extracted from the API response'),
-	totalCount: z.number().describe('Total number of opportunities found'),
-	nextCursor: z
-		.string()
-		.optional()
-		.nullable()
-		.describe('Cursor for the next page of results'),
-	reasoning: z
-		.string()
-		.describe('Brief explanation of how you processed the data'),
+		.describe('List of extracted funding opportunities'),
+	totalCount: z
+		.number()
+		.describe('Total number of opportunities found in the API response'),
+	processingMetrics: z
+		.object({
+			inputCount: z.number().describe('Number of items in the input'),
+			passedCount: z.number().describe('Number of items that passed filtering'),
+			filterReasoning: z
+				.string()
+				.describe('Summary of why items were filtered'),
+			processingTime: z
+				.number()
+				.describe('Time spent processing in milliseconds'),
+		})
+		.describe('Metrics about the processing'),
 });
 
-// Create the prompt template for standard API handler
-const standardApiPromptTemplate = PromptTemplate.fromTemplate(`
-You are the API Handler Agent for a funding intelligence system that collects information about energy infrastructure funding opportunities.
+// Define the prompt template
 
-Your task is to process the following API response and extract structured funding opportunity data.
+const promptTemplate = PromptTemplate.fromTemplate(
+	`You are an expert funding opportunity analyst for energy and infrastructure projects.
+Your task is to analyze a list of funding opportunities and identify those most relevant to our organization's focus areas.
 
 SOURCE INFORMATION:
 {sourceInfo}
 
 API RESPONSE:
 {apiResponse}
-
-RESPONSE MAPPING:
-{responseMapping}
-
-Based on this information, extract all funding opportunities from the API response.
-Use the response mapping to map fields from the API response to our standard fields.
-If a field is not available in the API response, leave it as null or undefined.
-
-{formatInstructions}
-`);
-
-// Create the prompt template for first-stage filtering (two-step API sources)
-const firstStageFilteringPromptTemplate = PromptTemplate.fromTemplate(`
-You are an expert funding opportunity analyst for energy and infrastructure projects.
-Your task is to analyze a list of funding opportunities and identify those most relevant to our organization's focus areas.
 
 Our organization helps the following types of entities secure funding:
 - K-12 schools
@@ -186,139 +192,126 @@ Our organization helps the following types of entities secure funding:
 - Healthcare facilities
 
 We focus on funding in these categories:
-- Energy & Buildings
-- Transportation & Mobility
-- Water & Resources
-- Climate & Resilience
-- Community & Economic Development
-- Infrastructure & Planning
+- Energy & Buildings (e.g., efficiency upgrades, renewable energy, building modernization)
+- Transportation & Mobility (e.g., EV infrastructure, public transit, alternative transportation)
+- Water & Resources (e.g., water conservation, stormwater management, resource recovery)
+- Climate & Resilience (e.g., adaptation, mitigation, carbon reduction)
+- Community & Economic Development (e.g., revitalization, workforce development)
+- Infrastructure & Planning (e.g., sustainable infrastructure, master planning)
+
+For each opportunity, analyze:
+1. Eligibility requirements - Do they match our client types?
+2. Funding purpose - Does it align with our focus areas?
+3. Award amounts - Is the funding significant enough to pursue?
+4. Timeline - Is the opportunity currently active or upcoming?
+5. Match requirements - Are the cost-share requirements reasonable?
 
 For each opportunity in the provided list, assign a relevance score from 1-10 based on:
-1. Alignment with our focus areas (0-5 points)
-2. Applicability to our client types (0-3 points)
-3. Funding amount and accessibility (0-2 points)
+1. Alignment with our focus areas (0-5 points):
+   - 0 points: No alignment with any focus area
+   - 1 point: Minimal alignment with one focus area
+   - 2 points: Moderate alignment with one focus area
+   - 3 points: Moderate alignment with multiple focus areas
+   - 4 points: Strong alignment with one or more focus areas
+   - 5 points: Perfect alignment with one or more focus areas
 
-If information is limited, use the title and/or description, or any available information to make a determination as to how relevant the opportunity is to our organization. In the absence of information, make assumptions to lean on the side of inclusion.
+2. Applicability to our client types (0-3 points):
+   - 0 points: Not applicable to any of our client types
+   - 3 points: Applicable to any of our client types
 
-Only opportunities scoring 6 or higher should proceed to detailed analysis.
+3. Funding amount and accessibility (0-2 points):
+   - 0 points: Insufficient funding or excessive match requirements
+   - 1 point: Moderate funding with reasonable match requirements
+   - 2 points: Substantial funding with minimal match requirements
+
+Only include opportunities that score 7 or higher in your final output. In the absense of information, make assumptions to Lean on the side of inclusion.
 
 For each selected opportunity, provide:
-1. Opportunity ID
-2. Title
-3. Relevance score
-4. Brief justification (1-2 sentences)
-
-Source Information:
-{sourceInfo}
-
-API Response:
-{apiResponse}
+1. Opportunity ID and title
+2. Relevance score
+3. Primary focus area(s)
+4. Eligible client types
+5. Key benefits (2-3 bullet points)
+6. Any notable restrictions or requirements
 
 {formatInstructions}
-`);
-
-// Create the prompt template for document handler
-const documentApiPromptTemplate = PromptTemplate.fromTemplate(`
-You are the Document Handler Agent for a funding intelligence system that collects information about energy infrastructure funding opportunities.
-
-Your task is to process the following document content and extract structured funding opportunity data.
-
-SOURCE INFORMATION:
-{sourceInfo}
-
-DOCUMENT CONTENT:
-{documentContent}
-
-Based on this information, extract all funding opportunities from the document.
-Look for key information such as:
-- Opportunity title
-- Description
-- Funding amount
-- Eligibility requirements
-- Application deadlines
-- Contact information
-
-{formatInstructions}
-`);
-
-// Create the prompt template for state portal handler
-const statePortalPromptTemplate = PromptTemplate.fromTemplate(`
-You are the State Portal Handler Agent for a funding intelligence system that collects information about energy infrastructure funding opportunities.
-
-Your task is to process the following state portal content and extract structured funding opportunity data.
-
-SOURCE INFORMATION:
-{sourceInfo}
-
-PORTAL CONTENT:
-{portalContent}
-
-Based on this information, extract all funding opportunities from the state portal.
-State portals often have unique structures, so look carefully for:
-- Grant programs
-- Loan programs
-- Incentives
-- Rebates
-- Technical assistance programs
-
-{formatInstructions}
-`);
+`
+);
 
 /**
- * Makes an API request with the given configuration
- * @param {Object} config - The API request configuration
+ * Makes a configured API request
+ * @param {Object} config - The request configuration
  * @returns {Promise<Object>} - The API response
  */
 async function makeConfiguredApiRequest(config) {
 	try {
+		const { method, url, queryParameters, requestBody, headers } = config;
+
+		// Build the full URL with query parameters
+		let fullUrl = url;
+		if (queryParameters && Object.keys(queryParameters).length > 0) {
+			const queryString = Object.entries(queryParameters)
+				.map(
+					([key, value]) =>
+						`${encodeURIComponent(key)}=${encodeURIComponent(value)}`
+				)
+				.join('&');
+			fullUrl = `${url}${url.includes('?') ? '&' : '?'}${queryString}`;
+		}
+
+		// Make the request
 		const response = await axios({
-			method: config.method || 'GET',
-			url: config.url,
-			params: config.queryParameters,
-			data: config.requestBody,
-			headers: config.headers || {},
+			method,
+			url: fullUrl,
+			data: requestBody,
+			headers,
 		});
 
 		return response.data;
 	} catch (error) {
-		console.error('API request error:', error);
+		console.error('Error making API request:', error);
 		throw error;
 	}
 }
 
 /**
  * Extracts data from a nested object using a path string
- * @param {Object} obj - The object to extract data from
+ * @param {Object} obj - The object to extract from
  * @param {String} path - The path to the data (e.g., "data.items")
  * @returns {Any} - The extracted data
  */
 function extractDataByPath(obj, path) {
 	if (!path) return obj;
-
-	const keys = path.split('.');
-	let result = obj;
-
-	for (const key of keys) {
-		if (result === null || result === undefined) return undefined;
-		result = result[key];
-	}
-
-	return result;
+	return getNestedValue(obj, path);
 }
 
 /**
  * Processes a paginated API response
  * @param {Object} source - The API source
  * @param {Object} processingDetails - The processing details from the source manager
- * @returns {Promise<Array>} - The combined results from all pages
+ * @param {Object} runManager - The run manager for tracking
+ * @returns {Promise<Object>} - The combined results and metrics
  */
-async function processPaginatedApi(source, processingDetails) {
+async function processPaginatedApi(source, processingDetails, runManager) {
+	const startTime = Date.now();
 	const results = [];
 	const paginationConfig = processingDetails.paginationConfig;
-	const detailConfig = processingDetails.detailConfig;
+
+	// Metrics for run tracking
+	const initialApiMetrics = {
+		totalHitCount: 0,
+		retrievedCount: 0,
+		firstPageCount: 0,
+		totalPages: 0,
+		sampleOpportunities: [],
+		apiEndpoint: processingDetails.apiEndpoint,
+		responseTime: 0,
+		apiCallTime: 0,
+	};
 
 	if (!paginationConfig || !paginationConfig.enabled) {
 		// If pagination is not enabled, make a single request
+		const apiCallStartTime = Date.now();
 		const response = await makeConfiguredApiRequest({
 			method: processingDetails.requestConfig.method,
 			url: processingDetails.apiEndpoint,
@@ -326,62 +319,43 @@ async function processPaginatedApi(source, processingDetails) {
 			requestBody: processingDetails.requestBody,
 			headers: processingDetails.requestConfig.headers,
 		});
+		const apiCallEndTime = Date.now();
 
-		// If detail config is enabled, fetch details for each item
-		if (detailConfig && detailConfig.enabled && response) {
-			const items = extractDataByPath(
-				response,
-				paginationConfig?.responseDataPath || ''
-			);
-			if (Array.isArray(items)) {
-				const detailedItems = [];
-				for (const item of items) {
-					const itemId = extractDataByPath(item, detailConfig.idField);
-					if (itemId) {
-						try {
-							const detailRequestBody = {};
-							detailRequestBody[detailConfig.idParam] = itemId;
+		// Update metrics
+		initialApiMetrics.apiCallTime = apiCallEndTime - apiCallStartTime;
+		initialApiMetrics.responseTime = apiCallEndTime - apiCallStartTime;
+		initialApiMetrics.retrievedCount = 1;
+		initialApiMetrics.totalPages = 1;
 
-							const detailResponse = await makeConfiguredApiRequest({
-								method: detailConfig.method || 'GET',
-								url: detailConfig.endpoint,
-								queryParameters: {},
-								requestBody: detailRequestBody,
-								headers:
-									detailConfig.headers ||
-									processingDetails.requestConfig.headers,
-							});
+		// Extract data for metrics
+		const items = extractDataByPath(
+			response,
+			paginationConfig?.responseDataPath || ''
+		);
+		if (Array.isArray(items)) {
+			initialApiMetrics.firstPageCount = items.length;
+			initialApiMetrics.totalHitCount = items.length;
 
-							detailedItems.push({
-								...item,
-								_detailResponse: detailResponse,
-							});
-						} catch (error) {
-							console.error(
-								`Error fetching details for item ${itemId}:`,
-								error
-							);
-							detailedItems.push(item); // Keep the original item if detail fetch fails
-						}
-					} else {
-						detailedItems.push(item);
-					}
-				}
-
-				// Replace the items in the response with the detailed items
-				const responseDataPath = paginationConfig?.responseDataPath || '';
-				if (responseDataPath) {
-					const pathParts = responseDataPath.split('.');
-					let current = response;
-					for (let i = 0; i < pathParts.length - 1; i++) {
-						current = current[pathParts[i]];
-					}
-					current[pathParts[pathParts.length - 1]] = detailedItems;
-				}
-			}
+			// Add sample opportunities
+			initialApiMetrics.sampleOpportunities = items.slice(0, 3).map((item) => {
+				// Extract basic info for sample
+				const title =
+					typeof item === 'object'
+						? item.title || item.name || 'Untitled'
+						: 'Unknown';
+				return { title };
+			});
 		}
 
-		return [response];
+		// Update run manager with initial API call metrics
+		if (runManager) {
+			await runManager.updateInitialApiCall(initialApiMetrics);
+		}
+
+		return {
+			results: [response],
+			metrics: initialApiMetrics,
+		};
 	}
 
 	// Initialize pagination variables
@@ -393,6 +367,7 @@ async function processPaginatedApi(source, processingDetails) {
 	// Get the page size
 	const pageSize = paginationConfig.pageSize || 100;
 	const maxPages = paginationConfig.maxPages || 5;
+	let totalItems = 0;
 
 	while (hasMorePages && currentPage < maxPages) {
 		// Prepare query parameters for this page
@@ -411,6 +386,7 @@ async function processPaginatedApi(source, processingDetails) {
 		}
 
 		// Make the API request
+		const apiCallStartTime = Date.now();
 		const response = await makeConfiguredApiRequest({
 			method: processingDetails.requestConfig.method,
 			url: processingDetails.apiEndpoint,
@@ -418,56 +394,12 @@ async function processPaginatedApi(source, processingDetails) {
 			requestBody: processingDetails.requestBody,
 			headers: processingDetails.requestConfig.headers,
 		});
+		const apiCallEndTime = Date.now();
 
-		// If detail config is enabled, fetch details for each item
-		if (detailConfig && detailConfig.enabled && response) {
-			const items = extractDataByPath(
-				response,
-				paginationConfig.responseDataPath
-			);
-			if (Array.isArray(items)) {
-				const detailedItems = [];
-				for (const item of items) {
-					const itemId = extractDataByPath(item, detailConfig.idField);
-					if (itemId) {
-						try {
-							const detailRequestBody = {};
-							detailRequestBody[detailConfig.idParam] = itemId;
-
-							const detailResponse = await makeConfiguredApiRequest({
-								method: detailConfig.method || 'GET',
-								url: detailConfig.endpoint,
-								queryParameters: {},
-								requestBody: detailRequestBody,
-								headers:
-									detailConfig.headers ||
-									processingDetails.requestConfig.headers,
-							});
-
-							detailedItems.push({
-								...item,
-								_detailResponse: detailResponse,
-							});
-						} catch (error) {
-							console.error(
-								`Error fetching details for item ${itemId}:`,
-								error
-							);
-							detailedItems.push(item); // Keep the original item if detail fetch fails
-						}
-					} else {
-						detailedItems.push(item);
-					}
-				}
-
-				// Replace the items in the response with the detailed items
-				const pathParts = paginationConfig.responseDataPath.split('.');
-				let current = response;
-				for (let i = 0; i < pathParts.length - 1; i++) {
-					current = current[pathParts[i]];
-				}
-				current[pathParts[pathParts.length - 1]] = detailedItems;
-			}
+		// Update metrics for the first page
+		if (currentPage === 0) {
+			initialApiMetrics.apiCallTime = apiCallEndTime - apiCallStartTime;
+			initialApiMetrics.responseTime = apiCallEndTime - apiCallStartTime;
 		}
 
 		// Add the response to the results
@@ -480,6 +412,28 @@ async function processPaginatedApi(source, processingDetails) {
 			paginationConfig.totalCountPath
 		);
 
+		// Update metrics
+		if (currentPage === 0) {
+			initialApiMetrics.firstPageCount = Array.isArray(data) ? data.length : 0;
+
+			// Add sample opportunities
+			if (Array.isArray(data)) {
+				initialApiMetrics.sampleOpportunities = data.slice(0, 3).map((item) => {
+					// Extract basic info for sample
+					const title =
+						typeof item === 'object'
+							? item.title || item.name || 'Untitled'
+							: 'Unknown';
+					return { title };
+				});
+			}
+		}
+
+		// Count total items
+		if (Array.isArray(data)) {
+			totalItems += data.length;
+		}
+
 		// Update pagination variables
 		currentPage++;
 
@@ -491,32 +445,83 @@ async function processPaginatedApi(source, processingDetails) {
 				data && data.length > 0 && currentPage * pageSize < totalCount;
 		} else if (paginationConfig.type === 'cursor') {
 			// For cursor-based pagination, we need to extract the next cursor from the response
-			// This is highly API-specific, so we'll assume it's in the response as "nextCursor"
 			cursor = response.nextCursor || response.next_cursor;
 			hasMorePages = !!cursor && data && data.length > 0;
 		}
 	}
 
-	return results;
+	// Update final metrics
+	initialApiMetrics.totalPages = currentPage;
+	initialApiMetrics.retrievedCount = results.length;
+	initialApiMetrics.totalHitCount = totalCount || totalItems;
+
+	// Update run manager with initial API call metrics
+	if (runManager) {
+		await runManager.updateInitialApiCall(initialApiMetrics);
+	}
+
+	const endTime = Date.now();
+	initialApiMetrics.responseTime = endTime - startTime;
+
+	return {
+		results,
+		metrics: initialApiMetrics,
+	};
 }
 
 /**
- * Processes an API source using the appropriate handler
+ * Performs first-stage filtering on API results
+ * @param {Array} apiResults - The results from the API call
  * @param {Object} source - The API source
- * @param {Object} processingDetails - The processing details from the source manager
- * @returns {Promise<Object>} - The processed opportunities
+ * @param {Object} processingDetails - The processing details
+ * @param {Object} runManager - The run manager for tracking
+ * @returns {Promise<Object>} - The filtered results and metrics
  */
-export async function apiHandlerAgent(source, processingDetails) {
+async function performFirstStageFiltering(
+	apiResults,
+	source,
+	processingDetails,
+	runManager
+) {
 	const startTime = Date.now();
 	const supabase = createSupabaseClient();
 
 	try {
-		// Initialize the LLM
-		const model = new ChatAnthropic({
-			temperature: 0,
-			modelName: 'claude-3-5-haiku-20241022',
-			anthropicApiKey: process.env.ANTHROPIC_API_KEY,
-		});
+		// Extract data from all API results
+		const allItems = [];
+		for (const result of apiResults) {
+			const items = extractDataByPath(
+				result,
+				processingDetails.paginationConfig?.responseDataPath || ''
+			);
+			if (Array.isArray(items)) {
+				allItems.push(...items);
+			}
+		}
+
+		// Metrics for first stage filtering
+		const filterMetrics = {
+			inputCount: allItems.length,
+			passedCount: 0,
+			filterReasoning: '',
+			processingTime: 0,
+			sampleOpportunities: [],
+		};
+
+		// If no items, return early
+		if (allItems.length === 0) {
+			const endTime = Date.now();
+			filterMetrics.processingTime = endTime - startTime;
+
+			if (runManager) {
+				await runManager.updateFirstStageFilter(filterMetrics);
+			}
+
+			return {
+				filteredItems: [],
+				metrics: filterMetrics,
+			};
+		}
 
 		// Create the output parser
 		const parser = StructuredOutputParser.fromZodSchema(
@@ -524,318 +529,24 @@ export async function apiHandlerAgent(source, processingDetails) {
 		);
 		const formatInstructions = parser.getFormatInstructions();
 
-		// Select the appropriate handler based on the handler type
-		let promptTemplate;
-		let promptVariables = {
+		// Create the model
+		const model = new ChatAnthropic({
+			temperature: 0,
+			modelName: 'claude-3-5-haiku-20241022',
+			anthropicApiKey: process.env.ANTHROPIC_API_KEY,
+		});
+
+		// Get the minimum relevance score
+		const minRelevanceScore =
+			processingDetails.firstStageFilterConfig?.minRelevanceScore || 5;
+
+		// Format the prompt
+		const prompt = await promptTemplate.format({
 			sourceInfo: JSON.stringify(source, null, 2),
+			apiResponse: JSON.stringify(allItems, null, 2),
+			minRelevanceScore: minRelevanceScore,
 			formatInstructions,
-		};
-
-		let apiResponses;
-		let rawResponseId;
-		let allOpportunities = [];
-		let totalCount = 0;
-
-		// Process the API based on the handler type
-		if (processingDetails.handlerType === 'standard') {
-			// Process a standard API
-			try {
-				// For Grants.gov API, handle pagination manually
-				if (source.name === 'Grants.gov') {
-					console.log('Processing Grants.gov API source');
-
-					// Get pagination configuration
-					const paginationConfig = processingDetails.paginationConfig;
-					const pageSize = paginationConfig?.pageSize || 100;
-					const maxPages = paginationConfig?.maxPages || 20;
-
-					// Initialize responses array
-					apiResponses = [];
-
-					// Make first request to get total count
-					console.log('Making initial request to Grants.gov API...');
-					const firstResponse = await axios({
-						method: processingDetails.requestConfig.method,
-						url: processingDetails.apiEndpoint,
-						data: processingDetails.requestBody,
-						headers: processingDetails.requestConfig.headers || {},
-					});
-
-					apiResponses.push(firstResponse.data);
-
-					// Extract total count and first page of opportunities
-					if (firstResponse.data && firstResponse.data.data) {
-						totalCount = firstResponse.data.data.hitCount || 0;
-						console.log(
-							`API reports total of ${totalCount} opportunities available`
-						);
-
-						if (
-							firstResponse.data.data.oppHits &&
-							Array.isArray(firstResponse.data.data.oppHits)
-						) {
-							allOpportunities = [...firstResponse.data.data.oppHits];
-							console.log(
-								`First page: fetched ${allOpportunities.length} opportunities`
-							);
-						}
-
-						// Calculate number of pages needed
-						const totalPages = Math.min(
-							maxPages,
-							Math.ceil(totalCount / pageSize)
-						);
-						console.log(`Will fetch up to ${totalPages} pages of results`);
-
-						// Fetch remaining pages
-						for (let page = 1; page < totalPages; page++) {
-							// Create request body with updated startRecordNum
-							const pageRequestBody = {
-								...processingDetails.requestBody,
-								startRecordNum: page * pageSize,
-							};
-
-							console.log(
-								`Fetching page ${page + 1}/${totalPages}, starting at record ${
-									page * pageSize
-								}`
-							);
-
-							try {
-								const pageResponse = await axios({
-									method: processingDetails.requestConfig.method,
-									url: processingDetails.apiEndpoint,
-									data: pageRequestBody,
-									headers: processingDetails.requestConfig.headers || {},
-								});
-
-								apiResponses.push(pageResponse.data);
-
-								// Extract opportunities from this page
-								if (
-									pageResponse.data &&
-									pageResponse.data.data &&
-									pageResponse.data.data.oppHits &&
-									Array.isArray(pageResponse.data.data.oppHits)
-								) {
-									const pageOpps = pageResponse.data.data.oppHits;
-									allOpportunities = [...allOpportunities, ...pageOpps];
-									console.log(
-										`Page ${page + 1}: fetched ${
-											pageOpps.length
-										} opportunities. Running total: ${allOpportunities.length}`
-									);
-								} else {
-									console.log(
-										`Page ${page + 1}: No opportunities found in response`
-									);
-								}
-							} catch (pageError) {
-								console.error(`Error fetching page ${page + 1}:`, pageError);
-								// Continue with the opportunities we have so far
-								break;
-							}
-						}
-
-						console.log(
-							`FINAL COUNT: Total opportunities fetched: ${allOpportunities.length} out of ${totalCount} reported by API`
-						);
-
-						// Log the first 5 opportunity titles to verify content
-						console.log('Sample of opportunities fetched:');
-						allOpportunities.slice(0, 5).forEach((opp, index) => {
-							console.log(
-								`  ${index + 1}. ${opp.title || opp.id || 'Untitled'}`
-							);
-						});
-
-						// Log the last 5 opportunity titles to verify we have different content
-						if (allOpportunities.length > 10) {
-							console.log('Last few opportunities fetched:');
-							allOpportunities.slice(-5).forEach((opp, index) => {
-								const realIndex = allOpportunities.length - 5 + index;
-								console.log(
-									`  ${realIndex + 1}. ${opp.title || opp.id || 'Untitled'}`
-								);
-							});
-						}
-					} else {
-						console.log('No opportunities found in Grants.gov API response');
-						console.log(
-							'Response structure:',
-							JSON.stringify(firstResponse.data, null, 2).substring(0, 500) +
-								'...'
-						);
-					}
-				} else {
-					// For other APIs, use the standard pagination process
-					apiResponses = await processPaginatedApi(source, processingDetails);
-
-					// Extract all opportunities from all pages
-					if (Array.isArray(apiResponses) && apiResponses.length > 0) {
-						const responseDataPath =
-							processingDetails.paginationConfig?.responseDataPath || '';
-						const totalCountPath =
-							processingDetails.paginationConfig?.totalCountPath || '';
-
-						// Get total count from the first page
-						if (totalCountPath && apiResponses[0]) {
-							totalCount =
-								extractDataByPath(apiResponses[0], totalCountPath) || 0;
-						}
-
-						// Extract opportunities from each page
-						for (const response of apiResponses) {
-							const pageOpportunities = extractDataByPath(
-								response,
-								responseDataPath
-							);
-							if (Array.isArray(pageOpportunities)) {
-								allOpportunities = [...allOpportunities, ...pageOpportunities];
-							}
-						}
-
-						console.log(
-							`Extracted ${allOpportunities.length} total opportunities from ${apiResponses.length} pages (API reported total: ${totalCount})`
-						);
-					}
-				}
-			} catch (apiError) {
-				console.error('Error making API request:', apiError);
-				throw apiError;
-			}
-
-			// Store the raw response in the database
-			const { data: rawResponse, error: rawResponseError } = await supabase
-				.from('api_raw_responses')
-				.insert({
-					source_id: source.id,
-					content: apiResponses,
-					request_details: {
-						url: processingDetails.apiEndpoint,
-						method: processingDetails.requestConfig.method,
-						params: processingDetails.queryParameters,
-						body: processingDetails.requestBody,
-						headers: processingDetails.requestConfig.headers,
-					},
-				})
-				.select('id')
-				.single();
-
-			if (rawResponseError) {
-				console.error('Error storing raw response:', rawResponseError);
-			} else {
-				rawResponseId = rawResponse.id;
-			}
-
-			// Check if this is a two-step API source
-			const isDetailEnabled =
-				processingDetails.detailConfig &&
-				processingDetails.detailConfig.enabled;
-
-			if (isDetailEnabled) {
-				// For two-step API sources, use the first-stage filtering prompt
-				promptTemplate = firstStageFilteringPromptTemplate;
-			} else {
-				// For single-API sources, use the comprehensive filtering prompt
-				promptTemplate = standardApiPromptTemplate;
-			}
-
-			promptVariables.apiResponse = JSON.stringify(
-				{
-					totalCount: totalCount || allOpportunities.length,
-					opportunities: allOpportunities,
-				},
-				null,
-				2
-			);
-			promptVariables.responseMapping = JSON.stringify(
-				processingDetails.responseMapping || {},
-				null,
-				2
-			);
-		} else if (processingDetails.handlerType === 'document') {
-			// Process a document API
-			// This would typically involve downloading and extracting text from documents
-			// For simplicity, we'll assume the API returns document content directly
-			const response = await makeConfiguredApiRequest({
-				method: processingDetails.requestConfig.method,
-				url: processingDetails.apiEndpoint,
-				queryParameters: processingDetails.queryParameters,
-				requestBody: processingDetails.requestBody,
-				headers: processingDetails.requestConfig.headers,
-			});
-
-			// Store the raw response in the database
-			const { data: rawResponse, error: rawResponseError } = await supabase
-				.from('api_raw_responses')
-				.insert({
-					source_id: source.id,
-					content: response,
-					request_details: {
-						url: processingDetails.apiEndpoint,
-						method: processingDetails.requestConfig.method,
-						params: processingDetails.queryParameters,
-						body: processingDetails.requestBody,
-						headers: processingDetails.requestConfig.headers,
-					},
-				})
-				.select('id')
-				.single();
-
-			if (rawResponseError) {
-				console.error('Error storing raw response:', rawResponseError);
-			} else {
-				rawResponseId = rawResponse.id;
-			}
-
-			promptTemplate = documentApiPromptTemplate;
-			promptVariables.documentContent = JSON.stringify(response, null, 2);
-		} else if (processingDetails.handlerType === 'statePortal') {
-			// Process a state portal
-			// This would typically involve web scraping or specialized handling
-			// For simplicity, we'll assume the API returns portal content directly
-			const response = await makeConfiguredApiRequest({
-				method: processingDetails.requestConfig.method,
-				url: processingDetails.apiEndpoint,
-				queryParameters: processingDetails.queryParameters,
-				requestBody: processingDetails.requestBody,
-				headers: processingDetails.requestConfig.headers,
-			});
-
-			// Store the raw response in the database
-			const { data: rawResponse, error: rawResponseError } = await supabase
-				.from('api_raw_responses')
-				.insert({
-					source_id: source.id,
-					content: response,
-					request_details: {
-						url: processingDetails.apiEndpoint,
-						method: processingDetails.requestConfig.method,
-						params: processingDetails.queryParameters,
-						body: processingDetails.requestBody,
-						headers: processingDetails.requestConfig.headers,
-					},
-				})
-				.select('id')
-				.single();
-
-			if (rawResponseError) {
-				console.error('Error storing raw response:', rawResponseError);
-			} else {
-				rawResponseId = rawResponse.id;
-			}
-
-			promptTemplate = statePortalPromptTemplate;
-			promptVariables.portalContent = JSON.stringify(response, null, 2);
-		} else {
-			throw new Error(
-				`Unsupported handler type: ${processingDetails.handlerType}`
-			);
-		}
-
-		// Create the prompt
-		const prompt = await promptTemplate.format(promptVariables);
+		});
 
 		// Get the LLM response
 		const response = await model.invoke(prompt);
@@ -843,35 +554,262 @@ export async function apiHandlerAgent(source, processingDetails) {
 		// Parse the response
 		const parsedOutput = await parser.parse(response.content);
 
-		// Add the source ID and raw response ID to each opportunity
-		parsedOutput.opportunities = parsedOutput.opportunities.map(
-			(opportunity) => ({
-				...opportunity,
-				sourceId: source.id,
-				rawResponseId: rawResponseId,
-			})
-		);
+		// Update metrics
+		filterMetrics.passedCount = parsedOutput.opportunities.length;
+		filterMetrics.filterReasoning =
+			parsedOutput.processingMetrics.filterReasoning;
 
-		// Calculate execution time
-		const executionTime = Date.now() - startTime;
+		// Add sample opportunities
+		filterMetrics.sampleOpportunities = parsedOutput.opportunities
+			.slice(0, 3)
+			.map((opp) => ({
+				title: opp.title,
+				relevanceScore: opp.relevanceScore,
+				relevanceReasoning: opp.relevanceReasoning,
+			}));
+
+		const endTime = Date.now();
+		filterMetrics.processingTime = endTime - startTime;
+
+		// Update run manager with first stage filter metrics
+		if (runManager) {
+			await runManager.updateFirstStageFilter(filterMetrics);
+		}
 
 		// Log the agent execution
 		await logAgentExecution(
 			supabase,
-			'api_handler',
+			'first_stage_filter',
 			{ source, processingDetails },
 			parsedOutput,
-			executionTime,
+			filterMetrics.processingTime,
 			{
 				promptTokens: response.usage?.prompt_tokens,
 				completionTokens: response.usage?.completion_tokens,
 			}
 		);
 
+		return {
+			filteredItems: parsedOutput.opportunities,
+			metrics: filterMetrics,
+		};
+	} catch (error) {
+		console.error('Error in first stage filtering:', error);
+
+		// Update metrics with error
+		const endTime = Date.now();
+		const filterMetrics = {
+			inputCount: 0,
+			passedCount: 0,
+			filterReasoning: `Error: ${error.message}`,
+			processingTime: endTime - startTime,
+			sampleOpportunities: [],
+		};
+
+		// Update run manager with error
+		if (runManager) {
+			await runManager.updateFirstStageFilter(filterMetrics);
+		}
+
+		throw error;
+	}
+}
+
+/**
+ * Fetches detailed information for opportunities
+ * @param {Array} filteredItems - The filtered items from first stage
+ * @param {Object} source - The API source
+ * @param {Object} processingDetails - The processing details
+ * @param {Object} runManager - The run manager for tracking
+ * @returns {Promise<Object>} - The detailed items and metrics
+ */
+async function fetchDetailedInformation(
+	filteredItems,
+	source,
+	processingDetails,
+	runManager
+) {
+	const startTime = Date.now();
+	const detailConfig = processingDetails.detailConfig;
+
+	// Metrics for detail API calls
+	const detailMetrics = {
+		opportunitiesRequiringDetails: 0,
+		successfulDetailCalls: 0,
+		failedDetailCalls: 0,
+		detailCallErrors: [],
+		averageDetailResponseTime: 0,
+		totalDetailCallTime: 0,
+	};
+
+	// If detail config is not enabled or no filtered items, return early
+	if (!detailConfig || !detailConfig.enabled || filteredItems.length === 0) {
+		if (runManager) {
+			await runManager.updateDetailApiCalls(detailMetrics);
+		}
+
+		return {
+			detailedItems: filteredItems,
+			metrics: detailMetrics,
+		};
+	}
+
+	// Update metrics
+	detailMetrics.opportunitiesRequiringDetails = filteredItems.length;
+
+	// Process each item
+	const detailedItems = [];
+	const responseTimes = [];
+
+	for (const item of filteredItems) {
+		const itemId = extractDataByPath(item, detailConfig.idField);
+
+		if (itemId) {
+			try {
+				const detailRequestBody = {};
+				detailRequestBody[detailConfig.idParam] = itemId;
+
+				const detailStartTime = Date.now();
+				const detailResponse = await makeConfiguredApiRequest({
+					method: detailConfig.method || 'GET',
+					url: detailConfig.endpoint,
+					queryParameters: {},
+					requestBody: detailRequestBody,
+					headers:
+						detailConfig.headers || processingDetails.requestConfig.headers,
+				});
+				const detailEndTime = Date.now();
+
+				// Track response time
+				const responseTime = detailEndTime - detailStartTime;
+				responseTimes.push(responseTime);
+
+				// Add detailed information
+				detailedItems.push({
+					...item,
+					_detailResponse: detailResponse,
+				});
+
+				detailMetrics.successfulDetailCalls++;
+			} catch (error) {
+				console.error(`Error fetching details for item ${itemId}:`, error);
+
+				// Track error
+				detailMetrics.failedDetailCalls++;
+				detailMetrics.detailCallErrors.push(
+					`${error.message} for ID ${itemId}`
+				);
+
+				// Keep the original item
+				detailedItems.push(item);
+			}
+		} else {
+			// No ID field, keep the original item
+			detailedItems.push(item);
+		}
+	}
+
+	// Calculate metrics
+	const endTime = Date.now();
+	detailMetrics.totalDetailCallTime = endTime - startTime;
+
+	if (responseTimes.length > 0) {
+		detailMetrics.averageDetailResponseTime =
+			responseTimes.reduce((sum, time) => sum + time, 0) / responseTimes.length;
+	}
+
+	// Update run manager with detail API call metrics
+	if (runManager) {
+		await runManager.updateDetailApiCalls(detailMetrics);
+	}
+
+	return {
+		detailedItems,
+		metrics: detailMetrics,
+	};
+}
+
+/**
+ * API Handler Agent that processes an API source
+ * @param {Object} source - The API source to process
+ * @param {Object} processingDetails - The processing details from the source manager
+ * @param {Object} runManager - Optional RunManager instance for tracking
+ * @returns {Promise<Object>} - The processing result
+ */
+export async function apiHandlerAgent(
+	source,
+	processingDetails,
+	runManager = null
+) {
+	const supabase = createSupabaseClient();
+	const startTime = Date.now();
+
+	try {
+		// Step 1: Make the API request(s)
+		const { results: apiResults, metrics: initialApiMetrics } =
+			await processPaginatedApi(source, processingDetails, runManager);
+
+		// Step 2: Perform first-stage filtering
+		const { filteredItems, metrics: firstStageMetrics } =
+			await performFirstStageFiltering(
+				apiResults,
+				source,
+				processingDetails,
+				runManager
+			);
+
+		// Step 3: Fetch detailed information if needed
+		const { detailedItems, metrics: detailApiMetrics } =
+			await fetchDetailedInformation(
+				filteredItems,
+				source,
+				processingDetails,
+				runManager
+			);
+
+		// Store the raw API response
+		const { data: rawResponseData, error: rawResponseError } = await supabase
+			.from('api_raw_responses')
+			.insert({
+				source_id: source.id,
+				response_data: apiResults,
+				created_at: new Date().toISOString(),
+			})
+			.select('id')
+			.single();
+
+		if (rawResponseError) {
+			console.error('Error storing raw API response:', rawResponseError);
+			throw rawResponseError;
+		}
+
+		const rawResponseId = rawResponseData.id;
+
+		// Calculate execution time
+		const executionTime = Date.now() - startTime;
+
+		// Prepare the result
+		const result = {
+			opportunities: detailedItems,
+			totalCount: initialApiMetrics.totalHitCount,
+			rawResponseId,
+			sourceId: source.id,
+		};
+
+		// Log the agent execution
+		await logAgentExecution(
+			supabase,
+			'api_handler',
+			{ source, processingDetails },
+			result,
+			executionTime,
+			{}
+		);
+
 		// Log the API activity
 		await logApiActivity(supabase, source.id, 'api_process', 'success', {
-			opportunitiesFound: parsedOutput.opportunities.length,
-			totalCount: parsedOutput.totalCount,
+			opportunitiesFound: detailedItems.length,
+			totalCount: initialApiMetrics.totalHitCount,
 			rawResponseId: rawResponseId,
 		});
 
@@ -882,15 +820,14 @@ export async function apiHandlerAgent(source, processingDetails) {
 			.eq('id', source.id);
 
 		// Store extracted opportunities in the database
-		if (parsedOutput.opportunities.length > 0) {
-			const opportunitiesToInsert = parsedOutput.opportunities.map(
-				(opportunity) => ({
-					raw_response_id: rawResponseId,
-					source_id: source.id,
-					data: opportunity,
-					confidence_score: 100, // Default confidence score
-				})
-			);
+		if (detailedItems.length > 0) {
+			const opportunitiesToInsert = detailedItems.map((opportunity) => ({
+				raw_response_id: rawResponseId,
+				source_id: source.id,
+				data: opportunity,
+				confidence_score: opportunity.relevanceScore * 10, // Convert 1-10 to 10-100
+				processed: false,
+			}));
 
 			const { error: opportunitiesError } = await supabase
 				.from('api_extracted_opportunities')
@@ -905,8 +842,10 @@ export async function apiHandlerAgent(source, processingDetails) {
 		}
 
 		return {
-			...parsedOutput,
-			rawResponseId,
+			...result,
+			initialApiMetrics,
+			firstStageMetrics,
+			detailApiMetrics,
 		};
 	} catch (error) {
 		// Calculate execution time even if there was an error
@@ -931,6 +870,11 @@ export async function apiHandlerAgent(source, processingDetails) {
 			error: String(error),
 		});
 
+		// Update run with error if runManager is provided
+		if (runManager) {
+			await runManager.updateRunError(error);
+		}
+
 		throw error;
 	}
 }
@@ -951,13 +895,18 @@ export async function processNextSourceWithHandler() {
 	}
 
 	// Process the source with the API Handler Agent
-	const { source, processingDetails } = result;
-	const handlerResult = await apiHandlerAgent(source, processingDetails);
+	const { source, processingDetails, runManager } = result;
+	const handlerResult = await apiHandlerAgent(
+		source,
+		processingDetails,
+		runManager
+	);
 
 	// Return the complete result
 	return {
 		source,
 		processingDetails,
 		handlerResult,
+		runManager,
 	};
 }

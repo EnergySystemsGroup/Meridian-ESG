@@ -6,6 +6,7 @@ import {
 	logAgentExecution,
 	logApiActivity,
 } from '../supabase';
+import { RunManager } from '../services/runManager';
 import { z } from 'zod';
 
 // Define the output schema for the agent
@@ -43,6 +44,13 @@ const sourceProcessingSchema = z.object({
 			totalCountPath: z.string().optional(),
 		})
 		.describe('Configuration for handling paginated responses'),
+	firstStageFilterConfig: z
+		.object({
+			enabled: z.boolean().default(true),
+			minRelevanceScore: z.number().default(5),
+			filterCriteria: z.array(z.string()).optional(),
+		})
+		.describe('Configuration for the first stage filtering'),
 	detailConfig: z
 		.object({
 			enabled: z.boolean().default(false),
@@ -53,6 +61,13 @@ const sourceProcessingSchema = z.object({
 			idParam: z.string().optional(),
 		})
 		.describe('Configuration for fetching detailed information'),
+	secondStageFilterConfig: z
+		.object({
+			enabled: z.boolean().default(true),
+			minRelevanceScore: z.number().default(7),
+			filterCriteria: z.array(z.string()).optional(),
+		})
+		.describe('Configuration for the second stage filtering'),
 	responseMapping: z
 		.record(z.string())
 		.optional()
@@ -133,29 +148,30 @@ function formatConfigurations(source) {
 
 /**
  * Source Manager Agent that determines how to process an API source
- * @param {Object} source - The API source information
- * @returns {Promise<Object>} - Processing details for the source
+ * @param {Object} source - The API source to process
+ * @param {Object} runManager - Optional RunManager instance for tracking
+ * @returns {Promise<Object>} - The processing details
  */
-export async function sourceManagerAgent(source) {
-	const startTime = Date.now();
+export async function sourceManagerAgent(source, runManager = null) {
 	const supabase = createSupabaseClient();
+	const startTime = Date.now();
 
 	try {
-		// Initialize the LLM
+		// Format the configurations
+		const formattedConfigurations = formatConfigurations(source);
+
+		// Create the output parser
+		const parser = StructuredOutputParser.fromZodSchema(sourceProcessingSchema);
+		const formatInstructions = parser.getFormatInstructions();
+
+		// Create the model
 		const model = new ChatAnthropic({
 			temperature: 0,
 			modelName: 'claude-3-5-haiku-20241022',
 			anthropicApiKey: process.env.ANTHROPIC_API_KEY,
 		});
 
-		// Create the output parser
-		const parser = StructuredOutputParser.fromZodSchema(sourceProcessingSchema);
-		const formatInstructions = parser.getFormatInstructions();
-
-		// Format the configurations
-		const formattedConfigurations = formatConfigurations(source);
-
-		// Create the prompt
+		// Format the prompt
 		const prompt = await promptTemplate.format({
 			sourceInfo: JSON.stringify(source, null, 2),
 			configurations: formattedConfigurations,
@@ -219,6 +235,11 @@ export async function sourceManagerAgent(source) {
 			error: String(error),
 		});
 
+		// Update run with error if runManager is provided
+		if (runManager) {
+			await runManager.updateRunError(error);
+		}
+
 		throw error;
 	}
 }
@@ -281,12 +302,23 @@ export async function processNextSource() {
 		return null;
 	}
 
-	// Process the source with the Source Manager Agent
-	const processingDetails = await sourceManagerAgent(source);
+	// Create a new run manager
+	const runManager = new RunManager();
+	await runManager.startRun(source.id);
 
-	// Return the source and processing details
-	return {
-		source,
-		processingDetails,
-	};
+	try {
+		// Process the source with the Source Manager Agent
+		const processingDetails = await sourceManagerAgent(source, runManager);
+
+		// Return the source, processing details, and run manager
+		return {
+			source,
+			processingDetails,
+			runManager,
+		};
+	} catch (error) {
+		console.error('Error processing source:', error);
+		await runManager.updateRunError(error);
+		return null;
+	}
 }
