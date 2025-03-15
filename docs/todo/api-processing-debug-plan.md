@@ -43,6 +43,25 @@ Implement a logging wrapper for each major function that:
 
 ## 2. Systematic Testing Plan
 
+### Phase 0: Initial Route and Process Coordinator Testing
+
+1. **Test the initial API route that triggers the process**
+
+   - Input: Source ID
+   - Expected Output: Run ID and initial status
+   - Verification: Ensure the route correctly initiates the process and returns a valid run ID
+
+2. **Test the `processApiSource` function in isolation**
+
+   - Input: Source ID and optional Run ID
+   - Expected Output: Complete processing results
+   - Verification: Check if all stages are executed in the correct order
+
+3. **Test the Run Manager**
+   - Input: Source ID
+   - Expected Output: Run status updates at each stage
+   - Verification: Ensure the run manager correctly tracks the status of each stage
+
 ### Phase 1: Source Manager Testing
 
 1. **Test the `sourceManagerAgent` function in isolation**
@@ -152,39 +171,66 @@ Enhance the logging system to capture:
 - Execution time
 - Error details
 
+### Run Manager Enhancements
+
+Improve the Run Manager to:
+
+- Track the status of each processing stage
+- Provide detailed error information
+- Support debugging and monitoring
+- Allow for resuming failed runs at specific stages
+
 ## 4. Specific Tests to Run
 
-1. **Source Configuration Test**
+1. **Initial Route Test**
+
+   - Test ID: `initial-route-test`
+   - Description: Test the API route that triggers the process
+   - Expected Result: Successful initiation of the process with a valid run ID
+
+2. **Process Coordinator Test**
+
+   - Test ID: `process-coordinator-test`
+   - Description: Test the complete processing pipeline
+   - Expected Result: Successful coordination of all processing stages
+
+3. **Run Manager Test**
+
+   - Test ID: `run-manager-test`
+   - Description: Test the run status tracking
+   - Expected Result: Accurate status updates at each stage
+
+4. **Source Configuration Test**
 
    - Test ID: `source-config-test`
    - Description: Verify source configuration retrieval
    - Expected Result: Complete configuration object
 
-2. **API Endpoint Test**
+5. **API Endpoint Test**
 
    - Test ID: `api-endpoint-test`
    - Description: Direct call to the API endpoint
    - Expected Result: Successful response with data
 
-3. **Pagination Test**
+6. **Pagination Test**
 
    - Test ID: `pagination-test`
    - Description: Test pagination functionality
    - Expected Result: All pages retrieved correctly
 
-4. **Filter Logic Test**
+7. **Filter Logic Test**
 
    - Test ID: `filter-logic-test`
    - Description: Test opportunity filtering
    - Expected Result: Correctly filtered opportunities
 
-5. **Database Schema Test**
+8. **Database Schema Test**
 
    - Test ID: `db-schema-test`
    - Description: Validate database schema
    - Expected Result: All required fields present
 
-6. **End-to-End Flow Test**
+9. **End-to-End Flow Test**
    - Test ID: `e2e-flow-test`
    - Description: Complete processing pipeline
    - Expected Result: Successful processing with accurate metrics
@@ -196,6 +242,8 @@ Enhance the logging system to capture:
 3. Implement a UI for visualizing the processing stages
 4. Add database schema validation
 5. Create sample data fixtures for testing
+6. Enhance the Run Manager to track stage statuses
+7. Add detailed error handling and reporting
 
 ## 6. Expected Outcomes
 
@@ -206,11 +254,12 @@ By following this debugging plan, we expect to:
 3. Ensure the entire pipeline works correctly
 4. Improve error handling and logging
 5. Create a more robust and maintainable system
+6. Enhance the visibility of the processing stages
 
 ## 7. Timeline
 
-1. **Day 1**: Set up debugging infrastructure
-2. **Day 2**: Test Source Manager and API Handler
-3. **Day 3**: Test Detail Processor and Data Processor
-4. **Day 4**: End-to-end testing and fixes
+1. **Day 1**: Set up debugging infrastructure and enhance Run Manager
+2. **Day 2**: Test Initial Route, Process Coordinator, and Source Manager
+3. **Day 3**: Test API Handler and Detail Processor
+4. **Day 4**: Test Data Processor and end-to-end flow
 5. **Day 5**: Documentation and final validation
