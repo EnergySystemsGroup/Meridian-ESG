@@ -8,12 +8,17 @@ import {
 	CardDescription,
 	CardHeader,
 	CardTitle,
-} from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Button } from '@/components/ui/button';
-import { Skeleton } from '@/components/ui/skeleton';
-import { RunMetricsCard } from '@/components/funding/RunMetricsCard';
-import { toast } from '@/components/ui/use-toast';
+} from '@/app/components/ui/card';
+import {
+	Tabs,
+	TabsContent,
+	TabsList,
+	TabsTrigger,
+} from '@/app/components/ui/tabs';
+import { Button } from '@/app/components/ui/button';
+import { Skeleton } from '@/app/components/ui/skeleton';
+import { RunMetricsCard } from '@/app/components/funding/RunMetricsCard';
+import { toast } from '@/app/components/ui/use-toast';
 
 export default function SourceDetailPage({ params }) {
 	const { id } = params;
