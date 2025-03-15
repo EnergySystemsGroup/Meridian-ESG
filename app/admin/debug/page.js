@@ -9,6 +9,7 @@ import {
 	CardDescription,
 	CardHeader,
 	CardTitle,
+	CardFooter,
 } from '@/app/components/ui/card';
 import {
 	Tabs,
@@ -17,6 +18,225 @@ import {
 	TabsTrigger,
 } from '@/app/components/ui/tabs';
 import { toast } from 'sonner';
+
+// Component descriptions and expected outputs
+const componentInfo = {
+	'initial-route': {
+		title: 'Initial Route',
+		description: 'Tests the API endpoint that starts the processing pipeline',
+		functions: [
+			'POST /api/admin/funding-sources/[id]/process',
+			'RunManager.startRun()',
+		],
+		input: 'Source ID',
+		expectedOutput: `{
+  "success": true,
+  "message": "Processing started",
+  "runId": "uuid-of-new-run",
+  "sourceId": "source-id",
+  "status": "started",
+  "startedAt": "timestamp"
+}`,
+	},
+	'process-coordinator': {
+		title: 'Process Coordinator',
+		description:
+			'Orchestrates the entire processing pipeline, calling each agent in sequence',
+		functions: [
+			'processApiSource(sourceId, runId)',
+			'processAllActiveSources(limit)',
+		],
+		input: 'Source ID, Optional Run ID',
+		expectedOutput: `{
+  "status": "success",
+  "source": {
+    "id": "source-id",
+    "name": "Source Name"
+  },
+  "metrics": {
+    "initialApiMetrics": { /* metrics from initial API call */ },
+    "firstStageMetrics": { /* metrics from first stage filtering */ },
+    "detailApiMetrics": { /* metrics from detail API calls */ },
+    "secondStageMetrics": { /* metrics from second stage filtering */ },
+    "storageMetrics": { /* metrics from storage operations */ },
+    "totalExecutionTime": 12345
+  },
+  "runId": "uuid-of-run"
+}`,
+	},
+	'run-manager': {
+		title: 'Run Manager',
+		description:
+			'Manages the state of a processing run and tracks the status of each stage',
+		functions: [
+			'startRun(sourceId)',
+			'updateInitialApiCall(stats)',
+			'updateFirstStageFilter(stats)',
+			'updateDetailApiCalls(stats)',
+			'updateSecondStageFilter(stats)',
+			'updateStorageResults(stats)',
+			'completeRun(totalTime)',
+			'updateRunError(error)',
+			'updateStageStatus(stage, status)',
+		],
+		input: 'Source ID',
+		expectedOutput: `{
+  "runId": "uuid-of-test-run",
+  "runData": {
+    "id": "uuid-of-test-run",
+    "source_id": "source-id",
+    "status": "completed",
+    "source_manager_status": "completed",
+    "api_handler_status": "completed",
+    "detail_processor_status": "completed",
+    "data_processor_status": "completed",
+    "initial_api_call": { /* stats */ },
+    "first_stage_filter": { /* stats */ },
+    "detail_api_calls": { /* stats */ },
+    "second_stage_filter": { /* stats */ },
+    "storage_results": { /* stats */ }
+  },
+  "message": "Run manager test completed successfully"
+}`,
+	},
+	'source-manager': {
+		title: 'Source Manager',
+		description:
+			'Determines how to process an API source and configures the API request',
+		functions: [
+			'sourceManagerAgent(source, runManager)',
+			'getNextSourceToProcess()',
+			'processNextSource()',
+		],
+		input: 'Source with configurations',
+		expectedOutput: `{
+  "apiEndpoint": "https://api.example.com/opportunities",
+  "requestConfig": {
+    "method": "GET",
+    "headers": { /* headers */ }
+  },
+  "queryParameters": { /* query parameters */ },
+  "requestBody": { /* request body */ },
+  "paginationConfig": { /* pagination configuration */ },
+  "firstStageFilterConfig": { /* first stage filter configuration */ },
+  "detailConfig": { /* detail configuration */ },
+  "secondStageFilterConfig": { /* second stage filter configuration */ },
+  "responseMapping": { /* response mapping */ },
+  "authMethod": "apikey",
+  "authDetails": { /* authentication details */ },
+  "handlerType": "standard",
+  "reasoning": "Explanation of choices"
+}`,
+	},
+	'api-handler': {
+		title: 'API Handler',
+		description:
+			'Makes API requests, handles pagination, and performs first-stage filtering',
+		functions: [
+			'apiHandlerAgent(source, processingDetails, runManager)',
+			'processPaginatedApi(source, processingDetails, runManager)',
+			'performFirstStageFiltering(apiResults, source, processingDetails, runManager)',
+			'fetchDetailedInformation(filteredItems, source, processingDetails, runManager)',
+		],
+		input: 'Source and processing details from Source Manager',
+		expectedOutput: `{
+  "opportunities": [ /* filtered opportunities */ ],
+  "initialApiMetrics": {
+    "totalHitCount": 500,
+    "retrievedCount": 100,
+    "firstPageCount": 50,
+    "totalPages": 10,
+    "apiEndpoint": "https://api.example.com/opportunities",
+    "responseTime": 1500
+  },
+  "firstStageMetrics": {
+    "inputCount": 100,
+    "passedCount": 50,
+    "processingTime": 2000,
+    "filterReasoning": "First stage filtering"
+  },
+  "detailApiMetrics": {
+    "opportunitiesRequiringDetails": 50,
+    "successfulDetailCalls": 48,
+    "failedDetailCalls": 2,
+    "totalDetailCallTime": 5000,
+    "averageDetailResponseTime": 104
+  },
+  "rawApiResponse": { /* raw API response */ },
+  "requestDetails": { /* request details */ }
+}`,
+	},
+	'detail-processor': {
+		title: 'Detail Processor',
+		description:
+			'Processes detailed opportunity information and performs second-stage filtering',
+		functions: [
+			'detailProcessorAgent(detailedOpportunities, source, runManager, config)',
+			'processDetailedInfo(detailedOpportunities, source, runManager, config)',
+		],
+		input: 'Opportunities from API Handler',
+		expectedOutput: `{
+  "opportunities": [ /* filtered opportunities with details */ ],
+  "filteredCount": 20,
+  "processingMetrics": {
+    "inputCount": 50,
+    "passedCount": 30,
+    "rejectedCount": 20,
+    "rejectionReasons": [ /* reasons for rejection */ ],
+    "averageScoreBeforeFiltering": 6.5,
+    "averageScoreAfterFiltering": 8.2,
+    "processingTime": 3000,
+    "tokenUsage": 15000
+  }
+}`,
+	},
+	'data-processor': {
+		title: 'Data Processor',
+		description: 'Stores filtered opportunities in the database',
+		functions: [
+			'dataProcessorAgent(opportunity, sourceId, rawApiResponse, requestDetails, runManager)',
+			'processUnprocessedOpportunities(sourceId, rawApiResponse, requestDetails, runManager)',
+		],
+		input: 'Source ID, Raw API Response, Request Details',
+		expectedOutput: `{
+  "metrics": {
+    "attemptedCount": 30,
+    "storedCount": 25,
+    "updatedCount": 3,
+    "skippedCount": 2,
+    "processingTime": 2000
+  },
+  "opportunities": [ /* stored opportunities */ ]
+}`,
+	},
+	'api-endpoint': {
+		title: 'API Endpoint',
+		description:
+			'Makes a direct call to an API endpoint to test connectivity and response',
+		functions: ['fetch(url, options)'],
+		input: 'API Endpoint URL, Method, Headers, Query Parameters, Request Body',
+		expectedOutput: `{
+  "status": 200,
+  "statusText": "OK",
+  "headers": { /* response headers */ },
+  "data": { /* response data */ }
+}`,
+	},
+	'db-schema': {
+		title: 'Database Schema',
+		description:
+			'Validates the database schema to ensure all required fields exist',
+		functions: ['supabase.from("information_schema.columns").select()'],
+		input: 'None',
+		expectedOutput: `{
+  "api_sources": [ /* column definitions */ ],
+  "api_source_configurations": [ /* column definitions */ ],
+  "api_source_runs": [ /* column definitions */ ],
+  "funding_opportunities": [ /* column definitions */ ],
+  "api_raw_responses": [ /* column definitions */ ]
+}`,
+	},
+};
 
 export default function DebugPage() {
 	const supabase = createClientComponentClient();
@@ -150,11 +370,44 @@ export default function DebugPage() {
 								<TabsTrigger value='db-schema'>DB Schema</TabsTrigger>
 							</TabsList>
 
+							{/* Component Information */}
+							<div className='bg-gray-50 p-4 rounded-md'>
+								<h3 className='text-lg font-semibold mb-2'>
+									{componentInfo[activeTab].title}
+								</h3>
+								<p className='mb-4'>{componentInfo[activeTab].description}</p>
+
+								<div className='mb-4'>
+									<h4 className='font-medium mb-1'>Major Functions:</h4>
+									<ul className='list-disc pl-5 space-y-1'>
+										{componentInfo[activeTab].functions.map((func, index) => (
+											<li key={index} className='text-sm font-mono'>
+												{func}
+											</li>
+										))}
+									</ul>
+								</div>
+
+								<div className='mb-4'>
+									<h4 className='font-medium mb-1'>Test Input:</h4>
+									<p className='text-sm'>{componentInfo[activeTab].input}</p>
+								</div>
+
+								<div>
+									<h4 className='font-medium mb-1'>Expected Output:</h4>
+									<pre className='text-xs bg-gray-100 p-3 rounded overflow-auto max-h-[200px]'>
+										{componentInfo[activeTab].expectedOutput}
+									</pre>
+								</div>
+							</div>
+
 							<div className='pt-4'>
 								<Button
 									onClick={runDebugTest}
 									disabled={loading || !selectedSource}>
-									{loading ? 'Running Test...' : `Run ${activeTab} Test`}
+									{loading
+										? 'Running Test...'
+										: `Run ${componentInfo[activeTab].title} Test`}
 								</Button>
 							</div>
 						</Tabs>
@@ -166,13 +419,36 @@ export default function DebugPage() {
 				<Card>
 					<CardHeader>
 						<CardTitle>Test Results</CardTitle>
-						<CardDescription>Results from the {activeTab} test</CardDescription>
+						<CardDescription>
+							Results from the {componentInfo[activeTab].title} test
+						</CardDescription>
 					</CardHeader>
 					<CardContent>
 						<div className='bg-gray-50 p-4 rounded-md overflow-auto max-h-[600px]'>
 							<pre className='text-sm'>{JSON.stringify(result, null, 2)}</pre>
 						</div>
 					</CardContent>
+					<CardFooter>
+						<div className='w-full'>
+							<h4 className='font-medium mb-2'>
+								Compare with Expected Output:
+							</h4>
+							<div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
+								<div>
+									<h5 className='text-sm font-medium mb-1'>Expected:</h5>
+									<pre className='text-xs bg-gray-100 p-3 rounded overflow-auto max-h-[200px]'>
+										{componentInfo[activeTab].expectedOutput}
+									</pre>
+								</div>
+								<div>
+									<h5 className='text-sm font-medium mb-1'>Actual:</h5>
+									<pre className='text-xs bg-gray-100 p-3 rounded overflow-auto max-h-[200px]'>
+										{JSON.stringify(result, null, 2)}
+									</pre>
+								</div>
+							</div>
+						</div>
+					</CardFooter>
 				</Card>
 			)}
 		</div>
