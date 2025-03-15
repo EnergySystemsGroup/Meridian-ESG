@@ -45,6 +45,7 @@ export async function GET() {
 			secondStageFilter: {},
 			databaseStorage: {},
 			processingTime: 0,
+			actualProcessing: {},
 		};
 
 		// Make a test API call to Grants.gov search endpoint
@@ -160,6 +161,46 @@ export async function GET() {
 						sampleFilteredOpportunities: filteredOpportunities.slice(0, 3),
 						filteringTime: firstStageTime,
 					};
+
+					// After getting the initial API verification results, test the actual processing
+					try {
+						console.log('Testing actual processing pipeline...');
+
+						// Call the processing endpoint for Grants.gov source
+						const processingResponse = await fetch(
+							`/api/funding/sources/${source.id}/process`,
+							{
+								method: 'POST',
+								headers: {
+									'Content-Type': 'application/json',
+								},
+							}
+						);
+
+						if (!processingResponse.ok) {
+							throw new Error(
+								`Processing failed with status ${processingResponse.status}`
+							);
+						}
+
+						const processingResult = await processingResponse.json();
+
+						// Add actual processing results to the stats
+						stats.actualProcessing = {
+							success: true,
+							processingResults: processingResult,
+							opportunitiesProcessed:
+								processingResult.opportunities?.length || 0,
+							llmFilteringResults: processingResult.filteringResults,
+							storedOpportunities: processingResult.storedOpportunities,
+						};
+					} catch (processingError) {
+						console.error('Error in actual processing:', processingError);
+						stats.actualProcessing = {
+							success: false,
+							error: processingError.message,
+						};
+					}
 				}
 
 				// If we have search results, test the detail API with the first opportunity
