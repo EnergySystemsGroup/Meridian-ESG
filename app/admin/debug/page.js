@@ -31,11 +31,17 @@ const componentInfo = {
 		input: 'Source ID',
 		expectedOutput: `{
   "success": true,
-  "message": "Processing started",
-  "runId": "uuid-of-new-run",
+  "component": "initial-route",
   "sourceId": "source-id",
-  "status": "started",
-  "startedAt": "timestamp"
+  "runId": "uuid-of-new-run",
+  "result": {
+    "success": true,
+    "message": "Processing started",
+    "runId": "uuid-of-new-run",
+    "sourceId": "source-id",
+    "status": "started",
+    "startedAt": "timestamp"
+  },
 }`,
 	},
 	'process-coordinator': {

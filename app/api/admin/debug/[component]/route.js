@@ -6,10 +6,19 @@ import { processDetailedInfo } from '@/app/lib/agents/detailProcessorAgent';
 import { processUnprocessedOpportunities } from '@/app/lib/agents/dataProcessorAgent';
 import { RunManager } from '@/app/lib/services/runManager';
 import { processApiSource } from '@/app/lib/services/processCoordinator';
+import { POST as processSourceRoute } from '@/app/api/admin/funding-sources/[id]/process/route';
 
+// Start of Selection
 /**
  * Debug controller for testing individual components of the API processing pipeline
  * POST /api/admin/debug/[component]
+ *
+ * Expected Input:
+ * {
+ *   sourceId: string, // The ID of the source to be processed
+ *   runId?: string,   // Optional ID for the run manager
+ *   skipLLM?: boolean // Optional flag to skip LLM processing
+ * }
  */
 export async function POST(request, { params }) {
 	try {
@@ -69,11 +78,11 @@ export async function POST(request, { params }) {
 		// Process the requested component
 		switch (component) {
 			case 'initial-route':
-				// Test the initial route that triggers the process
-				if (!sourceId)
+				if (!sourceId) {
 					throw new Error('Source ID is required for initial-route test');
+				}
 
-				// Simulate the initial route behavior
+				// Create a new run manager to test just the initial part
 				const newRunManager = new RunManager();
 				const newRunId = await newRunManager.startRun(sourceId);
 
@@ -86,12 +95,28 @@ export async function POST(request, { params }) {
 
 				if (runError) throw runError;
 
+				// Immediately update the run to indicate it was a test
+				await supabase
+					.from('api_source_runs')
+					.update({
+						status: 'completed',
+						completed_at: new Date().toISOString(),
+						error_details: JSON.stringify({
+							message: 'This was a test run from the debug interface',
+							testOnly: true,
+						}),
+					})
+					.eq('id', newRunId);
+
+				// Return a response similar to what the actual route would return
+				// Note: We're not updating the run status to completed, so it stays as "started"
 				result = {
+					success: true,
+					message: 'Processing started',
 					runId: newRunId,
-					runStatus: runData.status,
 					sourceId: sourceId,
-					createdAt: runData.created_at,
-					message: 'Run initiated successfully',
+					status: runData.status, // This should be "started"
+					startedAt: runData.started_at,
 				};
 				break;
 
@@ -255,13 +280,13 @@ export async function POST(request, { params }) {
 						: {}),
 				});
 
-				const responseData = await apiResponse.json();
+				const apiResponseData = await apiResponse.json();
 
 				result = {
 					status: apiResponse.status,
 					statusText: apiResponse.statusText,
 					headers: Object.fromEntries(apiResponse.headers.entries()),
-					data: responseData,
+					data: apiResponseData,
 				};
 				break;
 
