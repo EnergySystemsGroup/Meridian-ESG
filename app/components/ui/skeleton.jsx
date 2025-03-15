@@ -1,9 +1,10 @@
 import * as React from 'react';
+import { cn } from '@/app/utils/cn';
 
 function Skeleton({ className, ...props }) {
 	return (
 		<div
-			className={`animate-pulse rounded-md bg-muted ${className}`}
+			className={cn('animate-pulse rounded-md bg-muted', className)}
 			{...props}
 		/>
 	);

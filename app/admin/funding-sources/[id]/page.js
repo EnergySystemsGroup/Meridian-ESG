@@ -15,8 +15,9 @@ import {
 import { Separator } from '@/app/components/ui/separator';
 import { Skeleton } from '@/app/components/ui/skeleton';
 import { toast } from 'sonner';
-import { ArrowLeft, Edit, Trash2 } from 'lucide-react';
+import { ArrowLeft, Edit, Trash2, Play } from 'lucide-react';
 import Link from 'next/link';
+import { RunsTable } from '@/app/components/admin/RunsTable';
 
 export default function FundingSourceDetail() {
 	const params = useParams();
@@ -25,52 +26,103 @@ export default function FundingSourceDetail() {
 	const [source, setSource] = useState(null);
 	const [loading, setLoading] = useState(true);
 	const [deleting, setDeleting] = useState(false);
-	const [opportunities, setOpportunities] = useState([]);
-	const [loadingOpportunities, setLoadingOpportunities] = useState(true);
+	const [processing, setProcessing] = useState(false);
+	const [runs, setRuns] = useState([]);
+	const [loadingRuns, setLoadingRuns] = useState(true);
 
 	useEffect(() => {
-		async function fetchSource() {
-			try {
-				setLoading(true);
-				const { data, error } = await supabase
-					.from('funding_sources')
-					.select('*')
-					.eq('id', params.id)
-					.single();
-
-				if (error) throw error;
-				setSource(data);
-			} catch (error) {
-				console.error('Error fetching funding source:', error);
-				toast.error('Failed to load funding source');
-			} finally {
-				setLoading(false);
-			}
-		}
-
-		async function fetchOpportunities() {
-			try {
-				setLoadingOpportunities(true);
-				const { data, error } = await supabase
-					.from('funding_opportunities')
-					.select('id, title, status, open_date, close_date')
-					.eq('source_id', params.id)
-					.order('created_at', { ascending: false })
-					.limit(10);
-
-				if (error) throw error;
-				setOpportunities(data || []);
-			} catch (error) {
-				console.error('Error fetching opportunities:', error);
-				toast.error('Failed to load opportunities');
-			} finally {
-				setLoadingOpportunities(false);
-			}
-		}
-
 		fetchSource();
-		fetchOpportunities();
-	}, [params.id, supabase]);
+		fetchRuns();
+
+		// Subscribe to changes in the runs table
+		const runsChannel = supabase
+			.channel('runs-changes')
+			.on(
+				'postgres_changes',
+				{
+					event: '*',
+					schema: 'public',
+					table: 'api_source_runs',
+					filter: `source_id=eq.${params.id}`,
+				},
+				(payload) => {
+					console.log('Runs change received:', payload);
+					fetchRuns();
+				}
+			)
+			.subscribe();
+
+		return () => {
+			supabase.removeChannel(runsChannel);
+		};
+	}, [params.id]);
+
+	async function fetchSource() {
+		try {
+			setLoading(true);
+			const { data, error } = await supabase
+				.from('api_sources')
+				.select('*')
+				.eq('id', params.id)
+				.single();
+
+			if (error) throw error;
+			setSource(data);
+		} catch (error) {
+			console.error('Error fetching funding source:', error);
+			toast.error('Failed to load funding source');
+		} finally {
+			setLoading(false);
+		}
+	}
+
+	async function fetchRuns() {
+		try {
+			setLoadingRuns(true);
+			const { data, error } = await supabase
+				.from('api_source_runs')
+				.select('*')
+				.eq('source_id', params.id)
+				.order('created_at', { ascending: false });
+
+			if (error) throw error;
+			setRuns(data || []);
+		} catch (error) {
+			console.error('Error fetching runs:', error);
+			toast.error('Failed to load processing runs');
+		} finally {
+			setLoadingRuns(false);
+		}
+	}
+
+	async function processSource() {
+		setProcessing(true);
+
+		try {
+			const response = await fetch(
+				`/api/admin/funding-sources/${params.id}/process`,
+				{
+					method: 'POST',
+				}
+			);
+
+			if (!response.ok) {
+				const errorData = await response.json();
+				throw new Error(errorData.error || 'Failed to process source');
+			}
+
+			const result = await response.json();
+			toast.success('Source processing started');
+
+			// Refresh runs after a short delay
+			setTimeout(fetchRuns, 2000);
+		} catch (error) {
+			console.error('Error processing source:', error);
+			toast.error('Failed to process source');
+		} finally {
+			setProcessing(false);
+		}
+	}
 
 	const handleDelete = async () => {
 		if (
@@ -84,7 +136,7 @@ export default function FundingSourceDetail() {
 		try {
 			setDeleting(true);
 			const { error } = await supabase
-				.from('funding_sources')
+				.from('api_sources')
 				.delete()
 				.eq('id', params.id);
 
@@ -167,6 +219,14 @@ export default function FundingSourceDetail() {
 					</Link>
 				</Button>
 				<div className='flex space-x-2'>
+					<Button
+						variant='default'
+						size='sm'
+						onClick={processSource}
+						disabled={processing}>
+						<Play className='mr-2 h-4 w-4' />
+						{processing ? 'Processing...' : 'Process Now'}
+					</Button>
 					<Button variant='outline' size='sm' asChild>
 						<Link href={`/admin/funding-sources/${params.id}/edit`}>
 							<Edit className='mr-2 h-4 w-4' />
@@ -184,7 +244,7 @@ export default function FundingSourceDetail() {
 				</div>
 			</div>
 
-			<Card>
+			<Card className='mb-6'>
 				<CardHeader>
 					<CardTitle>{source.name}</CardTitle>
 					<CardDescription>Funding Source Details</CardDescription>
@@ -247,54 +307,17 @@ export default function FundingSourceDetail() {
 				</CardContent>
 			</Card>
 
-			<div className='mt-8'>
-				<h2 className='text-xl font-semibold mb-4'>Recent Opportunities</h2>
-				<Separator className='mb-4' />
-
-				{loadingOpportunities ? (
-					<div className='space-y-4'>
-						<Skeleton className='h-12 w-full' />
-						<Skeleton className='h-12 w-full' />
-						<Skeleton className='h-12 w-full' />
-					</div>
-				) : opportunities.length > 0 ? (
-					<div className='space-y-4'>
-						{opportunities.map((opp) => (
-							<Card key={opp.id}>
-								<CardContent className='p-4'>
-									<div className='flex justify-between items-center'>
-										<div>
-											<h3 className='font-medium'>{opp.title}</h3>
-											<p className='text-sm text-muted-foreground'>
-												{opp.status ? `Status: ${opp.status}` : ''}
-												{opp.open_date
-													? ` • Opens: ${new Date(
-															opp.open_date
-													  ).toLocaleDateString()}`
-													: ''}
-												{opp.close_date
-													? ` • Closes: ${new Date(
-															opp.close_date
-													  ).toLocaleDateString()}`
-													: ''}
-											</p>
-										</div>
-										<Button variant='outline' size='sm' asChild>
-											<Link href={`/admin/funding-opportunities/${opp.id}`}>
-												View
-											</Link>
-										</Button>
-									</div>
-								</CardContent>
-							</Card>
-						))}
-					</div>
-				) : (
-					<p className='text-muted-foreground'>
-						No opportunities found for this funding source.
-					</p>
-				)}
-			</div>
+			<Card>
+				<CardHeader>
+					<CardTitle>Processing Runs</CardTitle>
+					<CardDescription>
+						History of processing runs for this source
+					</CardDescription>
+				</CardHeader>
+				<CardContent>
+					<RunsTable runs={runs} loading={loadingRuns} />
+				</CardContent>
+			</Card>
 		</div>
 	);
 }
