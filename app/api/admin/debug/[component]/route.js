@@ -1,0 +1,323 @@
+import { NextResponse } from 'next/server';
+import { createSupabaseClient } from '@/app/lib/supabase';
+import { sourceManagerAgent } from '@/app/lib/agents/sourceManagerAgent';
+import { apiHandlerAgent } from '@/app/lib/agents/apiHandlerAgent';
+import { processDetailedInfo } from '@/app/lib/agents/detailProcessorAgent';
+import { processUnprocessedOpportunities } from '@/app/lib/agents/dataProcessorAgent';
+import { RunManager } from '@/app/lib/services/runManager';
+import { processApiSource } from '@/app/lib/services/processCoordinator';
+
+/**
+ * Debug controller for testing individual components of the API processing pipeline
+ * POST /api/admin/debug/[component]
+ */
+export async function POST(request, { params }) {
+	try {
+		const { component } = params;
+		const body = await request.json();
+		const supabase = createSupabaseClient();
+
+		console.log(`Debug request for component: ${component}`, body);
+
+		// Common parameters
+		const { sourceId, runId, skipLLM = false } = body;
+		let result = null;
+		let source = null;
+		let runManager = null;
+
+		// Get the source if sourceId is provided
+		if (sourceId) {
+			const { data, error } = await supabase
+				.from('api_sources')
+				.select('*')
+				.eq('id', sourceId)
+				.single();
+
+			if (error) throw error;
+			source = data;
+
+			// Get the source configurations
+			const { data: configurations, error: configError } = await supabase
+				.from('api_source_configurations')
+				.select('*')
+				.eq('source_id', sourceId);
+
+			if (configError) throw configError;
+
+			// Format configurations as an object
+			const configObject = {};
+			configurations.forEach((config) => {
+				configObject[config.config_type] = config.configuration;
+			});
+
+			// Add configurations to the source
+			source.configurations = configObject;
+		}
+
+		// Create or use existing run manager
+		if (runId) {
+			runManager = new RunManager(runId);
+		} else if (
+			sourceId &&
+			component !== 'initial-route' &&
+			component !== 'run-manager'
+		) {
+			runManager = new RunManager();
+			await runManager.startRun(sourceId);
+		}
+
+		// Process the requested component
+		switch (component) {
+			case 'initial-route':
+				// Test the initial route that triggers the process
+				if (!sourceId)
+					throw new Error('Source ID is required for initial-route test');
+
+				// Simulate the initial route behavior
+				const newRunManager = new RunManager();
+				const newRunId = await newRunManager.startRun(sourceId);
+
+				// Get the run details
+				const { data: runData, error: runError } = await supabase
+					.from('api_source_runs')
+					.select('*')
+					.eq('id', newRunId)
+					.single();
+
+				if (runError) throw runError;
+
+				result = {
+					runId: newRunId,
+					runStatus: runData.status,
+					sourceId: sourceId,
+					createdAt: runData.created_at,
+					message: 'Run initiated successfully',
+				};
+				break;
+
+			case 'process-coordinator':
+				// Test the processApiSource function
+				if (!sourceId)
+					throw new Error('Source ID is required for process-coordinator test');
+
+				// Use the provided runId or create a new one
+				const coordinatorResult = await processApiSource(sourceId, runId);
+
+				result = coordinatorResult;
+				break;
+
+			case 'run-manager':
+				// Test the RunManager
+				if (!sourceId)
+					throw new Error('Source ID is required for run-manager test');
+
+				// Create a new run manager and test its methods
+				const testRunManager = new RunManager();
+				const testRunId = await testRunManager.startRun(sourceId);
+
+				// Test updating different stages
+				await testRunManager.updateInitialApiCall({
+					totalHitCount: 100,
+					retrievedCount: 50,
+					firstPageCount: 25,
+					totalPages: 4,
+					sampleOpportunities: [],
+					apiEndpoint: 'https://test-api.example.com',
+					responseTime: 1500,
+					apiCallTime: 1500,
+				});
+
+				await testRunManager.updateFirstStageFilter({
+					inputCount: 50,
+					passedCount: 30,
+					processingTime: 2000,
+					filterReasoning: 'Test filtering',
+					sampleOpportunities: [],
+				});
+
+				await testRunManager.updateDetailApiCalls({
+					opportunitiesRequiringDetails: 30,
+					successfulDetailCalls: 28,
+					failedDetailCalls: 2,
+					totalDetailCallTime: 5000,
+					averageDetailResponseTime: 178,
+					detailCallErrors: [],
+				});
+
+				await testRunManager.updateSecondStageFilter({
+					inputCount: 28,
+					passedCount: 20,
+					rejectedCount: 8,
+					processingTime: 3000,
+					filterReasoning: 'Test second stage filtering',
+					rejectionReasons: ['Low relevance', 'Out of scope'],
+					sampleOpportunities: [],
+					averageScoreAfterFiltering: 8.5,
+				});
+
+				await testRunManager.updateStorageResults({
+					attemptedCount: 20,
+					storedCount: 15,
+					updatedCount: 3,
+					skippedCount: 2,
+					processingTime: 1000,
+				});
+
+				// Get the final run state
+				const { data: finalRunData, error: finalRunError } = await supabase
+					.from('api_source_runs')
+					.select('*')
+					.eq('id', testRunId)
+					.single();
+
+				if (finalRunError) throw finalRunError;
+
+				result = {
+					runId: testRunId,
+					runData: finalRunData,
+					message: 'Run manager test completed successfully',
+				};
+				break;
+
+			case 'source-manager':
+				// Test sourceManagerAgent in isolation
+				if (!source)
+					throw new Error('Source ID is required for source-manager test');
+
+				result = await sourceManagerAgent(source, runManager);
+				break;
+
+			case 'api-handler':
+				// Test apiHandlerAgent in isolation
+				if (!source)
+					throw new Error('Source ID is required for api-handler test');
+
+				const processingDetails =
+					body.processingDetails ||
+					(await sourceManagerAgent(source, runManager));
+
+				result = await apiHandlerAgent(source, processingDetails, runManager);
+				break;
+
+			case 'detail-processor':
+				// Test detailProcessorAgent in isolation
+				if (!source)
+					throw new Error('Source ID is required for detail-processor test');
+
+				const opportunities = body.opportunities;
+				if (!opportunities)
+					throw new Error(
+						'Opportunities are required for detail-processor test'
+					);
+
+				result = await processDetailedInfo(opportunities, source, runManager);
+				break;
+
+			case 'data-processor':
+				// Test dataProcessorAgent in isolation
+				if (!sourceId)
+					throw new Error('Source ID is required for data-processor test');
+
+				const { rawApiResponse, requestDetails } = body;
+
+				result = await processUnprocessedOpportunities(
+					sourceId,
+					rawApiResponse,
+					requestDetails,
+					runManager
+				);
+				break;
+
+			case 'api-endpoint':
+				// Test direct API call
+				if (!body.endpoint) throw new Error('API endpoint is required');
+
+				const {
+					endpoint,
+					method = 'GET',
+					headers = {},
+					queryParams = {},
+					body: requestBody,
+				} = body;
+
+				// Construct URL with query parameters
+				const url = new URL(endpoint);
+				Object.entries(queryParams).forEach(([key, value]) => {
+					url.searchParams.append(key, value);
+				});
+
+				// Make the API request
+				const apiResponse = await fetch(url.toString(), {
+					method,
+					headers,
+					...(method !== 'GET' && requestBody
+						? { body: JSON.stringify(requestBody) }
+						: {}),
+				});
+
+				const responseData = await apiResponse.json();
+
+				result = {
+					status: apiResponse.status,
+					statusText: apiResponse.statusText,
+					headers: Object.fromEntries(apiResponse.headers.entries()),
+					data: responseData,
+				};
+				break;
+
+			case 'db-schema':
+				// Test database schema
+				const tables = [
+					'api_sources',
+					'api_source_configurations',
+					'api_source_runs',
+					'funding_opportunities',
+					'api_raw_responses',
+				];
+
+				const schemaResults = {};
+
+				for (const table of tables) {
+					const { data, error } = await supabase
+						.from('information_schema.columns')
+						.select('column_name, data_type, is_nullable')
+						.eq('table_name', table);
+
+					if (error) {
+						schemaResults[table] = { error: error.message };
+					} else {
+						schemaResults[table] = data;
+					}
+				}
+
+				result = schemaResults;
+				break;
+
+			default:
+				return NextResponse.json(
+					{ error: `Unknown component: ${component}` },
+					{ status: 400 }
+				);
+		}
+
+		return NextResponse.json({
+			success: true,
+			component,
+			sourceId,
+			runId: runManager?.runId || (result?.runId ? result.runId : null),
+			result,
+		});
+	} catch (error) {
+		console.error(`Error in debug controller (${params.component}):`, error);
+
+		return NextResponse.json(
+			{
+				error: 'Debug operation failed',
+				component: params.component,
+				details: error.message,
+				stack: error.stack,
+			},
+			{ status: 500 }
+		);
+	}
+}

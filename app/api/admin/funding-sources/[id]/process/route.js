@@ -1,11 +1,15 @@
 import { createClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
 import { processApiSource } from '@/app/lib/services/processCoordinator';
+import { RunManager } from '@/app/lib/services/runManager';
 
 export async function POST(request, { params }) {
 	try {
+		console.log('Process API route called');
+
 		// Await params before accessing id
 		const { id } = await params;
+		console.log(`Processing source with ID: ${id}`);
 
 		// Initialize Supabase client
 		const supabase = createClient(
@@ -13,33 +17,35 @@ export async function POST(request, { params }) {
 			process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 		);
 
-		// Create a new run record
+		// Create a new run manager
+		const runManager = new RunManager();
+		console.log('Creating new run');
+
+		// Start a new run
+		const runId = await runManager.startRun(id);
+		console.log(`Created run with ID: ${runId}`);
+
+		// Get the run details
 		const { data: run, error: runError } = await supabase
 			.from('api_source_runs')
-			.insert({
-				source_id: id,
-				status: 'started',
-				source_manager_status: 'pending',
-				api_handler_status: 'pending',
-				detail_processor_status: 'pending',
-				data_processor_status: 'pending',
-			})
-			.select()
+			.select('*')
+			.eq('id', runId)
 			.single();
 
-		if (runError) throw runError;
+		if (runError) {
+			console.error('Error fetching run:', runError);
+			throw runError;
+		}
 
 		// Start processing in the background
-		processApiSource(id, run.id).catch((error) => {
+		console.log(
+			`Starting background processing for source: ${id}, run: ${runId}`
+		);
+		processApiSource(id, runId).catch((error) => {
 			console.error('Error processing source:', error);
 			// Update run status to failed
-			supabase
-				.from('api_source_runs')
-				.update({
-					status: 'failed',
-					error: error.message,
-				})
-				.eq('id', run.id)
+			runManager
+				.updateRunError(error)
 				.then(() => {
 					console.log('Updated run status to failed');
 				})
@@ -48,11 +54,22 @@ export async function POST(request, { params }) {
 				});
 		});
 
-		return NextResponse.json(run);
+		return NextResponse.json({
+			success: true,
+			message: 'Processing started',
+			runId: runId,
+			sourceId: id,
+			status: run.status,
+			startedAt: run.started_at,
+		});
 	} catch (error) {
 		console.error('Error processing source:', error);
 		return NextResponse.json(
-			{ error: 'Internal server error' },
+			{
+				error: 'Internal server error',
+				details: error.message,
+				stack: error.stack,
+			},
 			{ status: 500 }
 		);
 	}
