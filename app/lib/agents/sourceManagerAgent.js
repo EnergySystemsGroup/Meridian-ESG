@@ -44,13 +44,6 @@ const sourceProcessingSchema = z.object({
 			totalCountPath: z.string().optional(),
 		})
 		.describe('Configuration for handling paginated responses'),
-	firstStageFilterConfig: z
-		.object({
-			enabled: z.boolean().default(true),
-			minRelevanceScore: z.number().default(5),
-			filterCriteria: z.array(z.string()).optional(),
-		})
-		.describe('Configuration for the first stage filtering'),
 	detailConfig: z
 		.object({
 			enabled: z.boolean().default(false),
@@ -61,17 +54,18 @@ const sourceProcessingSchema = z.object({
 			idParam: z.string().optional(),
 		})
 		.describe('Configuration for fetching detailed information'),
-	secondStageFilterConfig: z
-		.object({
-			enabled: z.boolean().default(true),
-			minRelevanceScore: z.number().default(7),
-			filterCriteria: z.array(z.string()).optional(),
-		})
-		.describe('Configuration for the second stage filtering'),
 	responseMapping: z
 		.record(z.string())
 		.optional()
-		.describe('Mapping of API response fields to standard fields'),
+		.describe(
+			'Mapping of API response fields to standard fields. Use dot notation for nested fields (e.g., "data.title")'
+		),
+	apiNotes: z
+		.string()
+		.optional()
+		.describe(
+			'Additional notes about the API, such as rate limits, authentication quirks, or special handling requirements'
+		),
 	authMethod: z
 		.enum(['none', 'apikey', 'oauth', 'basic'])
 		.describe('How to authenticate'),
@@ -84,7 +78,11 @@ const sourceProcessingSchema = z.object({
 	handlerType: z
 		.enum(['standard', 'document', 'statePortal'])
 		.describe('The type of handler to use'),
-	reasoning: z.string().describe('Brief explanation of your choices'),
+	reasoning: z
+		.string()
+		.describe(
+			'Document independent output choices outside of the standard input you received'
+		),
 });
 
 // Create the prompt template
@@ -105,6 +103,15 @@ Based on this information, determine the best approach for retrieving funding op
 - The structure of their API (if documented)
 - The frequency of updates
 - The relevance to our target funding categories
+
+Be sure to include any important API notes such as:
+- Rate limits that might affect our processing
+- Authentication quirks or token expiration details
+- Special handling requirements for this particular API
+- Known issues or limitations with the API
+- Best practices for working with this specific API
+- Whether this api is a one or multi-step process
+- Any other important details that would be helpful for the processing agent
 
 Use the provided configurations if they exist, but feel free to suggest improvements or modifications.
 
