@@ -1,0 +1,9 @@
+---
+description: javascript rules
+globs: 
+alwaysApply: false
+---
+
+# Your rule content
+
+- we are only using javascript for this project. No typescript
