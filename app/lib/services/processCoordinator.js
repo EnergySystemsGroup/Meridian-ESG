@@ -37,6 +37,27 @@ export async function processApiSource(sourceId = null, runId = null) {
 				throw error;
 			}
 
+			// Fetch the configurations for this source
+			console.log(`Fetching configurations for source: ${sourceId}`);
+			const { data: configData, error: configError } = await supabase
+				.from('api_source_configurations')
+				.select('*')
+				.eq('source_id', sourceId);
+
+			if (configError) {
+				console.error(`Error fetching configurations: ${configError.message}`);
+				throw configError;
+			}
+
+			// Group configurations by type
+			const configurations = {};
+			configData.forEach((config) => {
+				configurations[config.config_type] = config.configuration;
+			});
+
+			// Add configurations to the source
+			source.configurations = configurations;
+
 			// Create or use existing run manager
 			runManager = new RunManager(runId);
 			if (!runId) {

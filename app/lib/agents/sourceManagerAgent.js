@@ -282,7 +282,7 @@ export async function getNextSourceToProcess() {
 			// Group configurations by type
 			const configurations = {};
 			configData.forEach((config) => {
-				configurations[config.config_type] = config.config_value;
+				configurations[config.config_type] = config.configuration;
 			});
 
 			// Add configurations to the source
