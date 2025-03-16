@@ -298,12 +298,16 @@ async function processPaginatedApi(source, processingDetails, runManager) {
 	const paginationConfig = processingDetails.paginationConfig;
 	const responseConfig = processingDetails.responseConfig || {};
 
+	// Counter for API calls
+	let apiCallCounter = 0;
+
 	// Metrics for run tracking
 	const initialApiMetrics = {
-		totalHitCount: 0,
-		retrievedCount: 0,
-		firstPageCount: 0,
-		totalPages: 0,
+		totalHitCount: 0, // Total number of items available in the API (from totalCountPath)
+		apiCallCount: 0, // Number of API calls made
+		totalItemsRetrieved: 0, // Total number of actual items retrieved across all pages
+		firstPageCount: 0, // Number of items in the first page only
+		totalPages: 0, // Total number of pages fetched
 		sampleOpportunities: [],
 		apiEndpoint: processingDetails.apiEndpoint,
 		responseTime: 0,
@@ -312,7 +316,11 @@ async function processPaginatedApi(source, processingDetails, runManager) {
 
 	if (!paginationConfig || !paginationConfig.enabled) {
 		// If pagination is not enabled, make a single request
+		console.log('Pagination not enabled, making a single request');
+
 		const apiCallStartTime = Date.now();
+		apiCallCounter++; // Increment API call counter
+
 		const response = await makeConfiguredApiRequest({
 			method: processingDetails.requestConfig.method,
 			url: processingDetails.apiEndpoint,
@@ -325,7 +333,7 @@ async function processPaginatedApi(source, processingDetails, runManager) {
 		// Update metrics
 		initialApiMetrics.apiCallTime = apiCallEndTime - apiCallStartTime;
 		initialApiMetrics.responseTime = apiCallEndTime - apiCallStartTime;
-		initialApiMetrics.retrievedCount = 1;
+		initialApiMetrics.apiCallCount = apiCallCounter; // Use the counter
 		initialApiMetrics.totalPages = 1;
 
 		// Extract data from the response
@@ -341,9 +349,30 @@ async function processPaginatedApi(source, processingDetails, runManager) {
 			responseConfig.totalCountPath ||
 			(paginationConfig && paginationConfig.totalCountPath);
 
+		console.log('Non-paginated extraction paths:', {
+			responseDataPath,
+			totalCountPath,
+			responseKeys:
+				typeof response === 'object' ? Object.keys(response) : 'not an object',
+		});
+
 		// First try to extract data using the configured path
 		if (responseDataPath) {
 			const extractedData = extractDataByPath(response, responseDataPath);
+			console.log('Extracted data using path:', {
+				path: responseDataPath,
+				isArray: Array.isArray(extractedData),
+				length: Array.isArray(extractedData)
+					? extractedData.length
+					: 'not an array',
+				sample:
+					Array.isArray(extractedData) && extractedData.length > 0
+						? typeof extractedData[0] === 'object'
+							? Object.keys(extractedData[0])
+							: extractedData[0]
+						: 'no sample',
+			});
+
 			if (Array.isArray(extractedData)) {
 				items = extractedData;
 			}
@@ -351,32 +380,59 @@ async function processPaginatedApi(source, processingDetails, runManager) {
 
 		// If no data was found using the path, fall back to generic approach
 		if (items.length === 0) {
+			console.log('No data found using path, falling back to generic approach');
+
 			// Generic approach - try to find an array in the response
 			if (Array.isArray(response.data)) {
+				console.log(
+					'Found array in response.data with length:',
+					response.data.length
+				);
 				items = response.data;
 			} else if (response.data && typeof response.data === 'object') {
 				// Look for the first array property in the response
 				const arrayProps = Object.keys(response.data).filter((key) =>
 					Array.isArray(response.data[key])
 				);
+				console.log('Found array properties in response.data:', arrayProps);
+
 				if (arrayProps.length > 0) {
+					console.log(
+						`Using first array property: ${arrayProps[0]} with length:`,
+						response.data[arrayProps[0]].length
+					);
 					items = response.data[arrayProps[0]];
 				}
 			}
 		}
 
 		// Update metrics based on the actual data
-		initialApiMetrics.firstPageCount = items.length;
+		initialApiMetrics.firstPageCount = items.length; // This is the first and only page
+		initialApiMetrics.totalItemsRetrieved = items.length; // Total items = first page items (since no pagination)
 
 		// Try to extract total count using the configured path
 		if (totalCountPath) {
 			const totalCount = extractDataByPath(response, totalCountPath);
+			console.log('Extracted total count:', {
+				path: totalCountPath,
+				value: totalCount,
+				type: typeof totalCount,
+			});
+
 			if (totalCount !== undefined && totalCount !== null) {
 				initialApiMetrics.totalHitCount = totalCount;
 			} else {
+				console.log(
+					'Total count not found, falling back to items.length:',
+					items.length
+				);
 				initialApiMetrics.totalHitCount = items.length;
 			}
 		} else {
+			console.log(
+				'No totalCountPath provided, using items.length:',
+				items.length
+			);
 			initialApiMetrics.totalHitCount = items.length;
 		}
 
@@ -486,6 +542,20 @@ async function processPaginatedApi(source, processingDetails, runManager) {
 
 		// Make the API request
 		const apiCallStartTime = Date.now();
+		apiCallCounter++; // Increment API call counter
+
+		console.log(`[Page ${currentPage}] Making API request with params:`, {
+			method: processingDetails.requestConfig.method,
+			url: processingDetails.apiEndpoint,
+			queryParams,
+			paginationParams:
+				paginationConfig.type === 'offset'
+					? { limit: pageSize, offset }
+					: paginationConfig.type === 'page'
+					? { limit: pageSize, page: currentPage + 1 }
+					: { limit: pageSize, cursor },
+		});
+
 		const response = await makeConfiguredApiRequest({
 			method: processingDetails.requestConfig.method,
 			url: processingDetails.apiEndpoint,
@@ -518,14 +588,25 @@ async function processPaginatedApi(source, processingDetails, runManager) {
 		const data = extractDataByPath(response, responseDataPath);
 		const currentTotalCount = extractDataByPath(response, totalCountPath);
 
+		// Log data extraction results
+		console.log(`[Page ${currentPage}] Data extraction:`, {
+			responseDataPath,
+			dataLength: Array.isArray(data) ? data.length : 'not an array',
+			totalCountPath,
+			currentTotalCount,
+			responseKeys:
+				typeof response === 'object' ? Object.keys(response) : 'not an object',
+		});
+
 		// Update total count if available
 		if (currentTotalCount !== undefined && currentTotalCount !== null) {
 			totalCount = currentTotalCount;
+			console.log(`[Page ${currentPage}] Updated totalCount to ${totalCount}`);
 		}
 
 		// Update metrics
 		if (currentPage === 0) {
-			initialApiMetrics.firstPageCount = Array.isArray(data) ? data.length : 0;
+			initialApiMetrics.firstPageCount = Array.isArray(data) ? data.length : 0; // Explicitly for first page only
 
 			// Add sample data for monitoring and debugging purposes only
 			// These are NOT actual opportunities, just metadata for tracking
@@ -565,10 +646,26 @@ async function processPaginatedApi(source, processingDetails, runManager) {
 		// Count total items
 		if (Array.isArray(data)) {
 			totalItems += data.length;
+			console.log(
+				`[Page ${currentPage}] Added ${data.length} items, totalItems now: ${totalItems}`
+			);
 		}
 
 		// Update pagination variables
 		currentPage++;
+
+		// Log pagination decision
+		console.log(`[Page ${currentPage - 1}] Pagination decision:`, {
+			type: paginationConfig.type,
+			hasMorePages,
+			currentPage,
+			maxPages,
+			offset: paginationConfig.type === 'offset' ? offset : undefined,
+			totalCount,
+			pageSize,
+			dataLength: Array.isArray(data) ? data.length : 'not an array',
+			cursor: paginationConfig.type === 'cursor' ? cursor : undefined,
+		});
 
 		if (paginationConfig.type === 'offset') {
 			offset += pageSize;
@@ -593,8 +690,20 @@ async function processPaginatedApi(source, processingDetails, runManager) {
 
 	// Update final metrics
 	initialApiMetrics.totalPages = currentPage;
-	initialApiMetrics.retrievedCount = results.length;
+	initialApiMetrics.apiCallCount = apiCallCounter; // Use the counter instead of results.length
+	initialApiMetrics.totalItemsRetrieved = totalItems; // Total items retrieved across all pages
 	initialApiMetrics.totalHitCount = totalCount || totalItems;
+
+	// Log final metrics calculation
+	console.log('Final metrics calculation:', {
+		totalPages: currentPage,
+		apiCallCount: apiCallCounter,
+		resultsLength: results.length,
+		totalItemsRetrieved: totalItems,
+		totalHitCount: totalCount || totalItems,
+		rawTotalCount: totalCount,
+		fallbackToTotalItems: totalCount === undefined || totalCount === null,
+	});
 
 	// Update run manager with initial API call metrics
 	if (runManager) {
@@ -606,6 +715,16 @@ async function processPaginatedApi(source, processingDetails, runManager) {
 
 	console.log('these are the results from the api call', results);
 	console.log('these are the initial metrics', initialApiMetrics);
+	console.log(
+		`API calls made: ${initialApiMetrics.apiCallCount}, Items retrieved: ${initialApiMetrics.totalItemsRetrieved}, Total available: ${initialApiMetrics.totalHitCount}`
+	);
+
+	// Verify that apiCallCount matches results.length as a sanity check
+	if (apiCallCounter !== results.length) {
+		console.warn(
+			`Warning: API call counter (${apiCallCounter}) doesn't match results.length (${results.length})`
+		);
+	}
 
 	return {
 		results,

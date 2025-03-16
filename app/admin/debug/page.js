@@ -149,7 +149,8 @@ const componentInfo = {
   "opportunities": [ /* filtered opportunities */ ],
   "initialApiMetrics": {
     "totalHitCount": 500,
-    "retrievedCount": 100,
+    "apiCallCount": 10,
+    "totalItemsRetrieved": 100,
     "firstPageCount": 50,
     "totalPages": 10,
     "apiEndpoint": "https://api.example.com/opportunities",

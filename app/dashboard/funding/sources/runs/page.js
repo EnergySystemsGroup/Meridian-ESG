@@ -200,10 +200,12 @@ export default function RunsPage() {
 															<div>
 																<div className='text-sm'>
 																	<span className='font-medium'>
-																		{run.initial_api_metrics?.retrievedCount ||
+																		{run.initial_api_metrics
+																			?.totalItemsRetrieved ||
+																			run.initial_api_metrics?.retrievedCount ||
 																			0}
 																	</span>{' '}
-																	retrieved
+																	items retrieved
 																</div>
 																<div className='text-sm'>
 																	<span className='font-medium'>
@@ -254,24 +256,41 @@ export default function RunsPage() {
 							<div className='space-y-6'>
 								<div>
 									<h3 className='text-lg font-medium mb-2'>Initial API Call</h3>
-									<div className='grid grid-cols-1 md:grid-cols-3 gap-4'>
+									<div className='grid grid-cols-1 md:grid-cols-4 gap-4'>
 										<Card>
 											<CardContent className='pt-6'>
 												<div className='text-2xl font-bold'>
 													{selectedRun.initial_api_metrics?.totalHitCount || 0}
 												</div>
 												<p className='text-sm text-muted-foreground'>
-													Total Hits
+													Total Hits Available
 												</p>
 											</CardContent>
 										</Card>
 										<Card>
 											<CardContent className='pt-6'>
 												<div className='text-2xl font-bold'>
-													{selectedRun.initial_api_metrics?.retrievedCount || 0}
+													{selectedRun.initial_api_metrics
+														?.totalItemsRetrieved ||
+														selectedRun.initial_api_metrics?.retrievedCount ||
+														0}
 												</div>
 												<p className='text-sm text-muted-foreground'>
-													Retrieved Items
+													Items Retrieved
+												</p>
+											</CardContent>
+										</Card>
+										<Card>
+											<CardContent className='pt-6'>
+												<div className='text-2xl font-bold'>
+													{selectedRun.initial_api_metrics?.apiCallCount ||
+														(selectedRun.initial_api_metrics?.retrievedCount !==
+														undefined
+															? selectedRun.initial_api_metrics?.retrievedCount
+															: 0)}
+												</div>
+												<p className='text-sm text-muted-foreground'>
+													API Calls Made
 												</p>
 											</CardContent>
 										</Card>

@@ -144,7 +144,8 @@ export async function POST(request, { params }) {
 				// Test updating different stages
 				await testRunManager.updateInitialApiCall({
 					totalHitCount: 100,
-					retrievedCount: 50,
+					apiCallCount: 4,
+					totalItemsRetrieved: 50,
 					firstPageCount: 25,
 					totalPages: 4,
 					sampleOpportunities: [],

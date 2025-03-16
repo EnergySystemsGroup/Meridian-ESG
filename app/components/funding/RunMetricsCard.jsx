@@ -111,9 +111,11 @@ export function RunMetricsCard({ run, loading }) {
 				<div className='space-y-4'>
 					<div className='grid grid-cols-2 gap-4'>
 						<div>
-							<p className='text-sm text-muted-foreground'>Retrieved</p>
+							<p className='text-sm text-muted-foreground'>Items Retrieved</p>
 							<p className='text-xl font-bold'>
-								{run.initial_api_metrics?.retrievedCount || 0}
+								{run.initial_api_metrics?.totalItemsRetrieved ||
+									run.initial_api_metrics?.retrievedCount ||
+									0}
 							</p>
 						</div>
 						<div>

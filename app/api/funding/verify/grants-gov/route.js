@@ -91,7 +91,8 @@ export async function GET() {
 
 				stats.initialApiCall = {
 					totalHitCount: searchData.data?.hitCount || 0,
-					retrievedCount: oppHits.length,
+					totalItemsRetrieved: oppHits.length,
+					apiCallCount: 1,
 					firstPageCount: oppHits.length,
 					totalPages:
 						Math.ceil((searchData.data?.hitCount || 0) / searchParams.rows) ||
@@ -377,12 +378,12 @@ export async function GET() {
 			}
 
 			stats.firstStageFilter = {
-				inputOpportunitiesCount: stats.initialApiCall.retrievedCount,
+				inputOpportunitiesCount: stats.initialApiCall.totalItemsRetrieved,
 				opportunitiesPassingFirstFilter:
 					handlerExecution.output?.opportunities?.length || 0,
 				filterPassRate: handlerExecution.output?.opportunities?.length
 					? (handlerExecution.output.opportunities.length /
-							stats.initialApiCall.retrievedCount) *
+							stats.initialApiCall.totalItemsRetrieved) *
 					  100
 					: 0,
 				scoreDistribution,
