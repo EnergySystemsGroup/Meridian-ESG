@@ -168,6 +168,15 @@ export async function POST(request) {
 				});
 			}
 
+			// Process response_config if provided
+			if (body.configurations.response_config) {
+				configInserts.push({
+					source_id: data.id,
+					config_type: 'response_config',
+					configuration: body.configurations.response_config,
+				});
+			}
+
 			// Process response_mapping if provided
 			if (body.configurations.response_mapping) {
 				// Filter out empty mappings

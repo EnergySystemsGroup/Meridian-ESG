@@ -29,6 +29,10 @@ export default function NewSourcePage() {
 					'Content-Type': 'application/json',
 				},
 			},
+			response_config: {
+				responseDataPath: '',
+				totalCountPath: '',
+			},
 			pagination_config: {
 				enabled: false,
 				type: 'offset',
@@ -36,8 +40,6 @@ export default function NewSourcePage() {
 				offsetParam: 'offset',
 				pageSize: 100,
 				maxPages: 5,
-				responseDataPath: '',
-				totalCountPath: '',
 				paginationInBody: false,
 			},
 			detail_config: {
@@ -368,6 +370,21 @@ export default function NewSourcePage() {
 				...prev.configurations,
 				response_mapping: {
 					...prev.configurations.response_mapping,
+					[name]: value,
+				},
+			},
+		}));
+	};
+
+	// Add a new handler function for response config changes
+	const handleResponseConfigChange = (e) => {
+		const { name, value } = e.target;
+		setFormData((prev) => ({
+			...prev,
+			configurations: {
+				...prev.configurations,
+				response_config: {
+					...prev.configurations.response_config,
 					[name]: value,
 				},
 			},
@@ -915,6 +932,53 @@ export default function NewSourcePage() {
 					</div>
 				)}
 
+				{/* Response Configuration */}
+				<div className='bg-white p-6 rounded-lg shadow-md'>
+					<h2 className='text-xl font-semibold mb-4'>Response Configuration</h2>
+					<p className='text-sm text-gray-600 mb-4'>
+						Configure how to extract data from the API response. These settings
+						apply to both paginated and non-paginated responses.
+					</p>
+
+					<div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
+						<div>
+							<label className='block text-sm font-medium text-gray-700 mb-1'>
+								Response Data Path
+							</label>
+							<input
+								type='text'
+								name='responseDataPath'
+								value={formData.configurations.response_config.responseDataPath}
+								onChange={handleResponseConfigChange}
+								placeholder='e.g., data.items'
+								className='w-full px-3 py-2 border border-gray-300 rounded-md'
+							/>
+							<p className='text-xs text-gray-500 mt-1'>
+								Path to the data array in the response. Use dot notation for
+								nested fields.
+							</p>
+						</div>
+
+						<div>
+							<label className='block text-sm font-medium text-gray-700 mb-1'>
+								Total Count Path
+							</label>
+							<input
+								type='text'
+								name='totalCountPath'
+								value={formData.configurations.response_config.totalCountPath}
+								onChange={handleResponseConfigChange}
+								placeholder='e.g., data.total'
+								className='w-full px-3 py-2 border border-gray-300 rounded-md'
+							/>
+							<p className='text-xs text-gray-500 mt-1'>
+								Path to the total count in the response. Use dot notation for
+								nested fields.
+							</p>
+						</div>
+					</div>
+				</div>
+
 				{/* Pagination Configuration */}
 				<div className='bg-white p-6 rounded-lg shadow-md'>
 					<h2 className='text-xl font-semibold mb-4'>
@@ -977,38 +1041,6 @@ export default function NewSourcePage() {
 									value={formData.configurations.pagination_config.maxPages}
 									onChange={handlePaginationConfigChange}
 									min='1'
-									className='w-full px-3 py-2 border border-gray-300 rounded-md'
-								/>
-							</div>
-
-							<div>
-								<label className='block text-sm font-medium text-gray-700 mb-1'>
-									Response Data Path
-								</label>
-								<input
-									type='text'
-									name='responseDataPath'
-									value={
-										formData.configurations.pagination_config.responseDataPath
-									}
-									onChange={handlePaginationConfigChange}
-									placeholder='e.g., data.items'
-									className='w-full px-3 py-2 border border-gray-300 rounded-md'
-								/>
-							</div>
-
-							<div>
-								<label className='block text-sm font-medium text-gray-700 mb-1'>
-									Total Count Path
-								</label>
-								<input
-									type='text'
-									name='totalCountPath'
-									value={
-										formData.configurations.pagination_config.totalCountPath
-									}
-									onChange={handlePaginationConfigChange}
-									placeholder='e.g., data.total'
 									className='w-full px-3 py-2 border border-gray-300 rounded-md'
 								/>
 							</div>

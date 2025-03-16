@@ -26,6 +26,13 @@ const sourceProcessingSchema = z.object({
 		.record(z.any())
 		.optional()
 		.describe('JSON body to send with the request'),
+	responseConfig: z
+		.object({
+			responseDataPath: z.string().optional(),
+			totalCountPath: z.string().optional(),
+		})
+		.optional()
+		.describe('Configuration for extracting data from API responses'),
 	paginationConfig: z
 		.object({
 			enabled: z.boolean().default(false),
@@ -40,8 +47,6 @@ const sourceProcessingSchema = z.object({
 			cursorParam: z.string().optional(),
 			pageSize: z.number().optional(),
 			maxPages: z.number().optional(),
-			responseDataPath: z.string().optional(),
-			totalCountPath: z.string().optional(),
 		})
 		.describe('Configuration for handling paginated responses'),
 	detailConfig: z

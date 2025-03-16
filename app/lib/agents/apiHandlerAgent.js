@@ -296,6 +296,7 @@ async function processPaginatedApi(source, processingDetails, runManager) {
 	const startTime = Date.now();
 	const results = [];
 	const paginationConfig = processingDetails.paginationConfig;
+	const responseConfig = processingDetails.responseConfig || {};
 
 	// Metrics for run tracking
 	const initialApiMetrics = {
@@ -330,22 +331,54 @@ async function processPaginatedApi(source, processingDetails, runManager) {
 		// Extract data from the response
 		let items = [];
 
-		// Generic approach - try to find an array in the response
-		if (Array.isArray(response.data)) {
-			items = response.data;
-		} else if (response.data && typeof response.data === 'object') {
-			// Look for the first array property in the response
-			const arrayProps = Object.keys(response.data).filter((key) =>
-				Array.isArray(response.data[key])
-			);
-			if (arrayProps.length > 0) {
-				items = response.data[arrayProps[0]];
+		// Get the response data path (from responseConfig or fall back to paginationConfig for backward compatibility)
+		const responseDataPath =
+			responseConfig.responseDataPath ||
+			(paginationConfig && paginationConfig.responseDataPath);
+
+		// Get the total count path (from responseConfig or fall back to paginationConfig for backward compatibility)
+		const totalCountPath =
+			responseConfig.totalCountPath ||
+			(paginationConfig && paginationConfig.totalCountPath);
+
+		// First try to extract data using the configured path
+		if (responseDataPath) {
+			const extractedData = extractDataByPath(response, responseDataPath);
+			if (Array.isArray(extractedData)) {
+				items = extractedData;
+			}
+		}
+
+		// If no data was found using the path, fall back to generic approach
+		if (items.length === 0) {
+			// Generic approach - try to find an array in the response
+			if (Array.isArray(response.data)) {
+				items = response.data;
+			} else if (response.data && typeof response.data === 'object') {
+				// Look for the first array property in the response
+				const arrayProps = Object.keys(response.data).filter((key) =>
+					Array.isArray(response.data[key])
+				);
+				if (arrayProps.length > 0) {
+					items = response.data[arrayProps[0]];
+				}
 			}
 		}
 
 		// Update metrics based on the actual data
 		initialApiMetrics.firstPageCount = items.length;
-		initialApiMetrics.totalHitCount = items.length;
+
+		// Try to extract total count using the configured path
+		if (totalCountPath) {
+			const totalCount = extractDataByPath(response, totalCountPath);
+			if (totalCount !== undefined && totalCount !== null) {
+				initialApiMetrics.totalHitCount = totalCount;
+			} else {
+				initialApiMetrics.totalHitCount = items.length;
+			}
+		} else {
+			initialApiMetrics.totalHitCount = items.length;
+		}
 
 		// Extract sample data for monitoring and debugging purposes only
 		// These are NOT actual opportunities, just metadata for tracking
@@ -474,11 +507,16 @@ async function processPaginatedApi(source, processingDetails, runManager) {
 		results.push(response);
 
 		// Extract the data and total count
-		const data = extractDataByPath(response, paginationConfig.responseDataPath);
-		const currentTotalCount = extractDataByPath(
-			response,
-			paginationConfig.totalCountPath
-		);
+		// Get the response data path (from responseConfig or fall back to paginationConfig)
+		const responseDataPath =
+			responseConfig.responseDataPath || paginationConfig.responseDataPath;
+
+		// Get the total count path (from responseConfig or fall back to paginationConfig)
+		const totalCountPath =
+			responseConfig.totalCountPath || paginationConfig.totalCountPath;
+
+		const data = extractDataByPath(response, responseDataPath);
+		const currentTotalCount = extractDataByPath(response, totalCountPath);
 
 		// Update total count if available
 		if (currentTotalCount !== undefined && currentTotalCount !== null) {
@@ -595,7 +633,9 @@ async function performFirstStageFiltering(
 		for (const result of apiResults) {
 			const items = extractDataByPath(
 				result,
-				processingDetails.paginationConfig?.responseDataPath || ''
+				processingDetails.responseConfig?.responseDataPath ||
+					processingDetails.paginationConfig?.responseDataPath ||
+					''
 			);
 			if (Array.isArray(items)) {
 				allItems.push(...items);

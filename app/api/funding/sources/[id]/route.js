@@ -44,6 +44,10 @@ export async function GET(request, { params }) {
 					'Content-Type': 'application/json',
 				},
 			},
+			response_config: {
+				responseDataPath: '',
+				totalCountPath: '',
+			},
 			pagination_config: {
 				enabled: false,
 				type: 'offset',
@@ -51,8 +55,7 @@ export async function GET(request, { params }) {
 				offsetParam: 'offset',
 				pageSize: 100,
 				maxPages: 5,
-				responseDataPath: '',
-				totalCountPath: '',
+				paginationInBody: false,
 			},
 			detail_config: {
 				enabled: false,
@@ -203,6 +206,15 @@ export async function PUT(request, { params }) {
 					source_id: id,
 					config_type: 'detail_config',
 					configuration: body.configurations.detail_config,
+				});
+			}
+
+			// Process response_config if provided
+			if (body.configurations.response_config) {
+				configInserts.push({
+					source_id: id,
+					config_type: 'response_config',
+					configuration: body.configurations.response_config,
 				});
 			}
 

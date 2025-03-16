@@ -56,7 +56,23 @@ Request configuration specifies the HTTP method and headers for API requests.
 }
 ```
 
-### 4. Pagination Configuration (`pagination_config`)
+### 4. Response Configuration (`response_config`)
+
+Response configuration specifies how to extract data from API responses. This applies to both paginated and non-paginated responses.
+
+**Example:**
+
+```json
+{
+	"responseDataPath": "data.items",
+	"totalCountPath": "data.total"
+}
+```
+
+- **responseDataPath**: Path to the data array in the response
+- **totalCountPath**: Path to the total count in the response
+
+### 5. Pagination Configuration (`pagination_config`)
 
 Pagination configuration specifies how to handle paginated API responses.
 
@@ -70,8 +86,7 @@ Pagination configuration specifies how to handle paginated API responses.
 	"offsetParam": "startRecordNum",
 	"pageSize": 100,
 	"maxPages": 5,
-	"responseDataPath": "oppHits",
-	"totalCountPath": "hitCount"
+	"paginationInBody": false
 }
 ```
 
@@ -81,7 +96,7 @@ The system supports three pagination types:
 - **Page-based**: Uses limit and page parameters
 - **Cursor-based**: Uses limit and cursor parameters
 
-### 5. Detail Configuration (`detail_config`)
+### 6. Detail Configuration (`detail_config`)
 
 Detail configuration specifies how to fetch detailed information for each item returned by the main API.
 
@@ -100,7 +115,7 @@ Detail configuration specifies how to fetch detailed information for each item r
 }
 ```
 
-### 6. Response Mapping (`response_mapping`)
+### 7. Response Mapping (`response_mapping`)
 
 Response mapping specifies how to map API response fields to standard funding opportunity fields.
 
@@ -178,8 +193,7 @@ The system supports different handler types for processing API sources:
 		"offsetParam": "startRecordNum",
 		"pageSize": 100,
 		"maxPages": 5,
-		"responseDataPath": "oppHits",
-		"totalCountPath": "hitCount"
+		"paginationInBody": false
 	},
 	"detail_config": {
 		"enabled": true,

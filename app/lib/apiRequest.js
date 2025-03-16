@@ -187,7 +187,11 @@ export async function makePaginatedApiRequest(config) {
 
 		// Extract the data from the response using the configured path
 		const responseData =
-			getNestedValue(response.data, paginationConfig.responseDataPath) || [];
+			getNestedValue(
+				response.data,
+				config.responseConfig?.responseDataPath ||
+					paginationConfig.responseDataPath
+			) || [];
 
 		// Add the results from this page
 		allResults = allResults.concat(responseData);
