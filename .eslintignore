@@ -1,3 +1,0 @@
-*.sql
-supabase/migrations/
-supabase/seed.sql 
