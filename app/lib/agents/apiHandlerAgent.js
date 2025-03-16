@@ -604,6 +604,9 @@ async function processPaginatedApi(source, processingDetails, runManager) {
 	const endTime = Date.now();
 	initialApiMetrics.responseTime = endTime - startTime;
 
+	console.log('these are the results from the api call', results);
+	console.log('these are the initial metrics', initialApiMetrics);
+
 	return {
 		results,
 		metrics: initialApiMetrics,
