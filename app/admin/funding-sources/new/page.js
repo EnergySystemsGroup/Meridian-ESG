@@ -38,6 +38,7 @@ export default function NewSourcePage() {
 				maxPages: 5,
 				responseDataPath: '',
 				totalCountPath: '',
+				paginationInBody: false,
 			},
 			detail_config: {
 				enabled: false,
@@ -1010,6 +1011,29 @@ export default function NewSourcePage() {
 									placeholder='e.g., data.total'
 									className='w-full px-3 py-2 border border-gray-300 rounded-md'
 								/>
+							</div>
+
+							<div className='col-span-2'>
+								<label className='inline-flex items-center'>
+									<input
+										type='checkbox'
+										name='paginationInBody'
+										checked={
+											formData.configurations.pagination_config.paginationInBody
+										}
+										onChange={handlePaginationConfigChange}
+										className='mr-2'
+									/>
+									<span className='text-sm font-medium text-gray-700'>
+										Place pagination parameters in request body (for POST
+										requests)
+									</span>
+								</label>
+								<p className='text-xs text-gray-500 mt-1 ml-6'>
+									When enabled, pagination parameters will be included in the
+									request body instead of query parameters. This is typically
+									used with POST requests.
+								</p>
 							</div>
 
 							{formData.configurations.pagination_config.type === 'offset' && (
