@@ -327,16 +327,56 @@ async function processPaginatedApi(source, processingDetails, runManager) {
 		initialApiMetrics.retrievedCount = 1;
 		initialApiMetrics.totalPages = 1;
 
-		// Extract data for metrics - handle Grants.gov specific response structure
-		const items = response.data?.data?.oppHits || [];
-		initialApiMetrics.firstPageCount = items.length;
-		initialApiMetrics.totalHitCount =
-			response.data?.data?.hitCount || items.length;
+		// Extract data from the response
+		let items = [];
 
-		// Add sample opportunities
-		initialApiMetrics.sampleOpportunities = items.slice(0, 3).map((item) => {
-			return { title: item.title || 'Untitled' };
-		});
+		// Generic approach - try to find an array in the response
+		if (Array.isArray(response.data)) {
+			items = response.data;
+		} else if (response.data && typeof response.data === 'object') {
+			// Look for the first array property in the response
+			const arrayProps = Object.keys(response.data).filter((key) =>
+				Array.isArray(response.data[key])
+			);
+			if (arrayProps.length > 0) {
+				items = response.data[arrayProps[0]];
+			}
+		}
+
+		// Update metrics based on the actual data
+		initialApiMetrics.firstPageCount = items.length;
+		initialApiMetrics.totalHitCount = items.length;
+
+		// Extract sample data for monitoring and debugging purposes only
+		// These are NOT actual opportunities, just metadata for tracking
+		const sampleMetadata = [];
+		const sampleSize = Math.min(5, items.length);
+		for (let i = 0; i < sampleSize; i++) {
+			const item = items[i];
+			if (typeof item !== 'object' || item === null) continue;
+
+			// Look for title-like properties in priority order
+			let title = null;
+			for (const prop of ['title', 'name', 'label', 'id', 'description']) {
+				if (item[prop]) {
+					title = item[prop];
+					break;
+				}
+			}
+
+			sampleMetadata.push({
+				_metadataOnly: true, // Flag to indicate this is not a real opportunity
+				_debugSample: true, // Additional flag for clarity
+				_sampleIndex: i,
+				id: item.id || `sample-${i}`,
+				title: title || 'Unknown Title',
+				source: source.name,
+			});
+		}
+
+		// Store samples as metadata, not as actual opportunities
+		initialApiMetrics.responseSamples = sampleMetadata;
+		initialApiMetrics.isDebugMetadataOnly = true;
 
 		// Update run manager with initial API call metrics
 		if (runManager) {
@@ -415,16 +455,38 @@ async function processPaginatedApi(source, processingDetails, runManager) {
 		if (currentPage === 0) {
 			initialApiMetrics.firstPageCount = Array.isArray(data) ? data.length : 0;
 
-			// Add sample opportunities
+			// Add sample data for monitoring and debugging purposes only
+			// These are NOT actual opportunities, just metadata for tracking
 			if (Array.isArray(data)) {
-				initialApiMetrics.sampleOpportunities = data.slice(0, 3).map((item) => {
-					// Extract basic info for sample
-					const title =
-						typeof item === 'object'
-							? item.title || item.name || 'Untitled'
-							: 'Unknown';
-					return { title };
-				});
+				const sampleMetadata = [];
+				const sampleSize = Math.min(5, data.length);
+
+				for (let i = 0; i < sampleSize; i++) {
+					const item = data[i];
+					if (typeof item !== 'object' || item === null) continue;
+
+					// Look for title-like properties in priority order
+					let title = null;
+					for (const prop of ['title', 'name', 'label', 'id', 'description']) {
+						if (item[prop]) {
+							title = item[prop];
+							break;
+						}
+					}
+
+					sampleMetadata.push({
+						_metadataOnly: true, // Flag to indicate this is not a real opportunity
+						_debugSample: true, // Additional flag for clarity
+						_sampleIndex: i,
+						id: item.id || `sample-${i}`,
+						title: title || 'Unknown Title',
+						source: source.name,
+					});
+				}
+
+				// Store samples as metadata, not as actual opportunities
+				initialApiMetrics.responseSamples = sampleMetadata;
+				initialApiMetrics.isDebugMetadataOnly = true;
 			}
 		}
 
@@ -558,14 +620,30 @@ async function performFirstStageFiltering(
 		filterMetrics.filterReasoning =
 			parsedOutput.processingMetrics.filterReasoning;
 
-		// Add sample opportunities
-		filterMetrics.sampleOpportunities = parsedOutput.opportunities
-			.slice(0, 3)
-			.map((opp) => ({
-				title: opp.title,
+		// Add sample data for monitoring and debugging purposes only
+		// These are NOT actual opportunities, just metadata for tracking
+		const sampleMetadata = [];
+		const sampleSize = Math.min(5, parsedOutput.opportunities.length);
+
+		for (let i = 0; i < sampleSize; i++) {
+			const opp = parsedOutput.opportunities[i];
+			if (!opp) continue;
+
+			sampleMetadata.push({
+				_metadataOnly: true, // Flag to indicate this is not a real opportunity
+				_debugSample: true, // Additional flag for clarity
+				_sampleIndex: i,
+				_filterStage: 'first',
+				title: opp.title || 'Unknown Title',
 				relevanceScore: opp.relevanceScore,
 				relevanceReasoning: opp.relevanceReasoning,
-			}));
+				source: source.name,
+			});
+		}
+
+		// Store samples as metadata, not as actual opportunities
+		filterMetrics.responseSamples = sampleMetadata;
+		filterMetrics.isDebugMetadataOnly = true;
 
 		const endTime = Date.now();
 		filterMetrics.processingTime = endTime - startTime;

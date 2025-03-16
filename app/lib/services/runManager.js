@@ -28,10 +28,38 @@ export class RunManager {
 	async updateInitialApiCall(stats) {
 		if (!this.runId) throw new Error('No active run');
 
+		// Ensure backward compatibility while transitioning from sampleOpportunities to responseSamples
+		const processedStats = { ...stats };
+
+		// If we have the new responseSamples field, use it
+		if (processedStats.responseSamples) {
+			// Keep the field but ensure it's clearly marked as metadata
+			processedStats._responseSamplesMetadataOnly = true;
+		}
+		// If we still have the old sampleOpportunities field, convert it
+		else if (processedStats.sampleOpportunities) {
+			// Convert to the new format for backward compatibility
+			processedStats.responseSamples = processedStats.sampleOpportunities.map(
+				(sample, i) => ({
+					...sample,
+					_metadataOnly: true,
+					_debugSample: true,
+					_sampleIndex: i,
+					_convertedFromLegacyFormat: true,
+				})
+			);
+			processedStats._responseSamplesMetadataOnly = true;
+
+			// Keep the original for backward compatibility but mark it
+			processedStats._legacySampleOpportunities =
+				processedStats.sampleOpportunities;
+			delete processedStats.sampleOpportunities;
+		}
+
 		return await this.supabase
 			.from('api_source_runs')
 			.update({
-				initial_api_call: stats,
+				initial_api_call: processedStats,
 				status: 'processing',
 				source_manager_status: 'completed',
 				api_handler_status: 'processing',
@@ -43,10 +71,39 @@ export class RunManager {
 	async updateFirstStageFilter(stats) {
 		if (!this.runId) throw new Error('No active run');
 
+		// Ensure backward compatibility while transitioning from sampleOpportunities to responseSamples
+		const processedStats = { ...stats };
+
+		// If we have the new responseSamples field, use it
+		if (processedStats.responseSamples) {
+			// Keep the field but ensure it's clearly marked as metadata
+			processedStats._responseSamplesMetadataOnly = true;
+		}
+		// If we still have the old sampleOpportunities field, convert it
+		else if (processedStats.sampleOpportunities) {
+			// Convert to the new format for backward compatibility
+			processedStats.responseSamples = processedStats.sampleOpportunities.map(
+				(sample, i) => ({
+					...sample,
+					_metadataOnly: true,
+					_debugSample: true,
+					_sampleIndex: i,
+					_filterStage: 'first',
+					_convertedFromLegacyFormat: true,
+				})
+			);
+			processedStats._responseSamplesMetadataOnly = true;
+
+			// Keep the original for backward compatibility but mark it
+			processedStats._legacySampleOpportunities =
+				processedStats.sampleOpportunities;
+			delete processedStats.sampleOpportunities;
+		}
+
 		return await this.supabase
 			.from('api_source_runs')
 			.update({
-				first_stage_filter: stats,
+				first_stage_filter: processedStats,
 				api_handler_status: 'completed',
 				detail_processor_status: 'processing',
 				updated_at: new Date().toISOString(),
