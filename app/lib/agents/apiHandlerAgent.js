@@ -398,23 +398,57 @@ async function processPaginatedApi(source, processingDetails, runManager) {
 
 	// Get the page size
 	const pageSize = paginationConfig.pageSize || 100;
-	const maxPages = paginationConfig.maxPages || 5;
+	const maxPages = paginationConfig.maxPages || 20;
 	let totalItems = 0;
 
 	while (hasMorePages && currentPage < maxPages) {
-		// Prepare query parameters for this page
+		// Start with the original query parameters and request body
 		const queryParams = { ...processingDetails.queryParameters };
+		const requestBody = processingDetails.requestBody
+			? { ...processingDetails.requestBody }
+			: {};
+		const headers = { ...processingDetails.requestConfig.headers };
 
-		// Add pagination parameters based on the pagination type
+		// Determine where pagination parameters should go based on the request method and configuration
+		const paginationInBody =
+			processingDetails.requestConfig.method === 'POST' &&
+			paginationConfig.paginationInBody === true;
+
+		// Add pagination parameters to the appropriate location (query params or request body)
 		if (paginationConfig.type === 'offset') {
-			queryParams[paginationConfig.limitParam] = pageSize;
-			queryParams[paginationConfig.offsetParam] = offset;
+			if (paginationInBody) {
+				requestBody[paginationConfig.limitParam] = pageSize;
+				requestBody[paginationConfig.offsetParam] = offset;
+			} else {
+				queryParams[paginationConfig.limitParam] = pageSize;
+				queryParams[paginationConfig.offsetParam] = offset;
+			}
 		} else if (paginationConfig.type === 'page') {
-			queryParams[paginationConfig.limitParam] = pageSize;
-			queryParams[paginationConfig.pageParam] = currentPage + 1; // Pages usually start at 1
-		} else if (paginationConfig.type === 'cursor' && cursor) {
-			queryParams[paginationConfig.limitParam] = pageSize;
-			queryParams[paginationConfig.cursorParam] = cursor;
+			if (paginationInBody) {
+				requestBody[paginationConfig.limitParam] = pageSize;
+				requestBody[paginationConfig.pageParam] = currentPage + 1; // Pages usually start at 1
+			} else {
+				queryParams[paginationConfig.limitParam] = pageSize;
+				queryParams[paginationConfig.pageParam] = currentPage + 1;
+			}
+		} else if (paginationConfig.type === 'cursor') {
+			// For the first page, we might not have a cursor yet
+			if (cursor) {
+				if (paginationInBody) {
+					requestBody[paginationConfig.limitParam] = pageSize;
+					requestBody[paginationConfig.cursorParam] = cursor;
+				} else {
+					queryParams[paginationConfig.limitParam] = pageSize;
+					queryParams[paginationConfig.cursorParam] = cursor;
+				}
+			} else {
+				// First page of cursor-based pagination typically just needs the limit
+				if (paginationInBody) {
+					requestBody[paginationConfig.limitParam] = pageSize;
+				} else {
+					queryParams[paginationConfig.limitParam] = pageSize;
+				}
+			}
 		}
 
 		// Make the API request
@@ -423,8 +457,8 @@ async function processPaginatedApi(source, processingDetails, runManager) {
 			method: processingDetails.requestConfig.method,
 			url: processingDetails.apiEndpoint,
 			queryParameters: queryParams,
-			requestBody: processingDetails.requestBody,
-			headers: processingDetails.requestConfig.headers,
+			requestBody: requestBody,
+			headers: headers,
 		});
 		const apiCallEndTime = Date.now();
 
@@ -505,8 +539,16 @@ async function processPaginatedApi(source, processingDetails, runManager) {
 			hasMorePages =
 				data && data.length > 0 && currentPage * pageSize < totalCount;
 		} else if (paginationConfig.type === 'cursor') {
-			// For cursor-based pagination, we need to extract the next cursor from the response
-			cursor = response.nextCursor || response.next_cursor;
+			// For cursor-based pagination, extract the next cursor from the response
+			if (paginationConfig.nextCursorPath) {
+				// Use the configured path to extract the cursor
+				cursor = extractDataByPath(response, paginationConfig.nextCursorPath);
+			} else {
+				// Try common cursor property names
+				cursor = response.nextCursor || response.next_cursor;
+			}
+
+			// Determine if there are more pages based on cursor and data length
 			hasMorePages = !!cursor && data && data.length > 0;
 		}
 	}
