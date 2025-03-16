@@ -22,6 +22,7 @@ import { POST as processSourceRoute } from '@/app/api/admin/funding-sources/[id]
  */
 export async function POST(request, { params }) {
 	try {
+		params = await params;
 		const { component } = params;
 		const body = await request.json();
 		const supabase = createSupabaseClient();
@@ -221,6 +222,9 @@ export async function POST(request, { params }) {
 					body.processingDetails ||
 					(await sourceManagerAgent(source, runManager));
 
+				console.log('Source being passed to API handler:', source);
+				console.log('Processing details for API handler:', processingDetails);
+
 				result = await apiHandlerAgent(source, processingDetails, runManager);
 				break;
 
@@ -333,12 +337,19 @@ export async function POST(request, { params }) {
 			result,
 		});
 	} catch (error) {
-		console.error(`Error in debug controller (${params.component}):`, error);
+		let componentName = 'unknown';
+		try {
+			componentName = params.component;
+		} catch (e) {
+			// Ignore error if params.component is not available
+		}
+
+		console.error(`Error in debug controller (${componentName}):`, error);
 
 		return NextResponse.json(
 			{
 				error: 'Debug operation failed',
-				component: params.component,
+				component: componentName,
 				details: error.message,
 				stack: error.stack,
 			},
