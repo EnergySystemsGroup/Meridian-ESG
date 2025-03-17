@@ -1219,9 +1219,6 @@ async function processApiHandler(source, processingDetails, runManager) {
 	// 	responseConfig: processingDetails.responseConfig
 	// 		? 'Response config present'
 	// 		: 'No response config',
-	// 	firstStageFilterConfig: processingDetails.firstStageFilterConfig?.enabled
-	// 		? 'First stage filtering enabled'
-	// 		: 'No first stage filtering',
 	// 	detailConfig: processingDetails.detailConfig?.enabled
 	// 		? 'Detail fetching enabled'
 	// 		: 'No detail fetching',
@@ -1295,25 +1292,27 @@ async function processApiHandler(source, processingDetails, runManager) {
 			filterMetrics,
 		});
 
-		// Log sample filtered item structure
-		if (filteredItems.length > 0) {
-			const sampleFiltered = filteredItems[0];
-			console.log('Sample filtered item structure:', {
-				keys: Object.keys(sampleFiltered),
-				hasId: !!sampleFiltered.id,
-				idValue: sampleFiltered.id,
-				sampleValues: Object.entries(sampleFiltered)
-					.slice(0, 5)
-					.map(([key, value]) => ({
-						key,
-						type: typeof value,
-						preview:
-							typeof value === 'string'
-								? value.substring(0, 50) + (value.length > 50 ? '...' : '')
-								: value,
-					})),
-			});
+		// Check if this is a one-step API process
+		if (!processingDetails.detailConfig?.enabled) {
+			console.log(
+				'One-step API process - returning after first stage filtering'
+			);
+			return {
+				items: filteredItems,
+				metrics: {
+					api: apiMetrics,
+					filter: filterMetrics,
+				},
+				rawApiResponse: results,
+				requestDetails: {
+					source: source,
+					processingDetails: processingDetails,
+				},
+			};
 		}
+
+		// If we get here, this is a two-step API process
+		console.log('Two-step API process - proceeding with detail fetching');
 
 		// Step 3: Fetch detailed information
 		console.log('Step 3: Fetching detailed information');
@@ -1329,31 +1328,6 @@ async function processApiHandler(source, processingDetails, runManager) {
 			detailedItemsCount: detailedItems.length,
 			detailMetrics,
 		});
-
-		// Log sample detailed item structure
-		if (detailedItems.length > 0) {
-			const sampleDetailed = detailedItems[0];
-			console.log('Sample detailed item structure:', {
-				type: typeof sampleDetailed,
-				isObject: typeof sampleDetailed === 'object',
-				keys:
-					typeof sampleDetailed === 'object' ? Object.keys(sampleDetailed) : [],
-				sampleValues:
-					typeof sampleDetailed === 'object'
-						? Object.entries(sampleDetailed)
-								.slice(0, 5)
-								.map(([key, value]) => ({
-									key,
-									type: typeof value,
-									preview:
-										typeof value === 'string'
-											? value.substring(0, 50) +
-											  (value.length > 50 ? '...' : '')
-											: value,
-								}))
-						: 'Not an object',
-			});
-		}
 
 		// Step 4: Perform second stage filtering with Detail Processor
 		console.log('Step 4: Performing second stage filtering');
@@ -1382,14 +1356,6 @@ async function processApiHandler(source, processingDetails, runManager) {
 			},
 		};
 
-		console.log('API handler processing complete. Final result structure:', {
-			itemsCount: result.items.length,
-			metricsKeys: Object.keys(result.metrics),
-			rawApiResponseLength: result.rawApiResponse.length,
-			hasRequestDetails: !!result.requestDetails,
-		});
-
-		// Return the results
 		return result;
 	} catch (error) {
 		console.error('Error in API handler processing:', error);
