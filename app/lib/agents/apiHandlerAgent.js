@@ -1242,7 +1242,6 @@ async function processApiHandler(source, processingDetails, runManager) {
 		});
 
 		// Extract all opportunities from the API results
-
 		const allOpportunities = [];
 		const responseDataPath =
 			processingDetails.responseConfig?.responseDataPath ||
@@ -1356,15 +1355,26 @@ async function processApiHandler(source, processingDetails, runManager) {
 			});
 		}
 
+		// Step 4: Perform second stage filtering with Detail Processor
+		console.log('Step 4: Performing second stage filtering');
+		const { opportunities: secondStageFiltered, metrics: secondStageMetrics } =
+			await processDetailedInfo(detailedItems, source, runManager);
+
+		console.log('Second stage filtering complete:', {
+			inputCount: detailedItems.length,
+			outputCount: secondStageFiltered.length,
+			metrics: secondStageMetrics,
+		});
+
 		// Prepare the final result
 		const result = {
-			items: detailedItems,
+			items: secondStageFiltered,
 			metrics: {
 				api: apiMetrics,
 				filter: filterMetrics,
 				detail: detailMetrics,
+				secondStage: secondStageMetrics,
 			},
-			// Include raw API response and request details for data processor
 			rawApiResponse: results,
 			requestDetails: {
 				source: source,
