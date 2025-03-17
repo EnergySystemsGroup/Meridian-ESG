@@ -169,9 +169,7 @@ For each opportunity in the provided list, assign a relevance score from 1-10 ba
 
 2. Applicability to our client types (0-3 points):
    - 0 points: Not applicable to any of our client types
-   - 1 point: Applicable to a limited subset of our client types
-   - 2 points: Applicable to several of our client types
-   - 3 points: Broadly applicable to most or all of our client types
+   - 3 points: Applicable to any of our client types
 
 3. Funding amount and accessibility (0-2 points):
    - 0 points: Insufficient funding or excessive match requirements
@@ -282,6 +280,7 @@ export async function detailProcessorAgent(
 				detailedOpportunities: JSON.stringify(batch, null, 2),
 				minRelevanceScore: processingConfig.minScoreThreshold,
 				formatInstructions,
+				sourceInfo: JSON.stringify(source, null, 2),
 			});
 
 			// Get the LLM response

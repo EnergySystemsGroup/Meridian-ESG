@@ -842,8 +842,43 @@ async function processPaginatedApi(source, processingDetails, runManager) {
 }
 
 /**
+ * Splits opportunities into chunks based on token size
+ * @param {Array} opportunities - Array of opportunities to process
+ * @param {number} tokenThreshold - Maximum tokens per chunk (default 10000)
+ * @returns {Array} Array of opportunity chunks
+ */
+function splitOpportunitiesIntoChunks(opportunities, tokenThreshold = 10000) {
+	const chunks = [];
+	let currentChunk = [];
+	let currentSize = 0;
+
+	for (const opportunity of opportunities) {
+		const oppSize = JSON.stringify(opportunity).length;
+
+		// If adding this opportunity would exceed threshold
+		if (currentSize + oppSize > tokenThreshold) {
+			if (currentChunk.length > 0) {
+				chunks.push(currentChunk);
+				currentChunk = [];
+				currentSize = 0;
+			}
+		}
+
+		currentChunk.push(opportunity);
+		currentSize += oppSize;
+	}
+
+	// Add the last chunk if it has items
+	if (currentChunk.length > 0) {
+		chunks.push(currentChunk);
+	}
+
+	return chunks;
+}
+
+/**
  * Performs first-stage filtering on API results
- * @param {Array} apiResults - The results from the API call
+ * @param {Array} opportunities - The results from the API call
  * @param {Object} source - The API source
  * @param {Object} processingDetails - The processing details
  * @param {Object} runManager - The run manager for tracking
@@ -857,86 +892,178 @@ async function performFirstStageFiltering(
 ) {
 	const startTime = Date.now();
 	const secondStageFiltering = processingDetails?.detailConfig?.enabled;
-
-	// Get the minimum relevance score from config, default to 7 if not specified
 	const minRelevanceScore = secondStageFiltering ? 5 : 7;
+
+	console.log('\n=== Starting First Stage Filtering ===');
+	console.log(
+		`Starting first-stage filtering with ${opportunities.length} opportunities`
+	);
 	console.log(`Using minimum relevance score: ${minRelevanceScore}`);
+	console.log(`Second stage filtering enabled: ${secondStageFiltering}`);
 
-	const parser = StructuredOutputParser.fromZodSchema(
-		apiResponseProcessingSchema
-	);
-	const formatInstructions = parser.getFormatInstructions();
+	// Initialize combined results
+	const combinedResults = {
+		filteredItems: [],
+		metrics: {
+			totalOpportunitiesAnalyzed: opportunities.length,
+			opportunitiesPassingFilter: 0,
+			rejectedCount: 0,
+			rejectionReasons: [],
+			averageScoreBeforeFiltering: 0,
+			averageScoreAfterFiltering: 0,
+			filteringTime: 0,
+			filterReasoning: '',
+			chunkMetrics: [], // Track per-chunk metrics
+		},
+	};
 
-	// Format the prompt with the opportunities and client details
-
-	const prompt = await promptTemplate.format({
-		opportunities: JSON.stringify(opportunities, null, 2),
-		sourceInfo: JSON.stringify(source, null, 2),
-		formatInstructions,
-		minRelevanceScore,
-	});
-	// Create the model
-	const model = new ChatAnthropic({
-		temperature: 0,
-		modelName: 'claude-3-5-haiku-20241022',
-		anthropicApiKey: process.env.ANTHROPIC_API_KEY,
-	});
-
-	// Call the model
-	const response = await model.invoke(prompt);
-
-	// Parse the response
-	const parsedResponse = await parser.parse(response.content);
-
-	// Extract opportunities from the parsed response
-	const filteredOpportunities = parsedResponse.opportunities || [];
-
-	// Log the first few opportunities to check their structure
-	console.log('LLM response structure check:', {
-		totalOpportunities: filteredOpportunities.length,
-		sampleOpportunity:
-			filteredOpportunities.length > 0
-				? {
-						...filteredOpportunities[0],
-						description: filteredOpportunities[0].description
-							? filteredOpportunities[0].description.substring(0, 100) + '...'
-							: 'No description',
-				  }
-				: 'No opportunities returned',
-		allHaveIds: filteredOpportunities.every((opp) => opp.id),
-		sampleIds: filteredOpportunities
-			.slice(0, 3)
-			.map((opp) => opp.id || 'MISSING_ID'),
-		allOpportunities: filteredOpportunities,
+	// Split opportunities into chunks if needed
+	const chunks = splitOpportunitiesIntoChunks(opportunities);
+	const totalChunks = chunks.length;
+	console.log('\n=== Chunking Analysis ===');
+	console.log(`Chunking metrics:`, {
+		totalOpportunities: opportunities.length,
+		numberOfChunks: totalChunks,
+		averageChunkSize: Math.round(opportunities.length / totalChunks),
+		chunkSizes: chunks.map((chunk) => ({
+			size: chunk.length,
+			estimatedTokens: JSON.stringify(chunk).length / 4, // rough estimation
+		})),
 	});
 
-	// Validate that all opportunities have IDs
-	const opportunitiesWithoutIds = filteredOpportunities.filter(
-		(opp) => !opp.id
-	);
-	if (opportunitiesWithoutIds.length > 0) {
-		console.warn(
-			`WARNING: ${opportunitiesWithoutIds.length} opportunities are missing IDs. This will cause problems with detail fetching.`
+	let totalProcessed = 0;
+	let totalProcessingTime = 0;
+
+	// Process each chunk
+	for (const chunk of chunks) {
+		const chunkStartTime = Date.now();
+		const chunkIndex = chunks.indexOf(chunk);
+		const chunkSize = chunk.length;
+
+		console.log(`\n=== Processing Chunk ${chunkIndex + 1}/${totalChunks} ===`);
+		console.log(`\nProcessing chunk ${chunkIndex + 1}/${totalChunks}:`, {
+			chunkSize: chunk.length,
+			totalProcessedSoFar: totalProcessed,
+			estimatedTokens: Math.round(JSON.stringify(chunk).length / 4),
+			percentComplete: Math.round((chunkIndex / totalChunks) * 100),
+		});
+
+		const parser = StructuredOutputParser.fromZodSchema(
+			apiResponseProcessingSchema
 		);
-		console.warn('First opportunity without ID:', opportunitiesWithoutIds[0]);
+		const formatInstructions = parser.getFormatInstructions();
+
+		const prompt = await promptTemplate.format({
+			opportunities: JSON.stringify(chunk, null, 2),
+			sourceInfo: JSON.stringify(source, null, 2),
+			formatInstructions,
+			minRelevanceScore,
+		});
+
+		const model = new ChatAnthropic({
+			temperature: 0,
+			modelName: 'claude-3-5-haiku-20241022',
+			anthropicApiKey: process.env.ANTHROPIC_API_KEY,
+		});
+
+		const response = await model.invoke(prompt);
+		const result = await parser.parse(response.content);
+
+		// Add filtered opportunities to combined results
+		combinedResults.filteredItems.push(...result.opportunities);
+
+		// Update metrics
+
+		totalProcessed += chunkSize;
+		const chunkProcessingTime = Date.now() - chunkStartTime;
+		totalProcessingTime += chunkProcessingTime;
+
+		// Store chunk metrics
+		combinedResults.metrics.chunkMetrics.push({
+			chunkIndex: chunkIndex + 1,
+			chunkSize,
+			processedOpportunities: chunkSize,
+			passedCount: result.processingMetrics.passedCount,
+			rejectedCount: result.processingMetrics.rejectedCount,
+			processingTime: chunkProcessingTime,
+			averageTimePerItem: Math.round(chunkProcessingTime / chunkSize),
+			estimatedTokens: Math.round(JSON.stringify(chunk).length / 4),
+		});
+
+		// Update counts and metrics as before...
+		combinedResults.metrics.opportunitiesPassingFilter +=
+			result.processingMetrics.passedCount;
+		combinedResults.metrics.rejectedCount +=
+			result.processingMetrics.rejectedCount;
+		combinedResults.metrics.rejectionReasons = [
+			...new Set([
+				...combinedResults.metrics.rejectionReasons,
+				...result.processingMetrics.rejectionReasons,
+			]),
+		];
+
+		// Update weighted averages for scores
+		combinedResults.metrics.averageScoreBeforeFiltering =
+			(combinedResults.metrics.averageScoreBeforeFiltering *
+				(totalProcessed - chunkSize) +
+				result.processingMetrics.averageScoreBeforeFiltering * chunkSize) /
+			totalProcessed;
+
+		combinedResults.metrics.averageScoreAfterFiltering =
+			(combinedResults.metrics.averageScoreAfterFiltering *
+				(totalProcessed - chunkSize) +
+				result.processingMetrics.averageScoreAfterFiltering * chunkSize) /
+			totalProcessed;
+
+		// Append filter reasoning
+		if (result.processingMetrics.filterReasoning) {
+			combinedResults.metrics.filterReasoning +=
+				(combinedResults.metrics.filterReasoning ? ' ' : '') +
+				result.processingMetrics.filterReasoning;
+		}
+
+		console.log(`Chunk ${chunkIndex + 1} complete:`, {
+			processedInChunk: chunkSize,
+			totalProcessed,
+			passedInChunk: result.processingMetrics.passedCount,
+			rejectedInChunk: result.processingMetrics.rejectedCount,
+			chunkProcessingTime: `${(chunkProcessingTime / 1000).toFixed(2)}s`,
+			averageTimePerItem: `${(chunkProcessingTime / chunkSize).toFixed(2)}ms`,
+			overallProgress: `${Math.round(
+				(totalProcessed / opportunities.length) * 100
+			)}%`,
+		});
 	}
 
-	// Calculate metrics
-	const metrics = {
-		totalOpportunitiesAnalyzed: opportunities.length,
-		opportunitiesPassingFilter: filteredOpportunities.length,
-		filteringTime: Date.now() - startTime,
-	};
+	// Calculate final metrics
+	const totalTime = Date.now() - startTime;
+	combinedResults.metrics.filteringTime = totalTime;
 
-	// Update run manager with metrics
+	// Log the final results
+	console.log('\n=== First Stage Filtering Complete ===');
+	console.log('\nFirst stage filtering complete:', {
+		totalOpportunities: opportunities.length,
+		totalChunks,
+		filteredCount: combinedResults.filteredItems.length,
+		totalProcessingTime: `${(totalTime / 1000).toFixed(2)}s`,
+		averageTimePerChunk: `${(totalProcessingTime / totalChunks / 1000).toFixed(
+			2
+		)}s`,
+		averageTimePerItem: `${(totalTime / opportunities.length).toFixed(2)}ms`,
+		chunkSummary: combinedResults.metrics.chunkMetrics.map((m) => ({
+			chunk: m.chunkIndex,
+			processed: m.processedOpportunities,
+			passed: m.passedCount,
+			timeSeconds: (m.processingTime / 1000).toFixed(2),
+		})),
+	});
+
+	// Update run manager with combined metrics
 	if (runManager) {
-		await runManager.updateFirstStageFilter(metrics);
+		await runManager.updateFirstStageFilter(combinedResults.metrics);
 	}
 
-	return {
-		filteredItems: filteredOpportunities,
-		metrics,
-	};
+	return combinedResults;
 }
 
 /**
@@ -1347,25 +1474,13 @@ async function processApiHandler(source, processingDetails, runManager) {
 			detailMetrics,
 		});
 
-		// Step 4: Perform second stage filtering with Detail Processor
-		console.log('Step 4: Performing second stage filtering');
-		const { opportunities: secondStageFiltered, metrics: secondStageMetrics } =
-			await processDetailedInfo(detailedItems, source, runManager);
-
-		console.log('Second stage filtering complete:', {
-			inputCount: detailedItems.length,
-			outputCount: secondStageFiltered.length,
-			metrics: secondStageMetrics,
-		});
-
-		// Prepare the final result
-		const result = {
-			items: secondStageFiltered,
+		// Return the results for further processing by detailProcessorAgent
+		return {
+			items: detailedItems,
 			metrics: {
 				api: apiMetrics,
 				filter: filterMetrics,
 				detail: detailMetrics,
-				secondStage: secondStageMetrics,
 			},
 			rawApiResponse: results,
 			requestDetails: {
@@ -1373,8 +1488,6 @@ async function processApiHandler(source, processingDetails, runManager) {
 				processingDetails: processingDetails,
 			},
 		};
-
-		return result;
 	} catch (error) {
 		console.error('Error in API handler processing:', error);
 		throw error;
@@ -1408,9 +1521,10 @@ export async function apiHandlerAgent(
 
 		// Format the result for the next stage
 		const formattedResult = {
+			firstStageMetrics: result.metrics.filter,
 			opportunities: result.items,
 			initialApiMetrics: result.metrics.api,
-			firstStageMetrics: result.metrics.filter,
+
 			detailApiMetrics: result.metrics.detail,
 			rawApiResponse: result.rawApiResponse,
 			requestDetails: result.requestDetails,
