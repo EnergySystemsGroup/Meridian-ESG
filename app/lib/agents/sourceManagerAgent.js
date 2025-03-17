@@ -57,6 +57,12 @@ const sourceProcessingSchema = z.object({
 			headers: z.record(z.string()).optional(),
 			idField: z.string().optional(),
 			idParam: z.string().optional(),
+			responseDataPath: z
+				.string()
+				.optional()
+				.describe(
+					'Path to extract data from the detail response (e.g., "data" or "results.data")'
+				),
 		})
 		.describe('Configuration for fetching detailed information'),
 	responseMapping: z

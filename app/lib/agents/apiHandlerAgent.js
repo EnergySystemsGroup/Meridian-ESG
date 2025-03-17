@@ -336,8 +336,6 @@ function extractDataByPath(obj, path) {
 		return obj;
 	}
 
-	console.log(`Extracting data using path: "${path}"`);
-
 	try {
 		// Split the path by dots
 		const parts = path.split('.');
@@ -809,8 +807,6 @@ async function processPaginatedApi(source, processingDetails, runManager) {
 	const endTime = Date.now();
 	initialApiMetrics.responseTime = endTime - startTime;
 
-	console.log('these are the results from the api call', results);
-	console.log('these are the initial metrics', initialApiMetrics);
 	console.log(
 		`API calls made: ${initialApiMetrics.apiCallCount}, Items retrieved: ${initialApiMetrics.totalItemsRetrieved}, Total available: ${initialApiMetrics.totalHitCount}`
 	);
@@ -845,18 +841,6 @@ async function performFirstStageFiltering(
 	const startTime = Date.now();
 	const secondStageFiltering = processingDetails?.detailConfig?.enabled;
 
-	// If first stage filtering is not enabled, return all opportunities
-	// if (!firstStageFilterConfig || !firstStageFilterConfig.enabled) {
-	// 	return {
-	// 		filteredItems: opportunities,
-	// 		metrics: {
-	// 			totalOpportunitiesAnalyzed: opportunities.length,
-	// 			opportunitiesPassingFilter: opportunities.length,
-	// 			filteringTime: 0,
-	// 		},
-	// 	};
-	// }
-
 	// Get the minimum relevance score from config, default to 7 if not specified
 	const minRelevanceScore = secondStageFiltering ? 5 : 7;
 	console.log(`Using minimum relevance score: ${minRelevanceScore}`);
@@ -884,13 +868,6 @@ async function performFirstStageFiltering(
 	// Call the model
 	const response = await model.invoke(prompt);
 
-	// Call the LLM
-	// const llmResponse = await callLLM(
-	// 	prompt,
-	// 	firstStageFilterConfig.llmConfig,
-	// 	runManager
-	// );
-
 	// Parse the response
 	const parsedResponse = await parser.parse(response.content);
 
@@ -913,6 +890,7 @@ async function performFirstStageFiltering(
 		sampleIds: filteredOpportunities
 			.slice(0, 3)
 			.map((opp) => opp.id || 'MISSING_ID'),
+		allOpportunities: filteredOpportunities,
 	});
 
 	// Validate that all opportunities have IDs
@@ -1057,30 +1035,33 @@ async function fetchDetailedInformation(
 				const responseTime = detailEndTime - detailStartTime;
 				responseTimes.push(responseTime);
 
-				// Log the detail response structure
-				// console.log(`Detail response received for ID ${itemId}:`, {
-				// 	responseTime,
-				// 	responseKeys: Object.keys(detailResponse || {}),
-				// 	responseSize: JSON.stringify(detailResponse).length,
-				// });
+				// Extract data from the response using the configured responseDataPath
+				let detailData;
+				// First check if detailConfig has a responseDataPath
+				if (detailConfig.responseDataPath) {
+					detailData = extractDataByPath(
+						detailResponse,
+						detailConfig.responseDataPath
+					);
+					console.log(
+						`Extracted detail data using path: ${detailConfig.responseDataPath}`
+					);
+				}
+				// Default to "data" path as a common convention
+				else if (detailResponse.data) {
+					detailData = detailResponse.data;
+					console.log('Using default "data" path for detail response');
+				}
+				// Fall back to the entire response if no path is specified
+				else {
+					detailData = detailResponse;
+					console.log(
+						'No responseDataPath found, using entire detail response'
+					);
+				}
 
-				// Add detailed information
-				const detailedItem = {
-					...item,
-					_detailResponse: detailResponse,
-				};
-
-				// Log the structure of the detailed item
-				// console.log(`Detailed item structure for ID ${itemId}:`, {
-				// 	originalKeys: Object.keys(item),
-				// 	detailedKeys: Object.keys(detailedItem),
-				// 	hasDetailResponse: !!detailedItem._detailResponse,
-				// 	detailResponseKeys: detailedItem._detailResponse
-				// 		? Object.keys(detailedItem._detailResponse)
-				// 		: [],
-				// });
-
-				detailedItems.push(detailedItem);
+				// Add the extracted data directly to the detailed items array
+				detailedItems.push(detailData);
 				detailMetrics.successfulDetailCalls++;
 				console.log(`Detail request successful for ID ${itemId}`);
 			} catch (error) {
@@ -1092,18 +1073,13 @@ async function fetchDetailedInformation(
 					`${error.message} for ID ${itemId}`
 				);
 
-				// Keep the original item
-				detailedItems.push(item);
+				// Don't add anything for failed requests
 			}
 		} else {
-			// No ID field, keep the original item
-			console.warn(
-				`No ID found for item. This item will be included without detail enrichment.`,
-				{
-					itemKeys: Object.keys(item),
-				}
-			);
-			detailedItems.push(item);
+			// No ID field, log warning but don't add to detailed items
+			console.warn(`No ID found for item. This item will be skipped.`, {
+				itemKeys: Object.keys(item),
+			});
 		}
 	}
 
@@ -1118,26 +1094,12 @@ async function fetchDetailedInformation(
 	}
 
 	// Log the final detailed items structure
-	// console.log('Final detailed items summary:', {
-	// 	totalItems: detailedItems.length,
-	// 	itemsWithDetailResponse: detailedItems.filter(
-	// 		(item) => item._detailResponse
-	// 	).length,
-	// 	itemsWithoutDetailResponse: detailedItems.filter(
-	// 		(item) => !item._detailResponse
-	// 	).length,
-	// 	sampleDetailedItem:
-	// 		detailedItems.length > 0
-	// 			? {
-	// 					keys: Object.keys(detailedItems[0]),
-	// 					hasId: !!detailedItems[0].id,
-	// 					hasDetailResponse: !!detailedItems[0]._detailResponse,
-	// 					detailResponseKeys: detailedItems[0]._detailResponse
-	// 						? Object.keys(detailedItems[0]._detailResponse)
-	// 						: [],
-	// 			  }
-	// 			: 'No items',
-	// });
+	console.log('Final detailed items summary:', {
+		totalItems: detailedItems.length,
+		sampleData: detailedItems.length > 0 ? detailedItems[0] : 'No items',
+		itemsWithData: detailedItems.filter((item) => item).length,
+		itemsWithoutData: detailedItems.filter((item) => !item).length,
+	});
 
 	// Log the metrics
 	console.log('Detail fetching metrics:', detailMetrics);
@@ -1281,14 +1243,12 @@ async function processApiHandler(source, processingDetails, runManager) {
 		});
 
 		// Extract all opportunities from the API results
-		console.log('Extracting opportunities from API results');
+
 		const allOpportunities = [];
 		const responseDataPath =
 			processingDetails.responseConfig?.responseDataPath ||
 			processingDetails.paginationConfig?.responseDataPath ||
 			'';
-
-		console.log(`Using response data path: "${responseDataPath}"`);
 
 		for (const result of results) {
 			const items = extractDataByPath(result, responseDataPath);
@@ -1376,24 +1336,24 @@ async function processApiHandler(source, processingDetails, runManager) {
 		if (detailedItems.length > 0) {
 			const sampleDetailed = detailedItems[0];
 			console.log('Sample detailed item structure:', {
-				keys: Object.keys(sampleDetailed),
-				hasId: !!sampleDetailed.id,
-				idValue: sampleDetailed.id,
-				hasDetailResponse: !!sampleDetailed._detailResponse,
-				detailResponseKeys: sampleDetailed._detailResponse
-					? Object.keys(sampleDetailed._detailResponse)
-					: [],
-				sampleValues: Object.entries(sampleDetailed)
-					.filter(([key]) => key !== '_detailResponse') // Exclude the potentially large detail response
-					.slice(0, 5)
-					.map(([key, value]) => ({
-						key,
-						type: typeof value,
-						preview:
-							typeof value === 'string'
-								? value.substring(0, 50) + (value.length > 50 ? '...' : '')
-								: value,
-					})),
+				type: typeof sampleDetailed,
+				isObject: typeof sampleDetailed === 'object',
+				keys:
+					typeof sampleDetailed === 'object' ? Object.keys(sampleDetailed) : [],
+				sampleValues:
+					typeof sampleDetailed === 'object'
+						? Object.entries(sampleDetailed)
+								.slice(0, 5)
+								.map(([key, value]) => ({
+									key,
+									type: typeof value,
+									preview:
+										typeof value === 'string'
+											? value.substring(0, 50) +
+											  (value.length > 50 ? '...' : '')
+											: value,
+								}))
+						: 'Not an object',
 			});
 		}
 
