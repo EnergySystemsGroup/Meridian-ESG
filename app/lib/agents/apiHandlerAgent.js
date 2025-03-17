@@ -120,9 +120,15 @@ const apiResponseProcessingSchema = z.object({
 					.optional()
 					.nullable()
 					.describe('Closing date for applications'),
-				eligibility: z
+				eligibleApplicants: z
 					.array(z.string())
-					.describe('List of eligible entity types'),
+					.describe('List of eligible applicant types'),
+				eligibleProjectTypes: z
+					.array(z.string())
+					.describe('List of eligible project types'),
+				eligibleLocations: z
+					.array(z.string())
+					.describe('List of eligible locations'),
 				url: z
 					.string()
 					.optional()
@@ -141,10 +147,20 @@ const apiResponseProcessingSchema = z.object({
 					.array(z.string())
 					.optional()
 					.describe('Relevant categories from our taxonomy'),
+				tags: z
+					.array(z.string())
+					.optional()
+					.describe(
+						'Short, relevant keywords or phrases extracted from the opportunity description. These should be concise (1-3 words) and capture key aspects like: funding type (e.g., "grant", "loan"), focus areas (e.g., "solar", "energy efficiency"), target sectors (e.g., "schools", "municipalities"), or special characteristics (e.g., "matching-required", "rural-only"). Do not include full sentences.'
+					),
 				status: z
 					.string()
 					.optional()
 					.describe('Current status (open, upcoming, closed)'),
+				isNational: z
+					.boolean()
+					.optional()
+					.describe('Whether this is a national opportunity'),
 				relevanceScore: z
 					.number()
 					.min(1)
@@ -157,19 +173,21 @@ const apiResponseProcessingSchema = z.object({
 			})
 		)
 		.describe('List of extracted funding opportunities'),
-	totalCount: z
-		.number()
-		.describe('Total number of opportunities found in the API response'),
 	processingMetrics: z
 		.object({
 			inputCount: z.number().describe('Number of items in the input'),
 			passedCount: z.number().describe('Number of items that passed filtering'),
+			rejectedCount: z.number().describe('Number of items that were rejected'),
+			rejectionReasons: z.array(z.string()).describe('Reasons for rejection'),
+			averageScoreBeforeFiltering: z
+				.number()
+				.describe('Average relevance score before filtering'),
+			averageScoreAfterFiltering: z
+				.number()
+				.describe('Average relevance score after filtering'),
 			filterReasoning: z
 				.string()
 				.describe('Summary of why items were filtered'),
-			processingTime: z
-				.number()
-				.describe('Time spent processing in milliseconds'),
 		})
 		.describe('Metrics about the processing'),
 });

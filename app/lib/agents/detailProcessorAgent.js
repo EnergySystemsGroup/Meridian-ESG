@@ -13,58 +13,116 @@ const detailProcessingSchema = z.object({
 	opportunities: z
 		.array(
 			z.object({
-				id: z.string().describe('The opportunity ID'),
-				title: z.string().describe('The title of the opportunity'),
+				id: z.string().describe('Unique identifier for the opportunity'),
+				title: z.string().describe('Title of the funding opportunity'),
+				description: z
+					.string()
+					.optional()
+					.nullable()
+					.describe('Description of the opportunity'),
+				fundingType: z
+					.string()
+					.optional()
+					.nullable()
+					.describe('Type of funding (grant, loan, etc.)'),
+				agency: z
+					.string()
+					.optional()
+					.nullable()
+					.describe('Funding agency or organization'),
+				totalFunding: z
+					.number()
+					.optional()
+					.nullable()
+					.describe('Total funding amount available'),
+				minAward: z
+					.number()
+					.optional()
+					.nullable()
+					.describe('Minimum award amount'),
+				maxAward: z
+					.number()
+					.optional()
+					.nullable()
+					.describe('Maximum award amount'),
+				openDate: z
+					.string()
+					.optional()
+					.nullable()
+					.describe('Opening date for applications'),
+				closeDate: z
+					.string()
+					.optional()
+					.nullable()
+					.describe('Closing date for applications'),
+				eligibleApplicants: z
+					.array(z.string())
+					.describe('List of eligible applicant types'),
+				eligibleProjectTypes: z
+					.array(z.string())
+					.describe('List of eligible project types'),
+				eligibleLocations: z
+					.array(z.string())
+					.describe('List of eligible locations'),
+				url: z
+					.string()
+					.optional()
+					.nullable()
+					.describe('URL for more information'),
+				matchingRequired: z
+					.boolean()
+					.optional()
+					.describe('Whether matching funds are required'),
+				matchingPercentage: z
+					.number()
+					.optional()
+					.nullable()
+					.describe('Required matching percentage'),
+				categories: z
+					.array(z.string())
+					.optional()
+					.describe('Relevant categories from our taxonomy'),
+				tags: z
+					.array(z.string())
+					.optional()
+					.describe(
+						'Short, relevant keywords or phrases extracted from the opportunity description. These should be concise (1-3 words) and capture key aspects like: funding type (e.g., "grant", "loan"), focus areas (e.g., "solar", "energy efficiency"), target sectors (e.g., "schools", "municipalities"), or special characteristics (e.g., "matching-required", "rural-only"). Do not include full sentences.'
+					),
+				status: z
+					.string()
+					.optional()
+					.describe('Current status (open, upcoming, closed)'),
+				isNational: z
+					.boolean()
+					.optional()
+					.describe('Whether this is a national opportunity'),
 				relevanceScore: z
 					.number()
 					.min(1)
 					.max(10)
 					.describe('Relevance score from 1-10'),
-				focusAreas: z
-					.array(z.string())
-					.describe('Primary focus areas for this opportunity'),
-				eligibleClientTypes: z
-					.array(z.string())
-					.describe('Types of clients eligible for this opportunity'),
-				keyBenefits: z
-					.array(z.string())
-					.describe('Key benefits of this opportunity (2-3 bullet points)'),
-				restrictions: z
+				relevanceReasoning: z
 					.string()
 					.optional()
-					.describe('Any notable restrictions or requirements'),
-				reasoning: z
-					.string()
-					.describe('Reasoning for the relevance score and inclusion'),
+					.describe('Reasoning for the relevance score'),
 			})
 		)
-		.describe('List of opportunities that passed the detailed filtering'),
-	filteredCount: z
-		.number()
-		.describe('Number of opportunities that were filtered out'),
+		.describe('List of extracted funding opportunities'),
 	processingMetrics: z
 		.object({
 			inputCount: z.number().describe('Number of items in the input'),
 			passedCount: z.number().describe('Number of items that passed filtering'),
 			rejectedCount: z.number().describe('Number of items that were rejected'),
-			rejectionReasons: z
-				.array(z.string())
-				.describe('Common reasons for rejection'),
+			rejectionReasons: z.array(z.string()).describe('Reasons for rejection'),
 			averageScoreBeforeFiltering: z
 				.number()
-				.optional()
 				.describe('Average relevance score before filtering'),
 			averageScoreAfterFiltering: z
 				.number()
-				.optional()
 				.describe('Average relevance score after filtering'),
-			processingTime: z
-				.number()
-				.describe('Time spent processing in milliseconds'),
-			tokenUsage: z
-				.number()
-				.optional()
-				.describe('Estimated token usage for this processing'),
+			filterReasoning: z
+				.string()
+				.describe('Summary of why items were filtered'),
 		})
 		.describe('Metrics about the processing'),
 });
