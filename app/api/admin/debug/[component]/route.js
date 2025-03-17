@@ -223,9 +223,6 @@ export async function POST(request, { params }) {
 					body.processingDetails ||
 					(await sourceManagerAgent(source, runManager));
 
-				console.log('Source being passed to API handler:', source);
-				console.log('Processing details for API handler:', processingDetails);
-
 				result = await apiHandlerAgent(source, processingDetails, runManager);
 				break;
 

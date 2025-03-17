@@ -297,13 +297,13 @@ async function makeConfiguredApiRequest(config) {
 		const endTime = Date.now();
 
 		// Log the response
-		console.log('API response received:', {
-			status: response.status,
-			statusText: response.statusText,
-			responseTime: endTime - startTime,
-			dataSize: JSON.stringify(response.data).length,
-			dataKeys: Object.keys(response.data || {}),
-		});
+		// console.log('API response received:', {
+		// 	status: response.status,
+		// 	statusText: response.statusText,
+		// 	responseTime: endTime - startTime,
+		// 	dataSize: JSON.stringify(response.data).length,
+		// 	dataKeys: Object.keys(response.data || {}),
+		// });
 
 		return response.data;
 	} catch (error) {
@@ -364,11 +364,11 @@ function extractDataByPath(obj, path) {
 			current = current[part];
 
 			// Log the type of the current value
-			console.log(
-				`Path "${currentPath}" yielded: ${
-					current === null ? 'null' : typeof current
-				}`
-			);
+			// console.log(
+			// 	`Path "${currentPath}" yielded: ${
+			// 		current === null ? 'null' : typeof current
+			// 	}`
+			// );
 		}
 
 		// Return the final value
@@ -410,7 +410,6 @@ async function processPaginatedApi(source, processingDetails, runManager) {
 
 	if (!paginationConfig || !paginationConfig.enabled) {
 		// If pagination is not enabled, make a single request
-		console.log('Pagination not enabled, making a single request');
 
 		const apiCallStartTime = Date.now();
 		apiCallCounter++; // Increment API call counter
@@ -443,29 +442,29 @@ async function processPaginatedApi(source, processingDetails, runManager) {
 			responseConfig.totalCountPath ||
 			(paginationConfig && paginationConfig.totalCountPath);
 
-		console.log('Non-paginated extraction paths:', {
-			responseDataPath,
-			totalCountPath,
-			responseKeys:
-				typeof response === 'object' ? Object.keys(response) : 'not an object',
-		});
+		// console.log('Non-paginated extraction paths:', {
+		// 	responseDataPath,
+		// 	totalCountPath,
+		// 	responseKeys:
+		// 		typeof response === 'object' ? Object.keys(response) : 'not an object',
+		// });
 
 		// First try to extract data using the configured path
 		if (responseDataPath) {
 			const extractedData = extractDataByPath(response, responseDataPath);
-			console.log('Extracted data using path:', {
-				path: responseDataPath,
-				isArray: Array.isArray(extractedData),
-				length: Array.isArray(extractedData)
-					? extractedData.length
-					: 'not an array',
-				sample:
-					Array.isArray(extractedData) && extractedData.length > 0
-						? typeof extractedData[0] === 'object'
-							? Object.keys(extractedData[0])
-							: extractedData[0]
-						: 'no sample',
-			});
+			// console.log('Extracted data using path:', {
+			// 	path: responseDataPath,
+			// 	isArray: Array.isArray(extractedData),
+			// 	length: Array.isArray(extractedData)
+			// 		? extractedData.length
+			// 		: 'not an array',
+			// 	sample:
+			// 		Array.isArray(extractedData) && extractedData.length > 0
+			// 			? typeof extractedData[0] === 'object'
+			// 				? Object.keys(extractedData[0])
+			// 				: extractedData[0]
+			// 			: 'no sample',
+			// });
 
 			if (Array.isArray(extractedData)) {
 				items = extractedData;
@@ -507,11 +506,11 @@ async function processPaginatedApi(source, processingDetails, runManager) {
 		// Try to extract total count using the configured path
 		if (totalCountPath) {
 			const totalCount = extractDataByPath(response, totalCountPath);
-			console.log('Extracted total count:', {
-				path: totalCountPath,
-				value: totalCount,
-				type: typeof totalCount,
-			});
+			// console.log('Extracted total count:', {
+			// 	path: totalCountPath,
+			// 	value: totalCount,
+			// 	type: typeof totalCount,
+			// });
 
 			if (totalCount !== undefined && totalCount !== null) {
 				initialApiMetrics.totalHitCount = totalCount;
@@ -638,17 +637,17 @@ async function processPaginatedApi(source, processingDetails, runManager) {
 		const apiCallStartTime = Date.now();
 		apiCallCounter++; // Increment API call counter
 
-		console.log(`[Page ${currentPage}] Making API request with params:`, {
-			method: processingDetails.requestConfig.method,
-			url: processingDetails.apiEndpoint,
-			queryParams,
-			paginationParams:
-				paginationConfig.type === 'offset'
-					? { limit: pageSize, offset }
-					: paginationConfig.type === 'page'
-					? { limit: pageSize, page: currentPage + 1 }
-					: { limit: pageSize, cursor },
-		});
+		// console.log(`[Page ${currentPage}] Making API request with params:`, {
+		// 	method: processingDetails.requestConfig.method,
+		// 	url: processingDetails.apiEndpoint,
+		// 	queryParams,
+		// 	paginationParams:
+		// 		paginationConfig.type === 'offset'
+		// 			? { limit: pageSize, offset }
+		// 			: paginationConfig.type === 'page'
+		// 			? { limit: pageSize, page: currentPage + 1 }
+		// 			: { limit: pageSize, cursor },
+		// });
 
 		const response = await makeConfiguredApiRequest({
 			method: processingDetails.requestConfig.method,
@@ -683,14 +682,14 @@ async function processPaginatedApi(source, processingDetails, runManager) {
 		const currentTotalCount = extractDataByPath(response, totalCountPath);
 
 		// Log data extraction results
-		console.log(`[Page ${currentPage}] Data extraction:`, {
-			responseDataPath,
-			dataLength: Array.isArray(data) ? data.length : 'not an array',
-			totalCountPath,
-			currentTotalCount,
-			responseKeys:
-				typeof response === 'object' ? Object.keys(response) : 'not an object',
-		});
+		// console.log(`[Page ${currentPage}] Data extraction:`, {
+		// 	responseDataPath,
+		// 	dataLength: Array.isArray(data) ? data.length : 'not an array',
+		// 	totalCountPath,
+		// 	currentTotalCount,
+		// 	responseKeys:
+		// 		typeof response === 'object' ? Object.keys(response) : 'not an object',
+		// });
 
 		// Update total count if available
 		if (currentTotalCount !== undefined && currentTotalCount !== null) {
@@ -749,17 +748,17 @@ async function processPaginatedApi(source, processingDetails, runManager) {
 		currentPage++;
 
 		// Log pagination decision
-		console.log(`[Page ${currentPage - 1}] Pagination decision:`, {
-			type: paginationConfig.type,
-			hasMorePages,
-			currentPage,
-			maxPages,
-			offset: paginationConfig.type === 'offset' ? offset : undefined,
-			totalCount,
-			pageSize,
-			dataLength: Array.isArray(data) ? data.length : 'not an array',
-			cursor: paginationConfig.type === 'cursor' ? cursor : undefined,
-		});
+		// console.log(`[Page ${currentPage - 1}] Pagination decision:`, {
+		// 	type: paginationConfig.type,
+		// 	hasMorePages,
+		// 	currentPage,
+		// 	maxPages,
+		// 	offset: paginationConfig.type === 'offset' ? offset : undefined,
+		// 	totalCount,
+		// 	pageSize,
+		// 	dataLength: Array.isArray(data) ? data.length : 'not an array',
+		// 	cursor: paginationConfig.type === 'cursor' ? cursor : undefined,
+		// });
 
 		if (paginationConfig.type === 'offset') {
 			offset += pageSize;
@@ -789,15 +788,15 @@ async function processPaginatedApi(source, processingDetails, runManager) {
 	initialApiMetrics.totalHitCount = totalCount || totalItems;
 
 	// Log final metrics calculation
-	console.log('Final metrics calculation:', {
-		totalPages: currentPage,
-		apiCallCount: apiCallCounter,
-		resultsLength: results.length,
-		totalItemsRetrieved: totalItems,
-		totalHitCount: totalCount || totalItems,
-		rawTotalCount: totalCount,
-		fallbackToTotalItems: totalCount === undefined || totalCount === null,
-	});
+	// console.log('Final metrics calculation:', {
+	// 	totalPages: currentPage,
+	// 	apiCallCount: apiCallCounter,
+	// 	resultsLength: results.length,
+	// 	totalItemsRetrieved: totalItems,
+	// 	totalHitCount: totalCount || totalItems,
+	// 	rawTotalCount: totalCount,
+	// 	fallbackToTotalItems: totalCount === undefined || totalCount === null,
+	// });
 
 	// Update run manager with initial API call metrics
 	if (runManager) {
@@ -1206,27 +1205,27 @@ function formatPrompt(template, variables, options = {}) {
  * @returns {Promise<Object>} - The processed results
  */
 async function processApiHandler(source, processingDetails, runManager) {
-	console.log('Starting API handler processing for source:', source.name);
-	console.log('Processing details:', {
-		requestConfig: {
-			...processingDetails.requestConfig,
-			headers: processingDetails.requestConfig.headers
-				? 'Headers present'
-				: 'No headers',
-		},
-		paginationConfig: processingDetails.paginationConfig
-			? 'Pagination enabled'
-			: 'No pagination',
-		responseConfig: processingDetails.responseConfig
-			? 'Response config present'
-			: 'No response config',
-		firstStageFilterConfig: processingDetails.firstStageFilterConfig?.enabled
-			? 'First stage filtering enabled'
-			: 'No first stage filtering',
-		detailConfig: processingDetails.detailConfig?.enabled
-			? 'Detail fetching enabled'
-			: 'No detail fetching',
-	});
+	// console.log('Starting API handler processing for source:', source.name);
+	// console.log('Processing details:', {
+	// 	requestConfig: {
+	// 		...processingDetails.requestConfig,
+	// 		headers: processingDetails.requestConfig.headers
+	// 			? 'Headers present'
+	// 			: 'No headers',
+	// 	},
+	// 	paginationConfig: processingDetails.paginationConfig
+	// 		? 'Pagination enabled'
+	// 		: 'No pagination',
+	// 	responseConfig: processingDetails.responseConfig
+	// 		? 'Response config present'
+	// 		: 'No response config',
+	// 	firstStageFilterConfig: processingDetails.firstStageFilterConfig?.enabled
+	// 		? 'First stage filtering enabled'
+	// 		: 'No first stage filtering',
+	// 	detailConfig: processingDetails.detailConfig?.enabled
+	// 		? 'Detail fetching enabled'
+	// 		: 'No detail fetching',
+	// });
 
 	try {
 		// Step 1: Process the paginated API
@@ -1401,9 +1400,9 @@ export async function apiHandlerAgent(
 	runManager = null
 ) {
 	// Log the start of the API Handler Agent
-	console.log(
-		`Starting API Handler Agent for source: ${source.name} (${source.id})`
-	);
+	// console.log(
+	// 	`Starting API Handler Agent for source: ${source.name} (${source.id})`
+	// );
 
 	try {
 		// Process the API handler
