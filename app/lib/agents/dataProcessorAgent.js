@@ -245,7 +245,7 @@ export async function dataProcessorAgent(
 		// Create the model
 		const model = new ChatAnthropic({
 			temperature: 0.2,
-			modelName: 'claude-3-5-sonnet-20240620',
+			modelName: 'claude-3-5-haiku-20241022',
 			anthropicApiKey: process.env.ANTHROPIC_API_KEY,
 		});
 

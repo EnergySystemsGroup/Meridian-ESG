@@ -350,7 +350,7 @@ export async function processDetailedInfo(
 		minScoreThreshold: 7,
 		batchSize: 40,
 		maxConcurrentBatches: 5,
-		model: 'claude-3-5-sonnet-20240620',
+		model: 'claude-3-5-haiku-20241022',
 		temperature: 0.2,
 		maxTokensPerRequest: 16000,
 	};

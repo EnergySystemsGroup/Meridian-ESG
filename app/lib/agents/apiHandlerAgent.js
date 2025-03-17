@@ -11,6 +11,7 @@ import {
 	makePaginatedApiRequest,
 	getNestedValue,
 } from '../apiRequest';
+import { processNextSource } from './sourceManagerAgent';
 import { z } from 'zod';
 import axios from 'axios';
 
@@ -73,6 +74,11 @@ const apiResponseProcessingSchema = z.object({
 	opportunities: z
 		.array(
 			z.object({
+				id: z
+					.string()
+					.describe(
+						'Unique identifier for the opportunity - REQUIRED for detail fetching'
+					),
 				title: z.string().describe('Title of the funding opportunity'),
 				description: z
 					.string()
@@ -177,8 +183,8 @@ Your task is to analyze a list of funding opportunities and identify those most 
 SOURCE INFORMATION:
 {sourceInfo}
 
-API RESPONSE:
-{apiResponse}
+OPPORTUNITIES:
+{opportunities}
 
 Our organization helps the following types of entities secure funding:
 - K-12 schools
@@ -224,65 +230,155 @@ For each opportunity in the provided list, assign a relevance score from 1-10 ba
    - 1 point: Moderate funding with reasonable match requirements
    - 2 points: Substantial funding with minimal match requirements
 
-Only include opportunities that score 7 or higher in your final output. In the absense of information, make assumptions to Lean on the side of inclusion.
+Only include opportunities that score {minRelevanceScore} or higher in your final output. In the absence of information, make assumptions to lean on the side of inclusion.
 
 For each selected opportunity, provide:
-1. Opportunity ID and title
-2. Relevance score
-3. Primary focus area(s)
-4. Eligible client types
-5. Key benefits (2-3 bullet points)
-6. Any notable restrictions or requirements
+1. Opportunity ID (this is critical for the detail processor and must be included)
+2. Title
+3. Relevance score
+4. Primary focus area(s)
+5. Eligible client types
+6. Key benefits (2-3 bullet points)
+7. Any notable restrictions or requirements
+
+IMPORTANT: Always preserve the original ID of each opportunity exactly as it appears in the API response. This ID is required for fetching detailed information in the next step.
 
 {formatInstructions}
 `
 );
 
 /**
- * Makes a configured API request
+ * Make a configured API request
  * @param {Object} config - The request configuration
- * @returns {Promise<Object>} - The API response
+ * @param {string} config.method - The HTTP method
+ * @param {string} config.url - The URL to request
+ * @param {Object} config.queryParameters - Query parameters
+ * @param {Object} config.requestBody - Request body
+ * @param {Object} config.headers - Request headers
+ * @returns {Promise<Object>} - The response data
  */
 async function makeConfiguredApiRequest(config) {
-	try {
-		const { method, url, queryParameters, requestBody, headers } = config;
+	const { method, url, queryParameters, requestBody, headers } = config;
 
-		// Build the full URL with query parameters
+	// Log the request configuration
+	console.log('Making API request:', {
+		method,
+		url,
+		queryParams: Object.keys(queryParameters || {}),
+		bodyKeys: requestBody ? Object.keys(requestBody) : 'No body',
+		headers: headers ? 'Headers present' : 'No headers',
+	});
+
+	try {
+		// Build the URL with query parameters
 		let fullUrl = url;
 		if (queryParameters && Object.keys(queryParameters).length > 0) {
 			const queryString = Object.entries(queryParameters)
+				.filter(([_, value]) => value !== undefined && value !== null)
 				.map(
 					([key, value]) =>
 						`${encodeURIComponent(key)}=${encodeURIComponent(value)}`
 				)
 				.join('&');
+
 			fullUrl = `${url}${url.includes('?') ? '&' : '?'}${queryString}`;
 		}
 
+		console.log(`Full request URL: ${fullUrl}`);
+
 		// Make the request
+		const startTime = Date.now();
 		const response = await axios({
 			method,
 			url: fullUrl,
 			data: requestBody,
 			headers,
 		});
+		const endTime = Date.now();
+
+		// Log the response
+		console.log('API response received:', {
+			status: response.status,
+			statusText: response.statusText,
+			responseTime: endTime - startTime,
+			dataSize: JSON.stringify(response.data).length,
+			dataKeys: Object.keys(response.data || {}),
+		});
 
 		return response.data;
 	} catch (error) {
-		console.error('Error making API request:', error);
-		throw error;
+		// Log the error
+		console.error('API request failed:', {
+			method,
+			url,
+			status: error.response?.status,
+			statusText: error.response?.statusText,
+			message: error.message,
+			responseData: error.response?.data,
+		});
+
+		throw new Error(`API request failed: ${error.message}`);
 	}
 }
 
 /**
- * Extracts data from a nested object using a path string
- * @param {Object} obj - The object to extract from
- * @param {String} path - The path to the data (e.g., "data.items")
- * @returns {Any} - The extracted data
+ * Extract data from an object using a path string
+ * @param {Object} obj - The object to extract data from
+ * @param {string} path - The path to extract data from (e.g. 'data.items')
+ * @returns {any} - The extracted data
  */
 function extractDataByPath(obj, path) {
-	if (!path) return obj;
-	return getNestedValue(obj, path);
+	// If no path is provided, return the object itself
+	if (!path) {
+		console.log(
+			'No path provided for data extraction, returning entire object'
+		);
+		return obj;
+	}
+
+	console.log(`Extracting data using path: "${path}"`);
+
+	try {
+		// Split the path by dots
+		const parts = path.split('.');
+
+		// Start with the object
+		let current = obj;
+
+		// Track the path as we traverse
+		let currentPath = '';
+
+		// Traverse the path
+		for (const part of parts) {
+			currentPath = currentPath ? `${currentPath}.${part}` : part;
+
+			// Check if the current part exists
+			if (current === undefined || current === null) {
+				console.warn(
+					`Path traversal failed at "${currentPath}": parent is ${
+						current === null ? 'null' : 'undefined'
+					}`
+				);
+				return undefined;
+			}
+
+			// Move to the next part
+			current = current[part];
+
+			// Log the type of the current value
+			console.log(
+				`Path "${currentPath}" yielded: ${
+					current === null ? 'null' : typeof current
+				}`
+			);
+		}
+
+		// Return the final value
+		return current;
+	} catch (error) {
+		console.error(`Error extracting data by path "${path}":`, error);
+		return undefined;
+	}
 }
 
 /**
@@ -741,159 +837,111 @@ async function processPaginatedApi(source, processingDetails, runManager) {
  * @returns {Promise<Object>} - The filtered results and metrics
  */
 async function performFirstStageFiltering(
-	apiResults,
+	opportunities,
 	source,
 	processingDetails,
 	runManager
 ) {
 	const startTime = Date.now();
-	const supabase = createSupabaseClient();
+	const secondStageFiltering = processingDetails?.detailConfig?.enabled;
 
-	try {
-		// Extract data from all API results
-		const allItems = [];
-		for (const result of apiResults) {
-			const items = extractDataByPath(
-				result,
-				processingDetails.responseConfig?.responseDataPath ||
-					processingDetails.paginationConfig?.responseDataPath ||
-					''
-			);
-			if (Array.isArray(items)) {
-				allItems.push(...items);
-			}
-		}
+	// If first stage filtering is not enabled, return all opportunities
+	// if (!firstStageFilterConfig || !firstStageFilterConfig.enabled) {
+	// 	return {
+	// 		filteredItems: opportunities,
+	// 		metrics: {
+	// 			totalOpportunitiesAnalyzed: opportunities.length,
+	// 			opportunitiesPassingFilter: opportunities.length,
+	// 			filteringTime: 0,
+	// 		},
+	// 	};
+	// }
 
-		// Metrics for first stage filtering
-		const filterMetrics = {
-			inputCount: allItems.length,
-			passedCount: 0,
-			filterReasoning: '',
-			processingTime: 0,
-			sampleOpportunities: [],
-		};
+	// Get the minimum relevance score from config, default to 7 if not specified
+	const minRelevanceScore = secondStageFiltering ? 5 : 7;
+	console.log(`Using minimum relevance score: ${minRelevanceScore}`);
 
-		// If no items, return early
-		if (allItems.length === 0) {
-			const endTime = Date.now();
-			filterMetrics.processingTime = endTime - startTime;
+	const parser = StructuredOutputParser.fromZodSchema(
+		apiResponseProcessingSchema
+	);
+	const formatInstructions = parser.getFormatInstructions();
 
-			if (runManager) {
-				await runManager.updateFirstStageFilter(filterMetrics);
-			}
+	// Format the prompt with the opportunities and client details
 
-			return {
-				filteredItems: [],
-				metrics: filterMetrics,
-			};
-		}
+	const prompt = await promptTemplate.format({
+		opportunities: JSON.stringify(opportunities, null, 2),
+		sourceInfo: JSON.stringify(source, null, 2),
+		formatInstructions,
+		minRelevanceScore,
+	});
+	// Create the model
+	const model = new ChatAnthropic({
+		temperature: 0,
+		modelName: 'claude-3-5-haiku-20241022',
+		anthropicApiKey: process.env.ANTHROPIC_API_KEY,
+	});
 
-		// Create the output parser
-		const parser = StructuredOutputParser.fromZodSchema(
-			apiResponseProcessingSchema
+	// Call the model
+	const response = await model.invoke(prompt);
+
+	// Call the LLM
+	// const llmResponse = await callLLM(
+	// 	prompt,
+	// 	firstStageFilterConfig.llmConfig,
+	// 	runManager
+	// );
+
+	// Parse the response
+	const parsedResponse = await parser.parse(response.content);
+
+	// Extract opportunities from the parsed response
+	const filteredOpportunities = parsedResponse.opportunities || [];
+
+	// Log the first few opportunities to check their structure
+	console.log('LLM response structure check:', {
+		totalOpportunities: filteredOpportunities.length,
+		sampleOpportunity:
+			filteredOpportunities.length > 0
+				? {
+						...filteredOpportunities[0],
+						description: filteredOpportunities[0].description
+							? filteredOpportunities[0].description.substring(0, 100) + '...'
+							: 'No description',
+				  }
+				: 'No opportunities returned',
+		allHaveIds: filteredOpportunities.every((opp) => opp.id),
+		sampleIds: filteredOpportunities
+			.slice(0, 3)
+			.map((opp) => opp.id || 'MISSING_ID'),
+	});
+
+	// Validate that all opportunities have IDs
+	const opportunitiesWithoutIds = filteredOpportunities.filter(
+		(opp) => !opp.id
+	);
+	if (opportunitiesWithoutIds.length > 0) {
+		console.warn(
+			`WARNING: ${opportunitiesWithoutIds.length} opportunities are missing IDs. This will cause problems with detail fetching.`
 		);
-		const formatInstructions = parser.getFormatInstructions();
-
-		// Create the model
-		const model = new ChatAnthropic({
-			temperature: 0,
-			modelName: 'claude-3-5-haiku-20241022',
-			anthropicApiKey: process.env.ANTHROPIC_API_KEY,
-		});
-
-		// Get the minimum relevance score
-		const minRelevanceScore =
-			processingDetails.firstStageFilterConfig?.minRelevanceScore || 5;
-
-		// Format the prompt
-		const prompt = await promptTemplate.format({
-			sourceInfo: JSON.stringify(source, null, 2),
-			apiResponse: JSON.stringify(allItems, null, 2),
-			minRelevanceScore: minRelevanceScore,
-			formatInstructions,
-		});
-
-		// Get the LLM response
-		const response = await model.invoke(prompt);
-
-		// Parse the response
-		const parsedOutput = await parser.parse(response.content);
-
-		// Update metrics
-		filterMetrics.passedCount = parsedOutput.opportunities.length;
-		filterMetrics.filterReasoning =
-			parsedOutput.processingMetrics.filterReasoning;
-
-		// Add sample data for monitoring and debugging purposes only
-		// These are NOT actual opportunities, just metadata for tracking
-		const sampleMetadata = [];
-		const sampleSize = Math.min(5, parsedOutput.opportunities.length);
-
-		for (let i = 0; i < sampleSize; i++) {
-			const opp = parsedOutput.opportunities[i];
-			if (!opp) continue;
-
-			sampleMetadata.push({
-				_metadataOnly: true, // Flag to indicate this is not a real opportunity
-				_debugSample: true, // Additional flag for clarity
-				_sampleIndex: i,
-				_filterStage: 'first',
-				title: opp.title || 'Unknown Title',
-				relevanceScore: opp.relevanceScore,
-				relevanceReasoning: opp.relevanceReasoning,
-				source: source.name,
-			});
-		}
-
-		// Store samples as metadata, not as actual opportunities
-		filterMetrics.responseSamples = sampleMetadata;
-		filterMetrics.isDebugMetadataOnly = true;
-
-		const endTime = Date.now();
-		filterMetrics.processingTime = endTime - startTime;
-
-		// Update run manager with first stage filter metrics
-		if (runManager) {
-			await runManager.updateFirstStageFilter(filterMetrics);
-		}
-
-		// Log the agent execution
-		await logAgentExecution(
-			supabase,
-			'first_stage_filter',
-			{ source, processingDetails },
-			parsedOutput,
-			filterMetrics.processingTime,
-			{
-				promptTokens: response.usage?.prompt_tokens,
-				completionTokens: response.usage?.completion_tokens,
-			}
-		);
-
-		return {
-			filteredItems: parsedOutput.opportunities,
-			metrics: filterMetrics,
-		};
-	} catch (error) {
-		console.error('Error in first stage filtering:', error);
-
-		// Update metrics with error
-		const endTime = Date.now();
-		const filterMetrics = {
-			inputCount: 0,
-			passedCount: 0,
-			filterReasoning: `Error: ${error.message}`,
-			processingTime: endTime - startTime,
-			sampleOpportunities: [],
-		};
-
-		// Update run manager with error
-		if (runManager) {
-			await runManager.updateFirstStageFilter(filterMetrics);
-		}
-
-		throw error;
+		console.warn('First opportunity without ID:', opportunitiesWithoutIds[0]);
 	}
+
+	// Calculate metrics
+	const metrics = {
+		totalOpportunitiesAnalyzed: opportunities.length,
+		opportunitiesPassingFilter: filteredOpportunities.length,
+		filteringTime: Date.now() - startTime,
+	};
+
+	// Update run manager with metrics
+	if (runManager) {
+		await runManager.updateFirstStageFilter(metrics);
+	}
+
+	return {
+		filteredItems: filteredOpportunities,
+		metrics,
+	};
 }
 
 /**
@@ -925,6 +973,11 @@ async function fetchDetailedInformation(
 
 	// If detail config is not enabled or no filtered items, return early
 	if (!detailConfig || !detailConfig.enabled || filteredItems.length === 0) {
+		console.log('Detail fetching skipped: ', {
+			detailConfigEnabled: detailConfig?.enabled,
+			filteredItemsCount: filteredItems.length,
+		});
+
 		if (runManager) {
 			await runManager.updateDetailApiCalls(detailMetrics);
 		}
@@ -935,20 +988,59 @@ async function fetchDetailedInformation(
 		};
 	}
 
+	// Log the detail configuration
+	// console.log('Detail fetching configuration:', {
+	// 	endpoint: detailConfig.endpoint,
+	// 	method: detailConfig.method || 'GET',
+	// 	idField: detailConfig.idField,
+	// 	idParam: detailConfig.idParam,
+	// });
+
+	// Check if all items have the required ID field
+	const itemsWithId = filteredItems.filter((item) => item.id);
+	const itemsWithoutId = filteredItems.filter((item) => !item.id);
+
+	// console.log('ID availability check:', {
+	// 	totalItems: filteredItems.length,
+	// 	itemsWithId: itemsWithId.length,
+	// 	itemsWithoutId: itemsWithoutId.length,
+	// 	sampleIds: itemsWithId.slice(0, 3).map((item) => item.id),
+	// });
+
+	if (itemsWithoutId.length > 0) {
+		console.warn(
+			`${itemsWithoutId.length} items are missing the required ID field. These items will be skipped for detail fetching.`
+		);
+	}
+
 	// Update metrics
-	detailMetrics.opportunitiesRequiringDetails = filteredItems.length;
+	detailMetrics.opportunitiesRequiringDetails = itemsWithId.length;
 
 	// Process each item
 	const detailedItems = [];
 	const responseTimes = [];
 
 	for (const item of filteredItems) {
-		const itemId = extractDataByPath(item, detailConfig.idField);
+		// Get the ID directly from the item.id field (which should be required)
+		// This is more reliable than using extractDataByPath with a configurable field
+		const itemId = item.id;
+
+		// console.log('Processing item for detail fetching:', {
+		// 	itemId,
+		// 	hasId: !!itemId,
+		// 	itemKeys: Object.keys(item),
+		// });
 
 		if (itemId) {
 			try {
 				const detailRequestBody = {};
 				detailRequestBody[detailConfig.idParam] = itemId;
+
+				console.log('Making detail request:', {
+					endpoint: detailConfig.endpoint,
+					method: detailConfig.method || 'GET',
+					requestBody: detailRequestBody,
+				});
 
 				const detailStartTime = Date.now();
 				const detailResponse = await makeConfiguredApiRequest({
@@ -965,13 +1057,32 @@ async function fetchDetailedInformation(
 				const responseTime = detailEndTime - detailStartTime;
 				responseTimes.push(responseTime);
 
+				// Log the detail response structure
+				// console.log(`Detail response received for ID ${itemId}:`, {
+				// 	responseTime,
+				// 	responseKeys: Object.keys(detailResponse || {}),
+				// 	responseSize: JSON.stringify(detailResponse).length,
+				// });
+
 				// Add detailed information
-				detailedItems.push({
+				const detailedItem = {
 					...item,
 					_detailResponse: detailResponse,
-				});
+				};
 
+				// Log the structure of the detailed item
+				// console.log(`Detailed item structure for ID ${itemId}:`, {
+				// 	originalKeys: Object.keys(item),
+				// 	detailedKeys: Object.keys(detailedItem),
+				// 	hasDetailResponse: !!detailedItem._detailResponse,
+				// 	detailResponseKeys: detailedItem._detailResponse
+				// 		? Object.keys(detailedItem._detailResponse)
+				// 		: [],
+				// });
+
+				detailedItems.push(detailedItem);
 				detailMetrics.successfulDetailCalls++;
+				console.log(`Detail request successful for ID ${itemId}`);
 			} catch (error) {
 				console.error(`Error fetching details for item ${itemId}:`, error);
 
@@ -986,20 +1097,52 @@ async function fetchDetailedInformation(
 			}
 		} else {
 			// No ID field, keep the original item
+			console.warn(
+				`No ID found for item. This item will be included without detail enrichment.`,
+				{
+					itemKeys: Object.keys(item),
+				}
+			);
 			detailedItems.push(item);
 		}
 	}
 
-	// Calculate metrics
-	const endTime = Date.now();
-	detailMetrics.totalDetailCallTime = endTime - startTime;
-
+	// Calculate average response time
 	if (responseTimes.length > 0) {
 		detailMetrics.averageDetailResponseTime =
 			responseTimes.reduce((sum, time) => sum + time, 0) / responseTimes.length;
+		detailMetrics.totalDetailCallTime = responseTimes.reduce(
+			(sum, time) => sum + time,
+			0
+		);
 	}
 
-	// Update run manager with detail API call metrics
+	// Log the final detailed items structure
+	// console.log('Final detailed items summary:', {
+	// 	totalItems: detailedItems.length,
+	// 	itemsWithDetailResponse: detailedItems.filter(
+	// 		(item) => item._detailResponse
+	// 	).length,
+	// 	itemsWithoutDetailResponse: detailedItems.filter(
+	// 		(item) => !item._detailResponse
+	// 	).length,
+	// 	sampleDetailedItem:
+	// 		detailedItems.length > 0
+	// 			? {
+	// 					keys: Object.keys(detailedItems[0]),
+	// 					hasId: !!detailedItems[0].id,
+	// 					hasDetailResponse: !!detailedItems[0]._detailResponse,
+	// 					detailResponseKeys: detailedItems[0]._detailResponse
+	// 						? Object.keys(detailedItems[0]._detailResponse)
+	// 						: [],
+	// 			  }
+	// 			: 'No items',
+	// });
+
+	// Log the metrics
+	console.log('Detail fetching metrics:', detailMetrics);
+
+	// Update run manager with metrics
 	if (runManager) {
 		await runManager.updateDetailApiCalls(detailMetrics);
 	}
@@ -1011,36 +1154,212 @@ async function fetchDetailedInformation(
 }
 
 /**
- * API Handler Agent that processes an API source
- * @param {Object} source - The API source to process
- * @param {Object} processingDetails - The processing details from the source manager
- * @param {Object} runManager - Optional RunManager instance for tracking
- * @returns {Promise<Object>} - The processing result
+ * Calls the LLM with the given prompt and configuration
+ * @param {string} prompt - The prompt to send to the LLM
+ * @param {Object} llmConfig - Configuration for the LLM
+ * @param {Object} runManager - Optional run manager for tracking
+ * @returns {Promise<string>} - The LLM response
  */
-export async function apiHandlerAgent(
-	source,
-	processingDetails,
-	runManager = null
-) {
-	const supabase = createSupabaseClient();
-	const startTime = Date.now();
+async function callLLM(prompt, llmConfig, runManager) {
+	console.log('Calling LLM with config:', {
+		model: llmConfig?.model || 'claude-3-5-haiku-20241022',
+		temperature: llmConfig?.temperature || 0,
+		promptLength: prompt.length,
+	});
 
 	try {
-		// Step 1: Make the API request(s)
-		const { results: apiResults, metrics: initialApiMetrics } =
-			await processPaginatedApi(source, processingDetails, runManager);
+		// Create the model
+		const model = new ChatAnthropic({
+			temperature: llmConfig?.temperature || 0,
+			modelName: llmConfig?.model || 'claude-3-5-haiku-20241022',
+			anthropicApiKey: process.env.ANTHROPIC_API_KEY,
+		});
 
-		// Step 2: Perform first-stage filtering
-		const { filteredItems, metrics: firstStageMetrics } =
+		// Call the model
+		const startTime = Date.now();
+		const response = await model.invoke(prompt);
+		const endTime = Date.now();
+
+		console.log('LLM response received:', {
+			responseLength: response.content.length,
+			processingTime: endTime - startTime,
+			tokenUsage: response.usage,
+			response: response.content,
+		});
+
+		// Update run manager if available
+		if (runManager) {
+			await runManager.updateLlmCall({
+				promptTokens: response.usage?.prompt_tokens || 0,
+				completionTokens: response.usage?.completion_tokens || 0,
+				processingTime: endTime - startTime,
+			});
+		}
+
+		return response.content;
+	} catch (error) {
+		console.error('Error calling LLM:', error);
+		throw new Error(`LLM call failed: ${error.message}`);
+	}
+}
+
+/**
+ * Formats a prompt template with the given variables
+ * @param {string} template - The prompt template
+ * @param {Object} variables - Variables to insert into the template
+ * @param {Object} options - Optional formatting options
+ * @returns {string} - The formatted prompt
+ */
+function formatPrompt(template, variables, options = {}) {
+	console.log('Formatting prompt with variables:', Object.keys(variables));
+
+	let formattedPrompt = template;
+
+	// Replace each variable in the template
+	for (const [key, value] of Object.entries(variables)) {
+		const placeholder = `{{${key}}}`;
+		let replacementValue = '';
+
+		// Handle different types of values
+		if (typeof value === 'object') {
+			replacementValue = JSON.stringify(value, null, 2);
+		} else {
+			replacementValue = String(value);
+		}
+
+		// Replace all occurrences of the placeholder
+		formattedPrompt = formattedPrompt.split(placeholder).join(replacementValue);
+	}
+
+	console.log('Prompt formatted, length:', formattedPrompt.length);
+
+	return formattedPrompt;
+}
+
+/**
+ * Process an API handler
+ * @param {Object} source - The source configuration
+ * @param {Object} processingDetails - The processing details
+ * @param {Object} runManager - Optional run manager for tracking
+ * @returns {Promise<Object>} - The processed results
+ */
+async function processApiHandler(source, processingDetails, runManager) {
+	console.log('Starting API handler processing for source:', source.name);
+	console.log('Processing details:', {
+		requestConfig: {
+			...processingDetails.requestConfig,
+			headers: processingDetails.requestConfig.headers
+				? 'Headers present'
+				: 'No headers',
+		},
+		paginationConfig: processingDetails.paginationConfig
+			? 'Pagination enabled'
+			: 'No pagination',
+		responseConfig: processingDetails.responseConfig
+			? 'Response config present'
+			: 'No response config',
+		firstStageFilterConfig: processingDetails.firstStageFilterConfig?.enabled
+			? 'First stage filtering enabled'
+			: 'No first stage filtering',
+		detailConfig: processingDetails.detailConfig?.enabled
+			? 'Detail fetching enabled'
+			: 'No detail fetching',
+	});
+
+	try {
+		// Step 1: Process the paginated API
+		console.log('Step 1: Processing paginated API');
+		const { results, metrics: apiMetrics } = await processPaginatedApi(
+			source,
+			processingDetails,
+			runManager
+		);
+
+		console.log('API processing complete:', {
+			resultsCount: results.length,
+			apiMetrics,
+		});
+
+		// Extract all opportunities from the API results
+		console.log('Extracting opportunities from API results');
+		const allOpportunities = [];
+		const responseDataPath =
+			processingDetails.responseConfig?.responseDataPath ||
+			processingDetails.paginationConfig?.responseDataPath ||
+			'';
+
+		console.log(`Using response data path: "${responseDataPath}"`);
+
+		for (const result of results) {
+			const items = extractDataByPath(result, responseDataPath);
+			if (Array.isArray(items)) {
+				console.log(`Extracted ${items.length} items from result`);
+				allOpportunities.push(...items);
+			} else {
+				console.warn('Extracted data is not an array:', typeof items);
+			}
+		}
+
+		console.log(`Total opportunities extracted: ${allOpportunities.length}`);
+
+		// Log sample opportunity structure
+		if (allOpportunities.length > 0) {
+			const sampleOpp = allOpportunities[0];
+			console.log('Sample opportunity structure:', {
+				keys: Object.keys(sampleOpp),
+				hasId: !!sampleOpp.id,
+				idValue: sampleOpp.id,
+				sampleValues: Object.entries(sampleOpp)
+					.slice(0, 5)
+					.map(([key, value]) => ({
+						key,
+						type: typeof value,
+						preview:
+							typeof value === 'string'
+								? value.substring(0, 50) + (value.length > 50 ? '...' : '')
+								: value,
+					})),
+			});
+		}
+
+		// Step 2: Perform first stage filtering
+		console.log('Step 2: Performing first stage filtering');
+		const { filteredItems, metrics: filterMetrics } =
 			await performFirstStageFiltering(
-				apiResults,
+				allOpportunities,
 				source,
 				processingDetails,
 				runManager
 			);
 
-		// Step 3: Fetch detailed information if needed
-		const { detailedItems, metrics: detailApiMetrics } =
+		console.log('First stage filtering complete:', {
+			filteredItemsCount: filteredItems.length,
+			filterMetrics,
+		});
+
+		// Log sample filtered item structure
+		if (filteredItems.length > 0) {
+			const sampleFiltered = filteredItems[0];
+			console.log('Sample filtered item structure:', {
+				keys: Object.keys(sampleFiltered),
+				hasId: !!sampleFiltered.id,
+				idValue: sampleFiltered.id,
+				sampleValues: Object.entries(sampleFiltered)
+					.slice(0, 5)
+					.map(([key, value]) => ({
+						key,
+						type: typeof value,
+						preview:
+							typeof value === 'string'
+								? value.substring(0, 50) + (value.length > 50 ? '...' : '')
+								: value,
+					})),
+			});
+		}
+
+		// Step 3: Fetch detailed information
+		console.log('Step 3: Fetching detailed information');
+		const { detailedItems, metrics: detailMetrics } =
 			await fetchDetailedInformation(
 				filteredItems,
 				source,
@@ -1048,141 +1367,117 @@ export async function apiHandlerAgent(
 				runManager
 			);
 
-		// Store the raw API responses
-		const { data: rawResponseData, error: rawResponseError } = await supabase
-			.from('api_raw_responses')
-			.insert({
-				source_id: source.id,
-				content: {
-					list_responses: apiResults,
-					detail_responses: detailedItems
-						.map((item) => item._detailResponse)
-						.filter(Boolean),
-				},
-				request_details: {
-					list_request: {
-						endpoint: processingDetails.apiEndpoint,
-						method: processingDetails.requestConfig.method,
-						headers: processingDetails.requestConfig.headers,
-						queryParams: processingDetails.queryParameters,
-						requestBody: processingDetails.requestBody,
-					},
-					detail_requests: processingDetails.detailConfig?.enabled
-						? {
-								endpoint: processingDetails.detailConfig.endpoint,
-								method: processingDetails.detailConfig.method || 'GET',
-								headers: processingDetails.detailConfig.headers,
-								idField: processingDetails.detailConfig.idField,
-								idParam: processingDetails.detailConfig.idParam,
-						  }
-						: null,
-				},
-				timestamp: new Date().toISOString(),
-				created_at: new Date().toISOString(),
-			})
-			.select('id')
-			.single();
-
-		if (rawResponseError) {
-			console.error('Error storing raw API response:', rawResponseError);
-			throw rawResponseError;
-		}
-
-		// Calculate execution time
-		const executionTime = Date.now() - startTime;
-
-		// Prepare the result
-		const result = {
-			opportunities: detailedItems.map((item) => {
-				// Remove the _detailResponse from items before passing them on
-				const { _detailResponse, ...cleanItem } = item;
-				return cleanItem;
-			}),
-			totalCount: initialApiMetrics.totalHitCount,
-			rawApiResponse: {
-				list_responses: apiResults,
-				detail_responses: detailedItems
-					.map((item) => item._detailResponse)
-					.filter(Boolean),
-			},
-			requestDetails: {
-				list_request: {
-					endpoint: processingDetails.apiEndpoint,
-					method: processingDetails.requestConfig.method,
-					headers: processingDetails.requestConfig.headers,
-					queryParams: processingDetails.queryParameters,
-					requestBody: processingDetails.requestBody,
-				},
-				detail_requests: processingDetails.detailConfig?.enabled
-					? {
-							endpoint: processingDetails.detailConfig.endpoint,
-							method: processingDetails.detailConfig.method || 'GET',
-							headers: processingDetails.detailConfig.headers,
-							idField: processingDetails.detailConfig.idField,
-							idParam: processingDetails.detailConfig.idParam,
-					  }
-					: null,
-			},
-			rawResponseId: rawResponseData.id,
-			sourceId: source.id,
-		};
-
-		// Log the agent execution
-		await logAgentExecution(
-			supabase,
-			'api_handler',
-			{ source, processingDetails },
-			result,
-			executionTime,
-			{}
-		);
-
-		// Log the API activity
-		await logApiActivity(supabase, source.id, 'api_process', 'success', {
-			opportunitiesFound: detailedItems.length,
-			totalCount: initialApiMetrics.totalHitCount,
+		console.log('Detail fetching complete:', {
+			detailedItemsCount: detailedItems.length,
+			detailMetrics,
 		});
 
-		// Update the last processed timestamp
-		await supabase
-			.from('api_sources')
-			.update({ last_processed: new Date().toISOString() })
-			.eq('id', source.id);
+		// Log sample detailed item structure
+		if (detailedItems.length > 0) {
+			const sampleDetailed = detailedItems[0];
+			console.log('Sample detailed item structure:', {
+				keys: Object.keys(sampleDetailed),
+				hasId: !!sampleDetailed.id,
+				idValue: sampleDetailed.id,
+				hasDetailResponse: !!sampleDetailed._detailResponse,
+				detailResponseKeys: sampleDetailed._detailResponse
+					? Object.keys(sampleDetailed._detailResponse)
+					: [],
+				sampleValues: Object.entries(sampleDetailed)
+					.filter(([key]) => key !== '_detailResponse') // Exclude the potentially large detail response
+					.slice(0, 5)
+					.map(([key, value]) => ({
+						key,
+						type: typeof value,
+						preview:
+							typeof value === 'string'
+								? value.substring(0, 50) + (value.length > 50 ? '...' : '')
+								: value,
+					})),
+			});
+		}
 
-		return {
-			...result,
-			initialApiMetrics,
-			firstStageMetrics,
-			detailApiMetrics,
+		// Prepare the final result
+		const result = {
+			items: detailedItems,
+			metrics: {
+				api: apiMetrics,
+				filter: filterMetrics,
+				detail: detailMetrics,
+			},
+			// Include raw API response and request details for data processor
+			rawApiResponse: results,
+			requestDetails: {
+				source: source,
+				processingDetails: processingDetails,
+			},
 		};
+
+		console.log('API handler processing complete. Final result structure:', {
+			itemsCount: result.items.length,
+			metricsKeys: Object.keys(result.metrics),
+			rawApiResponseLength: result.rawApiResponse.length,
+			hasRequestDetails: !!result.requestDetails,
+		});
+
+		// Return the results
+		return result;
 	} catch (error) {
-		// Calculate execution time even if there was an error
-		const executionTime = Date.now() - startTime;
+		console.error('Error in API handler processing:', error);
+		throw error;
+	}
+}
 
-		// Log the error
-		console.error('Error in API Handler Agent:', error);
+/**
+ * API Handler Agent that processes an API source
+ * @param {Object} source - The source configuration
+ * @param {Object} processingDetails - The processing details
+ * @param {Object} runManager - Optional run manager for tracking
+ * @returns {Promise<Object>} - The processed results
+ */
+export async function apiHandlerAgent(
+	source,
+	processingDetails,
+	runManager = null
+) {
+	// Log the start of the API Handler Agent
+	console.log(
+		`Starting API Handler Agent for source: ${source.name} (${source.id})`
+	);
 
-		// Log the agent execution with error
-		await logAgentExecution(
-			supabase,
-			'api_handler',
-			{ source, processingDetails },
-			null,
-			executionTime,
-			{},
+	try {
+		// Process the API handler
+		const result = await processApiHandler(
+			source,
+			processingDetails,
+			runManager
+		);
+
+		// Format the result for the next stage
+		const formattedResult = {
+			opportunities: result.items,
+			initialApiMetrics: result.metrics.api,
+			firstStageMetrics: result.metrics.filter,
+			detailApiMetrics: result.metrics.detail,
+			rawApiResponse: result.rawApiResponse,
+			requestDetails: result.requestDetails,
+		};
+
+		console.log('API Handler Agent completed successfully:', {
+			opportunitiesCount: formattedResult.opportunities.length,
+			hasInitialApiMetrics: !!formattedResult.initialApiMetrics,
+			hasFirstStageMetrics: !!formattedResult.firstStageMetrics,
+			hasDetailApiMetrics: !!formattedResult.detailApiMetrics,
+			rawApiResponseLength: formattedResult.rawApiResponse?.length,
+			hasRequestDetails: !!formattedResult.requestDetails,
+		});
+
+		return formattedResult;
+	} catch (error) {
+		console.error(
+			`Error in API Handler Agent for source ${source.name}:`,
 			error
 		);
-
-		// Log the API activity with error
-		await logApiActivity(supabase, source.id, 'api_process', 'failure', {
-			error: String(error),
-		});
-
-		// Update run with error if runManager is provided
-		if (runManager) {
-			await runManager.updateRunError(error);
-		}
-
 		throw error;
 	}
 }
@@ -1192,8 +1487,6 @@ export async function apiHandlerAgent(
  * @returns {Promise<Object|null>} - The processing result, or null if no source was processed
  */
 export async function processNextSourceWithHandler() {
-	const { processNextSource } = require('./sourceManagerAgent');
-
 	// Get the next source to process
 	const result = await processNextSource();
 
@@ -1218,3 +1511,15 @@ export async function processNextSourceWithHandler() {
 		runManager,
 	};
 }
+
+// Export the functions
+export {
+	processApiHandler,
+	processPaginatedApi,
+	performFirstStageFiltering,
+	fetchDetailedInformation,
+	makeConfiguredApiRequest,
+	extractDataByPath,
+	callLLM,
+	formatPrompt,
+};
