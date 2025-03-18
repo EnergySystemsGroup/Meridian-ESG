@@ -232,12 +232,25 @@ export async function POST(request, { params }) {
 					throw new Error('Source ID is required for detail-processor test');
 
 				const opportunities = body.opportunities;
-				if (!opportunities)
+				console.log(
+					`Detail processor received ${
+						opportunities?.length || 0
+					} opportunities`
+				);
+				if (
+					!opportunities ||
+					!Array.isArray(opportunities) ||
+					opportunities.length === 0
+				)
 					throw new Error(
-						'Opportunities are required for detail-processor test'
+						'Opportunities are required for detail-processor test and must be a non-empty array'
 					);
 
+				console.log(
+					'Running processDetailedInfo with opportunities and source...'
+				);
 				result = await processDetailedInfo(opportunities, source, runManager);
+				console.log('processDetailedInfo completed successfully');
 				break;
 
 			case 'data-processor':

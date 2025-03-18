@@ -128,7 +128,7 @@ const detailProcessingSchema = z.object({
 });
 
 // Define the prompt template for the agent
-const detailProcessorPromptTemplate = `You are an expert funding opportunity analyst for energy and infrastructure projects.
+const detailProcessorPromptTemplateString = `You are an expert funding opportunity analyst for energy and infrastructure projects.
 Your task is to perform a detailed analysis of funding opportunities to determine their relevance and value to our clients.
 
 Our organization helps the following types of entities secure funding:
@@ -196,6 +196,60 @@ Detailed Opportunities:
 {formatInstructions}
 `;
 
+// Create a proper PromptTemplate object
+const detailProcessorPromptTemplate = PromptTemplate.fromTemplate(
+	detailProcessorPromptTemplateString
+);
+
+/**
+ * Splits opportunities into chunks based on token size
+ * @param {Array} opportunities - The opportunities to split
+ * @param {number} tokenThreshold - Maximum tokens per chunk
+ * @returns {Array} - Array of opportunity chunks
+ */
+function splitOpportunitiesIntoChunks(opportunities, tokenThreshold = 10000) {
+	const chunks = [];
+	let currentChunk = [];
+	let currentSize = 0;
+
+	// Use string length as a rough approximation of token count
+	// This is conservative as 1 character is usually less than 1 token
+	for (const opportunity of opportunities) {
+		const oppSize = JSON.stringify(opportunity).length;
+
+		// If this opportunity alone exceeds the threshold, it needs its own chunk
+		if (oppSize > tokenThreshold) {
+			// If we have a current chunk, add it to chunks
+			if (currentChunk.length > 0) {
+				chunks.push(currentChunk);
+				currentChunk = [];
+				currentSize = 0;
+			}
+			// Add this large opportunity as its own chunk
+			chunks.push([opportunity]);
+			continue;
+		}
+
+		// If adding this opportunity would exceed the threshold, start a new chunk
+		if (currentSize + oppSize > tokenThreshold && currentChunk.length > 0) {
+			chunks.push(currentChunk);
+			currentChunk = [];
+			currentSize = 0;
+		}
+
+		// Add the opportunity to the current chunk
+		currentChunk.push(opportunity);
+		currentSize += oppSize;
+	}
+
+	// Add the last chunk if it has items
+	if (currentChunk.length > 0) {
+		chunks.push(currentChunk);
+	}
+
+	return chunks;
+}
+
 /**
  * Detail Processor Agent that performs detailed analysis of opportunities
  * @param {Array} detailedOpportunities - The detailed opportunities from the API Handler Agent
@@ -216,8 +270,7 @@ export async function detailProcessorAgent(
 	// Default configuration
 	const defaultConfig = {
 		minScoreThreshold: 7,
-		batchSize: 40,
-		maxConcurrentBatches: 5,
+		tokenThreshold: 10000,
 		model: 'claude-3-5-haiku-20241022',
 		temperature: 0,
 		maxTokensPerRequest: 16000,
@@ -238,46 +291,48 @@ export async function detailProcessorAgent(
 			anthropicApiKey: process.env.ANTHROPIC_API_KEY,
 		});
 
-		// Calculate the average score before filtering
-		const averageScoreBeforeFiltering =
-			detailedOpportunities.reduce(
-				(sum, opp) => sum + (opp.relevanceScore || 5),
-				0
-			) / detailedOpportunities.length;
-
 		// Initialize the combined results
 		const allResults = {
 			opportunities: [],
-			filteredCount: 0,
 			processingMetrics: {
 				inputCount: detailedOpportunities.length,
 				passedCount: 0,
 				rejectedCount: 0,
 				rejectionReasons: [],
-				averageScoreBeforeFiltering,
+				averageScoreBeforeFiltering: 0,
 				averageScoreAfterFiltering: 0,
 				processingTime: 0,
 				tokenUsage: 0,
+				chunkMetrics: [],
+				filterReasoning: '',
 			},
 		};
 
-		// Process in batches
-		const batches = [];
-		for (
-			let i = 0;
-			i < detailedOpportunities.length;
-			i += processingConfig.batchSize
-		) {
-			batches.push(
-				detailedOpportunities.slice(i, i + processingConfig.batchSize)
-			);
-		}
+		console.log('\n=== Starting Detail Processing ===');
+		console.log(
+			`Processing ${detailedOpportunities.length} opportunities with minimum score threshold: ${processingConfig.minScoreThreshold}`
+		);
 
-		// Process each batch
-		for (const batch of batches) {
+		// Split opportunities into chunks based on token threshold
+		const chunks = splitOpportunitiesIntoChunks(
+			detailedOpportunities,
+			processingConfig.tokenThreshold
+		);
+		console.log(`Split opportunities into ${chunks.length} chunks`);
+
+		// Process each chunk
+		for (let i = 0; i < chunks.length; i++) {
+			const chunk = chunks[i];
+			const chunkStartTime = Date.now();
+			console.log(
+				`\nProcessing chunk ${i + 1}/${chunks.length} with ${
+					chunk.length
+				} opportunities...`
+			);
+
 			// Format the prompt
 			const prompt = await detailProcessorPromptTemplate.format({
-				detailedOpportunities: JSON.stringify(batch, null, 2),
+				detailedOpportunities: JSON.stringify(chunk, null, 2),
 				minRelevanceScore: processingConfig.minScoreThreshold,
 				formatInstructions,
 				sourceInfo: JSON.stringify(source, null, 2),
@@ -289,40 +344,71 @@ export async function detailProcessorAgent(
 			// Parse the response
 			const result = await parser.parse(response.content);
 
+			// Calculate chunk metrics
+			const chunkTime = Date.now() - chunkStartTime;
+			const chunkMetrics = {
+				chunkIndex: i + 1,
+				processedOpportunities: chunk.length,
+				passedCount: result.opportunities.length,
+				timeSeconds: (chunkTime / 1000).toFixed(1),
+			};
+
+			console.log(
+				`Chunk ${i + 1} completed: ${result.opportunities.length}/${
+					chunk.length
+				} opportunities passed filtering (${chunkMetrics.timeSeconds}s)`
+			);
+
+			// Add chunk metrics to the results
+			allResults.processingMetrics.chunkMetrics.push(chunkMetrics);
+
 			// Add the results to the combined results
 			allResults.opportunities = [
 				...allResults.opportunities,
 				...result.opportunities,
 			];
-			allResults.filteredCount += result.filteredCount;
-			allResults.processingMetrics.passedCount += result.opportunities.length;
-			allResults.processingMetrics.rejectedCount += result.filteredCount;
 
-			// Collect rejection reasons
-			if (
-				result.processingMetrics &&
-				result.processingMetrics.rejectionReasons
-			) {
-				allResults.processingMetrics.rejectionReasons = [
-					...allResults.processingMetrics.rejectionReasons,
-					...result.processingMetrics.rejectionReasons,
-				];
-			}
-
-			// Update the processing metrics
+			// Update the processing metrics from LLM response
 			if (result.processingMetrics) {
+				allResults.processingMetrics.passedCount +=
+					result.processingMetrics.passedCount;
+				allResults.processingMetrics.rejectedCount +=
+					result.processingMetrics.rejectedCount;
+
+				// Collect unique rejection reasons
+				if (result.processingMetrics.rejectionReasons) {
+					allResults.processingMetrics.rejectionReasons = [
+						...new Set([
+							...allResults.processingMetrics.rejectionReasons,
+							...result.processingMetrics.rejectionReasons,
+						]),
+					];
+				}
+
+				// Update filter reasoning
+				if (result.processingMetrics.filterReasoning) {
+					if (!allResults.processingMetrics.filterReasoning) {
+						allResults.processingMetrics.filterReasoning =
+							result.processingMetrics.filterReasoning;
+					} else if (
+						!allResults.processingMetrics.filterReasoning.includes(
+							result.processingMetrics.filterReasoning
+						)
+					) {
+						allResults.processingMetrics.filterReasoning +=
+							'; ' + result.processingMetrics.filterReasoning;
+					}
+				}
+
+				// Track token usage if provided
 				if (result.processingMetrics.tokenUsage) {
 					allResults.processingMetrics.tokenUsage +=
 						result.processingMetrics.tokenUsage;
 				}
-				if (result.processingMetrics.processingTime) {
-					allResults.processingMetrics.processingTime +=
-						result.processingMetrics.processingTime;
-				}
 			}
 		}
 
-		// Calculate the average scores
+		// Calculate final average scores from the processed opportunities
 		if (allResults.opportunities.length > 0) {
 			allResults.processingMetrics.averageScoreAfterFiltering =
 				allResults.opportunities.reduce(
@@ -334,6 +420,21 @@ export async function detailProcessorAgent(
 		// Calculate total processing time
 		const executionTime = Date.now() - startTime;
 		allResults.processingMetrics.processingTime = executionTime;
+
+		console.log('\n=== Detail Processing Complete ===');
+		console.log(
+			`Processed ${detailedOpportunities.length} opportunities in ${(
+				executionTime / 1000
+			).toFixed(1)}s`
+		);
+		console.log(
+			`${allResults.opportunities.length} opportunities passed filtering`
+		);
+		console.log(
+			`Average score after filtering: ${allResults.processingMetrics.averageScoreAfterFiltering.toFixed(
+				1
+			)}`
+		);
 
 		// Log the execution
 		await logAgentExecution(
@@ -357,15 +458,15 @@ export async function detailProcessorAgent(
 			await runManager.updateSecondStageFilter({
 				inputCount: detailedOpportunities.length,
 				passedCount: allResults.opportunities.length,
-				rejectedCount: allResults.filteredCount,
+				rejectedCount: allResults.processingMetrics.rejectedCount,
 				rejectionReasons: allResults.processingMetrics.rejectionReasons,
-				averageScoreBeforeFiltering:
-					allResults.processingMetrics.averageScoreBeforeFiltering,
+				averageScoreBeforeFiltering: 0, // Not applicable for raw opportunities
 				averageScoreAfterFiltering:
 					allResults.processingMetrics.averageScoreAfterFiltering,
 				processingTime: executionTime,
-				filterReasoning: 'Detailed LLM analysis of opportunity content',
+				filterReasoning: allResults.processingMetrics.filterReasoning,
 				sampleOpportunities: allResults.opportunities.slice(0, 3),
+				chunkMetrics: allResults.processingMetrics.chunkMetrics,
 			});
 		}
 

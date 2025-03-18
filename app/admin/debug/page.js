@@ -41,7 +41,7 @@ const componentInfo = {
     "sourceId": "source-id",
     "status": "started",
     "startedAt": "timestamp"
-  },
+  }
 }`,
 	},
 	'process-coordinator': {
@@ -274,10 +274,16 @@ export default function DebugPage() {
 	const [loading, setLoading] = useState(false);
 	const [result, setResult] = useState(null);
 	const [loadingSources, setLoadingSources] = useState(true);
+	const [apiHandlerResults, setApiHandlerResults] = useState(null);
 
 	useEffect(() => {
 		fetchSources();
 	}, []);
+
+	// Clear API handler results when switching tabs
+	useEffect(() => {
+		setApiHandlerResults(null);
+	}, [activeTab]);
 
 	async function fetchSources() {
 		try {
@@ -305,16 +311,157 @@ export default function DebugPage() {
 
 		setLoading(true);
 		setResult(null);
+		console.log(`Running debug test for ${activeTab}`);
 
 		try {
+			// Special handling for detail-processor
+			if (activeTab === 'detail-processor') {
+				// Step 1: Run API Handler if needed to get opportunities
+				let opportunities = [];
+				if (!apiHandlerResults) {
+					console.log(
+						'Step 1: Running API Handler first to get opportunities...'
+					);
+					toast.info('Running API Handler first to get opportunities...');
+
+					const apiResponse = await fetch('/api/admin/debug/api-handler', {
+						method: 'POST',
+						headers: { 'Content-Type': 'application/json' },
+						body: JSON.stringify({ sourceId: selectedSource }),
+					});
+
+					if (!apiResponse.ok) {
+						const errorData = await apiResponse.json();
+						throw new Error(errorData.error || 'API Handler test failed');
+					}
+
+					const apiData = await apiResponse.json();
+					console.log('API Handler response:', apiData);
+
+					// Get the actual opportunities from the API Handler response
+					if (!apiData.result || !apiData.result.opportunities) {
+						console.error(
+							'API Handler response is missing the opportunities array:',
+							apiData
+						);
+						throw new Error(
+							'API Handler response is missing the opportunities array. Check console for details.'
+						);
+					}
+
+					opportunities = apiData.result.opportunities;
+					console.log('Opportunities from API Handler:', {
+						count: opportunities.length,
+						isArray: Array.isArray(opportunities),
+						sample: opportunities.length > 0 ? opportunities[0] : 'none',
+					});
+
+					// Store these opportunities for future use
+					setApiHandlerResults({
+						opportunities: [...opportunities],
+					});
+
+					toast.success(
+						`API Handler completed with ${opportunities.length} opportunities, now running Detail Processor...`
+					);
+				} else {
+					// Use existing apiHandlerResults
+					console.log('Using existing API Handler results');
+
+					// Debug the apiHandlerResults value
+					console.log('Debug existing apiHandlerResults:', {
+						type: typeof apiHandlerResults,
+						keys: apiHandlerResults ? Object.keys(apiHandlerResults) : 'null',
+						opportunitiesType: apiHandlerResults.opportunities
+							? typeof apiHandlerResults.opportunities
+							: 'null',
+						opportunitiesIsArray: apiHandlerResults.opportunities
+							? Array.isArray(apiHandlerResults.opportunities)
+							: 'null',
+						opportunitiesValue: apiHandlerResults.opportunities
+							? JSON.stringify(apiHandlerResults.opportunities).substring(
+									0,
+									100
+							  ) + '...'
+							: 'null',
+					});
+
+					if (
+						!apiHandlerResults.opportunities ||
+						!Array.isArray(apiHandlerResults.opportunities)
+					) {
+						throw new Error(
+							'Existing API Handler results do not contain a valid opportunities array.'
+						);
+					}
+
+					opportunities = [...apiHandlerResults.opportunities];
+				}
+
+				// Step 2: Run Detail Processor with the opportunities
+				console.log('Step 2: Running Detail Processor with opportunities...');
+
+				const opportunitiesCount = opportunities.length;
+				console.log(`Adding ${opportunitiesCount} opportunities to request`);
+
+				if (opportunitiesCount === 0) {
+					throw new Error(
+						'No opportunities available to process. The Detail Processor requires at least one opportunity.'
+					);
+				}
+
+				// Create request body for Detail Processor
+				const detailProcessorRequest = {
+					sourceId: selectedSource,
+					opportunities: opportunities,
+				};
+
+				console.log('Sending request to detail-processor:', {
+					sourceId: selectedSource,
+					opportunitiesCount: opportunities.length,
+					firstOpportunity: opportunities[0]
+						? {
+								id: opportunities[0].id,
+								title: opportunities[0].title,
+						  }
+						: 'none',
+				});
+
+				const detailResponse = await fetch(
+					'/api/admin/debug/detail-processor',
+					{
+						method: 'POST',
+						headers: {
+							'Content-Type': 'application/json',
+						},
+						body: JSON.stringify(detailProcessorRequest),
+					}
+				);
+
+				if (!detailResponse.ok) {
+					const errorData = await detailResponse.json();
+					throw new Error(errorData.error || 'Detail Processor test failed');
+				}
+
+				const detailData = await detailResponse.json();
+				setResult(detailData);
+				toast.success('Detail Processor test completed successfully');
+				setLoading(false);
+				return;
+			}
+
+			// For other components, prepare a standard request
+			const requestBody = {
+				sourceId: selectedSource,
+			};
+
+			console.log(`Sending request to ${activeTab}:`, requestBody);
 			const response = await fetch(`/api/admin/debug/${activeTab}`, {
 				method: 'POST',
 				headers: {
 					'Content-Type': 'application/json',
 				},
-				body: JSON.stringify({
-					sourceId: selectedSource,
-				}),
+				body: JSON.stringify(requestBody),
 			});
 
 			if (!response.ok) {
