@@ -169,7 +169,9 @@ const apiResponseProcessingSchema = z.object({
 				relevanceReasoning: z
 					.string()
 					.optional()
-					.describe('Reasoning for the relevance score'),
+					.describe(
+						'Reasoning for the relevance score. include the fields you used to make this determination'
+					),
 			})
 		)
 		.describe('List of extracted funding opportunities'),

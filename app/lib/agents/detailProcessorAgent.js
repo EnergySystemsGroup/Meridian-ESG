@@ -104,7 +104,9 @@ const detailProcessingSchema = z.object({
 				relevanceReasoning: z
 					.string()
 					.optional()
-					.describe('Reasoning for the relevance score'),
+					.describe(
+						'Reasoning for the relevance score. include the fields you used to make this determination'
+					),
 			})
 		)
 		.describe('List of extracted funding opportunities'),
@@ -116,7 +118,9 @@ const detailProcessingSchema = z.object({
 			rejectionReasons: z.array(z.string()).describe('Reasons for rejection'),
 			averageScoreBeforeFiltering: z
 				.number()
-				.describe('Average relevance score before filtering'),
+				.describe(
+					'Average relevance score of ALL opportunities before applying the minimum threshold filter. This should be the mean of all relevance scores you assigned, including both opportunities that pass and fail the filter.'
+				),
 			averageScoreAfterFiltering: z
 				.number()
 				.describe('Average relevance score after filtering'),
@@ -177,6 +181,8 @@ For each opportunity in the provided list, assign a relevance score from 1-10 ba
    - 2 points: Substantial funding with minimal match requirements
 
 Only include opportunities with a {minRelevanceScore} or higher in your final output. In the absence of information, make assumptions to lean on the side of inclusion.
+
+IMPORTANT: Calculate and return the average relevance score for ALL opportunities BEFORE filtering. This should be the mean of all scores you assigned, both for opportunities that pass and fail the minimum threshold filter.
 
 For each selected opportunity, provide:
 1. Opportunity ID and title
@@ -405,6 +411,36 @@ export async function detailProcessorAgent(
 					allResults.processingMetrics.tokenUsage +=
 						result.processingMetrics.tokenUsage;
 				}
+
+				// Update average score before filtering from LLM response
+				if (
+					result.processingMetrics.averageScoreBeforeFiltering !== undefined
+				) {
+					// If this is the first chunk with this metric, just use it
+					if (allResults.processingMetrics.averageScoreBeforeFiltering === 0) {
+						allResults.processingMetrics.averageScoreBeforeFiltering =
+							result.processingMetrics.averageScoreBeforeFiltering;
+					} else {
+						// For subsequent chunks, compute a weighted average based on chunk size
+						const currentTotal =
+							allResults.processingMetrics.averageScoreBeforeFiltering *
+							(allResults.processingMetrics.inputCount - chunk.length);
+
+						const newTotal =
+							result.processingMetrics.averageScoreBeforeFiltering *
+							chunk.length;
+
+						allResults.processingMetrics.averageScoreBeforeFiltering =
+							(currentTotal + newTotal) /
+							allResults.processingMetrics.inputCount;
+					}
+
+					console.log(
+						`Updated average score before filtering to: ${allResults.processingMetrics.averageScoreBeforeFiltering.toFixed(
+							2
+						)}`
+					);
+				}
 			}
 		}
 
@@ -460,7 +496,8 @@ export async function detailProcessorAgent(
 				passedCount: allResults.opportunities.length,
 				rejectedCount: allResults.processingMetrics.rejectedCount,
 				rejectionReasons: allResults.processingMetrics.rejectionReasons,
-				averageScoreBeforeFiltering: 0, // Not applicable for raw opportunities
+				averageScoreBeforeFiltering:
+					allResults.processingMetrics.averageScoreBeforeFiltering,
 				averageScoreAfterFiltering:
 					allResults.processingMetrics.averageScoreAfterFiltering,
 				processingTime: executionTime,
