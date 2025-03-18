@@ -170,7 +170,11 @@ const apiResponseProcessingSchema = z.object({
 					.string()
 					.optional()
 					.describe(
-						'Reasoning for the relevance score. include the fields you used to make this determination'
+						'Detailed explanation of the relevance score. MUST INCLUDE: ' +
+							'1) Point-by-point scoring breakdown (Focus areas: X/5, ' +
+							'Applicability: X/3, Funding amount: X/2), ' +
+							'2) Which specific data fields from the API response you examined, and ' +
+							'3) Direct quotes or values from these fields that influenced your scoring.'
 					),
 			})
 		)
@@ -260,6 +264,17 @@ For each selected opportunity, provide:
 5. Eligible client types
 6. Key benefits (2-3 bullet points)
 7. Any notable restrictions or requirements
+
+IMPORTANT FOR RELEVANCE REASONING:
+When explaining your relevance score, you MUST include:
+1. DETAILED SCORING BREAKDOWN - Show exactly how you calculated the score:
+   - Focus areas: X/5 points (explain which focus areas aligned)
+   - Applicability to client types: X/3 points (specify which client types)
+   - Funding amount and accessibility: X/2 points (note amount and any match requirements)
+2. DATA FIELDS EXAMINED - Explicitly identify which specific fields from the API response you examined (e.g., title, description, eligibility criteria)
+3. EVIDENCE - Include direct quotes or values from these fields that influenced your scoring
+
+This detailed breakdown helps us verify that you're analyzing the right data and understand your decision-making process.
 
 IMPORTANT: Always preserve the original ID of each opportunity exactly as it appears in the API response. This ID is required for fetching detailed information in the next step.
 
@@ -1059,6 +1074,13 @@ async function performFirstStageFiltering(
 			timeSeconds: (m.processingTime / 1000).toFixed(2),
 		})),
 	});
+
+	// After filtering is complete, log a sample opportunity
+	if (combinedResults.filteredItems.length > 0) {
+		console.log('\n=== Sample Opportunity After Filtering ===');
+		console.log(JSON.stringify(combinedResults.filteredItems[0], null, 2));
+		console.log('==========================================\n');
+	}
 
 	// Update run manager with combined metrics
 	if (runManager) {

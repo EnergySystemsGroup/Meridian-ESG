@@ -105,7 +105,11 @@ const detailProcessingSchema = z.object({
 					.string()
 					.optional()
 					.describe(
-						'Reasoning for the relevance score. include the fields you used to make this determination'
+						'Detailed explanation of the relevance score. MUST INCLUDE: ' +
+							'1) Point-by-point scoring breakdown (Focus areas: X/5, ' +
+							'Applicability: X/3, Funding amount: X/2), ' +
+							'2) Which specific data fields from the opportunity you examined, and ' +
+							'3) Direct quotes or values from these fields that influenced your scoring.'
 					),
 			})
 		)
@@ -183,6 +187,17 @@ For each opportunity in the provided list, assign a relevance score from 1-10 ba
 Only include opportunities with a {minRelevanceScore} or higher in your final output. In the absence of information, make assumptions to lean on the side of inclusion.
 
 IMPORTANT: Calculate and return the average relevance score for ALL opportunities BEFORE filtering. This should be the mean of all scores you assigned, both for opportunities that pass and fail the minimum threshold filter.
+
+IMPORTANT FOR RELEVANCE REASONING:
+When explaining your relevance score, you MUST include:
+1. DETAILED SCORING BREAKDOWN - Show exactly how you calculated the score:
+   - Focus areas: X/5 points (explain which focus areas aligned)
+   - Applicability to client types: X/3 points (specify which client types)
+   - Funding amount and accessibility: X/2 points (note amount and any match requirements)
+2. DATA FIELDS EXAMINED - Explicitly identify which specific fields you examined (e.g., title, description, eligibility criteria)
+3. EVIDENCE - Include direct quotes or values from these fields that influenced your scoring
+
+This detailed breakdown helps us verify that you're analyzing the right data and understand your decision-making process.
 
 For each selected opportunity, provide:
 1. Opportunity ID and title
