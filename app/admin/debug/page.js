@@ -146,31 +146,52 @@ const componentInfo = {
 		],
 		input: 'Source and processing details from Source Manager',
 		expectedOutput: `{
-  "opportunities": [ /* filtered opportunities */ ],
-  "initialApiMetrics": {
-    "totalHitCount": 500,
-    "apiCallCount": 10,
-    "totalItemsRetrieved": 100,
-    "firstPageCount": 50,
-    "totalPages": 10,
-    "apiEndpoint": "https://api.example.com/opportunities",
-    "responseTime": 1500
-  },
-  "firstStageMetrics": {
-    "inputCount": 100,
-    "passedCount": 50,
-    "processingTime": 2000,
-    "filterReasoning": "First stage filtering"
-  },
-  "detailApiMetrics": {
-    "opportunitiesRequiringDetails": 50,
-    "successfulDetailCalls": 48,
-    "failedDetailCalls": 2,
-    "totalDetailCallTime": 5000,
-    "averageDetailResponseTime": 104
-  },
-  "rawApiResponse": { /* raw API response */ },
-  "requestDetails": { /* request details */ }
+  "success": true,
+  "component": "api-handler",
+  "sourceId": "example-source-id",
+  "runId": "example-run-id",
+  "result": {
+    "firstStageMetrics": {
+      "totalOpportunitiesAnalyzed": 100,
+      "opportunitiesPassingFilter": 50,
+      "rejectedCount": 50,
+      "rejectionReasons": ["Low relevance", "Out of scope"],
+      "averageScoreBeforeFiltering": 5.2,
+      "averageScoreAfterFiltering": 7.8,
+      "filteringTime": 15000,
+      "filterReasoning": "Filtered based on relevance criteria",
+      "chunkMetrics": [
+        {
+          "chunkIndex": 1,
+          "processedOpportunities": 50,
+          "passedCount": 25,
+          "timeSeconds": "7.5"
+        }
+      ]
+    },
+    "opportunities": [ /* filtered opportunities */ ],
+    "initialApiMetrics": {
+      "totalHitCount": 500,
+      "apiCallCount": 10,
+      "totalItemsRetrieved": 100,
+      "firstPageCount": 50,
+      "totalPages": 10,
+      "apiEndpoint": "https://api.example.com/opportunities",
+      "responseTime": 1500
+    },
+    "detailApiMetrics": {
+      "opportunitiesRequiringDetails": 50,
+      "successfulDetailCalls": 48,
+      "failedDetailCalls": 2,
+      "totalDetailCallTime": 5000,
+      "averageDetailResponseTime": 104
+    },
+    "rawApiResponse": { /* raw API response */ },
+    "requestDetails": {
+      "source": { /* source info */ },
+      "processingDetails": { /* processing details */ }
+    }
+  }
 }`,
 	},
 	'detail-processor': {
