@@ -67,6 +67,11 @@ const fundingOpportunitySchema = z.object({
 		.min(0)
 		.max(100)
 		.describe('Confidence score for this extraction (0-100)'),
+	actionableSummary: z
+		.string()
+		.describe(
+			'A single concise paragraph (2-3 sentences) that clearly states: 1) the funding source, 2) the amount available, 3) who can apply, 4) specifically what the money is for, and 5) when applications are due. Example: "This is a $5M grant from the Department of Energy for schools to implement building performance standards. Applications are due August 2025."'
+		),
 });
 
 // Define the output schema for the agent
@@ -176,6 +181,11 @@ const apiResponseProcessingSchema = z.object({
 							'2) Which specific data fields from the API response you examined, and ' +
 							'3) Direct quotes or values from these fields that influenced your scoring.'
 					),
+				actionableSummary: z
+					.string()
+					.describe(
+						'A single concise paragraph (2-3 sentences) that clearly states: 1) the funding source, 2) the amount available, 3) who can apply, 4) specifically what the money is for, and 5) when applications are due. Example: "This is a $5M grant from the Department of Energy for schools to implement building performance standards. Applications are due August 2025."'
+					),
 			})
 		)
 		.describe('List of extracted funding opportunities'),
@@ -275,6 +285,22 @@ When explaining your relevance score, you MUST include:
 3. EVIDENCE - Include direct quotes or values from these fields that influenced your scoring
 
 This detailed breakdown helps us verify that you're analyzing the right data and understand your decision-making process.
+
+ACTIONABLE SUMMARY REQUIREMENT:
+For each opportunity, provide a concise "actionable summary" in a single paragraph (2-3 sentences) that includes:
+1. The funding source (specific agency or organization)
+2. The amount available (total and/or per award)
+3. Who can apply (specific eligible entities)
+4. SPECIFICALLY what the money is for (the exact activities or projects to be funded)
+5. When applications are due (specific deadline)
+
+If critical information is missing for any of these elements, clearly indicate what's unknown using phrases like "amount unspecified," "eligibility unclear," or "deadline not provided." Do not make up information that isn't in the source data. It's better to acknowledge missing information than to guess.
+
+Example with complete information: "This is a $5M grant from the Department of Energy for schools to implement building performance standards and upgrade HVAC systems. School districts can receive up to $500K each, and applications are due August 15, 2025."
+
+Example with missing information: "This appears to be a grant from the Department of Energy (amount unspecified) for energy efficiency projects, likely targeting local governments. The specific activities funded and application deadline are not provided in the source data."
+
+Write this summary in plain language, focusing on clarity and specificity about what is known while being transparent about what is unknown.The goal is for someone to read this single paragraph and immediately understand if the opportunity is worth pursuing.
 
 IMPORTANT: Always preserve the original ID of each opportunity exactly as it appears in the API response. This ID is required for fetching detailed information in the next step.
 
@@ -1078,7 +1104,11 @@ async function performFirstStageFiltering(
 	// After filtering is complete, log a sample opportunity
 	if (combinedResults.filteredItems.length > 0) {
 		console.log('\n=== Sample Opportunity After Filtering ===');
-		console.log(JSON.stringify(combinedResults.filteredItems[0], null, 2));
+		const sampleOpp = combinedResults.filteredItems[0];
+		console.log(`ID: ${sampleOpp.id}`);
+		console.log(`Title: ${sampleOpp.title}`);
+		console.log(`Relevance Score: ${sampleOpp.relevanceScore}`);
+		console.log(`Actionable Summary: ${sampleOpp.actionableSummary}`);
 		console.log('==========================================\n');
 	}
 

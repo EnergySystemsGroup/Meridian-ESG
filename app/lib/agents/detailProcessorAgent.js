@@ -111,6 +111,11 @@ const detailProcessingSchema = z.object({
 							'2) Which specific data fields from the opportunity you examined, and ' +
 							'3) Direct quotes or values from these fields that influenced your scoring.'
 					),
+				actionableSummary: z
+					.string()
+					.describe(
+						'A single concise paragraph (2-3 sentences) that clearly states: 1) the funding source, 2) the amount available, 3) who can apply, 4) specifically what the money is for, and 5) when applications are due. Example: "This is a $5M grant from the Department of Energy for schools to implement building performance standards. Applications are due August 2025."'
+					),
 			})
 		)
 		.describe('List of extracted funding opportunities'),
@@ -198,6 +203,22 @@ When explaining your relevance score, you MUST include:
 3. EVIDENCE - Include direct quotes or values from these fields that influenced your scoring
 
 This detailed breakdown helps us verify that you're analyzing the right data and understand your decision-making process.
+
+ACTIONABLE SUMMARY REQUIREMENT:
+For each opportunity, provide a concise "actionable summary" in a single paragraph (2-3 sentences) that includes:
+1. The funding source (specific agency or organization)
+2. The amount available (total and/or per award)
+3. Who can apply (specific eligible entities)
+4. SPECIFICALLY what the money is for (the exact activities or projects to be funded)
+5. When applications are due (specific deadline)
+
+At this detail processing stage, you should have more complete information than in the first stage. Use this additional detail to create a comprehensive summary. However, if any critical information is still missing, clearly indicate what's unknown using phrases like "amount unspecified," "eligibility unclear," or "deadline not provided." Do not make up information that isn't in the source data.
+
+Example with complete information: "This is a $5M grant from the Department of Energy for schools to implement building performance standards and upgrade HVAC systems. School districts can receive up to $500K each, and applications are due August 15, 2025."
+
+Example with some missing information: "This is a grant from the Department of Energy (amount unspecified) for K-12 schools to implement energy efficiency measures including LED lighting and HVAC upgrades. Applications are due August 15, 2025."
+
+Write this summary in plain language, focusing on clarity and specificity about what is known while being transparent about what is unknown.
 
 For each selected opportunity, provide:
 1. Opportunity ID and title
@@ -496,6 +517,17 @@ export async function detailProcessorAgent(
 			executionTime,
 			allResults.processingMetrics.tokenUsage
 		);
+
+		// Log a sample opportunity with actionable summary
+		if (allResults.opportunities.length > 0) {
+			console.log('\n=== Sample Opportunity With Actionable Summary ===');
+			const sampleOpp = allResults.opportunities[0];
+			console.log(`ID: ${sampleOpp.id}`);
+			console.log(`Title: ${sampleOpp.title}`);
+			console.log(`Relevance Score: ${sampleOpp.relevanceScore}`);
+			console.log(`Actionable Summary: ${sampleOpp.actionableSummary}`);
+			console.log('================================================\n');
+		}
 
 		// Log the API activity
 		await logApiActivity(supabase, source.id, 'detail_processing', 'success', {
