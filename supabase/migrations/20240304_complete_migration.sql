@@ -156,17 +156,45 @@ VALUES
     ('District of Columbia', 'DC', 'South')
 ON CONFLICT (code) DO NOTHING;
 
--- Create a view for funding opportunities with geographic eligibility
-CREATE OR REPLACE VIEW funding_opportunities_with_geography AS
+-- Drop all dependent functions first
+DROP FUNCTION IF EXISTS get_opportunities_by_state(TEXT);
+DROP FUNCTION IF EXISTS get_funding_by_state(TEXT, TEXT, NUMERIC, NUMERIC);
+DROP FUNCTION IF EXISTS get_funding_by_county(TEXT, TEXT, NUMERIC, NUMERIC);
+
+-- Create the view
+DROP VIEW IF EXISTS funding_opportunities_with_geography CASCADE;
+
+CREATE VIEW funding_opportunities_with_geography AS
 SELECT 
-    fo.*,
+    fo.id,
+    fo.title,
+    fo.opportunity_number,
+    fo.description,
+    fo.objectives,
+    fo.status,
+    fo.url,
+    fo.created_at,
+    fo.updated_at,
+    fo.source_id,
+    fo.program_id,
+    fo.min_amount,
+    fo.max_amount,
+    fo.minimum_award,
+    fo.maximum_award,
+    fo.cost_share_required,
+    fo.cost_share_percentage,
+    fo.posted_date,
+    fo.open_date,
+    fo.close_date,
+    fo.tags,
+    fo.eligible_applicants,
+    fo.eligible_project_types,
+    fo.eligible_locations,
+    fo.categories,
     COALESCE(fp.name, 'Unknown Program') AS program_name,
-    COALESCE(fs.name, 'Unknown Source') AS source_name,
-    COALESCE(fs.agency_type, 'Unknown') AS source_type,
-    CASE 
-        WHEN fo.is_national THEN true
-        ELSE false
-    END AS is_national,
+    COALESCE(fs.name, 'Unknown Source') AS source_display_name,
+    COALESCE(fs.agency_type, 'Unknown') AS agency_type,
+    fo.is_national,
     ARRAY(
         SELECT s.code
         FROM opportunity_state_eligibility ose
@@ -180,8 +208,8 @@ LEFT JOIN
 LEFT JOIN 
     funding_sources fs ON fp.source_id = fs.id;
 
--- Create a function to get funding opportunities by state
-CREATE OR REPLACE FUNCTION get_opportunities_by_state(state_code TEXT)
+-- Recreate the functions
+CREATE FUNCTION get_opportunities_by_state(state_code TEXT)
 RETURNS SETOF funding_opportunities_with_geography AS $$
 BEGIN
     RETURN QUERY
@@ -194,7 +222,7 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- Function to get aggregated funding data by state
-CREATE OR REPLACE FUNCTION get_funding_by_state(
+CREATE FUNCTION get_funding_by_state(
     status TEXT DEFAULT NULL,
     source_type TEXT DEFAULT NULL,
     min_amount NUMERIC DEFAULT NULL,
@@ -286,8 +314,8 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- Function to get county-level funding data (for future use)
-CREATE OR REPLACE FUNCTION get_funding_by_county(
-    state_code TEXT,
+CREATE FUNCTION get_funding_by_county(
+    target_state_code TEXT,
     status TEXT DEFAULT NULL,
     source_type TEXT DEFAULT NULL,
     min_amount NUMERIC DEFAULT NULL,
@@ -322,7 +350,7 @@ BEGIN
         LEFT JOIN 
             states s ON c.state_id = s.id
         WHERE 
-            s.code = state_code AND
+            s.code = target_state_code AND
             (status IS NULL OR fo.status = status) AND
             (source_type IS NULL OR fs.agency_type = source_type) AND
             (min_amount IS NULL OR fo.minimum_award >= min_amount) AND
@@ -344,7 +372,7 @@ BEGIN
         LEFT JOIN 
             states s ON ose.state_id = s.id
         WHERE 
-            s.code = state_code AND
+            s.code = target_state_code AND
             (status IS NULL OR fo.status = status) AND
             (source_type IS NULL OR fs.agency_type = source_type) AND
             (min_amount IS NULL OR fo.minimum_award >= min_amount) AND
@@ -402,16 +430,16 @@ BEGIN
         JOIN 
             states s ON c.state_id = s.id
         WHERE 
-            s.code = state_code
+            s.code = target_state_code
     )
     SELECT 
         a.county_name,
         a.state_code,
-        COALESCE(c.county_value, 0) + 
-        (COALESCE(s.state_value, 0) / (SELECT COUNT(*) FROM all_counties)) + 
+        COALESCE(c.county_value, 0) +
+        (COALESCE(s.state_value, 0) / (SELECT COUNT(*) FROM all_counties)) +
         (COALESCE(n.national_value, 0) / (SELECT COUNT(*) FROM all_counties)) AS value,
-        COALESCE(c.county_opportunities, 0) + 
-        COALESCE(s.state_count, 0) + 
+        COALESCE(c.county_opportunities, 0) +
+        COALESCE(s.state_count, 0) +
         COALESCE(n.national_count, 0) AS opportunities
     FROM 
         all_counties a

@@ -1,5 +1,5 @@
 ---
-description: javascript rules
+description: we use javascript for this project
 globs: 
 alwaysApply: false
 ---
