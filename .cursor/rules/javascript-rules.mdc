@@ -1,6 +1,7 @@
 ---
-description: 
+description: javascript rules
 globs: 
+alwaysApply: false
 ---
 
 # Your rule content
