@@ -30,21 +30,23 @@ const detailProcessingSchema = z.object({
 					.optional()
 					.nullable()
 					.describe('Funding agency or organization'),
-				totalFunding: z
+				totalFundingAvailable: z
 					.number()
 					.optional()
 					.nullable()
-					.describe('Total funding amount available'),
-				minAward: z
+					.describe(
+						'Total funding amount available for the entire program/opportunity'
+					),
+				minimumAward: z
 					.number()
 					.optional()
 					.nullable()
-					.describe('Minimum award amount'),
-				maxAward: z
+					.describe('Minimum award amount per applicant'),
+				maximumAward: z
 					.number()
 					.optional()
 					.nullable()
-					.describe('Maximum award amount'),
+					.describe('Maximum award amount per applicant'),
 				openDate: z
 					.string()
 					.optional()
@@ -114,7 +116,7 @@ const detailProcessingSchema = z.object({
 				actionableSummary: z
 					.string()
 					.describe(
-						'A single concise paragraph (2-3 sentences) that clearly states: 1) the funding source, 2) the amount available, 3) who can apply, 4) specifically what the money is for, and 5) when applications are due. Example: "This is a $5M grant from the Department of Energy for schools to implement building performance standards. Applications are due August 2025."'
+						'A single concise paragraph (2-3 sentences) that clearly states: 1) the funding source, 2) the total funding available for the entire program and/or per award, 3) who can apply, 4) specifically what the money is for, and 5) when applications are due. Example: "This is a $5M grant from the Department of Energy for schools to implement building performance standards. School districts can receive up to $500K each, and applications are due August 2025."'
 					),
 			})
 		)
@@ -207,7 +209,7 @@ This detailed breakdown helps us verify that you're analyzing the right data and
 ACTIONABLE SUMMARY REQUIREMENT:
 For each opportunity, provide a concise "actionable summary" in a single paragraph (2-3 sentences) that includes:
 1. The funding source (specific agency or organization)
-2. The amount available (total and/or per award)
+2. The total funding available for the entire program and/or per award
 3. Who can apply (specific eligible entities)
 4. SPECIFICALLY what the money is for (the exact activities or projects to be funded)
 5. When applications are due (specific deadline)

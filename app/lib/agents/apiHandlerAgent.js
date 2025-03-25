@@ -100,21 +100,23 @@ const apiResponseProcessingSchema = z.object({
 					.optional()
 					.nullable()
 					.describe('Funding agency or organization'),
-				totalFunding: z
+				totalFundingAvailable: z
 					.number()
 					.optional()
 					.nullable()
-					.describe('Total funding amount available'),
-				minAward: z
+					.describe(
+						'Total funding amount available for the entire program/opportunity'
+					),
+				minimumAward: z
 					.number()
 					.optional()
 					.nullable()
-					.describe('Minimum award amount'),
-				maxAward: z
+					.describe('Minimum award amount per applicant'),
+				maximumAward: z
 					.number()
 					.optional()
 					.nullable()
-					.describe('Maximum award amount'),
+					.describe('Maximum award amount per applicant'),
 				openDate: z
 					.string()
 					.optional()
@@ -178,13 +180,13 @@ const apiResponseProcessingSchema = z.object({
 						'Detailed explanation of the relevance score. MUST INCLUDE: ' +
 							'1) Point-by-point scoring breakdown (Focus areas: X/5, ' +
 							'Applicability: X/3, Funding amount: X/2), ' +
-							'2) Which specific data fields from the API response you examined, and ' +
+							'2) Which specific data fields from the opportunity you examined, and ' +
 							'3) Direct quotes or values from these fields that influenced your scoring.'
 					),
 				actionableSummary: z
 					.string()
 					.describe(
-						'A single concise paragraph (2-3 sentences) that clearly states: 1) the funding source, 2) the amount available, 3) who can apply, 4) specifically what the money is for, and 5) when applications are due. Example: "This is a $5M grant from the Department of Energy for schools to implement building performance standards. Applications are due August 2025."'
+						'A single concise paragraph (2-3 sentences) that clearly states: 1) the funding source, 2) the total funding available for the entire program and/or per award, 3) who can apply, 4) specifically what the money is for, and 5) when applications are due. Example: "This is a $5M grant from the Department of Energy for schools to implement building performance standards. School districts can receive up to $500K each, and applications are due August 2025."'
 					),
 			})
 		)
@@ -197,7 +199,9 @@ const apiResponseProcessingSchema = z.object({
 			rejectionReasons: z.array(z.string()).describe('Reasons for rejection'),
 			averageScoreBeforeFiltering: z
 				.number()
-				.describe('Average relevance score before filtering'),
+				.describe(
+					'Average relevance score of ALL opportunities before applying the minimum threshold filter. This should be the mean of all relevance scores you assigned, including both opportunities that pass and fail the filter.'
+				),
 			averageScoreAfterFiltering: z
 				.number()
 				.describe('Average relevance score after filtering'),
