@@ -166,13 +166,12 @@ export async function processApiSource(sourceId = null, runId = null) {
 		const storageResult = await processOpportunitiesBatch(
 			detailResult.opportunities,
 			source.id,
-			handlerResult.rawApiResponse,
-			handlerResult.requestDetails,
+			handlerResult.rawResponseId,
 			runManager
 		);
 		console.timeEnd('processOpportunitiesBatch');
 		console.log(
-			`Data Processor completed with ${storageResult.metrics.storedCount} stored opportunities and ${storageResult.metrics.updatedCount} updated opportunities`
+			`Data Processor completed with ${storageResult.metrics.new} new opportunities and ${storageResult.metrics.updated} updated opportunities`
 		);
 
 		// Calculate total execution time
@@ -192,10 +191,12 @@ export async function processApiSource(sourceId = null, runId = null) {
 			{
 				initialCount: handlerResult.initialApiMetrics.totalHitCount,
 				firstStageCount: handlerResult.opportunities.length,
-				secondStageCount: detailResult.opportunities.length,
-				storedCount: storageResult.metrics.storedCount,
-				updatedCount: storageResult.metrics.updatedCount,
-				skippedCount: storageResult.metrics.skippedCount,
+				secondStageCount: isDetailEnabled
+					? detailResult.opportunities.length
+					: handlerResult.opportunities.length,
+				newCount: storageResult.metrics.new,
+				updatedCount: storageResult.metrics.updated,
+				ignoredCount: storageResult.metrics.ignored,
 				executionTime,
 			}
 		);
@@ -216,7 +217,13 @@ export async function processApiSource(sourceId = null, runId = null) {
 				secondStageMetrics: isDetailEnabled
 					? detailResult.processingMetrics
 					: null,
-				storageMetrics: storageResult.metrics,
+				storageMetrics: {
+					new: storageResult.metrics.new,
+					updated: storageResult.metrics.updated,
+					ignored: storageResult.metrics.ignored,
+					total: storageResult.metrics.total,
+					processingTime: storageResult.metrics.processingTime,
+				},
 				totalExecutionTime: executionTime,
 			},
 			runId: runManager.runId,
