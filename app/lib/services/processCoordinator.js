@@ -122,21 +122,38 @@ export async function processApiSource(sourceId = null, runId = null) {
 			`API Handler completed with ${handlerResult.opportunities.length} opportunities`
 		);
 
-		// Step 3: Process the opportunities with the Detail Processor Agent
-		console.log(
-			`Processing ${handlerResult.opportunities.length} opportunities with Detail Processor`
-		);
-		await runManager.updateStageStatus('detail_processor_status', 'processing');
-		console.time('processDetailedInfo');
-		const detailResult = await processDetailedInfo(
-			handlerResult.opportunities,
-			source,
-			runManager
-		);
-		console.timeEnd('processDetailedInfo');
-		console.log(
-			`Detail Processor completed with ${detailResult.opportunities.length} filtered opportunities`
-		);
+		// Check if detail processing is enabled for this source
+		const isDetailEnabled = processingDetails.detailConfig?.enabled;
+		let detailResult = {
+			opportunities: handlerResult.opportunities,
+			processingMetrics: null,
+		};
+
+		if (isDetailEnabled) {
+			// Step 3: Process the opportunities with the Detail Processor Agent
+			console.log(
+				`Processing ${handlerResult.opportunities.length} opportunities with Detail Processor`
+			);
+			await runManager.updateStageStatus(
+				'detail_processor_status',
+				'processing'
+			);
+			console.time('processDetailedInfo');
+			detailResult = await processDetailedInfo(
+				handlerResult.opportunities,
+				source,
+				runManager
+			);
+			console.timeEnd('processDetailedInfo');
+			console.log(
+				`Detail Processor completed with ${detailResult.opportunities.length} filtered opportunities`
+			);
+		} else {
+			console.log(
+				'Detail processing is disabled for this source, skipping detail processor'
+			);
+			await runManager.updateStageStatus('detail_processor_status', 'skipped');
+		}
 
 		// Step 4: Process the filtered opportunities with the Data Processor Agent
 		console.log(
@@ -190,8 +207,12 @@ export async function processApiSource(sourceId = null, runId = null) {
 			metrics: {
 				initialApiMetrics: handlerResult.initialApiMetrics,
 				firstStageMetrics: handlerResult.firstStageMetrics,
-				detailApiMetrics: handlerResult.detailApiMetrics,
-				secondStageMetrics: detailResult.processingMetrics,
+				detailApiMetrics: isDetailEnabled
+					? handlerResult.detailApiMetrics
+					: null,
+				secondStageMetrics: isDetailEnabled
+					? detailResult.processingMetrics
+					: null,
 				storageMetrics: storageResult.metrics,
 				totalExecutionTime: executionTime,
 			},
