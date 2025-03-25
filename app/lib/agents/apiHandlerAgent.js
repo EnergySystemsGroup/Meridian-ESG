@@ -14,6 +14,7 @@ import {
 import { processNextSource } from './sourceManagerAgent';
 import { z } from 'zod';
 import axios from 'axios';
+import crypto from 'crypto';
 
 // Define the funding opportunity schema
 const fundingOpportunitySchema = z.object({
@@ -1577,12 +1578,17 @@ export async function apiHandlerAgent(
 			runManager
 		);
 
+		// Generate a rawResponseId if needed for database storage
+		const rawResponseId = crypto.randomUUID
+			? crypto.randomUUID()
+			: 'test-' + Math.random().toString(36).substring(2, 15);
+
 		// Format the result for the next stage
 		const formattedResult = {
 			firstStageMetrics: result.metrics.filter,
 			opportunities: result.items,
 			initialApiMetrics: result.metrics.api,
-
+			rawResponseId: rawResponseId, // Add the rawResponseId to the result
 			detailApiMetrics: result.metrics.detail,
 			rawApiResponse: result.rawApiResponse,
 			requestDetails: result.requestDetails,
@@ -1595,6 +1601,7 @@ export async function apiHandlerAgent(
 			hasDetailApiMetrics: !!formattedResult.detailApiMetrics,
 			rawApiResponseLength: formattedResult.rawApiResponse?.length,
 			hasRequestDetails: !!formattedResult.requestDetails,
+			rawResponseId: rawResponseId, // Log the rawResponseId
 		});
 
 		return formattedResult;

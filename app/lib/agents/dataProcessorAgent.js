@@ -14,6 +14,8 @@ export async function processOpportunitiesBatch(
 	rawResponseId,
 	runManager = null
 ) {
+	console.log('Processing opportunities batch:', opportunities);
+
 	const supabase = createSupabaseClient();
 	const startTime = Date.now();
 
@@ -31,6 +33,48 @@ export async function processOpportunitiesBatch(
 				processingTime: 0,
 			},
 		};
+
+		// Function to sanitize opportunity data for the database
+		// Converting camelCase to snake_case and filtering out non-existent columns
+		function sanitizeOpportunityForDatabase(opportunity) {
+			// Map of camelCase to snake_case fields
+			const fieldMap = {
+				title: 'title',
+				description: 'description',
+				url: 'url',
+				status: 'status',
+				openDate: 'open_date',
+				closeDate: 'close_date',
+				minimumAward: 'minimum_award',
+				maximumAward: 'maximum_award',
+				totalFundingAvailable: 'total_funding_available',
+				matchingRequired: 'cost_share_required',
+				matchingPercentage: 'cost_share_percentage',
+				eligibleApplicants: 'eligible_applicants',
+				eligibleProjectTypes: 'eligible_project_types',
+				eligibleLocations: 'eligible_locations',
+				categories: 'categories',
+				tags: 'tags',
+				isNational: 'is_national',
+				actionableSummary: 'actionable_summary',
+				id: 'opportunity_number', // Special case: map external ID to opportunity_number
+			};
+
+			// Create sanitized object with snake_case keys
+			const sanitized = {};
+			for (const [camelCaseKey, snakeCaseKey] of Object.entries(fieldMap)) {
+				if (opportunity[camelCaseKey] !== undefined) {
+					sanitized[snakeCaseKey] = opportunity[camelCaseKey];
+				}
+			}
+
+			// Add required metadata fields but don't include raw_response_id if it's not in the schema
+			sanitized.source_id = sourceId;
+			sanitized.created_at = new Date().toISOString();
+			sanitized.updated_at = new Date().toISOString();
+
+			return sanitized;
+		}
 
 		// Process each opportunity
 		for (const opportunity of opportunities) {
@@ -53,31 +97,17 @@ export async function processOpportunitiesBatch(
 
 			// If no match by ID, try matching by title
 			if (!existingOpportunity) {
-				const { data, error } = await supabase
-					.from('funding_opportunities')
-					.select('*')
-					.eq('title', opportunity.title)
-					.eq('source_id', sourceId)
-					.limit(1);
-
-				if (!error && data && data.length > 0) {
-					existingOpportunity = data[0];
-				}
-			}
-
-			if (!existingOpportunity) {
-				// Prepare data for insertion, mapping external ID to opportunity_number
-				const opportunityData = {
-					...opportunity,
-					opportunity_number: opportunity.id,
-					source_id: sourceId,
-					raw_response_id: rawResponseId,
-					created_at: new Date().toISOString(),
-					updated_at: new Date().toISOString(),
-				};
+				// Sanitize opportunity data for database insertion
+				const opportunityData = sanitizeOpportunityForDatabase(opportunity);
 
 				// Remove the id field to prevent conflicts with DB auto-generated IDs
 				delete opportunityData.id;
+
+				// Console log for debugging
+				console.log(
+					'Prepared opportunity data for insert:',
+					Object.keys(opportunityData).join(', ')
+				);
 
 				// Insert new opportunity
 				const { data: insertData, error: insertError } = await supabase
@@ -115,16 +145,19 @@ export async function processOpportunitiesBatch(
 				});
 
 				if (hasChanges) {
-					// Prepare update data, mapping external ID to opportunity_number
-					const updateData = {
-						...opportunity,
-						opportunity_number: opportunity.id,
-						raw_response_id: rawResponseId,
-						updated_at: new Date().toISOString(),
-					};
+					// Sanitize opportunity data for database update
+					const updateData = sanitizeOpportunityForDatabase(opportunity);
+					// For updates, we only want to update the timestamp
+					updateData.created_at = undefined; // Remove created_at for updates
 
 					// Remove the id field to prevent conflicts with DB ID
 					delete updateData.id;
+
+					// Console log for debugging
+					console.log(
+						'Prepared opportunity data for update:',
+						Object.keys(updateData).join(', ')
+					);
 
 					// Update existing opportunity
 					const { data: updatedData, error: updateError } = await supabase

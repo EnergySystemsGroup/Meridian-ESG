@@ -220,21 +220,23 @@ const componentInfo = {
 	},
 	'data-processor': {
 		title: 'Data Processor',
-		description: 'Stores filtered opportunities in the database',
+		description:
+			'Stores filtered opportunities in the database, handling duplicates and updates',
 		functions: [
-			'dataProcessorAgent(opportunity, sourceId, rawApiResponse, requestDetails, runManager)',
-			'processUnprocessedOpportunities(sourceId, rawApiResponse, requestDetails, runManager)',
+			'processOpportunitiesBatch(opportunities, sourceId, rawResponseId, runManager)',
 		],
-		input: 'Source ID, Raw API Response, Request Details',
+		input: 'Array of Opportunities, Source ID, Raw Response ID',
 		expectedOutput: `{
+  "newOpportunities": [ /* array of newly inserted opportunities */ ],
+  "updatedOpportunities": [ /* array of updated opportunities */ ],
+  "ignoredOpportunities": [ /* array of unchanged/ignored opportunities */ ],
   "metrics": {
-    "attemptedCount": 30,
-    "storedCount": 25,
-    "updatedCount": 3,
-    "skippedCount": 2,
+    "total": 30,
+    "new": 25,
+    "updated": 3,
+    "ignored": 2,
     "processingTime": 2000
-  },
-  "opportunities": [ /* stored opportunities */ ]
+  }
 }`,
 	},
 	'api-endpoint': {
@@ -252,9 +254,8 @@ const componentInfo = {
 	},
 	'db-schema': {
 		title: 'Database Schema',
-		description:
-			'Validates the database schema to ensure all required fields exist',
-		functions: ['supabase.from("information_schema.columns").select()'],
+		description: 'Examine the database schema for the API integration system.',
+		functions: ['Retrieve table schemas from the database'],
 		input: 'None',
 		expectedOutput: `{
   "api_sources": [ /* column definitions */ ],
@@ -275,14 +276,16 @@ export default function DebugPage() {
 	const [result, setResult] = useState(null);
 	const [loadingSources, setLoadingSources] = useState(true);
 	const [apiHandlerResults, setApiHandlerResults] = useState(null);
+	const [detailProcessorResults, setDetailProcessorResults] = useState(null);
 
 	useEffect(() => {
 		fetchSources();
 	}, []);
 
-	// Clear API handler results when switching tabs
+	// Clear results when switching tabs
 	useEffect(() => {
 		setApiHandlerResults(null);
+		setDetailProcessorResults(null);
 	}, [activeTab]);
 
 	async function fetchSources() {
@@ -356,10 +359,16 @@ export default function DebugPage() {
 						sample: opportunities.length > 0 ? opportunities[0] : 'none',
 					});
 
-					// Store these opportunities for future use
+					// Store these opportunities and rawResponseId for future use
 					setApiHandlerResults({
 						opportunities: [...opportunities],
+						rawResponseId: apiData.result.rawResponseId,
 					});
+
+					console.log(
+						'Saved apiHandlerResults with rawResponseId:',
+						apiData.result.rawResponseId
+					);
 
 					toast.success(
 						`API Handler completed with ${opportunities.length} opportunities, now running Detail Processor...`
@@ -445,9 +454,133 @@ export default function DebugPage() {
 
 				const detailData = await detailResponse.json();
 				setResult(detailData);
+				setDetailProcessorResults(detailData.result);
 				toast.success('Detail Processor test completed successfully');
 				setLoading(false);
 				return;
+			}
+
+			// Special handling for data-processor
+			if (activeTab === 'data-processor') {
+				// Step 1: Get opportunities from Detail Processor or API Handler
+				let opportunities = [];
+				let rawResponseId;
+
+				// First try to get from detail processor results
+				if (
+					detailProcessorResults &&
+					detailProcessorResults.opportunities &&
+					Array.isArray(detailProcessorResults.opportunities) &&
+					detailProcessorResults.opportunities.length > 0
+				) {
+					opportunities = [...detailProcessorResults.opportunities];
+					console.log(
+						`Using ${opportunities.length} opportunities from Detail Processor results`
+					);
+
+					// Need to get a raw response ID - run API Handler if it doesn't exist
+					if (!apiHandlerResults || !apiHandlerResults.rawResponseId) {
+						console.log('Need to run API Handler to get a rawResponseId');
+						const apiResponse = await fetch('/api/admin/debug/api-handler', {
+							method: 'POST',
+							headers: { 'Content-Type': 'application/json' },
+							body: JSON.stringify({ sourceId: selectedSource }),
+						});
+
+						if (!apiResponse.ok) {
+							const errorData = await apiResponse.json();
+							throw new Error(errorData.error || 'API Handler test failed');
+						}
+
+						const apiData = await apiResponse.json();
+						rawResponseId = apiData.result.rawResponseId;
+
+						// Store results for future use
+						setApiHandlerResults({
+							...apiHandlerResults,
+							rawResponseId,
+						});
+					} else {
+						rawResponseId = apiHandlerResults.rawResponseId;
+					}
+				}
+				// Otherwise use API Handler results
+				else if (
+					apiHandlerResults &&
+					apiHandlerResults.opportunities &&
+					Array.isArray(apiHandlerResults.opportunities) &&
+					apiHandlerResults.opportunities.length > 0
+				) {
+					opportunities = [...apiHandlerResults.opportunities];
+					rawResponseId = apiHandlerResults.rawResponseId;
+					console.log(
+						`Using ${opportunities.length} opportunities from API Handler results`
+					);
+				}
+
+				// Neither Detail Processor nor API Handler results available
+				else {
+					throw new Error(
+						'Data Processor testing requires running either API Handler or Detail Processor first to provide data'
+					);
+				}
+
+				if (!opportunities || opportunities.length === 0) {
+					throw new Error(
+						'No opportunities available to process. The Data Processor requires at least one opportunity.'
+					);
+				}
+
+				if (!rawResponseId) {
+					console.warn(
+						'No rawResponseId found, generating a mock ID for testing purposes'
+					);
+					// Generate a mock UUID for testing purposes
+					rawResponseId = crypto.randomUUID
+						? crypto.randomUUID()
+						: 'test-' + Math.random().toString(36).substring(2, 15);
+
+					console.log('Using mock rawResponseId:', rawResponseId);
+				}
+
+				// Log opportunity structure to help debug issues
+				if (opportunities && opportunities.length > 0) {
+					const sample = opportunities[0];
+					console.log('Data Processor opportunity structure:', {
+						keys: Object.keys(sample).join(', '),
+						id: sample.id,
+						title: sample.title?.substring(0, 30) + '...',
+					});
+				}
+
+				// Step 2: Run Data Processor with the opportunities
+				console.log(
+					`Running Data Processor with ${opportunities.length} opportunities and rawResponseId: ${rawResponseId}`
+				);
+
+				const dataProcessorRequest = {
+					sourceId: selectedSource,
+					opportunities: opportunities,
+					rawResponseId: rawResponseId,
+				};
+
+				console.log('Sending request to data-processor:', dataProcessorRequest);
+				const dataResponse = await fetch('/api/admin/debug/data-processor', {
+					method: 'POST',
+					headers: {
+						'Content-Type': 'application/json',
+					},
+					body: JSON.stringify(dataProcessorRequest),
+				});
+
+				if (!dataResponse.ok) {
+					const errorData = await dataResponse.json();
+					throw new Error(errorData.error || 'Data Processor test failed');
+				}
+
+				const dataResult = await dataResponse.json();
+				setResult(dataResult);
+				toast.success('Data Processor test completed successfully');
 			}
 
 			// For other components, prepare a standard request
@@ -471,6 +604,21 @@ export default function DebugPage() {
 
 			const data = await response.json();
 			setResult(data);
+			// Add this code to save API Handler results if this is the API Handler tab
+			if (
+				activeTab === 'api-handler' &&
+				data.result &&
+				data.result.opportunities
+			) {
+				console.log('Storing API Handler results for future use:', {
+					opportunitiesCount: data.result.opportunities.length,
+					rawResponseId: data.result.rawResponseId,
+				});
+				setApiHandlerResults({
+					opportunities: [...data.result.opportunities],
+					rawResponseId: data.result.rawResponseId,
+				});
+			}
 			toast.success(`${activeTab} test completed successfully`);
 		} catch (error) {
 			console.error(`Error running ${activeTab} test:`, error);
