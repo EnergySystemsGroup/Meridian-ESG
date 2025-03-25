@@ -60,6 +60,10 @@ The Funding API Processing System is designed to retrieve, filter, and store fun
 
 - **Batch Processing Strategy**: Opportunities are processed in batches with adaptive sizing based on token limits, ensuring efficient use of LLM resources.
 
+- **Direct Data Processing Flow**: Eliminates intermediate database storage between processing stages, maintaining data in memory until final storage decisions are made, improving efficiency and reducing overhead.
+
+- **Selective LLM Usage**: LLMs are used for complex filtering and analysis in early stages, with simpler rule-based processing for later stages like data storage, optimizing for both quality and efficiency.
+
 <a id="agent-system"></a>
 
 ### Agent System
@@ -108,6 +112,8 @@ The Funding API Processing System is designed to retrieve, filter, and store fun
 - [x] Normalize data to standard schema
 - [x] Track storage metrics and results
 - [x] Support multiple insert/update strategies
+- [x] Implement direct batch processing of opportunities
+- [ ] Replace LLM-based decision making with rule-based processing for better efficiency
 - [ ] Implement versioning for opportunity updates
 - [ ] Add tagging system for categorization
 - [ ] Implement data quality scoring
@@ -133,9 +139,10 @@ The Funding API Processing System is designed to retrieve, filter, and store fun
 - [x] Manage transitions between processing stages
 - [x] Support processing multiple sources in sequence
 - [x] Provide comprehensive result summaries
+- [x] Support conditional processing based on source type
+- [x] Implement direct data flow between processing stages
 - [ ] Implement parallel processing of sources
 - [ ] Add resource allocation and throttling
-- [ ] Support conditional processing based on source type
 
 <a id="funding-api-database"></a>
 

@@ -2,7 +2,7 @@ import { RunManager } from './runManager';
 import { sourceManagerAgent } from '@/app/lib/agents/sourceManagerAgent';
 import { apiHandlerAgent } from '@/app/lib/agents/apiHandlerAgent';
 import { processDetailedInfo } from '@/app/lib/agents/detailProcessorAgent';
-import { processUnprocessedOpportunities } from '@/app/lib/agents/dataProcessorAgent';
+import { processOpportunitiesBatch } from '@/app/lib/agents/dataProcessorAgent';
 import { createSupabaseClient, logApiActivity } from '@/app/lib/supabase';
 
 /**
@@ -160,16 +160,19 @@ export async function processApiSource(sourceId = null, runId = null) {
 			`Processing ${detailResult.opportunities.length} filtered opportunities with Data Processor`
 		);
 		await runManager.updateStageStatus('data_processor_status', 'processing');
-		console.time('processUnprocessedOpportunities');
-		const storageResult = await processUnprocessedOpportunities(
+		console.time('processOpportunitiesBatch');
+
+		// Directly process the opportunities without storing in an intermediate table
+		const storageResult = await processOpportunitiesBatch(
+			detailResult.opportunities,
 			source.id,
 			handlerResult.rawApiResponse,
 			handlerResult.requestDetails,
 			runManager
 		);
-		console.timeEnd('processUnprocessedOpportunities');
+		console.timeEnd('processOpportunitiesBatch');
 		console.log(
-			`Data Processor completed with ${storageResult.metrics.storedCount} stored opportunities`
+			`Data Processor completed with ${storageResult.metrics.storedCount} stored opportunities and ${storageResult.metrics.updatedCount} updated opportunities`
 		);
 
 		// Calculate total execution time
