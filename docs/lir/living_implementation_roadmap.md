@@ -132,6 +132,7 @@ The Funding API Processing System is designed to retrieve, filter, and store fun
 - [ ] Implement versioning for opportunity updates
 - [ ] Add tagging system for categorization
 - [ ] Implement data quality scoring
+- [ ] Verify that opportunities table is being filled with correct data without redundant or missing fields
 
 <a id="process-coordination"></a>
 
@@ -174,6 +175,7 @@ The Funding API Processing System is designed to retrieve, filter, and store fun
 - [x] Create API extracted opportunities table
 - [ ] Create opportunity categories table
 - [ ] Create opportunity-client match table
+- [ ] Audit opportunities table schema to ensure all fields are necessary and properly utilized
 
 **Database Functions:**
 
@@ -265,6 +267,8 @@ The Admin Interface provides tools for managing API sources, viewing processing 
 - [x] Implement source creation interface
 - [x] Add configuration editing tools
 - [ ] Create configuration validation
+- [ ] Update funding source detail page with editable configuration elements (API endpoints, pagination settings, request configuration)
+- [ ] Improve funding sources list page with filtering, search capabilities, and status indicators
 
 **Processing Management:**
 
