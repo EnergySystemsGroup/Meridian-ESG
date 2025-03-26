@@ -82,7 +82,8 @@ export default function RunDetailPage() {
 	}
 
 	// Calculate metrics for the pipeline overview
-	const initialCount = run?.initial_api_call?.totalHitCount || 0;
+	const totalHitCount = run?.initial_api_call?.totalHitCount || 0;
+	const retrievedCount = run?.initial_api_call?.totalItemsRetrieved || 0;
 	const firstFilterCount = run?.first_stage_filter?.passedCount || 0;
 	const detailCallCount = run?.detail_api_calls?.successfulDetailCalls || 0;
 	const secondFilterCount = run?.second_stage_filter?.passedCount || 0;
@@ -108,20 +109,23 @@ export default function RunDetailPage() {
 				</h3>
 				<div className='grid grid-cols-5 gap-4 mb-6'>
 					<div className='text-center'>
-						<p className='text-sm text-gray-500'>Initial Results</p>
-						<p className='text-2xl font-bold'>{initialCount}</p>
+						<p className='text-sm text-gray-500'>Retrieved Items</p>
+						<p className='text-2xl font-bold'>{retrievedCount}</p>
+						<span className='text-xs text-gray-500'>
+							(of {totalHitCount} total available)
+						</span>
 					</div>
 					<div className='text-center'>
 						<p className='text-sm text-gray-500'>First Filter</p>
 						<p className='text-2xl font-bold'>{firstFilterCount}</p>
 						<span
 							className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${
-								firstFilterCount / initialCount < 0.2
+								firstFilterCount / retrievedCount < 0.2
 									? 'bg-red-100 text-red-800'
 									: 'bg-green-100 text-green-800'
 							}`}>
-							{initialCount
-								? ((firstFilterCount / initialCount) * 100).toFixed(1)
+							{retrievedCount
+								? ((firstFilterCount / retrievedCount) * 100).toFixed(1)
 								: 0}
 							%
 						</span>
@@ -161,12 +165,12 @@ export default function RunDetailPage() {
 						<p className='text-2xl font-bold'>{storedCount}</p>
 						<span
 							className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${
-								storedCount / initialCount < 0.05
+								storedCount / retrievedCount < 0.05
 									? 'bg-red-100 text-red-800'
 									: 'bg-green-100 text-green-800'
 							}`}>
-							{initialCount
-								? ((storedCount / initialCount) * 100).toFixed(1)
+							{retrievedCount
+								? ((storedCount / retrievedCount) * 100).toFixed(1)
 								: 0}
 							%
 						</span>
@@ -179,7 +183,7 @@ export default function RunDetailPage() {
 							className='bg-blue-500 h-full'
 							style={{
 								width: `${
-									initialCount ? (firstFilterCount / initialCount) * 100 : 0
+									retrievedCount ? (firstFilterCount / retrievedCount) * 100 : 0
 								}%`,
 							}}
 						/>
@@ -187,7 +191,9 @@ export default function RunDetailPage() {
 							className='bg-green-500 h-full'
 							style={{
 								width: `${
-									initialCount ? (secondFilterCount / initialCount) * 100 : 0
+									retrievedCount
+										? (secondFilterCount / retrievedCount) * 100
+										: 0
 								}%`,
 							}}
 						/>
@@ -195,7 +201,7 @@ export default function RunDetailPage() {
 							className='bg-purple-500 h-full'
 							style={{
 								width: `${
-									initialCount ? (storedCount / initialCount) * 100 : 0
+									retrievedCount ? (storedCount / retrievedCount) * 100 : 0
 								}%`,
 							}}
 						/>
