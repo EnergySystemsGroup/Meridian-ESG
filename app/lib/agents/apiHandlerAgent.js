@@ -626,6 +626,40 @@ async function processPaginatedApi(source, processingDetails, runManager) {
 		initialApiMetrics.responseSamples = sampleMetadata;
 		initialApiMetrics.isDebugMetadataOnly = true;
 
+		// Store a few complete raw samples for debugging purposes
+		if (Array.isArray(items) && items.length > 0) {
+			const rawSampleSize = Math.min(3, items.length);
+			const rawSamples = [];
+
+			for (let i = 0; i < rawSampleSize; i++) {
+				const rawItem = items[i];
+				if (typeof rawItem !== 'object' || rawItem === null) continue;
+
+				// Clone the item to avoid reference issues
+				const rawSample = JSON.parse(JSON.stringify(rawItem));
+
+				// Add metadata to identify this as a raw sample
+				rawSample._rawSample = true;
+				rawSample._sampleIndex = i;
+
+				// Truncate any unusually large string fields to prevent DB size issues
+				Object.keys(rawSample).forEach((key) => {
+					if (
+						typeof rawSample[key] === 'string' &&
+						rawSample[key].length > 5000
+					) {
+						rawSample[key] =
+							rawSample[key].substring(0, 5000) + '... [truncated]';
+					}
+				});
+
+				rawSamples.push(rawSample);
+			}
+
+			// Add to metrics
+			initialApiMetrics.rawResponseSamples = rawSamples;
+		}
+
 		// Update run manager with initial API call metrics
 		if (runManager) {
 			await runManager.updateInitialApiCall(initialApiMetrics);
@@ -799,6 +833,40 @@ async function processPaginatedApi(source, processingDetails, runManager) {
 				// Store samples as metadata, not as actual opportunities
 				initialApiMetrics.responseSamples = sampleMetadata;
 				initialApiMetrics.isDebugMetadataOnly = true;
+
+				// Store a few complete raw samples for debugging purposes
+				if (Array.isArray(data) && data.length > 0) {
+					const rawSampleSize = Math.min(3, data.length);
+					const rawSamples = [];
+
+					for (let i = 0; i < rawSampleSize; i++) {
+						const rawItem = data[i];
+						if (typeof rawItem !== 'object' || rawItem === null) continue;
+
+						// Clone the item to avoid reference issues
+						const rawSample = JSON.parse(JSON.stringify(rawItem));
+
+						// Add metadata to identify this as a raw sample
+						rawSample._rawSample = true;
+						rawSample._sampleIndex = i;
+
+						// Truncate any unusually large string fields to prevent DB size issues
+						Object.keys(rawSample).forEach((key) => {
+							if (
+								typeof rawSample[key] === 'string' &&
+								rawSample[key].length > 5000
+							) {
+								rawSample[key] =
+									rawSample[key].substring(0, 5000) + '... [truncated]';
+							}
+						});
+
+						rawSamples.push(rawSample);
+					}
+
+					// Add to metrics
+					initialApiMetrics.rawResponseSamples = rawSamples;
+				}
 			}
 		}
 

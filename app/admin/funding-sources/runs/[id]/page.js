@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import { Button } from '@/app/components/ui/button';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, ChevronDown, ChevronUp } from 'lucide-react';
 import Link from 'next/link';
 
 export default function RunDetailPage() {
@@ -14,6 +14,7 @@ export default function RunDetailPage() {
 	const [run, setRun] = useState(null);
 	const [loading, setLoading] = useState(true);
 	const [activeTab, setActiveTab] = useState('api-call');
+	const [expandedSamples, setExpandedSamples] = useState({});
 
 	useEffect(() => {
 		fetchRun();
@@ -63,6 +64,13 @@ export default function RunDetailPage() {
 			supabase.removeChannel(channel);
 		};
 	}
+
+	const toggleSample = (index) => {
+		setExpandedSamples((prev) => ({
+			...prev,
+			[index]: !prev[index],
+		}));
+	};
 
 	if (loading) {
 		return (
@@ -255,9 +263,9 @@ export default function RunDetailPage() {
 						</h3>
 						<div className='grid grid-cols-3 gap-4 mb-6'>
 							<div className='text-center p-4 bg-gray-50 rounded-lg'>
-								<p className='text-sm text-gray-500'>Total Results</p>
+								<p className='text-sm text-gray-500'>Retrieved Items</p>
 								<p className='text-2xl font-bold'>
-									{run?.initial_api_call?.totalHitCount || 0}
+									{run?.initial_api_call?.totalItemsRetrieved || 0}
 								</p>
 							</div>
 							<div className='text-center p-4 bg-gray-50 rounded-lg'>
@@ -273,6 +281,64 @@ export default function RunDetailPage() {
 								</p>
 							</div>
 						</div>
+
+						{/* Raw Response Samples Section */}
+						{run?.initial_api_call?.rawResponseSamples &&
+							run.initial_api_call.rawResponseSamples.length > 0 && (
+								<div className='mt-6'>
+									<h4 className='text-md font-medium mb-3'>
+										API Response Samples{' '}
+										<span className='text-xs font-normal text-gray-500'>
+											(complete data)
+										</span>
+									</h4>
+									<div className='space-y-4'>
+										{run.initial_api_call.rawResponseSamples
+											.slice(0, 3)
+											.map((item, index) => (
+												<div
+													key={index}
+													className='border rounded-lg bg-gray-50 overflow-hidden'>
+													<div
+														className='flex justify-between items-center p-4 cursor-pointer border-b border-gray-200 bg-white'
+														onClick={() => toggleSample(index)}>
+														<h5 className='font-semibold'>
+															{item.title ||
+																item.name ||
+																`Raw Sample #${index + 1}`}
+														</h5>
+														<div className='flex items-center'>
+															<span className='text-xs bg-blue-100 text-blue-800 rounded px-2 py-1 mr-2'>
+																Complete Raw Data
+															</span>
+															{expandedSamples[index] ? (
+																<ChevronUp className='h-5 w-5 text-gray-500' />
+															) : (
+																<ChevronDown className='h-5 w-5 text-gray-500' />
+															)}
+														</div>
+													</div>
+
+													{expandedSamples[index] && (
+														<div className='p-4 overflow-auto'>
+															<pre className='text-xs font-mono whitespace-pre-wrap bg-gray-800 text-gray-100 p-4 rounded-md overflow-x-auto'>
+																{JSON.stringify(
+																	item,
+																	(key, value) => {
+																		// Skip metadata fields in the output
+																		if (key.startsWith('_')) return undefined;
+																		return value;
+																	},
+																	2
+																)}
+															</pre>
+														</div>
+													)}
+												</div>
+											))}
+									</div>
+								</div>
+							)}
 					</div>
 				)}
 
@@ -314,6 +380,55 @@ export default function RunDetailPage() {
 								</p>
 							</div>
 						</div>
+
+						{/* Sample Items Section for First Filter */}
+						{run?.first_stage_filter?.responseSamples &&
+							run.first_stage_filter.responseSamples.length > 0 && (
+								<div className='mt-6'>
+									<h4 className='text-md font-medium mb-3'>
+										Sample Filtered Items
+									</h4>
+									<div className='space-y-4'>
+										{run.first_stage_filter.responseSamples
+											.slice(0, 3)
+											.map((item, index) => (
+												<div
+													key={index}
+													className='border rounded-lg p-4 bg-gray-50'>
+													<h5 className='font-semibold mb-2'>
+														{item.title || 'Untitled Item'}
+													</h5>
+													{item.actionableSummary && (
+														<p className='text-sm text-gray-600 mb-2'>
+															{item.actionableSummary}
+														</p>
+													)}
+													{item.relevanceScore && (
+														<div className='mb-2'>
+															<span className='inline-block px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800'>
+																Relevance Score: {item.relevanceScore}/10
+															</span>
+														</div>
+													)}
+													<div className='grid grid-cols-2 gap-2 text-xs text-gray-500'>
+														{item.id && (
+															<div className='col-span-2'>
+																<span className='font-medium'>ID:</span>{' '}
+																<span className='font-mono'>{item.id}</span>
+															</div>
+														)}
+														{item.source && (
+															<div className='col-span-2'>
+																<span className='font-medium'>Source:</span>{' '}
+																{item.source}
+															</div>
+														)}
+													</div>
+												</div>
+											))}
+									</div>
+								</div>
+							)}
 					</div>
 				)}
 
@@ -385,6 +500,75 @@ export default function RunDetailPage() {
 								</p>
 							</div>
 						</div>
+
+						{/* Sample Items Section for Second Filter */}
+						{run?.second_stage_filter?.responseSamples &&
+							run.second_stage_filter.responseSamples.length > 0 && (
+								<div className='mt-6'>
+									<h4 className='text-md font-medium mb-3'>
+										Sample Opportunities (Second Filter)
+									</h4>
+									<div className='space-y-4'>
+										{run.second_stage_filter.responseSamples
+											.slice(0, 3)
+											.map((item, index) => (
+												<div
+													key={index}
+													className='border rounded-lg p-4 bg-gray-50'>
+													<h5 className='font-semibold mb-2'>
+														{item.title || 'Untitled Item'}
+													</h5>
+													{item.actionableSummary && (
+														<p className='text-sm text-gray-600 mb-2'>
+															{item.actionableSummary}
+														</p>
+													)}
+													{item.relevanceScore && (
+														<div className='mb-2'>
+															<span className='inline-block px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800'>
+																Relevance Score: {item.relevanceScore}/10
+															</span>
+														</div>
+													)}
+													<div className='grid grid-cols-2 gap-2 text-xs text-gray-500'>
+														{item.eligibleApplicants &&
+															item.eligibleApplicants.length > 0 && (
+																<div className='col-span-2'>
+																	<span className='font-medium'>
+																		Eligible Applicants:
+																	</span>{' '}
+																	{item.eligibleApplicants.join(', ')}
+																</div>
+															)}
+														{item.totalFundingAvailable && (
+															<div>
+																<span className='font-medium'>
+																	Total Funding:
+																</span>{' '}
+																$
+																{typeof item.totalFundingAvailable === 'number'
+																	? item.totalFundingAvailable.toLocaleString()
+																	: item.totalFundingAvailable}
+															</div>
+														)}
+														{item.closeDate && (
+															<div>
+																<span className='font-medium'>Deadline:</span>{' '}
+																{new Date(item.closeDate).toLocaleDateString()}
+															</div>
+														)}
+														{item.id && (
+															<div className='col-span-2'>
+																<span className='font-medium'>ID:</span>{' '}
+																<span className='font-mono'>{item.id}</span>
+															</div>
+														)}
+													</div>
+												</div>
+											))}
+									</div>
+								</div>
+							)}
 					</div>
 				)}
 
@@ -413,6 +597,71 @@ export default function RunDetailPage() {
 								</p>
 							</div>
 						</div>
+
+						{/* Sample Stored Opportunities */}
+						{run?.storage_results?.storedOpportunities &&
+							run.storage_results.storedOpportunities.length > 0 && (
+								<div className='mt-6'>
+									<h4 className='text-md font-medium mb-3'>
+										Sample Stored Opportunities
+									</h4>
+									<div className='space-y-4'>
+										{run.storage_results.storedOpportunities
+											.slice(0, 3)
+											.map((item, index) => (
+												<div
+													key={index}
+													className='border rounded-lg p-4 bg-gray-50'>
+													<h5 className='font-semibold mb-2'>
+														{item.title || 'Untitled Item'}
+													</h5>
+													{item.actionableSummary && (
+														<p className='text-sm text-gray-600 mb-2'>
+															{item.actionableSummary}
+														</p>
+													)}
+													<div className='grid grid-cols-2 gap-2 text-xs text-gray-500'>
+														{item.id && (
+															<div className='col-span-2'>
+																<span className='font-medium'>ID:</span>{' '}
+																<span className='font-mono'>{item.id}</span>
+															</div>
+														)}
+														{item.status && (
+															<div>
+																<span className='font-medium'>Status:</span>{' '}
+																{item.status}
+															</div>
+														)}
+														{item.operation && (
+															<div>
+																<span className='font-medium'>Operation:</span>{' '}
+																{item.operation}
+															</div>
+														)}
+													</div>
+												</div>
+											))}
+									</div>
+								</div>
+							)}
+
+						{!run?.storage_results?.storedOpportunities &&
+							run?.storage_results?.storedCount > 0 && (
+								<div className='mt-6 p-4 bg-gray-50 rounded-lg'>
+									<p className='text-sm text-gray-600'>
+										{run.storage_results.storedCount} opportunities were
+										successfully stored in the database.
+										{run.storage_results.updatedCount > 0 &&
+											` ${run.storage_results.updatedCount} existing opportunities were updated.`}
+										{run.storage_results.skippedCount > 0 &&
+											` ${run.storage_results.skippedCount} opportunities were skipped.`}
+									</p>
+									<p className='text-xs text-gray-500 mt-2'>
+										Note: Sample opportunities are not available for this run.
+									</p>
+								</div>
+							)}
 					</div>
 				)}
 			</div>
