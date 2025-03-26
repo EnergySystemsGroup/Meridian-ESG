@@ -472,6 +472,27 @@ async function processPaginatedApi(source, processingDetails, runManager) {
 		apiEndpoint: processingDetails.apiEndpoint,
 		responseTime: 0,
 		apiCallTime: 0,
+		// Store API configuration for future reference
+		configuration: {
+			method: processingDetails.requestConfig?.method || 'GET',
+			pagination: paginationConfig?.enabled ? true : false,
+			paginationType: paginationConfig?.type || 'none',
+			queryParameters: processingDetails.queryParameters || {},
+			responseDataPath:
+				responseConfig?.responseDataPath ||
+				paginationConfig?.responseDataPath ||
+				'data',
+			totalCountPath:
+				responseConfig?.totalCountPath ||
+				paginationConfig?.totalCountPath ||
+				null,
+			hasRequestBody: processingDetails.requestBody ? true : false,
+			// Add more complete configuration details
+			requestConfig: processingDetails.requestConfig || {},
+			requestBody: processingDetails.requestBody || {},
+			paginationConfig: paginationConfig || { enabled: false },
+			responseConfig: responseConfig || {},
+		},
 	};
 
 	if (!paginationConfig || !paginationConfig.enabled) {
@@ -1250,6 +1271,20 @@ async function fetchDetailedInformation(
 		detailCallErrors: [],
 		averageDetailResponseTime: 0,
 		totalDetailCallTime: 0,
+		// Store configuration for future reference
+		configuration: detailConfig
+			? {
+					endpoint: detailConfig.endpoint,
+					method: detailConfig.method || 'GET',
+					idParam: detailConfig.idParam,
+					responseDataPath: detailConfig.responseDataPath || 'data',
+					enabled: detailConfig.enabled || false,
+					// Include the complete detail configuration
+					detailConfig: detailConfig || {},
+			  }
+			: {
+					enabled: false,
+			  },
 	};
 
 	// If detail config is not enabled or no filtered items, return early
@@ -1406,6 +1441,41 @@ async function fetchDetailedInformation(
 
 	// Log the metrics
 	console.log('Detail fetching metrics:', detailMetrics);
+
+	// Capture raw response samples for debugging
+	if (detailedItems.length > 0) {
+		const rawSampleSize = Math.min(3, detailedItems.length);
+		const rawResponseSamples = [];
+
+		for (let i = 0; i < rawSampleSize; i++) {
+			const rawItem = detailedItems[i];
+			if (typeof rawItem !== 'object' || rawItem === null) continue;
+
+			// Clone the item to avoid reference issues
+			const rawSample = JSON.parse(JSON.stringify(rawItem));
+
+			// Add metadata to identify this as a raw sample
+			rawSample._rawSample = true;
+			rawSample._sampleIndex = i;
+			rawSample._sampleType = 'detail_response';
+
+			// Truncate any unusually large string fields to prevent DB size issues
+			Object.keys(rawSample).forEach((key) => {
+				if (
+					typeof rawSample[key] === 'string' &&
+					rawSample[key].length > 5000
+				) {
+					rawSample[key] =
+						rawSample[key].substring(0, 5000) + '... [truncated]';
+				}
+			});
+
+			rawResponseSamples.push(rawSample);
+		}
+
+		// Add raw samples to metrics
+		detailMetrics.rawResponseSamples = rawResponseSamples;
+	}
 
 	// Update run manager with metrics
 	if (runManager) {

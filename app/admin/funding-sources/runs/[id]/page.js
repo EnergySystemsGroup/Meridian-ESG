@@ -339,6 +339,130 @@ export default function RunDetailPage() {
 									</div>
 								</div>
 							)}
+
+						{/* API Configuration Section */}
+						{run?.initial_api_call?.configuration && (
+							<div className='mt-6'>
+								<h4 className='text-md font-medium mb-3'>API Configuration</h4>
+								<div className='space-y-4'>
+									{/* Request Config */}
+									<div className='border rounded-lg bg-gray-50 overflow-hidden'>
+										<div
+											className='flex justify-between items-center p-4 cursor-pointer border-b border-gray-200 bg-white'
+											onClick={() => toggleSample('request-config')}>
+											<h5 className='font-semibold'>Request Configuration</h5>
+											<div className='flex items-center'>
+												<span className='text-xs bg-blue-100 text-blue-800 rounded px-2 py-1 mr-2'>
+													{run.initial_api_call.configuration?.method || 'GET'}{' '}
+													{run.initial_api_call.apiEndpoint}
+												</span>
+												{expandedSamples['request-config'] ? (
+													<ChevronUp className='h-5 w-5 text-gray-500' />
+												) : (
+													<ChevronDown className='h-5 w-5 text-gray-500' />
+												)}
+											</div>
+										</div>
+
+										{expandedSamples['request-config'] && (
+											<div className='p-4 overflow-auto'>
+												<pre className='text-xs font-mono whitespace-pre-wrap bg-gray-800 text-gray-100 p-4 rounded-md overflow-x-auto'>
+													{JSON.stringify(
+														{
+															method:
+																run.initial_api_call.configuration?.method ||
+																'GET',
+															url: run.initial_api_call.apiEndpoint,
+															headers:
+																run.initial_api_call.configuration
+																	?.requestConfig?.headers || {},
+															queryParameters:
+																run.initial_api_call.configuration
+																	?.queryParameters || {},
+															requestBody:
+																run.initial_api_call.configuration
+																	?.requestBody || {},
+														},
+														null,
+														2
+													)}
+												</pre>
+											</div>
+										)}
+									</div>
+
+									{/* Pagination Config */}
+									{run.initial_api_call.configuration?.paginationConfig && (
+										<div className='border rounded-lg bg-gray-50 overflow-hidden'>
+											<div
+												className='flex justify-between items-center p-4 cursor-pointer border-b border-gray-200 bg-white'
+												onClick={() => toggleSample('pagination-config')}>
+												<h5 className='font-semibold'>
+													Pagination Configuration
+												</h5>
+												<div className='flex items-center'>
+													<span className='text-xs bg-purple-100 text-purple-800 rounded px-2 py-1 mr-2'>
+														{run.initial_api_call.configuration.paginationConfig
+															.enabled
+															? `${run.initial_api_call.configuration.paginationConfig.type} pagination`
+															: 'Pagination disabled'}
+													</span>
+													{expandedSamples['pagination-config'] ? (
+														<ChevronUp className='h-5 w-5 text-gray-500' />
+													) : (
+														<ChevronDown className='h-5 w-5 text-gray-500' />
+													)}
+												</div>
+											</div>
+
+											{expandedSamples['pagination-config'] && (
+												<div className='p-4 overflow-auto'>
+													<pre className='text-xs font-mono whitespace-pre-wrap bg-gray-800 text-gray-100 p-4 rounded-md overflow-x-auto'>
+														{JSON.stringify(
+															run.initial_api_call.configuration
+																.paginationConfig,
+															null,
+															2
+														)}
+													</pre>
+												</div>
+											)}
+										</div>
+									)}
+
+									{/* Complete Config */}
+									<div className='border rounded-lg bg-gray-50 overflow-hidden'>
+										<div
+											className='flex justify-between items-center p-4 cursor-pointer border-b border-gray-200 bg-white'
+											onClick={() => toggleSample('complete-config')}>
+											<h5 className='font-semibold'>Complete Configuration</h5>
+											<div className='flex items-center'>
+												<span className='text-xs bg-gray-100 text-gray-800 rounded px-2 py-1 mr-2'>
+													Raw JSON
+												</span>
+												{expandedSamples['complete-config'] ? (
+													<ChevronUp className='h-5 w-5 text-gray-500' />
+												) : (
+													<ChevronDown className='h-5 w-5 text-gray-500' />
+												)}
+											</div>
+										</div>
+
+										{expandedSamples['complete-config'] && (
+											<div className='p-4 overflow-auto'>
+												<pre className='text-xs font-mono whitespace-pre-wrap bg-gray-800 text-gray-100 p-4 rounded-md overflow-x-auto'>
+													{JSON.stringify(
+														run.initial_api_call.configuration,
+														null,
+														2
+													)}
+												</pre>
+											</div>
+										)}
+									</div>
+								</div>
+							</div>
+						)}
 					</div>
 				)}
 
@@ -495,7 +619,7 @@ export default function RunDetailPage() {
 						<h3 className='text-lg font-medium mb-4'>
 							Detail API Call Results
 						</h3>
-						<div className='grid grid-cols-3 gap-4 mb-6'>
+						<div className='grid grid-cols-4 gap-4 mb-6'>
 							<div className='text-center p-4 bg-gray-50 rounded-lg'>
 								<p className='text-sm text-gray-500'>
 									Opportunities Requiring Details
@@ -516,7 +640,191 @@ export default function RunDetailPage() {
 									{run?.detail_api_calls?.failedDetailCalls || 0}
 								</p>
 							</div>
+							<div className='text-center p-4 bg-gray-50 rounded-lg'>
+								<p className='text-sm text-gray-500'>Avg Response Time</p>
+								<p className='text-2xl font-bold'>
+									{run?.detail_api_calls?.averageDetailResponseTime
+										? `${Math.round(
+												run.detail_api_calls.averageDetailResponseTime
+										  )}ms`
+										: 'N/A'}
+								</p>
+							</div>
 						</div>
+
+						{/* API Configuration Section */}
+						{run?.detail_api_calls?.configuration && (
+							<div className='mt-6'>
+								<h4 className='text-md font-medium mb-3'>
+									Detail API Configuration
+								</h4>
+								<div className='space-y-4'>
+									{/* Detail Config */}
+									<div className='border rounded-lg bg-gray-50 overflow-hidden'>
+										<div
+											className='flex justify-between items-center p-4 cursor-pointer border-b border-gray-200 bg-white'
+											onClick={() => toggleSample('detail-config')}>
+											<h5 className='font-semibold'>
+												Detail API Configuration
+											</h5>
+											<div className='flex items-center'>
+												<span className='text-xs bg-blue-100 text-blue-800 rounded px-2 py-1 mr-2'>
+													{run.detail_api_calls.configuration?.method || 'GET'}{' '}
+													{run.detail_api_calls.configuration.endpoint}
+												</span>
+												{expandedSamples['detail-config'] ? (
+													<ChevronUp className='h-5 w-5 text-gray-500' />
+												) : (
+													<ChevronDown className='h-5 w-5 text-gray-500' />
+												)}
+											</div>
+										</div>
+
+										{expandedSamples['detail-config'] && (
+											<div className='p-4 overflow-auto'>
+												<pre className='text-xs font-mono whitespace-pre-wrap bg-gray-800 text-gray-100 p-4 rounded-md overflow-x-auto'>
+													{JSON.stringify(
+														{
+															endpoint:
+																run.detail_api_calls.configuration.endpoint,
+															method:
+																run.detail_api_calls.configuration.method ||
+																'GET',
+															idParam:
+																run.detail_api_calls.configuration.idParam,
+															responseDataPath:
+																run.detail_api_calls.configuration
+																	.responseDataPath || 'data',
+															enabled:
+																run.detail_api_calls.configuration.enabled,
+														},
+														null,
+														2
+													)}
+												</pre>
+											</div>
+										)}
+									</div>
+
+									{/* Raw Detail Config */}
+									<div className='border rounded-lg bg-gray-50 overflow-hidden'>
+										<div
+											className='flex justify-between items-center p-4 cursor-pointer border-b border-gray-200 bg-white'
+											onClick={() => toggleSample('raw-detail-config')}>
+											<h5 className='font-semibold'>
+												Complete Detail Configuration
+											</h5>
+											<div className='flex items-center'>
+												<span className='text-xs bg-gray-100 text-gray-800 rounded px-2 py-1 mr-2'>
+													Raw JSON
+												</span>
+												{expandedSamples['raw-detail-config'] ? (
+													<ChevronUp className='h-5 w-5 text-gray-500' />
+												) : (
+													<ChevronDown className='h-5 w-5 text-gray-500' />
+												)}
+											</div>
+										</div>
+
+										{expandedSamples['raw-detail-config'] && (
+											<div className='p-4 overflow-auto'>
+												<pre className='text-xs font-mono whitespace-pre-wrap bg-gray-800 text-gray-100 p-4 rounded-md overflow-x-auto'>
+													{JSON.stringify(
+														run.detail_api_calls.configuration,
+														null,
+														2
+													)}
+												</pre>
+											</div>
+										)}
+									</div>
+								</div>
+							</div>
+						)}
+
+						{/* API Response Samples Section */}
+						{run?.detail_api_calls?.rawResponseSamples &&
+							run.detail_api_calls.rawResponseSamples.length > 0 && (
+								<div className='mt-6'>
+									<h4 className='text-md font-medium mb-3'>
+										Detail API Response Samples{' '}
+										<span className='text-xs font-normal text-gray-500'>
+											(complete data)
+										</span>
+									</h4>
+									<div className='space-y-4'>
+										{run.detail_api_calls.rawResponseSamples
+											.slice(0, 3)
+											.map((item, index) => (
+												<div
+													key={index}
+													className='border rounded-lg bg-gray-50 overflow-hidden'>
+													<div
+														className='flex justify-between items-center p-4 cursor-pointer border-b border-gray-200 bg-white'
+														onClick={() =>
+															toggleSample(`detail-sample-${index}`)
+														}>
+														<h5 className='font-semibold'>
+															{item.title ||
+																item.name ||
+																`Detail Sample #${index + 1}`}
+														</h5>
+														<div className='flex items-center'>
+															<span className='text-xs bg-blue-100 text-blue-800 rounded px-2 py-1 mr-2'>
+																Detail API Response
+															</span>
+															{expandedSamples[`detail-sample-${index}`] ? (
+																<ChevronUp className='h-5 w-5 text-gray-500' />
+															) : (
+																<ChevronDown className='h-5 w-5 text-gray-500' />
+															)}
+														</div>
+													</div>
+
+													{expandedSamples[`detail-sample-${index}`] && (
+														<div className='p-4 overflow-auto'>
+															<pre className='text-xs font-mono whitespace-pre-wrap bg-gray-800 text-gray-100 p-4 rounded-md overflow-x-auto'>
+																{JSON.stringify(
+																	item,
+																	(key, value) => {
+																		// Skip metadata fields in the output
+																		if (key.startsWith('_')) return undefined;
+																		return value;
+																	},
+																	2
+																)}
+															</pre>
+														</div>
+													)}
+												</div>
+											))}
+									</div>
+								</div>
+							)}
+
+						{/* Error Messages Section (if there are failures) */}
+						{run?.detail_api_calls?.detailCallErrors &&
+							run.detail_api_calls.detailCallErrors.length > 0 && (
+								<div className='mt-6'>
+									<h4 className='text-md font-medium mb-3'>Error Messages</h4>
+									<div className='bg-red-50 border border-red-100 rounded-lg p-4'>
+										<ul className='list-disc pl-5 text-sm text-red-700 space-y-1'>
+											{run.detail_api_calls.detailCallErrors
+												.slice(0, 5)
+												.map((error, index) => (
+													<li key={index}>{error}</li>
+												))}
+											{run.detail_api_calls.detailCallErrors.length > 5 && (
+												<li className='font-medium'>
+													...and{' '}
+													{run.detail_api_calls.detailCallErrors.length - 5}{' '}
+													more errors
+												</li>
+											)}
+										</ul>
+									</div>
+								</div>
+							)}
 					</div>
 				)}
 
