@@ -43,6 +43,7 @@ export async function processOpportunitiesBatch(
 				description: 'description',
 				url: 'url',
 				status: 'status',
+				fundingType: 'funding_type',
 				openDate: 'open_date',
 				closeDate: 'close_date',
 				minimumAward: 'minimum_award',
@@ -138,13 +139,258 @@ export async function processOpportunitiesBatch(
 						return opportunity.id !== existingOpportunity.opportunity_number;
 					}
 
+					// Map camelCase to snake_case for DB field comparison
+					const fieldMap = {
+						title: 'title',
+						description: 'description',
+						url: 'url',
+						status: 'status',
+						fundingType: 'funding_type',
+						openDate: 'open_date',
+						closeDate: 'close_date',
+						minimumAward: 'minimum_award',
+						maximumAward: 'maximum_award',
+						totalFundingAvailable: 'total_funding_available',
+						matchingRequired: 'cost_share_required',
+						matchingPercentage: 'cost_share_percentage',
+						eligibleApplicants: 'eligible_applicants',
+						eligibleProjectTypes: 'eligible_project_types',
+						eligibleLocations: 'eligible_locations',
+						categories: 'categories',
+						tags: 'tags',
+						isNational: 'is_national',
+						actionableSummary: 'actionable_summary',
+					};
+
+					const dbFieldName = fieldMap[key] || key;
+
+					// Special handling for text fields that might have minor LLM wording differences
+					if (['description', 'actionableSummary'].includes(key)) {
+						// Skip minor text differences in these fields
+						return false;
+					}
+
+					// Special handling for date fields
+					if (['openDate', 'closeDate'].includes(key)) {
+						const existingDate = existingOpportunity[dbFieldName]
+							? new Date(existingOpportunity[dbFieldName])
+									.toISOString()
+									.split('T')[0]
+							: null;
+						const newDate = opportunity[key]
+							? new Date(opportunity[key]).toISOString().split('T')[0]
+							: null;
+						return existingDate !== newDate;
+					}
+
+					// Special handling for amounts - check if significant difference (>5%)
+					if (
+						['minimumAward', 'maximumAward', 'totalFundingAvailable'].includes(
+							key
+						)
+					) {
+						const existingAmount = parseFloat(
+							existingOpportunity[dbFieldName] || 0
+						);
+						const newAmount = parseFloat(opportunity[key] || 0);
+
+						// If both are zero or null, no change
+						if (!existingAmount && !newAmount) return false;
+
+						// If one is missing and the other isn't, that's a change
+						if (
+							(!existingAmount && newAmount) ||
+							(existingAmount && !newAmount)
+						)
+							return true;
+
+						// Calculate percentage difference and only count significant changes
+						const percentDiff =
+							Math.abs((newAmount - existingAmount) / existingAmount) * 100;
+						return percentDiff > 5; // Only consider >5% changes as material
+					}
+
+					// Special handling for arrays - compare content, not order
+					if (
+						Array.isArray(opportunity[key]) &&
+						Array.isArray(existingOpportunity[dbFieldName])
+					) {
+						const existingArr = [...existingOpportunity[dbFieldName]].sort();
+						const newArr = [...opportunity[key]].sort();
+
+						// Compare length first for quick check
+						if (existingArr.length !== newArr.length) return true;
+
+						// Compare elements
+						return existingArr.some((item, index) => {
+							return JSON.stringify(item) !== JSON.stringify(newArr[index]);
+						});
+					}
+
+					// Default comparison
 					return (
 						JSON.stringify(opportunity[key]) !==
-						JSON.stringify(existingOpportunity[key])
+						JSON.stringify(existingOpportunity[dbFieldName])
 					);
 				});
 
 				if (hasChanges) {
+					// Track what fields changed
+					const changedFields = [];
+					Object.keys(opportunity).forEach((key) => {
+						// Skip certain fields from comparison
+						if (
+							[
+								'id',
+								'created_at',
+								'updated_at',
+								'raw_response_id',
+								'description',
+								'actionableSummary',
+							].includes(key)
+						) {
+							return;
+						}
+
+						// Special handling for opportunity_number/id comparison
+						if (key === 'id') {
+							if (opportunity.id !== existingOpportunity.opportunity_number) {
+								changedFields.push({
+									field: 'opportunity_number',
+									oldValue: existingOpportunity.opportunity_number,
+									newValue: opportunity.id,
+								});
+							}
+							return;
+						}
+
+						// Map camelCase to snake_case for comparison
+						const fieldMap = {
+							title: 'title',
+							url: 'url',
+							status: 'status',
+							fundingType: 'funding_type',
+							openDate: 'open_date',
+							closeDate: 'close_date',
+							minimumAward: 'minimum_award',
+							maximumAward: 'maximum_award',
+							totalFundingAvailable: 'total_funding_available',
+							matchingRequired: 'cost_share_required',
+							matchingPercentage: 'cost_share_percentage',
+							eligibleApplicants: 'eligible_applicants',
+							eligibleProjectTypes: 'eligible_project_types',
+							eligibleLocations: 'eligible_locations',
+							categories: 'categories',
+							tags: 'tags',
+							isNational: 'is_national',
+						};
+
+						const dbFieldName = fieldMap[key] || key;
+
+						// Special handling for date fields
+						if (['openDate', 'closeDate'].includes(key)) {
+							const existingDate = existingOpportunity[dbFieldName]
+								? new Date(existingOpportunity[dbFieldName])
+										.toISOString()
+										.split('T')[0]
+								: null;
+							const newDate = opportunity[key]
+								? new Date(opportunity[key]).toISOString().split('T')[0]
+								: null;
+
+							if (existingDate !== newDate) {
+								changedFields.push({
+									field: dbFieldName,
+									oldValue: existingOpportunity[dbFieldName],
+									newValue: opportunity[key],
+									note: 'Date changed',
+								});
+							}
+							return;
+						}
+
+						// Special handling for amounts - check if significant difference (>5%)
+						if (
+							[
+								'minimumAward',
+								'maximumAward',
+								'totalFundingAvailable',
+							].includes(key)
+						) {
+							const existingAmount = parseFloat(
+								existingOpportunity[dbFieldName] || 0
+							);
+							const newAmount = parseFloat(opportunity[key] || 0);
+
+							// Calculate percentage difference
+							if (existingAmount || newAmount) {
+								// Avoid division by zero
+								const baseDivisor = existingAmount || 0.01;
+								const percentDiff =
+									Math.abs((newAmount - existingAmount) / baseDivisor) * 100;
+
+								if (percentDiff > 5) {
+									// Only consider >5% changes as material
+									changedFields.push({
+										field: dbFieldName,
+										oldValue: existingOpportunity[dbFieldName],
+										newValue: opportunity[key],
+										note: `${percentDiff.toFixed(1)}% change in amount`,
+									});
+								}
+							}
+							return;
+						}
+
+						// Special handling for arrays
+						if (
+							Array.isArray(opportunity[key]) &&
+							Array.isArray(existingOpportunity[dbFieldName])
+						) {
+							const existingArr = [...existingOpportunity[dbFieldName]].sort();
+							const newArr = [...opportunity[key]].sort();
+
+							// Simple length check
+							if (existingArr.length !== newArr.length) {
+								changedFields.push({
+									field: dbFieldName,
+									oldValue: existingOpportunity[dbFieldName],
+									newValue: opportunity[key],
+									note: `Changed from ${existingArr.length} items to ${newArr.length} items`,
+								});
+								return;
+							}
+
+							// Check for content differences
+							const hasChanges = existingArr.some((item, index) => {
+								return JSON.stringify(item) !== JSON.stringify(newArr[index]);
+							});
+
+							if (hasChanges) {
+								changedFields.push({
+									field: dbFieldName,
+									oldValue: existingOpportunity[dbFieldName],
+									newValue: opportunity[key],
+									note: 'Array contents changed',
+								});
+							}
+							return;
+						}
+
+						// Default check for other fields
+						if (
+							opportunity[key] !== undefined &&
+							JSON.stringify(opportunity[key]) !==
+								JSON.stringify(existingOpportunity[dbFieldName])
+						) {
+							changedFields.push({
+								field: dbFieldName,
+								oldValue: existingOpportunity[dbFieldName],
+								newValue: opportunity[key],
+							});
+						}
+					});
+
 					// Sanitize opportunity data for database update
 					const updateData = sanitizeOpportunityForDatabase(opportunity);
 					// For updates, we only want to update the timestamp
@@ -158,6 +404,7 @@ export async function processOpportunitiesBatch(
 						'Prepared opportunity data for update:',
 						Object.keys(updateData).join(', ')
 					);
+					console.log('Fields changed:', changedFields);
 
 					// Update existing opportunity
 					const { data: updatedData, error: updateError } = await supabase
@@ -172,6 +419,8 @@ export async function processOpportunitiesBatch(
 						continue;
 					}
 
+					// Add change tracking to the updated opportunity data
+					updatedData._changedFields = changedFields;
 					result.updatedOpportunities.push(updatedData);
 					result.metrics.updated++;
 				} else {
@@ -193,6 +442,17 @@ export async function processOpportunitiesBatch(
 				updatedCount: result.metrics.updated,
 				skippedCount: result.metrics.ignored,
 				processingTime: result.metrics.processingTime,
+				// Include samples of stored and updated opportunities
+				storedOpportunities: result.newOpportunities.slice(0, 3).map((opp) => ({
+					...opp,
+					operation: 'new',
+				})),
+				updatedOpportunities: result.updatedOpportunities
+					.slice(0, 3)
+					.map((opp) => ({
+						...opp,
+						operation: 'updated',
+					})),
 			});
 		}
 

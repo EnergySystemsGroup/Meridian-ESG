@@ -1039,9 +1039,9 @@ export default function RunDetailPage() {
 													<h5 className='font-semibold mb-2'>
 														{item.title || 'Untitled Item'}
 													</h5>
-													{item.actionableSummary && (
+													{item.actionable_summary && (
 														<p className='text-sm text-gray-600 mb-2'>
-															{item.actionableSummary}
+															{item.actionable_summary}
 														</p>
 													)}
 													<div className='grid grid-cols-2 gap-2 text-xs text-gray-500'>
@@ -1049,6 +1049,16 @@ export default function RunDetailPage() {
 															<div className='col-span-2'>
 																<span className='font-medium'>ID:</span>{' '}
 																<span className='font-mono'>{item.id}</span>
+															</div>
+														)}
+														{item.opportunity_number && (
+															<div className='col-span-2'>
+																<span className='font-medium'>
+																	Opportunity #:
+																</span>{' '}
+																<span className='font-mono'>
+																	{item.opportunity_number}
+																</span>
 															</div>
 														)}
 														{item.status && (
@@ -1060,7 +1070,9 @@ export default function RunDetailPage() {
 														{item.operation && (
 															<div>
 																<span className='font-medium'>Operation:</span>{' '}
-																{item.operation}
+																<span className='inline-block px-2 py-0.5 bg-green-100 text-green-800 rounded-full'>
+																	{item.operation}
+																</span>
 															</div>
 														)}
 													</div>
@@ -1070,12 +1082,128 @@ export default function RunDetailPage() {
 								</div>
 							)}
 
+						{/* Sample Updated Opportunities */}
+						{run?.storage_results?.updatedOpportunities &&
+							run.storage_results.updatedOpportunities.length > 0 && (
+								<div className='mt-6'>
+									<h4 className='text-md font-medium mb-3'>
+										Sample Updated Opportunities
+									</h4>
+									<div className='space-y-4'>
+										{run.storage_results.updatedOpportunities
+											.slice(0, 3)
+											.map((item, index) => (
+												<div
+													key={index}
+													className='border rounded-lg p-4 bg-gray-50'>
+													<h5 className='font-semibold mb-2'>
+														{item.title || 'Untitled Item'}
+													</h5>
+													{item.actionable_summary && (
+														<p className='text-sm text-gray-600 mb-2'>
+															{item.actionable_summary}
+														</p>
+													)}
+													<div className='grid grid-cols-2 gap-2 text-xs text-gray-500 mb-3'>
+														{item.id && (
+															<div className='col-span-2'>
+																<span className='font-medium'>ID:</span>{' '}
+																<span className='font-mono'>{item.id}</span>
+															</div>
+														)}
+														{item.opportunity_number && (
+															<div className='col-span-2'>
+																<span className='font-medium'>
+																	Opportunity #:
+																</span>{' '}
+																<span className='font-mono'>
+																	{item.opportunity_number}
+																</span>
+															</div>
+														)}
+														{item.status && (
+															<div>
+																<span className='font-medium'>Status:</span>{' '}
+																{item.status}
+															</div>
+														)}
+														{item.operation && (
+															<div>
+																<span className='font-medium'>Operation:</span>{' '}
+																<span className='inline-block px-2 py-0.5 bg-blue-100 text-blue-800 rounded-full'>
+																	{item.operation}
+																</span>
+															</div>
+														)}
+													</div>
+
+													{/* Changed Fields */}
+													{item._changedFields &&
+														item._changedFields.length > 0 && (
+															<div>
+																<p className='text-xs font-medium text-gray-700 mb-1'>
+																	Fields Changed:
+																</p>
+																<div className='bg-white p-2 rounded border text-xs'>
+																	<table className='w-full text-left'>
+																		<thead>
+																			<tr className='border-b'>
+																				<th className='pb-1 font-medium'>
+																					Field
+																				</th>
+																				<th className='pb-1 font-medium'>
+																					From
+																				</th>
+																				<th className='pb-1 font-medium'>To</th>
+																			</tr>
+																		</thead>
+																		<tbody>
+																			{item._changedFields.map((change, i) => (
+																				<tr
+																					key={i}
+																					className='border-b last:border-0'>
+																					<td className='py-1 pr-2 font-mono'>
+																						{change.field}
+																					</td>
+																					<td className='py-1 pr-2 truncate max-w-[120px]'>
+																						{typeof change.oldValue === 'object'
+																							? JSON.stringify(
+																									change.oldValue
+																							  ).substring(0, 30) + '...'
+																							: String(
+																									change.oldValue || ''
+																							  ).substring(0, 30)}
+																					</td>
+																					<td className='py-1 truncate max-w-[120px]'>
+																						{typeof change.newValue === 'object'
+																							? JSON.stringify(
+																									change.newValue
+																							  ).substring(0, 30) + '...'
+																							: String(
+																									change.newValue || ''
+																							  ).substring(0, 30)}
+																					</td>
+																				</tr>
+																			))}
+																		</tbody>
+																	</table>
+																</div>
+															</div>
+														)}
+												</div>
+											))}
+									</div>
+								</div>
+							)}
+
 						{!run?.storage_results?.storedOpportunities &&
-							run?.storage_results?.storedCount > 0 && (
+							!run?.storage_results?.updatedOpportunities &&
+							(run?.storage_results?.storedCount > 0 ||
+								run?.storage_results?.updatedCount > 0) && (
 								<div className='mt-6 p-4 bg-gray-50 rounded-lg'>
 									<p className='text-sm text-gray-600'>
-										{run.storage_results.storedCount} opportunities were
-										successfully stored in the database.
+										{run.storage_results.storedCount > 0 &&
+											`${run.storage_results.storedCount} opportunities were successfully stored in the database.`}
 										{run.storage_results.updatedCount > 0 &&
 											` ${run.storage_results.updatedCount} existing opportunities were updated.`}
 										{run.storage_results.skippedCount > 0 &&
