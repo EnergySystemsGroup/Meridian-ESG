@@ -279,6 +279,7 @@ The Admin Interface provides tools for managing API sources, viewing processing 
 - [x] Create detailed run view
 - [x] Add visual pipeline representation
 - [x] Implement real-time run status updates
+- [x] Enable real-time updates for run details page by adding the `api_source_runs` table to Supabase real-time publication
 - [ ] Add filtering and search for runs
 - [ ] Implement run comparison tools
 - [ ] Add run analytics and reporting
