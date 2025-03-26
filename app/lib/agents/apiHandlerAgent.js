@@ -954,7 +954,7 @@ async function performFirstStageFiltering(
 		filteredItems: [],
 		metrics: {
 			totalOpportunitiesAnalyzed: opportunities.length,
-			opportunitiesPassingFilter: 0,
+			passedCount: 0,
 			rejectedCount: 0,
 			rejectionReasons: [],
 			averageScoreBeforeFiltering: 0,
@@ -1039,8 +1039,7 @@ async function performFirstStageFiltering(
 		});
 
 		// Update counts and metrics as before...
-		combinedResults.metrics.opportunitiesPassingFilter +=
-			result.processingMetrics.passedCount;
+		combinedResults.metrics.passedCount += result.processingMetrics.passedCount;
 		combinedResults.metrics.rejectedCount +=
 			result.processingMetrics.rejectedCount;
 		combinedResults.metrics.rejectionReasons = [

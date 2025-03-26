@@ -137,23 +137,20 @@ const componentInfo = {
 	'api-handler': {
 		title: 'API Handler',
 		description:
-			'Makes API requests, handles pagination, and performs first-stage filtering',
+			'Calls the API, processes results, and performs first-stage filtering',
 		functions: [
-			'apiHandlerAgent(source, processingDetails, runManager)',
-			'processPaginatedApi(source, processingDetails, runManager)',
-			'performFirstStageFiltering(apiResults, source, processingDetails, runManager)',
-			'fetchDetailedInformation(filteredItems, source, processingDetails, runManager)',
+			'fetchOpportunitiesFromApi(source, config)',
+			'performFirstStageFiltering(opportunities, source, runManager, config)',
 		],
-		input: 'Source and processing details from Source Manager',
+		input: 'Source Configuration, Run ID',
 		expectedOutput: `{
-  "success": true,
   "component": "api-handler",
   "sourceId": "example-source-id",
   "runId": "example-run-id",
   "result": {
     "firstStageMetrics": {
       "totalOpportunitiesAnalyzed": 100,
-      "opportunitiesPassingFilter": 50,
+      "passedCount": 50,
       "rejectedCount": 50,
       "rejectionReasons": ["Low relevance", "Out of scope"],
       "averageScoreBeforeFiltering": 5.2,
@@ -207,9 +204,9 @@ const componentInfo = {
   "opportunities": [ /* filtered opportunities with details */ ],
   "filteredCount": 20,
   "processingMetrics": {
-    "inputCount": 50,
-    "passedCount": 30,
-    "rejectedCount": 20,
+    "inputCount": 100,
+    "passedCount": 50,
+    "rejectedCount": 50,
     "rejectionReasons": [ /* reasons for rejection */ ],
     "averageScoreBeforeFiltering": 6.5,
     "averageScoreAfterFiltering": 8.2,
