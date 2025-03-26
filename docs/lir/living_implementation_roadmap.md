@@ -2,6 +2,20 @@
 
 This document tracks the implementation status of all features in the Funding Intelligence System. It serves as both a living requirements document and an actionable project roadmap that evolves as development progresses.
 
+## Next Tasks Priority
+
+This section highlights the highest priority tasks to be completed next:
+
+1. **Data Processor - Update Detection Improvement**: Verify and improve update detection logic to prevent false positives from minor LLM wording differences. Currently, opportunities may be incorrectly marked as "updated" when only the phrasing in description or summary fields has changed.
+
+2. **Detail Processor - Adaptive Relevance Threshold**: Implement adaptive thresholds for relevance scores based on source quality and historical data.
+
+3. **API Handler - Support for Rate Limiting**: Add rate limiting and throttling capabilities to prevent API usage limits from being exceeded.
+
+4. **Error Handling - Automatic Retry Mechanisms**: Implement automatic retry logic for transient failures in API calls.
+
+5. **Admin Interface - Run Filtering and Search**: Add filtering and search capabilities to the runs listing interface.
+
 ## Table of Contents
 
 - [Funding API Processing System](#funding-api-processing-system)
@@ -113,6 +127,7 @@ The Funding API Processing System is designed to retrieve, filter, and store fun
 - [x] Track storage metrics and results
 - [x] Support multiple insert/update strategies
 - [x] Implement direct batch processing of opportunities
+- [ ] Verify and improve update detection to prevent false positives from minor LLM wording differences
 - [ ] Replace LLM-based decision making with rule-based processing for better efficiency
 - [ ] Implement versioning for opportunity updates
 - [ ] Add tagging system for categorization
