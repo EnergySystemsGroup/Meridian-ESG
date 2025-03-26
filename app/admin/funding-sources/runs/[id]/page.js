@@ -351,7 +351,7 @@ export default function RunDetailPage() {
 							<div className='text-center p-4 bg-gray-50 rounded-lg'>
 								<p className='text-sm text-gray-500'>Input Count</p>
 								<p className='text-2xl font-bold'>
-									{run?.first_stage_filter?.inputCount || 0}
+									{run?.first_stage_filter?.totalOpportunitiesAnalyzed || 0}
 								</p>
 							</div>
 							<div className='text-center p-4 bg-gray-50 rounded-lg'>
@@ -363,10 +363,10 @@ export default function RunDetailPage() {
 							<div className='text-center p-4 bg-gray-50 rounded-lg'>
 								<p className='text-sm text-gray-500'>Pass Rate</p>
 								<p className='text-2xl font-bold'>
-									{run?.first_stage_filter?.inputCount
+									{run?.first_stage_filter?.totalOpportunitiesAnalyzed
 										? (
 												(run.first_stage_filter.passedCount /
-													run.first_stage_filter.inputCount) *
+													run.first_stage_filter.totalOpportunitiesAnalyzed) *
 												100
 										  ).toFixed(1)
 										: 0}
@@ -380,6 +380,64 @@ export default function RunDetailPage() {
 								</p>
 							</div>
 						</div>
+
+						{/* Raw Filtered Items Section */}
+						{run?.first_stage_filter?.rawFilteredSamples &&
+							run.first_stage_filter.rawFilteredSamples.length > 0 && (
+								<div className='mt-6'>
+									<h4 className='text-md font-medium mb-3'>
+										Filtered Opportunities{' '}
+										<span className='text-xs font-normal text-gray-500'>
+											(complete data)
+										</span>
+									</h4>
+									<div className='space-y-4'>
+										{run.first_stage_filter.rawFilteredSamples
+											.slice(0, 3)
+											.map((item, index) => (
+												<div
+													key={index}
+													className='border rounded-lg bg-gray-50 overflow-hidden'>
+													<div
+														className='flex justify-between items-center p-4 cursor-pointer border-b border-gray-200 bg-white'
+														onClick={() => toggleSample(`first-${index}`)}>
+														<h5 className='font-semibold'>
+															{item.title || `Filtered Item #${index + 1}`}
+														</h5>
+														<div className='flex items-center'>
+															<span className='text-xs bg-green-100 text-green-800 rounded px-2 py-1 mr-2'>
+																{item.relevanceScore
+																	? `Score: ${item.relevanceScore}/10`
+																	: 'Passed Filter'}
+															</span>
+															{expandedSamples[`first-${index}`] ? (
+																<ChevronUp className='h-5 w-5 text-gray-500' />
+															) : (
+																<ChevronDown className='h-5 w-5 text-gray-500' />
+															)}
+														</div>
+													</div>
+
+													{expandedSamples[`first-${index}`] && (
+														<div className='p-4 overflow-auto'>
+															<pre className='text-xs font-mono whitespace-pre-wrap bg-gray-800 text-gray-100 p-4 rounded-md overflow-x-auto'>
+																{JSON.stringify(
+																	item,
+																	(key, value) => {
+																		// Skip metadata fields in the output
+																		if (key.startsWith('_')) return undefined;
+																		return value;
+																	},
+																	2
+																)}
+															</pre>
+														</div>
+													)}
+												</div>
+											))}
+									</div>
+								</div>
+							)}
 
 						{/* Sample Items Section for First Filter */}
 						{run?.first_stage_filter?.responseSamples &&
@@ -500,6 +558,64 @@ export default function RunDetailPage() {
 								</p>
 							</div>
 						</div>
+
+						{/* Raw Filtered Items Section for Second Filter */}
+						{run?.second_stage_filter?.rawFilteredSamples &&
+							run.second_stage_filter.rawFilteredSamples.length > 0 && (
+								<div className='mt-6'>
+									<h4 className='text-md font-medium mb-3'>
+										Second-Stage Filtered Opportunities{' '}
+										<span className='text-xs font-normal text-gray-500'>
+											(complete data)
+										</span>
+									</h4>
+									<div className='space-y-4'>
+										{run.second_stage_filter.rawFilteredSamples
+											.slice(0, 3)
+											.map((item, index) => (
+												<div
+													key={index}
+													className='border rounded-lg bg-gray-50 overflow-hidden'>
+													<div
+														className='flex justify-between items-center p-4 cursor-pointer border-b border-gray-200 bg-white'
+														onClick={() => toggleSample(`second-${index}`)}>
+														<h5 className='font-semibold'>
+															{item.title || `Second Filter Item #${index + 1}`}
+														</h5>
+														<div className='flex items-center'>
+															<span className='text-xs bg-green-100 text-green-800 rounded px-2 py-1 mr-2'>
+																{item.relevanceScore
+																	? `Score: ${item.relevanceScore}/10`
+																	: 'Passed Second Filter'}
+															</span>
+															{expandedSamples[`second-${index}`] ? (
+																<ChevronUp className='h-5 w-5 text-gray-500' />
+															) : (
+																<ChevronDown className='h-5 w-5 text-gray-500' />
+															)}
+														</div>
+													</div>
+
+													{expandedSamples[`second-${index}`] && (
+														<div className='p-4 overflow-auto'>
+															<pre className='text-xs font-mono whitespace-pre-wrap bg-gray-800 text-gray-100 p-4 rounded-md overflow-x-auto'>
+																{JSON.stringify(
+																	item,
+																	(key, value) => {
+																		// Skip metadata fields in the output
+																		if (key.startsWith('_')) return undefined;
+																		return value;
+																	},
+																	2
+																)}
+															</pre>
+														</div>
+													)}
+												</div>
+											))}
+									</div>
+								</div>
+							)}
 
 						{/* Sample Items Section for Second Filter */}
 						{run?.second_stage_filter?.responseSamples &&

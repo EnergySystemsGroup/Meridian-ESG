@@ -1182,6 +1182,39 @@ async function performFirstStageFiltering(
 		console.log(`Relevance Score: ${sampleOpp.relevanceScore}`);
 		console.log(`Actionable Summary: ${sampleOpp.actionableSummary}`);
 		console.log('==========================================\n');
+
+		// Store raw filtered opportunities samples for debugging
+		const rawSampleSize = Math.min(3, combinedResults.filteredItems.length);
+		const rawFilteredSamples = [];
+
+		for (let i = 0; i < rawSampleSize; i++) {
+			const rawItem = combinedResults.filteredItems[i];
+			if (typeof rawItem !== 'object' || rawItem === null) continue;
+
+			// Clone the item to avoid reference issues
+			const rawSample = JSON.parse(JSON.stringify(rawItem));
+
+			// Add metadata to identify this as a raw sample
+			rawSample._rawSample = true;
+			rawSample._sampleIndex = i;
+			rawSample._filterStage = 'first';
+
+			// Truncate any unusually large string fields to prevent DB size issues
+			Object.keys(rawSample).forEach((key) => {
+				if (
+					typeof rawSample[key] === 'string' &&
+					rawSample[key].length > 5000
+				) {
+					rawSample[key] =
+						rawSample[key].substring(0, 5000) + '... [truncated]';
+				}
+			});
+
+			rawFilteredSamples.push(rawSample);
+		}
+
+		// Add raw samples to metrics
+		combinedResults.metrics.rawFilteredSamples = rawFilteredSamples;
 	}
 
 	// Update run manager with combined metrics

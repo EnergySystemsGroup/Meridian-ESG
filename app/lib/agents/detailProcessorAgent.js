@@ -538,22 +538,55 @@ export async function detailProcessorAgent(
 			executionTime,
 		});
 
-		// Update run with second stage filter metrics if runManager is provided
+		// Calculate accumulated results
+		allResults.opportunities = [...allResults.opportunities];
+		allResults.metrics = {
+			...allResults.processingMetrics,
+			processingTime: executionTime,
+			passedCount: allResults.opportunities.length,
+			inputCount: detailedOpportunities.length,
+			rejectedCount:
+				detailedOpportunities.length - allResults.opportunities.length,
+		};
+
+		// Capture raw filtered samples for debugging
+		if (allResults.opportunities.length > 0) {
+			const rawSampleSize = Math.min(3, allResults.opportunities.length);
+			const rawFilteredSamples = [];
+
+			for (let i = 0; i < rawSampleSize; i++) {
+				const rawItem = allResults.opportunities[i];
+				if (typeof rawItem !== 'object' || rawItem === null) continue;
+
+				// Clone the item to avoid reference issues
+				const rawSample = JSON.parse(JSON.stringify(rawItem));
+
+				// Add metadata to identify this as a raw sample
+				rawSample._rawSample = true;
+				rawSample._sampleIndex = i;
+				rawSample._filterStage = 'second';
+
+				// Truncate any unusually large string fields to prevent DB size issues
+				Object.keys(rawSample).forEach((key) => {
+					if (
+						typeof rawSample[key] === 'string' &&
+						rawSample[key].length > 5000
+					) {
+						rawSample[key] =
+							rawSample[key].substring(0, 5000) + '... [truncated]';
+					}
+				});
+
+				rawFilteredSamples.push(rawSample);
+			}
+
+			// Add raw samples to metrics
+			allResults.metrics.rawFilteredSamples = rawFilteredSamples;
+		}
+
+		// Update run manager with metrics
 		if (runManager) {
-			await runManager.updateSecondStageFilter({
-				inputCount: detailedOpportunities.length,
-				passedCount: allResults.opportunities.length,
-				rejectedCount: allResults.processingMetrics.rejectedCount,
-				rejectionReasons: allResults.processingMetrics.rejectionReasons,
-				averageScoreBeforeFiltering:
-					allResults.processingMetrics.averageScoreBeforeFiltering,
-				averageScoreAfterFiltering:
-					allResults.processingMetrics.averageScoreAfterFiltering,
-				processingTime: executionTime,
-				filterReasoning: allResults.processingMetrics.filterReasoning,
-				sampleOpportunities: allResults.opportunities.slice(0, 3),
-				chunkMetrics: allResults.processingMetrics.chunkMetrics,
-			});
+			await runManager.updateSecondStageFilter(allResults.metrics);
 		}
 
 		return allResults;
