@@ -19,7 +19,11 @@ import crypto from 'crypto';
 // Define the funding opportunity schema
 const fundingOpportunitySchema = z.object({
 	title: z.string().describe('The title of the funding opportunity'),
-	description: z.string().describe('A description of the funding opportunity'),
+	description: z
+		.string()
+		.describe(
+			'To the extent possible, a clear, detailed description of various aspects of the opportunity including key requirements, application process, evaluation criteria, and other important details that would help potential applicants understand the full scope of the opportunity.'
+		),
 	fundingType: z
 		.string()
 		.describe('The type of funding (grant, loan, incentive, etc.)'),
@@ -90,7 +94,9 @@ const apiResponseProcessingSchema = z.object({
 					.string()
 					.optional()
 					.nullable()
-					.describe('Description of the opportunity'),
+					.describe(
+						'To the extent possible, a clear, detailed description of various aspects of the opportunity including key requirements, application process, evaluation criteria, and other important details that would help potential applicants understand the full scope of the opportunity.'
+					),
 				fundingType: z
 					.string()
 					.optional()
