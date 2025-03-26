@@ -141,6 +141,7 @@ The Funding API Processing System is designed to retrieve, filter, and store fun
 - [x] Provide comprehensive result summaries
 - [x] Support conditional processing based on source type
 - [x] Implement direct data flow between processing stages
+- [x] Support both synchronous and asynchronous processing
 - [ ] Implement parallel processing of sources
 - [ ] Add resource allocation and throttling
 
@@ -246,16 +247,26 @@ The Admin Interface provides tools for managing API sources, viewing processing 
 **Source Configuration:**
 
 - [x] Support viewing API sources
-- [ ] Implement source creation interface
-- [ ] Add configuration editing tools
+- [x] Implement source creation interface
+- [x] Add configuration editing tools
 - [ ] Create configuration validation
 
 **Processing Management:**
 
-- [ ] Implement manual trigger for processing
+- [x] Implement manual trigger for processing
 - [ ] Add scheduling interface for recurring processing
 - [ ] Create priority management for sources
-- [ ] Implement processing status dashboard
+- [x] Implement processing status dashboard
+
+**Run Management:**
+
+- [x] Implement runs listing interface
+- [x] Create detailed run view
+- [x] Add visual pipeline representation
+- [x] Implement real-time run status updates
+- [ ] Add filtering and search for runs
+- [ ] Implement run comparison tools
+- [ ] Add run analytics and reporting
 
 <a id="web-scraping-system"></a>
 
