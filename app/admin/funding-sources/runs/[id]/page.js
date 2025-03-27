@@ -1001,187 +1001,222 @@ export default function RunDetailPage() {
 						<h3 className='text-lg font-medium mb-4'>
 							Database Storage Results
 						</h3>
-						<div className='mt-4 space-y-4'>
-							<div className='grid grid-cols-2 md:grid-cols-4 gap-4'>
-								<div className='bg-white p-4 rounded-lg shadow'>
-									<h3 className='text-xs font-medium text-gray-500'>
-										Opportunities Found
-									</h3>
-									<p className='text-2xl font-bold'>
-										{run.storage_results.attemptedCount || 0}
-									</p>
-								</div>
-								<div className='bg-white p-4 rounded-lg shadow'>
-									<h3 className='text-xs font-medium text-gray-500'>
-										Stored New
-									</h3>
-									<p className='text-2xl font-bold text-green-500'>
-										{run.storage_results.storedCount || 0}
-									</p>
-								</div>
-								<div className='bg-white p-4 rounded-lg shadow'>
-									<h3 className='text-xs font-medium text-gray-500'>Updated</h3>
-									<p className='text-2xl font-bold text-blue-500'>
-										{run.storage_results.updatedCount || 0}
-									</p>
-								</div>
-								<div className='bg-white p-4 rounded-lg shadow'>
-									<h3 className='text-xs font-medium text-gray-500'>Skipped</h3>
-									<p className='text-2xl font-bold text-gray-500'>
-										{run.storage_results.skippedCount || 0}
-									</p>
-								</div>
-							</div>
-
-							{/* Funding Source Stats */}
-							{(run.storage_results.fundingSourcesCreated > 0 ||
-								run.storage_results.fundingSourcesReused > 0) && (
-								<div className='mt-4'>
-									<h3 className='text-md font-medium mb-2'>Funding Sources</h3>
-									<div className='grid grid-cols-2 gap-4'>
-										<div className='bg-white p-4 rounded-lg shadow'>
-											<h3 className='text-xs font-medium text-gray-500'>
-												New Sources Created
-											</h3>
-											<p className='text-2xl font-bold text-green-500'>
-												{run.storage_results.fundingSourcesCreated || 0}
-											</p>
-										</div>
-										<div className='bg-white p-4 rounded-lg shadow'>
-											<h3 className='text-xs font-medium text-gray-500'>
-												Existing Sources Used
-											</h3>
-											<p className='text-2xl font-bold text-blue-500'>
-												{run.storage_results.fundingSourcesReused || 0}
-											</p>
-										</div>
+						{run?.storage_results ? (
+							<div className='mt-4 space-y-4'>
+								<div className='grid grid-cols-2 md:grid-cols-4 gap-4'>
+									<div className='bg-white p-4 rounded-lg shadow'>
+										<h3 className='text-xs font-medium text-gray-500'>
+											Opportunities Found
+										</h3>
+										<p className='text-2xl font-bold'>
+											{run.storage_results.attemptedCount || 0}
+										</p>
+									</div>
+									<div className='bg-white p-4 rounded-lg shadow'>
+										<h3 className='text-xs font-medium text-gray-500'>
+											Stored New
+										</h3>
+										<p className='text-2xl font-bold text-green-500'>
+											{run.storage_results.storedCount || 0}
+										</p>
+									</div>
+									<div className='bg-white p-4 rounded-lg shadow'>
+										<h3 className='text-xs font-medium text-gray-500'>
+											Updated
+										</h3>
+										<p className='text-2xl font-bold text-blue-500'>
+											{run.storage_results.updatedCount || 0}
+										</p>
+									</div>
+									<div className='bg-white p-4 rounded-lg shadow'>
+										<h3 className='text-xs font-medium text-gray-500'>
+											Skipped
+										</h3>
+										<p className='text-2xl font-bold text-gray-500'>
+											{run.storage_results.skippedCount || 0}
+										</p>
 									</div>
 								</div>
-							)}
 
-							<div className='mt-4'>
-								<h3 className='text-md font-medium mb-2'>
-									Sample Stored Opportunities
-								</h3>
-								<div className='space-y-4'>
-									{run.storage_results.storedOpportunities?.map(
-										(item, index) => (
-											<div
-												key={index}
-												className='border border-gray-200 rounded-lg overflow-hidden'>
-												<div className='bg-gray-50 p-3 border-b border-gray-200 flex justify-between'>
-													<h4 className='font-medium'>{item.title}</h4>
-													<span
-														className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-															item.operation === 'new'
-																? 'bg-green-100 text-green-800'
-																: 'bg-blue-100 text-blue-800'
-														}`}>
-														{item.operation === 'new' ? 'New' : 'Updated'}
-													</span>
-												</div>
-												<div className='p-3'>
-													<div className='text-sm mb-2'>
-														<span className='font-medium'>
-															Opportunity Number:
-														</span>{' '}
-														{item.opportunity_number || 'N/A'}
-													</div>
-													<div className='text-sm mb-2'>
-														<span className='font-medium'>Funding Agency:</span>{' '}
-														{item.agency_name || 'Unknown'}
-													</div>
-													<div className='text-sm mb-2'>
-														<span className='font-medium'>Funding Source:</span>{' '}
-														{item.agency_name ||
-															(item.funding_source_name ? (
-																<>
-																	{item.funding_source_name}
-																	{item.funding_source_type && (
-																		<span className='text-xs ml-1 bg-blue-100 text-blue-800 rounded px-1 py-0.5'>
-																			{item.funding_source_type}
-																		</span>
-																	)}
-																</>
-															) : (
-																'Unknown'
-															))}
-													</div>
-													{(item.funding_source_website ||
-														item.agency_website) && (
-														<div className='text-sm mb-2'>
-															<span className='font-medium'>Website:</span>{' '}
-															<a
-																href={
-																	item.funding_source_website ||
-																	item.agency_website
-																}
-																target='_blank'
-																rel='noopener noreferrer'
-																className='text-blue-600 hover:underline truncate inline-block max-w-[250px]'>
-																{item.funding_source_website ||
-																	item.agency_website}
-															</a>
-														</div>
-													)}
-													{item.actionable_summary && (
-														<div className='text-sm mb-2'>
-															<span className='font-medium'>Summary:</span>{' '}
-															{item.actionable_summary}
-														</div>
-													)}
-													{item._changedFields &&
-														item._changedFields.length > 0 && (
-															<div className='mt-2'>
-																<h5 className='text-sm font-medium mb-1'>
-																	Changes:
-																</h5>
-																<ul className='text-xs text-gray-600 space-y-1'>
-																	{item._changedFields.map((change, i) => (
-																		<li key={i}>
-																			<span className='font-medium'>
-																				{change.field}:
-																			</span>
-																			{change.note ? (
-																				<span> {change.note}</span>
-																			) : (
-																				<span>
-																					{' '}
-																					{JSON.stringify(
-																						change.oldValue
-																					)} → {JSON.stringify(change.newValue)}
-																				</span>
-																			)}
-																		</li>
-																	))}
-																</ul>
-															</div>
-														)}
-												</div>
+								{/* Funding Source Stats */}
+								{(run.storage_results.fundingSourcesCreated > 0 ||
+									run.storage_results.fundingSourcesReused > 0) && (
+									<div className='mt-4'>
+										<h3 className='text-md font-medium mb-2'>
+											Funding Sources
+										</h3>
+										<div className='grid grid-cols-2 gap-4'>
+											<div className='bg-white p-4 rounded-lg shadow'>
+												<h3 className='text-xs font-medium text-gray-500'>
+													New Sources Created
+												</h3>
+												<p className='text-2xl font-bold text-green-500'>
+													{run.storage_results.fundingSourcesCreated || 0}
+												</p>
 											</div>
-										)
-									)}
+											<div className='bg-white p-4 rounded-lg shadow'>
+												<h3 className='text-xs font-medium text-gray-500'>
+													Existing Sources Used
+												</h3>
+												<p className='text-2xl font-bold text-blue-500'>
+													{run.storage_results.fundingSourcesReused || 0}
+												</p>
+											</div>
+										</div>
+									</div>
+								)}
 
-									{(!run.storage_results.storedOpportunities ||
-										run.storage_results.storedOpportunities.length === 0) && (
-										<div className='text-gray-500 text-sm'>
-											No sample opportunities available
+								{run.storage_results.storedOpportunities &&
+									run.storage_results.storedOpportunities.length > 0 && (
+										<div className='mt-4'>
+											<h3 className='text-md font-medium mb-2'>
+												Sample Stored Opportunities
+											</h3>
+											<div className='space-y-4'>
+												{run.storage_results.storedOpportunities.map(
+													(item, index) => (
+														<div
+															key={index}
+															className='border border-gray-200 rounded-lg overflow-hidden'>
+															<div className='bg-gray-50 p-3 border-b border-gray-200 flex justify-between'>
+																<h4 className='font-medium'>{item.title}</h4>
+																<span
+																	className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+																		item.operation === 'new'
+																			? 'bg-green-100 text-green-800'
+																			: 'bg-blue-100 text-blue-800'
+																	}`}>
+																	{item.operation === 'new' ? 'New' : 'Updated'}
+																</span>
+															</div>
+															<div className='p-3'>
+																<div className='text-sm mb-2'>
+																	<span className='font-medium'>
+																		Opportunity Number:
+																	</span>{' '}
+																	{item.opportunity_number || 'N/A'}
+																</div>
+																<div className='text-sm mb-2'>
+																	<span className='font-medium'>
+																		Funding Agency:
+																	</span>{' '}
+																	{item.agency_name || 'Unknown'}
+																</div>
+																<div className='text-sm mb-2'>
+																	<span className='font-medium'>
+																		Funding Source:
+																	</span>{' '}
+																	{item.agency_name ||
+																		(item.funding_source_name ? (
+																			<>
+																				{item.funding_source_name}
+																				{item.funding_source_type && (
+																					<span className='text-xs ml-1 bg-blue-100 text-blue-800 rounded px-1 py-0.5'>
+																						{item.funding_source_type}
+																					</span>
+																				)}
+																			</>
+																		) : (
+																			'Unknown'
+																		))}
+																</div>
+																{(item.funding_source_website ||
+																	item.agency_website) && (
+																	<div className='text-sm mb-2'>
+																		<span className='font-medium'>
+																			Website:
+																		</span>{' '}
+																		<a
+																			href={
+																				item.funding_source_website ||
+																				item.agency_website
+																			}
+																			target='_blank'
+																			rel='noopener noreferrer'
+																			className='text-blue-600 hover:underline truncate inline-block max-w-[250px]'>
+																			{item.funding_source_website ||
+																				item.agency_website}
+																		</a>
+																	</div>
+																)}
+																{item.actionable_summary && (
+																	<div className='text-sm mb-2'>
+																		<span className='font-medium'>
+																			Summary:
+																		</span>{' '}
+																		{item.actionable_summary}
+																	</div>
+																)}
+																{item._changedFields &&
+																	item._changedFields.length > 0 && (
+																		<div className='mt-2'>
+																			<h5 className='text-sm font-medium mb-1'>
+																				Changes:
+																			</h5>
+																			<ul className='text-xs text-gray-600 space-y-1'>
+																				{item._changedFields.map(
+																					(change, i) => (
+																						<li key={i}>
+																							<span className='font-medium'>
+																								{change.field}:
+																							</span>
+																							{change.note ? (
+																								<span> {change.note}</span>
+																							) : (
+																								<span>
+																									{' '}
+																									{JSON.stringify(
+																										change.oldValue
+																									)}{' '}
+																									→{' '}
+																									{JSON.stringify(
+																										change.newValue
+																									)}
+																								</span>
+																							)}
+																						</li>
+																					)
+																				)}
+																			</ul>
+																		</div>
+																	)}
+															</div>
+														</div>
+													)
+												)}
+											</div>
 										</div>
 									)}
+
+								{!run.storage_results.storedOpportunities ||
+								run.storage_results.storedOpportunities.length === 0 ? (
+									<div className='text-gray-500 text-sm mt-4'>
+										No sample opportunities available
+									</div>
+								) : null}
+
+								<div className='mt-4'>
+									<h3 className='text-md font-medium mb-2'>Processing Time</h3>
+									<p className='text-lg'>
+										{run.storage_results.processingTime
+											? `${(run.storage_results.processingTime / 1000).toFixed(
+													2
+											  )} seconds`
+											: 'Not available'}
+									</p>
 								</div>
 							</div>
-
-							<div className='mt-4'>
-								<h3 className='text-md font-medium mb-2'>Processing Time</h3>
-								<p className='text-lg'>
-									{run.storage_results.processingTime
-										? `${(run.storage_results.processingTime / 1000).toFixed(
-												2
-										  )} seconds`
-										: 'Not available'}
-								</p>
+						) : (
+							<div className='flex flex-col items-center justify-center p-8'>
+								<div className='text-gray-500 text-center'>
+									<p className='mb-2'>Storage results not available</p>
+									<p className='text-sm'>
+										This could be because the run is still in progress or there
+										was an error during processing.
+									</p>
+								</div>
 							</div>
-						</div>
+						)}
 					</div>
 				)}
 			</div>
