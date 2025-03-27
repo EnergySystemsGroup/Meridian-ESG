@@ -346,59 +346,32 @@ export async function processOpportunitiesBatch(
 				result.newOpportunities.push(insertData);
 				result.metrics.new++;
 			} else {
-				// Check if update is needed by comparing fields
-				const hasChanges = Object.keys(opportunity).some((key) => {
-					// Skip certain fields from comparison
-					if (
-						['id', 'created_at', 'updated_at', 'raw_response_id'].includes(key)
-					) {
+				// Check if update is needed by comparing ONLY critical fields
+				const criticalFields = [
+					'totalFundingAvailable',
+					'minimumAward',
+					'maximumAward',
+					'openDate',
+					'closeDate',
+					'status',
+				];
+				const hasChanges = criticalFields.some((key) => {
+					// Skip if field isn't in the opportunity
+					if (opportunity[key] === undefined) {
 						return false;
-					}
-
-					// Special handling for opportunity_number/id comparison
-					if (key === 'id') {
-						return opportunity.id !== existingOpportunity.opportunity_number;
-					}
-
-					// Special handling for funding_source/funding_source_id
-					if (key === 'funding_source') {
-						// If funding source IDs don't match, it's a change
-						return (
-							fundingSourceId &&
-							fundingSourceId !== existingOpportunity.funding_source_id
-						);
 					}
 
 					// Map camelCase to snake_case for DB field comparison
 					const fieldMap = {
-						title: 'title',
-						description: 'description',
-						url: 'url',
 						status: 'status',
-						fundingType: 'funding_type',
 						openDate: 'open_date',
 						closeDate: 'close_date',
 						minimumAward: 'minimum_award',
 						maximumAward: 'maximum_award',
 						totalFundingAvailable: 'total_funding_available',
-						matchingRequired: 'cost_share_required',
-						matchingPercentage: 'cost_share_percentage',
-						eligibleApplicants: 'eligible_applicants',
-						eligibleProjectTypes: 'eligible_project_types',
-						eligibleLocations: 'eligible_locations',
-						categories: 'categories',
-						tags: 'tags',
-						isNational: 'is_national',
-						actionableSummary: 'actionable_summary',
 					};
 
-					const dbFieldName = fieldMap[key] || key;
-
-					// Special handling for text fields that might have minor LLM wording differences
-					if (['description', 'actionableSummary'].includes(key)) {
-						// Skip minor text differences in these fields
-						return false;
-					}
+					const dbFieldName = fieldMap[key];
 
 					// Special handling for date fields
 					if (['openDate', 'closeDate'].includes(key)) {
@@ -440,114 +413,32 @@ export async function processOpportunitiesBatch(
 						return percentDiff > 5; // Only consider >5% changes as material
 					}
 
-					// Special handling for arrays - compare content, not order
-					if (
-						Array.isArray(opportunity[key]) &&
-						Array.isArray(existingOpportunity[dbFieldName])
-					) {
-						const existingArr = [...existingOpportunity[dbFieldName]].sort();
-						const newArr = [...opportunity[key]].sort();
-
-						// Compare length first for quick check
-						if (existingArr.length !== newArr.length) return true;
-
-						// Compare elements
-						return existingArr.some((item, index) => {
-							return JSON.stringify(item) !== JSON.stringify(newArr[index]);
-						});
+					// For status field, direct comparison
+					if (key === 'status') {
+						return opportunity[key] !== existingOpportunity[dbFieldName];
 					}
 
-					// Default comparison
-					return (
-						JSON.stringify(opportunity[key]) !==
-						JSON.stringify(existingOpportunity[dbFieldName])
-					);
+					return false;
 				});
 
 				if (hasChanges) {
-					// Track what fields changed
+					// Track only critical field changes
 					const changedFields = [];
-					Object.keys(opportunity).forEach((key) => {
-						// Skip certain fields from comparison
-						if (
-							[
-								'id',
-								'created_at',
-								'updated_at',
-								'raw_response_id',
-								'description',
-								'actionableSummary',
-							].includes(key)
-						) {
-							return;
-						}
+					criticalFields.forEach((key) => {
+						if (opportunity[key] === undefined) return;
 
-						// Special handling for opportunity_number/id comparison
-						if (key === 'id') {
-							if (opportunity.id !== existingOpportunity.opportunity_number) {
-								changedFields.push({
-									field: 'opportunity_number',
-									oldValue: existingOpportunity.opportunity_number,
-									newValue: opportunity.id,
-								});
-							}
-							return;
-						}
-
-						// Special handling for funding_source/funding_source_id
-						if (key === 'funding_source') {
-							if (
-								fundingSourceId &&
-								fundingSourceId !== existingOpportunity.funding_source_id
-							) {
-								// Capture the funding source name and any other relevant details
-								let fundingSourceNote = `Funding source changed to "${
-									opportunity.funding_source?.name || 'Unknown'
-								}"`;
-
-								// Add additional details if available
-								if (opportunity.funding_source?.type) {
-									fundingSourceNote += ` (${opportunity.funding_source.type})`;
-								}
-
-								if (opportunity.funding_source?.parent_organization) {
-									fundingSourceNote += `, part of ${opportunity.funding_source.parent_organization}`;
-								}
-
-								changedFields.push({
-									field: 'funding_source_id',
-									oldValue: existingOpportunity.funding_source_id,
-									newValue: fundingSourceId,
-									note: fundingSourceNote,
-								});
-							}
-							return;
-						}
-
-						// Map camelCase to snake_case for comparison
 						const fieldMap = {
-							title: 'title',
-							url: 'url',
 							status: 'status',
-							fundingType: 'funding_type',
 							openDate: 'open_date',
 							closeDate: 'close_date',
 							minimumAward: 'minimum_award',
 							maximumAward: 'maximum_award',
 							totalFundingAvailable: 'total_funding_available',
-							matchingRequired: 'cost_share_required',
-							matchingPercentage: 'cost_share_percentage',
-							eligibleApplicants: 'eligible_applicants',
-							eligibleProjectTypes: 'eligible_project_types',
-							eligibleLocations: 'eligible_locations',
-							categories: 'categories',
-							tags: 'tags',
-							isNational: 'is_national',
 						};
 
-						const dbFieldName = fieldMap[key] || key;
+						const dbFieldName = fieldMap[key];
 
-						// Special handling for date fields
+						// Date fields
 						if (['openDate', 'closeDate'].includes(key)) {
 							const existingDate = existingOpportunity[dbFieldName]
 								? new Date(existingOpportunity[dbFieldName])
@@ -566,11 +457,9 @@ export async function processOpportunitiesBatch(
 									note: 'Date changed',
 								});
 							}
-							return;
 						}
-
-						// Special handling for amounts - check if significant difference (>5%)
-						if (
+						// Amount fields
+						else if (
 							[
 								'minimumAward',
 								'maximumAward',
@@ -590,7 +479,6 @@ export async function processOpportunitiesBatch(
 									Math.abs((newAmount - existingAmount) / baseDivisor) * 100;
 
 								if (percentDiff > 5) {
-									// Only consider >5% changes as material
 									changedFields.push({
 										field: dbFieldName,
 										oldValue: existingOpportunity[dbFieldName],
@@ -599,57 +487,45 @@ export async function processOpportunitiesBatch(
 									});
 								}
 							}
-							return;
 						}
-
-						// Special handling for arrays
-						if (
-							Array.isArray(opportunity[key]) &&
-							Array.isArray(existingOpportunity[dbFieldName])
-						) {
-							const existingArr = [...existingOpportunity[dbFieldName]].sort();
-							const newArr = [...opportunity[key]].sort();
-
-							// Simple length check
-							if (existingArr.length !== newArr.length) {
-								changedFields.push({
-									field: dbFieldName,
-									oldValue: existingOpportunity[dbFieldName],
-									newValue: opportunity[key],
-									note: `Changed from ${existingArr.length} items to ${newArr.length} items`,
-								});
-								return;
-							}
-
-							// Check for content differences
-							const hasChanges = existingArr.some((item, index) => {
-								return JSON.stringify(item) !== JSON.stringify(newArr[index]);
-							});
-
-							if (hasChanges) {
-								changedFields.push({
-									field: dbFieldName,
-									oldValue: existingOpportunity[dbFieldName],
-									newValue: opportunity[key],
-									note: 'Array contents changed',
-								});
-							}
-							return;
-						}
-
-						// Default check for other fields
-						if (
-							opportunity[key] !== undefined &&
-							JSON.stringify(opportunity[key]) !==
-								JSON.stringify(existingOpportunity[dbFieldName])
+						// Status field
+						else if (
+							key === 'status' &&
+							opportunity[key] !== existingOpportunity[dbFieldName]
 						) {
 							changedFields.push({
 								field: dbFieldName,
 								oldValue: existingOpportunity[dbFieldName],
 								newValue: opportunity[key],
+								note: 'Status changed',
 							});
 						}
 					});
+
+					// We still want to update the funding source if it's provided and different
+					if (
+						fundingSourceId &&
+						fundingSourceId !== existingOpportunity.funding_source_id
+					) {
+						let fundingSourceNote = `Funding source changed to "${
+							opportunity.funding_source?.name || 'Unknown'
+						}"`;
+
+						if (opportunity.funding_source?.type) {
+							fundingSourceNote += ` (${opportunity.funding_source.type})`;
+						}
+
+						if (opportunity.funding_source?.parent_organization) {
+							fundingSourceNote += `, part of ${opportunity.funding_source.parent_organization}`;
+						}
+
+						changedFields.push({
+							field: 'funding_source_id',
+							oldValue: existingOpportunity.funding_source_id,
+							newValue: fundingSourceId,
+							note: fundingSourceNote,
+						});
+					}
 
 					// Sanitize opportunity data for database update
 					const updateData = sanitizeOpportunityForDatabase(opportunity);
@@ -671,10 +547,65 @@ export async function processOpportunitiesBatch(
 					);
 					console.log('Fields changed:', changedFields);
 
-					// Update existing opportunity
+					// Create a new update object with ONLY changed fields to minimize updates
+					const limitedUpdateData = { updated_at: new Date().toISOString() };
+
+					// Fields we want to potentially update
+					const criticalFieldsMap = {
+						status: 'status',
+						open_date: 'openDate',
+						close_date: 'closeDate',
+						minimum_award: 'minimumAward',
+						maximum_award: 'maximumAward',
+						total_funding_available: 'totalFundingAvailable',
+						funding_source_id: 'funding_source_id',
+					};
+
+					// Only include critical fields that have changed
+					changedFields.forEach((change) => {
+						const field = change.field;
+
+						// For each critical field that changed, add it to the update
+						if (field === 'funding_source_id') {
+							limitedUpdateData.funding_source_id = fundingSourceId;
+						} else if (field in criticalFieldsMap) {
+							// For known critical fields, add them to the update
+							if (field === 'open_date' && opportunity.openDate !== undefined) {
+								limitedUpdateData.open_date = opportunity.openDate;
+							} else if (
+								field === 'close_date' &&
+								opportunity.closeDate !== undefined
+							) {
+								limitedUpdateData.close_date = opportunity.closeDate;
+							} else if (
+								field === 'minimum_award' &&
+								opportunity.minimumAward !== undefined
+							) {
+								limitedUpdateData.minimum_award = opportunity.minimumAward;
+							} else if (
+								field === 'maximum_award' &&
+								opportunity.maximumAward !== undefined
+							) {
+								limitedUpdateData.maximum_award = opportunity.maximumAward;
+							} else if (
+								field === 'total_funding_available' &&
+								opportunity.totalFundingAvailable !== undefined
+							) {
+								limitedUpdateData.total_funding_available =
+									opportunity.totalFundingAvailable;
+							} else if (
+								field === 'status' &&
+								opportunity.status !== undefined
+							) {
+								limitedUpdateData.status = opportunity.status;
+							}
+						}
+					});
+
+					// Update existing opportunity with ONLY the changed fields
 					const { data: updatedData, error: updateError } = await supabase
 						.from('funding_opportunities')
-						.update(updateData)
+						.update(limitedUpdateData)
 						.eq('id', existingOpportunity.id)
 						.select()
 						.single();
