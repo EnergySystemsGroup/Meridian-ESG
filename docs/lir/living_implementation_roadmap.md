@@ -6,15 +6,19 @@ This document tracks the implementation status of all features in the Funding In
 
 This section highlights the highest priority tasks to be completed next:
 
-1. **Data Processor - Update Detection Improvement**: Verify and improve update detection logic to prevent false positives from minor LLM wording differences. Currently, opportunities may be incorrectly marked as "updated" when only the phrasing in description or summary fields has changed.
+1. **First Filter Processing Time Issues**: Investigate why first stage filter processingTime is showing 0ms in the UI even though filtering time is tracked in the code (combinedResults.metrics.filteringTime = totalTime). There appears to be a mismatch between variable names.
 
-2. **Detail Processor - Adaptive Relevance Threshold**: Implement adaptive thresholds for relevance scores based on source quality and historical data.
+2. **Second Filter Performance Investigation**: Analyze why the second stage filter is taking significantly longer than the first stage filter despite having fewer opportunities to process. Investigate potential optimizations for the detailProcessorAgent.
 
-3. **API Handler - Support for Rate Limiting**: Add rate limiting and throttling capabilities to prevent API usage limits from being exceeded.
+3. **Data Processor - Update Detection Improvement**: Verify and improve update detection logic to prevent false positives from minor LLM wording differences. Currently, opportunities may be incorrectly marked as "updated" when only the phrasing in description or summary fields has changed.
 
-4. **Error Handling - Automatic Retry Mechanisms**: Implement automatic retry logic for transient failures in API calls.
+4. **Detail Processor - Adaptive Relevance Threshold**: Implement adaptive thresholds for relevance scores based on source quality and historical data.
 
-5. **Admin Interface - Run Filtering and Search**: Add filtering and search capabilities to the runs listing interface.
+5. **API Handler - Support for Rate Limiting**: Add rate limiting and throttling capabilities to prevent API usage limits from being exceeded.
+
+6. **Error Handling - Automatic Retry Mechanisms**: Implement automatic retry logic for transient failures in API calls.
+
+7. **Admin Interface - Run Filtering and Search**: Add filtering and search capabilities to the runs listing interface.
 
 ## Table of Contents
 
@@ -128,6 +132,7 @@ The Funding API Processing System is designed to retrieve, filter, and store fun
 - [x] Support multiple insert/update strategies
 - [x] Implement direct batch processing of opportunities
 - [x] Link opportunities to their funding sources by agency name
+- [x] Implement structured funding source object extraction and processing
 - [ ] Verify and improve update detection to prevent false positives from minor LLM wording differences
 - [ ] Replace LLM-based decision making with rule-based processing for better efficiency
 - [ ] Implement versioning for opportunity updates
@@ -195,6 +200,7 @@ The Funding API Processing System is designed to retrieve, filter, and store fun
 - [x] Store detailed error information with runs
 - [x] Support resuming from failures
 - [x] Handle API-specific error cases
+- [x] Implement null checks for all run result fields to prevent UI errors
 - [ ] Implement automatic retry mechanisms
 - [ ] Add alerting for critical failures
 
@@ -285,6 +291,9 @@ The Admin Interface provides tools for managing API sources, viewing processing 
 - [x] Add visual pipeline representation
 - [x] Implement real-time run status updates
 - [x] Enable real-time updates for run details page by adding the `api_source_runs` table to Supabase real-time publication
+- [x] Implement unified display of stored opportunities with operation type tags
+- [ ] Fix first stage filter processing time display in UI
+- [ ] Investigate and optimize second stage filter performance
 - [ ] Add filtering and search for runs
 - [ ] Implement run comparison tools
 - [ ] Add run analytics and reporting
