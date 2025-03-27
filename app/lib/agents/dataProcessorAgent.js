@@ -31,8 +31,217 @@ export async function processOpportunitiesBatch(
 				updated: 0,
 				ignored: 0,
 				processingTime: 0,
+				fundingSourcesCreated: 0,
+				fundingSourcesReused: 0,
 			},
 		};
+
+		/**
+		 * Get or create a funding source based on funding_source object
+		 * @param {Object} fundingSource - Funding source object with name, type, etc.
+		 * @param {string} apiSourceType - Type of the API source (federal, state, etc.)
+		 * @returns {Promise<string>} - ID of the funding source
+		 */
+		async function getOrCreateFundingSource(fundingSource, apiSourceType) {
+			if (!fundingSource || !fundingSource.name) {
+				console.log('No funding source name provided');
+				return null;
+			}
+
+			const agencyName = fundingSource.name;
+			console.log(`Processing funding source: "${agencyName}"`);
+
+			// Try to find existing funding source by name
+			const { data: existingSources, error: findError } = await supabase
+				.from('funding_sources')
+				.select(
+					'id, name, type, agency_type, website, description, contact_email, contact_phone'
+				)
+				.ilike('name', agencyName)
+				.limit(1);
+
+			if (findError) {
+				console.error('Error finding funding source:', findError);
+				return null;
+			}
+
+			// If found, return the ID but also update with any new information
+			if (existingSources && existingSources.length > 0) {
+				console.log(
+					`Found existing funding source: ${existingSources[0].name}`
+				);
+				result.metrics.fundingSourcesReused++;
+
+				// Check if we need to update with new information
+				const existingSource = existingSources[0];
+				const updates = {};
+				let needsUpdate = false;
+
+				// Check each field for potential updates
+				if (
+					fundingSource.website &&
+					existingSource.website !== fundingSource.website
+				) {
+					updates.website = fundingSource.website;
+					needsUpdate = true;
+				}
+
+				if (
+					fundingSource.contact_email &&
+					existingSource.contact_email !== fundingSource.contact_email
+				) {
+					updates.contact_email = fundingSource.contact_email;
+					needsUpdate = true;
+				}
+
+				if (
+					fundingSource.contact_phone &&
+					existingSource.contact_phone !== fundingSource.contact_phone
+				) {
+					updates.contact_phone = fundingSource.contact_phone;
+					needsUpdate = true;
+				}
+
+				// Build a better description if we have new information
+				let newDescription = existingSource.description || 'Funding agency';
+				if (
+					fundingSource.description &&
+					!existingSource.description?.includes(fundingSource.description)
+				) {
+					newDescription = fundingSource.description;
+					needsUpdate = true;
+				}
+
+				if (
+					fundingSource.parent_organization &&
+					!existingSource.description?.includes(
+						fundingSource.parent_organization
+					)
+				) {
+					if (!newDescription.includes(fundingSource.parent_organization)) {
+						newDescription += ` (Part of ${fundingSource.parent_organization})`;
+						needsUpdate = true;
+					}
+				}
+
+				if (newDescription !== existingSource.description) {
+					updates.description = newDescription;
+				}
+
+				// Only update agency_type if we have a more specific one
+				if (
+					fundingSource.agency_type &&
+					(!existingSource.agency_type ||
+						existingSource.agency_type === 'Other')
+				) {
+					updates.agency_type = fundingSource.agency_type;
+					needsUpdate = true;
+				}
+
+				// Only update type if we have a more specific one
+				if (fundingSource.type && !existingSource.type) {
+					updates.type = fundingSource.type;
+					needsUpdate = true;
+				}
+
+				if (needsUpdate) {
+					// Update the existing source with new information
+					updates.updated_at = new Date().toISOString();
+
+					const { error: updateError } = await supabase
+						.from('funding_sources')
+						.update(updates)
+						.eq('id', existingSource.id);
+
+					if (updateError) {
+						console.error('Error updating funding source:', updateError);
+					} else {
+						console.log(
+							'Updated funding source with new information:',
+							Object.keys(updates).join(', ')
+						);
+					}
+				}
+
+				return existingSources[0].id;
+			}
+
+			// If not found, create a new funding source
+			// Determine agency_type based on funding source type or API source type
+			let agencyType = fundingSource.agency_type || 'Federal';
+			if (!fundingSource.agency_type) {
+				// If no agency_type is provided, derive it from type field or apiSourceType
+				if (fundingSource.type) {
+					// Convert to proper agency_type format
+					const type = fundingSource.type.toLowerCase();
+					if (type.includes('federal')) agencyType = 'Federal';
+					else if (type.includes('state')) agencyType = 'State';
+					else if (type.includes('local')) agencyType = 'Other';
+					else if (type.includes('utility')) agencyType = 'Utility';
+					else if (type.includes('foundation') || type.includes('private'))
+						agencyType = 'Foundation';
+				} else if (apiSourceType) {
+					// Derive from API source type
+					if (apiSourceType.toLowerCase() === 'federal') agencyType = 'Federal';
+					else if (apiSourceType.toLowerCase() === 'state')
+						agencyType = 'State';
+					else if (apiSourceType.toLowerCase() === 'local')
+						agencyType = 'Other';
+					else if (apiSourceType.toLowerCase() === 'utility')
+						agencyType = 'Utility';
+					else if (apiSourceType.toLowerCase() === 'private')
+						agencyType = 'Foundation';
+				}
+			}
+
+			// Build description
+			let description =
+				fundingSource.description ||
+				`Funding agency extracted from opportunity data`;
+			if (
+				fundingSource.parent_organization &&
+				!description.includes(fundingSource.parent_organization)
+			) {
+				description += ` (Part of ${fundingSource.parent_organization})`;
+			}
+
+			// Create a new funding source with all available fields
+			const { data: newSource, error: createError } = await supabase
+				.from('funding_sources')
+				.insert({
+					name: agencyName,
+					agency_type: agencyType,
+					type: fundingSource.type || apiSourceType || 'federal',
+					website: fundingSource.website || null,
+					contact_email: fundingSource.contact_email || null,
+					contact_phone: fundingSource.contact_phone || null,
+					description: description,
+					created_at: new Date().toISOString(),
+					updated_at: new Date().toISOString(),
+				})
+				.select()
+				.single();
+
+			if (createError) {
+				console.error('Error creating funding source:', createError);
+				return null;
+			}
+
+			console.log(
+				`Created new funding source: ${newSource.name} (${newSource.id})`
+			);
+			result.metrics.fundingSourcesCreated++;
+			return newSource.id;
+		}
+
+		// Get API source type for better categorization of funding sources
+		const { data: apiSourceData, error: apiSourceError } = await supabase
+			.from('api_sources')
+			.select('type')
+			.eq('id', sourceId)
+			.single();
+
+		const apiSourceType = apiSourceData?.type || 'federal';
 
 		// Function to sanitize opportunity data for the database
 		// Converting camelCase to snake_case and filtering out non-existent columns
@@ -59,6 +268,7 @@ export async function processOpportunitiesBatch(
 				isNational: 'is_national',
 				actionableSummary: 'actionable_summary',
 				id: 'opportunity_number', // Special case: map external ID to opportunity_number
+				// Agency is handled separately through funding_source_id
 			};
 
 			// Create sanitized object with snake_case keys
@@ -81,6 +291,12 @@ export async function processOpportunitiesBatch(
 		for (const opportunity of opportunities) {
 			console.log(`Processing opportunity: ${opportunity.title}`);
 
+			// Process funding source first
+			const fundingSourceId = await getOrCreateFundingSource(
+				opportunity.funding_source,
+				apiSourceType
+			);
+
 			// Check for existing opportunity by opportunity ID first (mapped to opportunity_number in DB)
 			let existingOpportunity = null;
 			if (opportunity.id) {
@@ -100,6 +316,11 @@ export async function processOpportunitiesBatch(
 			if (!existingOpportunity) {
 				// Sanitize opportunity data for database insertion
 				const opportunityData = sanitizeOpportunityForDatabase(opportunity);
+
+				// Add funding source ID
+				if (fundingSourceId) {
+					opportunityData.funding_source_id = fundingSourceId;
+				}
 
 				// Remove the id field to prevent conflicts with DB auto-generated IDs
 				delete opportunityData.id;
@@ -137,6 +358,15 @@ export async function processOpportunitiesBatch(
 					// Special handling for opportunity_number/id comparison
 					if (key === 'id') {
 						return opportunity.id !== existingOpportunity.opportunity_number;
+					}
+
+					// Special handling for funding_source/funding_source_id
+					if (key === 'funding_source') {
+						// If funding source IDs don't match, it's a change
+						return (
+							fundingSourceId &&
+							fundingSourceId !== existingOpportunity.funding_source_id
+						);
 					}
 
 					// Map camelCase to snake_case for DB field comparison
@@ -259,6 +489,36 @@ export async function processOpportunitiesBatch(
 									field: 'opportunity_number',
 									oldValue: existingOpportunity.opportunity_number,
 									newValue: opportunity.id,
+								});
+							}
+							return;
+						}
+
+						// Special handling for funding_source/funding_source_id
+						if (key === 'funding_source') {
+							if (
+								fundingSourceId &&
+								fundingSourceId !== existingOpportunity.funding_source_id
+							) {
+								// Capture the funding source name and any other relevant details
+								let fundingSourceNote = `Funding source changed to "${
+									opportunity.funding_source?.name || 'Unknown'
+								}"`;
+
+								// Add additional details if available
+								if (opportunity.funding_source?.type) {
+									fundingSourceNote += ` (${opportunity.funding_source.type})`;
+								}
+
+								if (opportunity.funding_source?.parent_organization) {
+									fundingSourceNote += `, part of ${opportunity.funding_source.parent_organization}`;
+								}
+
+								changedFields.push({
+									field: 'funding_source_id',
+									oldValue: existingOpportunity.funding_source_id,
+									newValue: fundingSourceId,
+									note: fundingSourceNote,
 								});
 							}
 							return;
@@ -396,6 +656,11 @@ export async function processOpportunitiesBatch(
 					// For updates, we only want to update the timestamp
 					updateData.created_at = undefined; // Remove created_at for updates
 
+					// Add funding source ID if it exists
+					if (fundingSourceId) {
+						updateData.funding_source_id = fundingSourceId;
+					}
+
 					// Remove the id field to prevent conflicts with DB ID
 					delete updateData.id;
 
@@ -442,17 +707,69 @@ export async function processOpportunitiesBatch(
 				updatedCount: result.metrics.updated,
 				skippedCount: result.metrics.ignored,
 				processingTime: result.metrics.processingTime,
+				fundingSourcesCreated: result.metrics.fundingSourcesCreated,
+				fundingSourcesReused: result.metrics.fundingSourcesReused,
 				// Include samples of stored and updated opportunities
-				storedOpportunities: result.newOpportunities.slice(0, 3).map((opp) => ({
-					...opp,
-					operation: 'new',
-				})),
-				updatedOpportunities: result.updatedOpportunities
-					.slice(0, 3)
-					.map((opp) => ({
-						...opp,
-						operation: 'updated',
-					})),
+				storedOpportunities: await Promise.all(
+					result.newOpportunities.slice(0, 3).map(async (opp) => {
+						// Get funding source details if available
+						let fundingSourceData = null;
+						if (opp.funding_source_id) {
+							const { data } = await supabase
+								.from('funding_sources')
+								.select(
+									'name, type, agency_type, website, contact_email, contact_phone, description'
+								)
+								.eq('id', opp.funding_source_id)
+								.single();
+
+							fundingSourceData = data;
+						}
+
+						return {
+							...opp,
+							operation: 'new',
+							// Add funding source details for display
+							funding_source_name: fundingSourceData?.name,
+							funding_source_type:
+								fundingSourceData?.agency_type || fundingSourceData?.type,
+							funding_source_website: fundingSourceData?.website,
+							funding_source_email: fundingSourceData?.contact_email,
+							funding_source_phone: fundingSourceData?.contact_phone,
+							funding_source_description: fundingSourceData?.description,
+						};
+					})
+				),
+				updatedOpportunities: await Promise.all(
+					result.updatedOpportunities.slice(0, 3).map(async (opp) => {
+						// Get funding source details if available
+						let fundingSourceData = null;
+						if (opp.funding_source_id) {
+							const { data } = await supabase
+								.from('funding_sources')
+								.select(
+									'name, type, agency_type, website, contact_email, contact_phone, description'
+								)
+								.eq('id', opp.funding_source_id)
+								.single();
+
+							fundingSourceData = data;
+						}
+
+						return {
+							...opp,
+							operation: 'updated',
+							// Add funding source details for display
+							funding_source_name: fundingSourceData?.name,
+							funding_source_type:
+								fundingSourceData?.agency_type || fundingSourceData?.type,
+							funding_source_website: fundingSourceData?.website,
+							funding_source_email: fundingSourceData?.contact_email,
+							funding_source_phone: fundingSourceData?.contact_phone,
+							funding_source_description: fundingSourceData?.description,
+						};
+					})
+				),
 			});
 		}
 

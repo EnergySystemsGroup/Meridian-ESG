@@ -102,11 +102,51 @@ const apiResponseProcessingSchema = z.object({
 					.optional()
 					.nullable()
 					.describe('Type of funding (grant, loan, etc.)'),
-				agency: z
-					.string()
+				funding_source: z
+					.object({
+						name: z
+							.string()
+							.describe(
+								'The precise name of the funding organization or agency'
+							),
+						type: z
+							.string()
+							.optional()
+							.describe(
+								'High-level type (federal, state, local, utility, foundation, other)'
+							),
+						website: z
+							.string()
+							.optional()
+							.nullable()
+							.describe('Website of the funding organization if available'),
+						contact_email: z
+							.string()
+							.optional()
+							.nullable()
+							.describe(
+								'Contact email for the funding organization if available'
+							),
+						contact_phone: z
+							.string()
+							.optional()
+							.nullable()
+							.describe(
+								'Contact phone number for the funding organization if available'
+							),
+						description: z
+							.string()
+							.optional()
+							.nullable()
+							.describe(
+								'Additional notes or description about the funding organization'
+							),
+					})
+					.describe(
+						'Information about the organization providing this funding opportunity'
+					)
 					.optional()
-					.nullable()
-					.describe('Funding agency or organization'),
+					.nullable(),
 				totalFundingAvailable: z
 					.number()
 					.optional()

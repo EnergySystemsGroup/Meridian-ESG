@@ -127,6 +127,7 @@ The Funding API Processing System is designed to retrieve, filter, and store fun
 - [x] Track storage metrics and results
 - [x] Support multiple insert/update strategies
 - [x] Implement direct batch processing of opportunities
+- [x] Link opportunities to their funding sources by agency name
 - [ ] Verify and improve update detection to prevent false positives from minor LLM wording differences
 - [ ] Replace LLM-based decision making with rule-based processing for better efficiency
 - [ ] Implement versioning for opportunity updates
