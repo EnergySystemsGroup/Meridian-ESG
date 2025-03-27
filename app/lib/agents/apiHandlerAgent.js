@@ -1220,6 +1220,8 @@ async function performFirstStageFiltering(
 	// Calculate final metrics
 	const totalTime = Date.now() - startTime;
 	combinedResults.metrics.filteringTime = totalTime;
+	// Add processingTime for UI compatibility
+	combinedResults.metrics.processingTime = totalTime;
 
 	// Log the final results
 	console.log('\n=== First Stage Filtering Complete ===');
