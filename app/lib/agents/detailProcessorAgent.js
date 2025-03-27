@@ -40,12 +40,6 @@ const detailProcessingSchema = z.object({
 							.describe(
 								'High-level type (federal, state, local, utility, foundation, other)'
 							),
-						agency_type: z
-							.string()
-							.optional()
-							.describe(
-								'Specific categorization (Federal, State, Utility, Foundation, Other)'
-							),
 						website: z
 							.string()
 							.optional()
@@ -65,11 +59,6 @@ const detailProcessingSchema = z.object({
 							.describe(
 								'Contact phone number for the funding organization if available'
 							),
-						parent_organization: z
-							.string()
-							.optional()
-							.nullable()
-							.describe('Parent organization or department if applicable'),
 						description: z
 							.string()
 							.optional()
