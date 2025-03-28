@@ -176,7 +176,10 @@ const detailProcessingSchema = z.object({
 				),
 			averageScoreAfterFiltering: z
 				.number()
-				.describe('Average relevance score after filtering'),
+				.nullable()
+				.describe(
+					'Average relevance score after filtering (null if none passed)'
+				),
 			filterReasoning: z
 				.string()
 				.describe('Summary of why items were filtered'),
@@ -424,103 +427,141 @@ export async function detailProcessorAgent(
 				sourceInfo: JSON.stringify(source, null, 2),
 			});
 
-			// Get the LLM response
-			const response = await model.invoke(prompt);
+			let response;
+			let result;
 
-			// Parse the response
-			const result = await parser.parse(response.content);
+			try {
+				// Get the LLM response
+				response = await model.invoke(prompt);
 
-			// Calculate chunk metrics
-			const chunkTime = Date.now() - chunkStartTime;
-			const chunkMetrics = {
-				chunkIndex: i + 1,
-				processedOpportunities: chunk.length,
-				passedCount: result.opportunities.length,
-				timeSeconds: (chunkTime / 1000).toFixed(1),
-			};
+				// Parse the response
+				result = await parser.parse(response.content);
 
-			console.log(
-				`Chunk ${i + 1} completed: ${result.opportunities.length}/${
-					chunk.length
-				} opportunities passed filtering (${chunkMetrics.timeSeconds}s)`
-			);
+				// Calculate chunk metrics
+				const chunkTime = Date.now() - chunkStartTime;
+				const chunkMetrics = {
+					chunkIndex: i + 1,
+					processedOpportunities: chunk.length,
+					passedCount: result.opportunities.length,
+					timeSeconds: (chunkTime / 1000).toFixed(1),
+					status: 'success',
+				};
 
-			// Add chunk metrics to the results
-			allResults.processingMetrics.chunkMetrics.push(chunkMetrics);
+				console.log(
+					`Chunk ${i + 1} completed successfully: ${
+						result.opportunities.length
+					}/${chunk.length} opportunities passed filtering (${
+						chunkMetrics.timeSeconds
+					}s)`
+				);
 
-			// Add the results to the combined results
-			allResults.opportunities = [
-				...allResults.opportunities,
-				...result.opportunities,
-			];
+				// Add chunk metrics to the results
+				allResults.processingMetrics.chunkMetrics.push(chunkMetrics);
 
-			// Update the processing metrics from LLM response
-			if (result.processingMetrics) {
-				allResults.processingMetrics.passedCount +=
-					result.processingMetrics.passedCount;
-				allResults.processingMetrics.rejectedCount +=
-					result.processingMetrics.rejectedCount;
+				// Add the results to the combined results
+				allResults.opportunities = [
+					...allResults.opportunities,
+					...result.opportunities,
+				];
 
-				// Collect unique rejection reasons
-				if (result.processingMetrics.rejectionReasons) {
-					allResults.processingMetrics.rejectionReasons = [
-						...new Set([
-							...allResults.processingMetrics.rejectionReasons,
-							...result.processingMetrics.rejectionReasons,
-						]),
-					];
-				}
+				// Update the processing metrics from LLM response
+				if (result.processingMetrics) {
+					allResults.processingMetrics.passedCount +=
+						result.processingMetrics.passedCount;
+					allResults.processingMetrics.rejectedCount +=
+						result.processingMetrics.rejectedCount;
 
-				// Update filter reasoning
-				if (result.processingMetrics.filterReasoning) {
-					if (!allResults.processingMetrics.filterReasoning) {
-						allResults.processingMetrics.filterReasoning =
-							result.processingMetrics.filterReasoning;
-					} else if (
-						!allResults.processingMetrics.filterReasoning.includes(
-							result.processingMetrics.filterReasoning
-						)
+					// Collect unique rejection reasons
+					if (result.processingMetrics.rejectionReasons) {
+						allResults.processingMetrics.rejectionReasons = [
+							...new Set([
+								...allResults.processingMetrics.rejectionReasons,
+								...result.processingMetrics.rejectionReasons,
+							]),
+						];
+					}
+
+					// Update filter reasoning
+					if (result.processingMetrics.filterReasoning) {
+						if (!allResults.processingMetrics.filterReasoning) {
+							allResults.processingMetrics.filterReasoning =
+								result.processingMetrics.filterReasoning;
+						} else if (
+							!allResults.processingMetrics.filterReasoning.includes(
+								result.processingMetrics.filterReasoning
+							)
+						) {
+							allResults.processingMetrics.filterReasoning +=
+								'; ' + result.processingMetrics.filterReasoning;
+						}
+					}
+
+					// Track token usage if provided
+					if (result.processingMetrics.tokenUsage) {
+						allResults.processingMetrics.tokenUsage +=
+							result.processingMetrics.tokenUsage;
+					}
+
+					// Update average score before filtering from LLM response
+					if (
+						result.processingMetrics.averageScoreBeforeFiltering !== undefined
 					) {
-						allResults.processingMetrics.filterReasoning +=
-							'; ' + result.processingMetrics.filterReasoning;
+						// If this is the first chunk with this metric, just use it
+						if (
+							allResults.processingMetrics.averageScoreBeforeFiltering === 0
+						) {
+							allResults.processingMetrics.averageScoreBeforeFiltering =
+								result.processingMetrics.averageScoreBeforeFiltering;
+						} else {
+							// For subsequent chunks, compute a weighted average based on chunk size
+							const currentTotal =
+								allResults.processingMetrics.averageScoreBeforeFiltering *
+								(allResults.processingMetrics.inputCount - chunk.length);
+
+							const newTotal =
+								result.processingMetrics.averageScoreBeforeFiltering *
+								chunk.length;
+
+							allResults.processingMetrics.averageScoreBeforeFiltering =
+								(currentTotal + newTotal) /
+								allResults.processingMetrics.inputCount;
+						}
+
+						console.log(
+							`Updated average score before filtering to: ${allResults.processingMetrics.averageScoreBeforeFiltering.toFixed(
+								2
+							)}`
+						);
 					}
 				}
+			} catch (error) {
+				// Calculate chunk metrics for failed chunk
+				const chunkTime = Date.now() - chunkStartTime;
+				const chunkMetrics = {
+					chunkIndex: i + 1,
+					processedOpportunities: chunk.length,
+					passedCount: 0,
+					timeSeconds: (chunkTime / 1000).toFixed(1),
+					status: 'failed',
+					error: error.message,
+				};
+				allResults.processingMetrics.chunkMetrics.push(chunkMetrics);
+				allResults.processingMetrics.rejectedCount += chunk.length; // Count all opportunities in failed chunk as rejected
 
-				// Track token usage if provided
-				if (result.processingMetrics.tokenUsage) {
-					allResults.processingMetrics.tokenUsage +=
-						result.processingMetrics.tokenUsage;
-				}
+				console.error(
+					`Error processing chunk ${i + 1}/${chunks.length}: ${error.message}`
+				);
+				console.error(
+					`Failed chunk content (raw LLM response):\n---\n${response?.content}
+---
+Raw data for chunk:\n${JSON.stringify(chunk, null, 2)}
+---
+`
+				);
 
-				// Update average score before filtering from LLM response
-				if (
-					result.processingMetrics.averageScoreBeforeFiltering !== undefined
-				) {
-					// If this is the first chunk with this metric, just use it
-					if (allResults.processingMetrics.averageScoreBeforeFiltering === 0) {
-						allResults.processingMetrics.averageScoreBeforeFiltering =
-							result.processingMetrics.averageScoreBeforeFiltering;
-					} else {
-						// For subsequent chunks, compute a weighted average based on chunk size
-						const currentTotal =
-							allResults.processingMetrics.averageScoreBeforeFiltering *
-							(allResults.processingMetrics.inputCount - chunk.length);
+				// Optionally, log the error to a persistent store or monitoring system here
 
-						const newTotal =
-							result.processingMetrics.averageScoreBeforeFiltering *
-							chunk.length;
-
-						allResults.processingMetrics.averageScoreBeforeFiltering =
-							(currentTotal + newTotal) /
-							allResults.processingMetrics.inputCount;
-					}
-
-					console.log(
-						`Updated average score before filtering to: ${allResults.processingMetrics.averageScoreBeforeFiltering.toFixed(
-							2
-						)}`
-					);
-				}
+				continue; // Move to the next chunk
 			}
 		}
 
