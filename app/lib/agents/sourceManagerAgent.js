@@ -47,6 +47,8 @@ const sourceProcessingSchema = z.object({
 			cursorParam: z.string().optional(),
 			pageSize: z.number().optional(),
 			maxPages: z.number().optional(),
+			inBody: z.boolean().optional(),
+			paginationInBody: z.boolean().optional(),
 		})
 		.describe('Configuration for handling paginated responses'),
 	detailConfig: z

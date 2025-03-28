@@ -57,7 +57,11 @@ const fundingOpportunitySchema = z.object({
 		.describe('The date when applications close (ISO format if possible)'),
 	eligibility: z.array(z.string()).describe('List of eligible entity types'),
 	url: z.string().describe('URL for more information'),
-	matchingRequired: z.boolean().describe('Whether matching funds are required'),
+	matchingRequired: z
+		.boolean()
+		.optional()
+		.nullable()
+		.describe('Whether matching funds are required'),
 	matchingPercentage: z
 		.number()
 		.optional()
@@ -761,16 +765,38 @@ async function processPaginatedApi(source, processingDetails, runManager) {
 		// Determine where pagination parameters should go based on the request method and configuration
 		const paginationInBody =
 			processingDetails.requestConfig.method === 'POST' &&
-			paginationConfig.paginationInBody === true;
+			(paginationConfig.paginationInBody === true ||
+				paginationConfig.inBody === true);
+
+		// Debug pagination config and decision
+		console.log('[PAGINATION DEBUG] Configuration check:', {
+			method: processingDetails.requestConfig.method,
+			checkingParam1: paginationConfig.paginationInBody,
+			checkingParam2: paginationConfig.inBody,
+			paginationInBody: paginationInBody,
+			entireConfig: paginationConfig,
+		});
 
 		// Add pagination parameters to the appropriate location (query params or request body)
 		if (paginationConfig.type === 'offset') {
 			if (paginationInBody) {
 				requestBody[paginationConfig.limitParam] = pageSize;
 				requestBody[paginationConfig.offsetParam] = offset;
+				console.log('[PAGINATION DEBUG] Added offset params to REQUEST BODY:', {
+					[paginationConfig.limitParam]: pageSize,
+					[paginationConfig.offsetParam]: offset,
+					currentPage,
+					resultingBody: requestBody,
+				});
 			} else {
 				queryParams[paginationConfig.limitParam] = pageSize;
 				queryParams[paginationConfig.offsetParam] = offset;
+				console.log('[PAGINATION DEBUG] Added offset params to QUERY PARAMS:', {
+					[paginationConfig.limitParam]: pageSize,
+					[paginationConfig.offsetParam]: offset,
+					currentPage,
+					resultingQuery: queryParams,
+				});
 			}
 		} else if (paginationConfig.type === 'page') {
 			if (paginationInBody) {
@@ -804,17 +830,18 @@ async function processPaginatedApi(source, processingDetails, runManager) {
 		const apiCallStartTime = Date.now();
 		apiCallCounter++; // Increment API call counter
 
-		// console.log(`[Page ${currentPage}] Making API request with params:`, {
-		// 	method: processingDetails.requestConfig.method,
-		// 	url: processingDetails.apiEndpoint,
-		// 	queryParams,
-		// 	paginationParams:
-		// 		paginationConfig.type === 'offset'
-		// 			? { limit: pageSize, offset }
-		// 			: paginationConfig.type === 'page'
-		// 			? { limit: pageSize, page: currentPage + 1 }
-		// 			: { limit: pageSize, cursor },
-		// });
+		console.log(
+			`[PAGINATION DEBUG] Final request configuration for page ${currentPage}:`,
+			{
+				method: processingDetails.requestConfig.method,
+				url: processingDetails.apiEndpoint,
+				queryParams: JSON.stringify(queryParams),
+				requestBody: JSON.stringify(requestBody),
+				paginationInBody: paginationInBody,
+				offset: offset,
+				pageSize: pageSize,
+			}
+		);
 
 		const response = await makeConfiguredApiRequest({
 			method: processingDetails.requestConfig.method,
@@ -1149,72 +1176,90 @@ async function performFirstStageFiltering(
 			anthropicApiKey: process.env.ANTHROPIC_API_KEY,
 		});
 
-		const response = await model.invoke(prompt);
-		const result = await parser.parse(response.content);
+		try {
+			const response = await model.invoke(prompt);
+			const result = await parser.parse(response.content);
 
-		// Add filtered opportunities to combined results
-		combinedResults.filteredItems.push(...result.opportunities);
+			// Add filtered opportunities to combined results
+			combinedResults.filteredItems.push(...result.opportunities);
 
-		// Update metrics
+			// Update metrics
 
-		totalProcessed += chunkSize;
-		const chunkProcessingTime = Date.now() - chunkStartTime;
-		totalProcessingTime += chunkProcessingTime;
+			totalProcessed += chunkSize;
+			const chunkProcessingTime = Date.now() - chunkStartTime;
+			totalProcessingTime += chunkProcessingTime;
 
-		// Store chunk metrics
-		combinedResults.metrics.chunkMetrics.push({
-			chunkIndex: chunkIndex + 1,
-			chunkSize,
-			processedOpportunities: chunkSize,
-			passedCount: result.processingMetrics.passedCount,
-			rejectedCount: result.processingMetrics.rejectedCount,
-			processingTime: chunkProcessingTime,
-			averageTimePerItem: Math.round(chunkProcessingTime / chunkSize),
-			estimatedTokens: Math.round(JSON.stringify(chunk).length / 4),
-		});
+			// Store chunk metrics
+			combinedResults.metrics.chunkMetrics.push({
+				chunkIndex: chunkIndex + 1,
+				chunkSize,
+				processedOpportunities: chunkSize,
+				passedCount: result.processingMetrics.passedCount,
+				rejectedCount: result.processingMetrics.rejectedCount,
+				processingTime: chunkProcessingTime,
+				averageTimePerItem: Math.round(chunkProcessingTime / chunkSize),
+				estimatedTokens: Math.round(JSON.stringify(chunk).length / 4),
+			});
 
-		// Update counts and metrics as before...
-		combinedResults.metrics.passedCount += result.processingMetrics.passedCount;
-		combinedResults.metrics.rejectedCount +=
-			result.processingMetrics.rejectedCount;
-		combinedResults.metrics.rejectionReasons = [
-			...new Set([
-				...combinedResults.metrics.rejectionReasons,
-				...result.processingMetrics.rejectionReasons,
-			]),
-		];
+			// Update counts and metrics as before...
+			combinedResults.metrics.passedCount +=
+				result.processingMetrics.passedCount;
+			combinedResults.metrics.rejectedCount +=
+				result.processingMetrics.rejectedCount;
+			combinedResults.metrics.rejectionReasons = [
+				...new Set([
+					...combinedResults.metrics.rejectionReasons,
+					...result.processingMetrics.rejectionReasons,
+				]),
+			];
 
-		// Update weighted averages for scores
-		combinedResults.metrics.averageScoreBeforeFiltering =
-			(combinedResults.metrics.averageScoreBeforeFiltering *
-				(totalProcessed - chunkSize) +
-				result.processingMetrics.averageScoreBeforeFiltering * chunkSize) /
-			totalProcessed;
+			// Update weighted averages for scores
+			combinedResults.metrics.averageScoreBeforeFiltering =
+				(combinedResults.metrics.averageScoreBeforeFiltering *
+					(totalProcessed - chunkSize) +
+					result.processingMetrics.averageScoreBeforeFiltering * chunkSize) /
+				totalProcessed;
 
-		combinedResults.metrics.averageScoreAfterFiltering =
-			(combinedResults.metrics.averageScoreAfterFiltering *
-				(totalProcessed - chunkSize) +
-				result.processingMetrics.averageScoreAfterFiltering * chunkSize) /
-			totalProcessed;
+			combinedResults.metrics.averageScoreAfterFiltering =
+				(combinedResults.metrics.averageScoreAfterFiltering *
+					(totalProcessed - chunkSize) +
+					result.processingMetrics.averageScoreAfterFiltering * chunkSize) /
+				totalProcessed;
 
-		// Append filter reasoning
-		if (result.processingMetrics.filterReasoning) {
-			combinedResults.metrics.filterReasoning +=
-				(combinedResults.metrics.filterReasoning ? ' ' : '') +
-				result.processingMetrics.filterReasoning;
+			// Append filter reasoning
+			if (result.processingMetrics.filterReasoning) {
+				combinedResults.metrics.filterReasoning +=
+					(combinedResults.metrics.filterReasoning ? ' ' : '') +
+					result.processingMetrics.filterReasoning;
+			}
+
+			console.log(`Chunk ${chunkIndex + 1} complete:`, {
+				processedInChunk: chunkSize,
+				totalProcessed,
+				passedInChunk: result.processingMetrics.passedCount,
+				rejectedInChunk: result.processingMetrics.rejectedCount,
+				chunkProcessingTime: `${(chunkProcessingTime / 1000).toFixed(2)}s`,
+				averageTimePerItem: `${(chunkProcessingTime / chunkSize).toFixed(2)}ms`,
+				overallProgress: `${Math.round(
+					(totalProcessed / opportunities.length) * 100
+				)}%`,
+			});
+		} catch (error) {
+			console.error(
+				`Error parsing LLM output in performFirstStageFiltering (chunk ${
+					chunkIndex + 1
+				}/${totalChunks}):`,
+				error
+			);
+			// Add more detailed logging if needed
+			if (error.llmOutput) {
+				console.error('LLM Output that failed parsing:', error.llmOutput);
+			}
+			// Decide how to handle the error: skip chunk, retry, or fail?
+			// For now, let's log and skip the chunk's results
+			combinedResults.metrics.parsingErrors += 1;
+			continue; // Skip to the next chunk
 		}
-
-		console.log(`Chunk ${chunkIndex + 1} complete:`, {
-			processedInChunk: chunkSize,
-			totalProcessed,
-			passedInChunk: result.processingMetrics.passedCount,
-			rejectedInChunk: result.processingMetrics.rejectedCount,
-			chunkProcessingTime: `${(chunkProcessingTime / 1000).toFixed(2)}s`,
-			averageTimePerItem: `${(chunkProcessingTime / chunkSize).toFixed(2)}ms`,
-			overallProgress: `${Math.round(
-				(totalProcessed / opportunities.length) * 100
-			)}%`,
-		});
 	}
 
 	// Calculate final metrics
@@ -1628,23 +1673,19 @@ function formatPrompt(template, variables, options = {}) {
  */
 async function processApiHandler(source, processingDetails, runManager) {
 	// console.log('Starting API handler processing for source:', source.name);
-	// console.log('Processing details:', {
-	// 	requestConfig: {
-	// 		...processingDetails.requestConfig,
-	// 		headers: processingDetails.requestConfig.headers
-	// 			? 'Headers present'
-	// 			: 'No headers',
-	// 	},
-	// 	paginationConfig: processingDetails.paginationConfig
-	// 		? 'Pagination enabled'
-	// 		: 'No pagination',
-	// 	responseConfig: processingDetails.responseConfig
-	// 		? 'Response config present'
-	// 		: 'No response config',
-	// 	detailConfig: processingDetails.detailConfig?.enabled
-	// 		? 'Detail fetching enabled'
-	// 		: 'No detail fetching',
-	// });
+	const startTime = Date.now();
+	let initialApiMetrics = {
+		/* ... */
+	};
+	let firstStageMetrics = {
+		/* ... */
+	};
+	let detailApiMetrics = {
+		/* ... */
+	};
+	let filteredItems = [];
+	let detailedOpportunities = [];
+	let rawResponseId = null; // Initialize rawResponseId
 
 	try {
 		// Step 1: Process the paginated API
@@ -1654,6 +1695,8 @@ async function processApiHandler(source, processingDetails, runManager) {
 			processingDetails,
 			runManager
 		);
+		// Merge initial API metrics collected during pagination
+		initialApiMetrics = { ...initialApiMetrics, ...apiMetrics };
 
 		console.log('API processing complete:', {
 			resultsCount: results.length,
@@ -1670,34 +1713,63 @@ async function processApiHandler(source, processingDetails, runManager) {
 		for (const result of results) {
 			const items = extractDataByPath(result, responseDataPath);
 			if (Array.isArray(items)) {
-				console.log(`Extracted ${items.length} items from result`);
+				// console.log(`Extracted ${items.length} items from result`); // Less verbose log
 				allOpportunities.push(...items);
 			} else {
 				console.warn('Extracted data is not an array:', typeof items);
 			}
 		}
 
-		console.log(`Total opportunities extracted: ${allOpportunities.length}`);
+		console.log(
+			`Total opportunities extracted from API: ${allOpportunities.length}`
+		);
 
-		// Log sample opportunity structure
+		// --- BEGIN ADDED DUPLICATE CHECK LOGGING ---
 		if (allOpportunities.length > 0) {
-			const sampleOpp = allOpportunities[0];
-			console.log('Sample opportunity structure:', {
-				keys: Object.keys(sampleOpp),
-				hasId: !!sampleOpp.id,
-				idValue: sampleOpp.id,
-				sampleValues: Object.entries(sampleOpp)
-					.slice(0, 5)
-					.map(([key, value]) => ({
-						key,
-						type: typeof value,
-						preview:
-							typeof value === 'string'
-								? value.substring(0, 50) + (value.length > 50 ? '...' : '')
-								: value,
-					})),
-			});
+			const allIds = allOpportunities
+				.map((opp) => opp?.id) // Use optional chaining for safety
+				.filter((id) => id !== undefined && id !== null); // Filter out missing IDs
+
+			if (allIds.length !== allOpportunities.length) {
+				console.warn(
+					`[DUPLICATE CHECK] Some extracted opportunities (${
+						allOpportunities.length - allIds.length
+					}) are missing an 'id'.`
+				);
+			}
+
+			const uniqueIds = new Set(allIds);
+			console.log(
+				`[DUPLICATE CHECK] Extracted unique opportunity IDs: ${uniqueIds.size}`
+			);
+
+			if (uniqueIds.size < allIds.length) {
+				console.error(
+					`[DUPLICATE CHECK] !! DUPLICATES DETECTED in raw extracted data !!`
+				);
+				const idCounts = allIds.reduce((acc, id) => {
+					acc[id] = (acc[id] || 0) + 1;
+					return acc;
+				}, {});
+				const duplicates = Object.entries(idCounts)
+					.filter(([id, count]) => count > 1)
+					.map(([id, count]) => ({ id, count }));
+				console.error(
+					`[DUPLICATE CHECK] Duplicate IDs and counts:`,
+					duplicates
+				);
+			} else {
+				console.log(
+					`[DUPLICATE CHECK] No duplicates found in raw extracted data.`
+				);
+			}
+		} else {
+			console.log('[DUPLICATE CHECK] No opportunities extracted to check.');
 		}
+		// --- END ADDED DUPLICATE CHECK LOGGING ---
+
+		// Log sample opportunity structure (optional, can keep or remove)
+		// if (allOpportunities.length > 0) { ... }
 
 		// Step 2: Perform first stage filtering
 		console.log('Step 2: Performing first stage filtering');
