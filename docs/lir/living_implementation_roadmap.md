@@ -20,6 +20,29 @@ This section highlights the highest priority tasks to be completed next:
 
 7. **Admin Interface - Run Filtering and Search**: Add filtering and search capabilities to the runs listing interface.
 
+## Dynamic Source Prioritization Implementation
+
+Tasks to implement dynamic source prioritization:
+
+1. [ ] Remove unused `priority` field from `api_sources` table
+
+   - Create migration to safely remove the field
+   - Update any code references to use dynamic prioritization instead
+
+2. [ ] Implement dynamic prioritization system:
+
+   - [ ] Create `calculate_source_priority` function that calculates priority based on:
+     - Update frequency (hourly, daily, weekly, monthly)
+     - Time elapsed since last check
+     - Whether source has been checked before
+   - [ ] Update `get_next_api_source_to_process` to use the new calculation
+   - [ ] Add monitoring to verify prioritization is working as expected
+
+3. [ ] Add priority score visibility to admin interface:
+   - [ ] Show calculated priority score in source list
+   - [ ] Add sorting by dynamic priority
+   - [ ] Add filtering options for priority-related fields
+
 ## Table of Contents
 
 - [Funding API Processing System](#funding-api-processing-system)
@@ -43,6 +66,11 @@ This section highlights the highest priority tasks to be completed next:
 - [Client Matching System](#client-matching-system)
   - [Overview](#client-matching-overview)
   - [Implementation Status](#client-matching-implementation)
+
+## API Source Keywords
+
+Production keywords for API source configurations:
+`energy, building, mobility, solar, battery, modernization, hvac, lighting, water, climate, carbon, school, infrastructure, roof, transportation, construction`
 
 <a id="funding-api-processing-system"></a>
 
