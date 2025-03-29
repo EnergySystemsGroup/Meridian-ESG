@@ -283,6 +283,7 @@ export async function processOpportunitiesBatch(
 			sanitized.source_id = sourceId;
 			sanitized.created_at = new Date().toISOString();
 			sanitized.updated_at = new Date().toISOString();
+			sanitized.raw_response_id = rawResponseId;
 
 			return sanitized;
 		}
@@ -549,6 +550,20 @@ export async function processOpportunitiesBatch(
 
 					// Create a new update object with ONLY changed fields to minimize updates
 					const limitedUpdateData = { updated_at: new Date().toISOString() };
+
+					// If raw_response_id is provided and different from existing, update it
+					if (
+						rawResponseId &&
+						existingOpportunity.raw_response_id !== rawResponseId
+					) {
+						limitedUpdateData.raw_response_id = rawResponseId;
+						changedFields.push({
+							field: 'raw_response_id',
+							oldValue: existingOpportunity.raw_response_id,
+							newValue: rawResponseId,
+							note: 'Updated link to raw API response',
+						});
+					}
 
 					// Fields we want to potentially update
 					const criticalFieldsMap = {

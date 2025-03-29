@@ -1831,7 +1831,9 @@ async function processApiHandler(source, processingDetails, runManager) {
 				filter: filterMetrics,
 				detail: detailMetrics,
 			},
-			rawApiResponse: results,
+			// Use the actual complete detailed responses, not just samples
+			rawApiResponse:
+				detailedItems && detailedItems.length > 0 ? detailedItems : results,
 			requestDetails: {
 				source: source,
 				processingDetails: processingDetails,
@@ -1840,6 +1842,43 @@ async function processApiHandler(source, processingDetails, runManager) {
 	} catch (error) {
 		console.error('Error in API handler processing:', error);
 		throw error;
+	}
+}
+
+/**
+ * Store a raw API response in the database
+ * @param {Object} sourceId - The source ID
+ * @param {Array} rawResponse - The raw API response
+ * @param {Object} requestDetails - Details about the request
+ * @returns {Promise<string>} - The ID of the stored raw response
+ */
+async function storeRawResponse(sourceId, rawResponse, requestDetails) {
+	const supabase = createSupabaseClient();
+	const rawResponseId = crypto.randomUUID
+		? crypto.randomUUID()
+		: 'test-' + Math.random().toString(36).substring(2, 15);
+
+	try {
+		// Store the raw response in the database
+		const { error } = await supabase.from('api_raw_responses').insert({
+			id: rawResponseId,
+			source_id: sourceId,
+			content: rawResponse,
+			request_details: requestDetails,
+			timestamp: new Date().toISOString(),
+			created_at: new Date().toISOString(),
+		});
+
+		if (error) {
+			console.error('Error storing raw response:', error);
+			// Still return the ID even if there was an error, so processing can continue
+		}
+
+		return rawResponseId;
+	} catch (error) {
+		console.error('Error in storeRawResponse:', error);
+		// Return the generated ID even if there was an error
+		return rawResponseId;
 	}
 }
 
@@ -1868,17 +1907,19 @@ export async function apiHandlerAgent(
 			runManager
 		);
 
-		// Generate a rawResponseId if needed for database storage
-		const rawResponseId = crypto.randomUUID
-			? crypto.randomUUID()
-			: 'test-' + Math.random().toString(36).substring(2, 15);
+		// Store the raw API response in the database
+		const rawResponseId = await storeRawResponse(
+			source.id,
+			result.rawApiResponse,
+			result.requestDetails
+		);
 
 		// Format the result for the next stage
 		const formattedResult = {
 			firstStageMetrics: result.metrics.filter,
 			opportunities: result.items,
 			initialApiMetrics: result.metrics.api,
-			rawResponseId: rawResponseId, // Add the rawResponseId to the result
+			rawResponseId: rawResponseId,
 			detailApiMetrics: result.metrics.detail,
 			rawApiResponse: result.rawApiResponse,
 			requestDetails: result.requestDetails,
