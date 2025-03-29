@@ -1831,7 +1831,7 @@ async function processApiHandler(source, processingDetails, runManager) {
 				filter: filterMetrics,
 				detail: detailMetrics,
 			},
-			// Use the actual complete detailed responses, not just samples
+			// When detail config is enabled, include the detailed responses
 			rawApiResponse:
 				detailedItems && detailedItems.length > 0 ? detailedItems : results,
 			requestDetails: {
@@ -1854,16 +1854,55 @@ async function processApiHandler(source, processingDetails, runManager) {
  */
 async function storeRawResponse(sourceId, rawResponse, requestDetails) {
 	const supabase = createSupabaseClient();
-	const rawResponseId = crypto.randomUUID
-		? crypto.randomUUID()
-		: 'test-' + Math.random().toString(36).substring(2, 15);
 
 	try {
-		// Store the raw response in the database
+		// Generate a content hash to check for duplicates
+		let contentHash;
+		if (typeof rawResponse === 'object') {
+			// Sort keys to ensure consistent hashing regardless of key order
+			const normalizedContent = JSON.stringify(
+				rawResponse,
+				Object.keys(rawResponse).sort()
+			);
+			contentHash = crypto
+				.createHash('sha256')
+				.update(normalizedContent)
+				.digest('hex');
+		} else {
+			contentHash = crypto
+				.createHash('sha256')
+				.update(String(rawResponse))
+				.digest('hex');
+		}
+
+		// Check if this exact content hash already exists for this source
+		const { data: existingResponse } = await supabase
+			.from('api_raw_responses')
+			.select('id')
+			.eq('source_id', sourceId)
+			.eq('content_hash', contentHash)
+			.limit(1);
+
+		// If a duplicate exists, return its ID
+		if (existingResponse && existingResponse.length > 0) {
+			console.log(
+				'Duplicate raw response found, reusing existing ID:',
+				existingResponse[0].id
+			);
+			return existingResponse[0].id;
+		}
+
+		// No duplicate found, create new record
+		const rawResponseId = crypto.randomUUID
+			? crypto.randomUUID()
+			: 'test-' + Math.random().toString(36).substring(2, 15);
+
+		// Store the raw response in the database with the content hash
 		const { error } = await supabase.from('api_raw_responses').insert({
 			id: rawResponseId,
 			source_id: sourceId,
 			content: rawResponse,
+			content_hash: contentHash,
 			request_details: requestDetails,
 			timestamp: new Date().toISOString(),
 			created_at: new Date().toISOString(),
@@ -1877,8 +1916,11 @@ async function storeRawResponse(sourceId, rawResponse, requestDetails) {
 		return rawResponseId;
 	} catch (error) {
 		console.error('Error in storeRawResponse:', error);
-		// Return the generated ID even if there was an error
-		return rawResponseId;
+		// Generate and return an ID even if there was an error
+		const fallbackId = crypto.randomUUID
+			? crypto.randomUUID()
+			: 'test-' + Math.random().toString(36).substring(2, 15);
+		return fallbackId;
 	}
 }
 
@@ -1894,11 +1936,6 @@ export async function apiHandlerAgent(
 	processingDetails,
 	runManager = null
 ) {
-	// Log the start of the API Handler Agent
-	// console.log(
-	// 	`Starting API Handler Agent for source: ${source.name} (${source.id})`
-	// );
-
 	try {
 		// Process the API handler
 		const result = await processApiHandler(
@@ -1907,19 +1944,83 @@ export async function apiHandlerAgent(
 			runManager
 		);
 
-		// Store the raw API response in the database
-		const rawResponseId = await storeRawResponse(
-			source.id,
-			result.rawApiResponse,
-			result.requestDetails
-		);
+		// Initialize an array to store multiple raw response IDs (one per opportunity)
+		let rawResponseIds = [];
+		let singleRawResponseId = null;
+
+		// Handle the case where we have detailed responses (an array of items)
+		if (
+			processingDetails.detailConfig?.enabled &&
+			Array.isArray(result.rawApiResponse) &&
+			result.items &&
+			result.items.length > 0
+		) {
+			console.log(
+				`Debug - Processing ${result.rawApiResponse.length} detailed responses for ${result.items.length} items`
+			);
+
+			// For each detailed response, store it individually
+			for (let i = 0; i < result.rawApiResponse.length; i++) {
+				if (i < result.items.length) {
+					console.log(
+						`Debug - Storing raw response for item ${i} with ID ${result.items[i].id}`
+					);
+
+					const itemRawResponseId = await storeRawResponse(
+						source.id,
+						result.rawApiResponse[i],
+						result.requestDetails
+					);
+
+					console.log(
+						`Debug - Generated raw response ID: ${itemRawResponseId} for item ID: ${result.items[i].id}`
+					);
+
+					// Add the raw response ID to the array
+					rawResponseIds.push({
+						itemId: result.items[i].id,
+						rawResponseId: itemRawResponseId,
+					});
+				}
+			}
+
+			console.log(
+				`Debug - Created ${rawResponseIds.length} rawResponseIds mappings`
+			);
+		} else {
+			// For non-detailed responses, store the entire response once
+			console.log(`Debug - Storing single raw response for all items`);
+
+			singleRawResponseId = await storeRawResponse(
+				source.id,
+				result.rawApiResponse,
+				result.requestDetails
+			);
+
+			console.log(
+				`Debug - Generated single raw response ID: ${singleRawResponseId}`
+			);
+
+			// Use the single ID for all opportunities
+			if (result.items && result.items.length > 0) {
+				rawResponseIds = result.items.map((item) => ({
+					itemId: item.id,
+					rawResponseId: singleRawResponseId,
+				}));
+
+				console.log(
+					`Debug - Created ${rawResponseIds.length} mappings all using the same raw response ID`
+				);
+			}
+		}
 
 		// Format the result for the next stage
 		const formattedResult = {
 			firstStageMetrics: result.metrics.filter,
 			opportunities: result.items,
 			initialApiMetrics: result.metrics.api,
-			rawResponseId: rawResponseId,
+			rawResponseIds: rawResponseIds, // Array of {itemId, rawResponseId} objects for each opportunity
+			singleRawResponseId: singleRawResponseId, // For backwards compatibility
 			detailApiMetrics: result.metrics.detail,
 			rawApiResponse: result.rawApiResponse,
 			requestDetails: result.requestDetails,
@@ -1927,12 +2028,11 @@ export async function apiHandlerAgent(
 
 		console.log('API Handler Agent completed successfully:', {
 			opportunitiesCount: formattedResult.opportunities.length,
+			rawResponseIdsCount: formattedResult.rawResponseIds.length,
 			hasInitialApiMetrics: !!formattedResult.initialApiMetrics,
 			hasFirstStageMetrics: !!formattedResult.firstStageMetrics,
 			hasDetailApiMetrics: !!formattedResult.detailApiMetrics,
-			rawApiResponseLength: formattedResult.rawApiResponse?.length,
-			hasRequestDetails: !!formattedResult.requestDetails,
-			rawResponseId: rawResponseId, // Log the rawResponseId
+			singleRawResponseId: singleRawResponseId,
 		});
 
 		return formattedResult;

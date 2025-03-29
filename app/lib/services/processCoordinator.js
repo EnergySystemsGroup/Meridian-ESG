@@ -162,11 +162,82 @@ export async function processApiSource(sourceId = null, runId = null) {
 		await runManager.updateStageStatus('data_processor_status', 'processing');
 		console.time('processOpportunitiesBatch');
 
-		// Directly process the opportunities without storing in an intermediate table
+		// Create a map of opportunity IDs to their raw response IDs
+		const rawResponseIdMap = new Map();
+
+		console.log(
+			'Debug - handlerResult.rawResponseIds:',
+			handlerResult.rawResponseIds
+		);
+		console.log(
+			'Debug - handlerResult.singleRawResponseId:',
+			handlerResult.singleRawResponseId
+		);
+
+		if (
+			handlerResult.rawResponseIds &&
+			handlerResult.rawResponseIds.length > 0
+		) {
+			// Use the new rawResponseIds array which maps each opportunity to its raw response
+			handlerResult.rawResponseIds.forEach((item) => {
+				if (item.itemId && item.rawResponseId) {
+					// Convert itemId to string to ensure consistent format
+					const itemIdString = String(item.itemId);
+					rawResponseIdMap.set(itemIdString, item.rawResponseId);
+					console.log(
+						`Debug - Mapping opportunity ID ${itemIdString} to raw response ID ${item.rawResponseId}`
+					);
+				}
+			});
+
+			console.log(
+				`Created raw response ID map for ${rawResponseIdMap.size} opportunities`
+			);
+		} else if (handlerResult.singleRawResponseId) {
+			// Fallback to the legacy single rawResponseId for all opportunities
+			console.log(
+				`Using single raw response ID for all opportunities: ${handlerResult.singleRawResponseId}`
+			);
+		}
+
+		// For each opportunity, find its corresponding raw response ID
+		const opportunitiesWithRawIds = detailResult.opportunities.map(
+			(opportunity) => {
+				// Ensure opportunity.id is converted to string for consistent matching
+				const opportunityIdString = opportunity.id
+					? String(opportunity.id)
+					: null;
+				const rawResponseId = opportunityIdString
+					? rawResponseIdMap.get(opportunityIdString) ||
+					  handlerResult.singleRawResponseId
+					: handlerResult.singleRawResponseId;
+
+				console.log(
+					`Debug - Opportunity ID ${opportunityIdString} mapped to raw response ID ${rawResponseId}`
+				);
+
+				return {
+					opportunity,
+					rawResponseId,
+				};
+			}
+		);
+
+		// Log the first few opportunities with their raw IDs
+		console.log(
+			'Debug - First 3 opportunitiesWithRawIds:',
+			opportunitiesWithRawIds.slice(0, 3).map((o) => ({
+				id: o.opportunity.id,
+				title: o.opportunity.title,
+				rawResponseId: o.rawResponseId,
+			}))
+		);
+
+		// Process the opportunities with their specific raw response IDs
 		const storageResult = await processOpportunitiesBatch(
-			detailResult.opportunities,
+			opportunitiesWithRawIds,
 			source.id,
-			handlerResult.rawResponseId,
+			handlerResult.singleRawResponseId, // For backwards compatibility
 			runManager
 		);
 		console.timeEnd('processOpportunitiesBatch');

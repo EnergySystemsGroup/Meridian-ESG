@@ -2,24 +2,30 @@ import { createSupabaseClient, logApiActivity } from '../supabase';
 
 /**
  * Process a batch of opportunities
- * @param {Array} opportunities - Array of opportunities to process
+ * @param {Array} opportunitiesWithRawIds - Array of objects with {opportunity, rawResponseId}
  * @param {string} sourceId - The ID of the source
- * @param {string} rawResponseId - The ID of the already stored raw API response
+ * @param {string} legacyRawResponseId - Legacy parameter, used as fallback if individual rawResponseIds are not provided
  * @param {Object} runManager - Optional RunManager instance for tracking
  * @returns {Promise<Object>} - The processing results with new, updated, and ignored opportunities
  */
 export async function processOpportunitiesBatch(
-	opportunities,
+	opportunitiesWithRawIds,
 	sourceId,
-	rawResponseId,
+	legacyRawResponseId,
 	runManager = null
 ) {
-	console.log('Processing opportunities batch:', opportunities);
+	console.log(
+		'Processing opportunities batch, count:',
+		opportunitiesWithRawIds.length
+	);
 
 	const supabase = createSupabaseClient();
 	const startTime = Date.now();
 
 	try {
+		// Extract opportunities from the opportunitiesWithRawIds structure
+		const opportunities = opportunitiesWithRawIds.map((o) => o.opportunity);
+
 		// Initialize results
 		const result = {
 			newOpportunities: [],
@@ -245,7 +251,16 @@ export async function processOpportunitiesBatch(
 
 		// Function to sanitize opportunity data for the database
 		// Converting camelCase to snake_case and filtering out non-existent columns
-		function sanitizeOpportunityForDatabase(opportunity) {
+		function sanitizeOpportunityForDatabase(
+			opportunity,
+			specificRawResponseId
+		) {
+			console.log(
+				'Debug - sanitizeOpportunityForDatabase called with specificRawResponseId:',
+				specificRawResponseId
+			);
+			console.log('Debug - legacyRawResponseId:', legacyRawResponseId);
+
 			// Map of camelCase to snake_case fields
 			const fieldMap = {
 				title: 'title',
@@ -283,14 +298,24 @@ export async function processOpportunitiesBatch(
 			sanitized.source_id = sourceId;
 			sanitized.created_at = new Date().toISOString();
 			sanitized.updated_at = new Date().toISOString();
-			sanitized.raw_response_id = rawResponseId;
+
+			// Use the specific raw response ID for this opportunity if available
+			sanitized.raw_response_id = specificRawResponseId || legacyRawResponseId;
+
+			console.log(
+				'Debug - Final raw_response_id in sanitized data:',
+				sanitized.raw_response_id
+			);
 
 			return sanitized;
 		}
 
 		// Process each opportunity
-		for (const opportunity of opportunities) {
-			console.log(`Processing opportunity: ${opportunity.title}`);
+		for (let i = 0; i < opportunitiesWithRawIds.length; i++) {
+			const { opportunity, rawResponseId } = opportunitiesWithRawIds[i];
+			console.log(
+				`Processing opportunity: ${opportunity.title}, raw_response_id: ${rawResponseId}`
+			);
 
 			// Process funding source first
 			const fundingSourceId = await getOrCreateFundingSource(
@@ -316,7 +341,10 @@ export async function processOpportunitiesBatch(
 			// If no match by ID, try matching by title
 			if (!existingOpportunity) {
 				// Sanitize opportunity data for database insertion
-				const opportunityData = sanitizeOpportunityForDatabase(opportunity);
+				const opportunityData = sanitizeOpportunityForDatabase(
+					opportunity,
+					rawResponseId
+				);
 
 				// Add funding source ID
 				if (fundingSourceId) {
@@ -332,6 +360,13 @@ export async function processOpportunitiesBatch(
 					Object.keys(opportunityData).join(', ')
 				);
 
+				// Debug log for raw_response_id
+				console.log('Debug - Raw response ID to insert:', rawResponseId);
+				console.log(
+					'Debug - Raw response ID in opportunityData:',
+					opportunityData.raw_response_id
+				);
+
 				// Insert new opportunity
 				const { data: insertData, error: insertError } = await supabase
 					.from('funding_opportunities')
@@ -343,6 +378,12 @@ export async function processOpportunitiesBatch(
 					console.error('Error inserting opportunity:', insertError);
 					continue;
 				}
+
+				// Debug log for inserted data
+				console.log(
+					'Debug - Inserted data raw_response_id:',
+					insertData.raw_response_id
+				);
 
 				result.newOpportunities.push(insertData);
 				result.metrics.new++;
@@ -430,11 +471,11 @@ export async function processOpportunitiesBatch(
 
 						const fieldMap = {
 							status: 'status',
-							openDate: 'open_date',
-							closeDate: 'close_date',
-							minimumAward: 'minimum_award',
-							maximumAward: 'maximum_award',
-							totalFundingAvailable: 'total_funding_available',
+							open_date: 'openDate',
+							close_date: 'closeDate',
+							minimum_award: 'minimumAward',
+							maximum_award: 'maximumAward',
+							total_funding_available: 'totalFundingAvailable',
 						};
 
 						const dbFieldName = fieldMap[key];
@@ -529,7 +570,10 @@ export async function processOpportunitiesBatch(
 					}
 
 					// Sanitize opportunity data for database update
-					const updateData = sanitizeOpportunityForDatabase(opportunity);
+					const updateData = sanitizeOpportunityForDatabase(
+						opportunity,
+						rawResponseId
+					);
 					// For updates, we only want to update the timestamp
 					updateData.created_at = undefined; // Remove created_at for updates
 
