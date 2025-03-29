@@ -28,11 +28,28 @@ ADD COLUMN IF NOT EXISTS program_id UUID REFERENCES funding_programs(id);
 ALTER TABLE funding_sources 
 ADD COLUMN IF NOT EXISTS agency_type TEXT;
 
--- Create trigger for funding_programs
-CREATE TRIGGER update_funding_programs_updated_at
-BEFORE UPDATE ON funding_programs
-FOR EACH ROW
-EXECUTE FUNCTION update_updated_at_column();
+-- Create or replace the update_updated_at_column function (safe to run again)
+CREATE OR REPLACE FUNCTION update_updated_at_column()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.updated_at = NOW();
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Create trigger for funding_programs ONLY IF IT DOESN'T EXIST
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_trigger WHERE tgname = 'update_funding_programs_updated_at' AND tgrelid = 'funding_programs'::regclass
+    ) THEN
+        CREATE TRIGGER update_funding_programs_updated_at
+        BEFORE UPDATE ON funding_programs
+        FOR EACH ROW
+        EXECUTE FUNCTION update_updated_at_column();
+    END IF;
+END
+$$;
 
 -- Create indexes for better query performance
 CREATE INDEX IF NOT EXISTS idx_funding_programs_source_id ON funding_programs(source_id);

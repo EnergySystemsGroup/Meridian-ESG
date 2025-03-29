@@ -105,6 +105,9 @@ VALUES
     ('District of Columbia', 'DC', 'South')
 ON CONFLICT (code) DO NOTHING;
 
+-- Drop the existing view if it exists, before attempting to replace it
+DROP VIEW IF EXISTS public.funding_opportunities_with_geography CASCADE;
+
 -- Create a view for funding opportunities with geographic eligibility
 -- Only create this if the funding_programs and funding_sources tables exist
 DO $$
@@ -121,14 +124,41 @@ BEGIN
         EXECUTE '
         CREATE OR REPLACE VIEW funding_opportunities_with_geography AS
         SELECT 
-            fo.*,
+            -- Core columns from funding_opportunities that definitely exist at this point
+            fo.id,
+            fo.title,
+            fo.opportunity_number,
+            fo.source_name,
+            fo.source_type,
+            fo.min_amount,
+            fo.max_amount,
+            fo.cost_share_required,
+            fo.cost_share_percentage,
+            fo.posted_date,
+            fo.open_date,
+            fo.close_date,
+            fo.description,
+            fo.objectives,
+            fo.eligibility,
+            fo.program_id,
+            fo.source_id,
+            fo.status,
+            fo.url,
+            fo.created_at,
+            fo.updated_at,
+            
+            -- Add the derived columns
             COALESCE(fp.name, ''Unknown Program'') AS program_name,
-            COALESCE(fs.name, ''Unknown Source'') AS source_name,
-            COALESCE(fs.agency_type, ''Unknown'') AS source_type,
-            CASE 
+            COALESCE(fs.name, ''Unknown Source'') AS source_display_name,
+            COALESCE(fs.agency_type::text, ''Unknown'') AS source_type_display,
+            
+            -- Handle is_national
+            CASE
                 WHEN fo.is_national THEN true
                 ELSE false
-            END AS is_national,
+            END AS is_national_flag,
+            
+            -- Add the eligibility array
             ARRAY(
                 SELECT s.code
                 FROM opportunity_state_eligibility ose
@@ -154,18 +184,18 @@ BEGIN
         WHERE table_schema = 'public' 
         AND table_name = 'funding_opportunities_with_geography'
     ) THEN
-        EXECUTE '
-        CREATE OR REPLACE FUNCTION get_opportunities_by_state(state_code TEXT)
-        RETURNS SETOF funding_opportunities_with_geography AS $$
+        EXECUTE 
+        'CREATE OR REPLACE FUNCTION get_opportunities_by_state(state_code TEXT)
+        RETURNS SETOF funding_opportunities_with_geography AS $FUNC$
         BEGIN
             RETURN QUERY
             SELECT *
             FROM funding_opportunities_with_geography
             WHERE 
-                is_national = true 
+                is_national_flag = true 
                 OR state_code = ANY(eligible_states);
         END;
-        $$ LANGUAGE plpgsql';
+        $FUNC$ LANGUAGE plpgsql';
     END IF;
 END
 $$;
