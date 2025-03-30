@@ -7,6 +7,10 @@ import {
 	logApiActivity,
 } from '../supabase';
 import { z } from 'zod';
+import {
+	TAXONOMIES,
+	generateTaxonomyInstruction,
+} from '../constants/taxonomies';
 
 // Define the output schema for the agent
 const detailProcessingSchema = z.object({
@@ -112,7 +116,7 @@ const detailProcessingSchema = z.object({
 					.string()
 					.optional()
 					.nullable()
-					.describe('URL for more information'),
+					.describe('URL for the funding opportunity, if available'),
 				matchingRequired: z
 					.boolean()
 					.optional()
@@ -125,7 +129,9 @@ const detailProcessingSchema = z.object({
 				categories: z
 					.array(z.string())
 					.optional()
-					.describe('Relevant categories from our taxonomy'),
+					.describe(
+						'Funding categories as listed by, or deduced from the source data'
+					),
 				tags: z
 					.array(z.string())
 					.optional()
@@ -209,6 +215,19 @@ We focus on funding in these categories:
 - Climate & Resilience (e.g., adaptation, mitigation, carbon reduction)
 - Community & Economic Development (e.g., revitalization, workforce development)
 - Infrastructure & Planning (e.g., sustainable infrastructure, master planning)
+
+${generateTaxonomyInstruction(
+	'ELIGIBLE_PROJECT_TYPES',
+	'eligible project types'
+)}
+
+${generateTaxonomyInstruction('ELIGIBLE_APPLICANTS', 'eligible applicants')}
+
+${generateTaxonomyInstruction('CATEGORIES', 'funding categories')}
+
+${generateTaxonomyInstruction('FUNDING_TYPES', 'funding types')}
+
+${generateTaxonomyInstruction('ELIGIBLE_LOCATIONS', 'eligible locations')}
 
 For each opportunity, analyze:
 1. Eligibility requirements - Do they match our client types?
