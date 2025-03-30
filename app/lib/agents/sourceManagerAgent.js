@@ -61,7 +61,8 @@ const sourceProcessingSchema = z.object({
 			idParam: z.string().optional(),
 			responseDataPath: z
 				.string()
-				.optional()
+				.nullable()
+				.default('data')
 				.describe(
 					'Path to extract data from the detail response (e.g., "data" or "results.data")'
 				),
