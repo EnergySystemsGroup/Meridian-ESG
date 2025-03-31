@@ -114,7 +114,7 @@ ${taxonomy.join(', ')}
 If a ${fieldName.replace(
 		/s$/,
 		''
-	)} doesn't fit these categories, use "Other: [specific detail]"`;
+	)} doesn't fit these categories, you must use "Other: [specific detail]"`;
 }
 
 export default TAXONOMIES;
