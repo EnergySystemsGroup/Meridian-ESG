@@ -19,6 +19,7 @@ import {
 } from '../constants/taxonomies';
 import axios from 'axios';
 import crypto from 'crypto';
+import { processChunksInParallel } from '../utils/parallelProcessing';
 
 // Define the funding opportunity schema
 const fundingOpportunitySchema = z.object({
@@ -1160,20 +1161,16 @@ async function performFirstStageFiltering(
 	});
 
 	let totalProcessed = 0;
-	let totalProcessingTime = 0;
 
-	// Process each chunk
-	for (const chunk of chunks) {
+	// Define the function to process a single chunk
+	const processChunk = async (chunk, chunkIndex) => {
 		const chunkStartTime = Date.now();
-		const chunkIndex = chunks.indexOf(chunk);
 		const chunkSize = chunk.length;
 
 		console.log(`\n=== Processing Chunk ${chunkIndex + 1}/${totalChunks} ===`);
 		console.log(`\nProcessing chunk ${chunkIndex + 1}/${totalChunks}:`, {
 			chunkSize: chunk.length,
-			totalProcessedSoFar: totalProcessed,
 			estimatedTokens: Math.round(JSON.stringify(chunk).length / 4),
-			percentComplete: Math.round((chunkIndex / totalChunks) * 100),
 		});
 
 		const parser = StructuredOutputParser.fromZodSchema(
@@ -1197,18 +1194,10 @@ async function performFirstStageFiltering(
 		try {
 			const response = await model.invoke(prompt);
 			const result = await parser.parse(response.content);
-
-			// Add filtered opportunities to combined results
-			combinedResults.filteredItems.push(...result.opportunities);
-
-			// Update metrics
-
-			totalProcessed += chunkSize;
 			const chunkProcessingTime = Date.now() - chunkStartTime;
-			totalProcessingTime += chunkProcessingTime;
 
-			// Store chunk metrics
-			combinedResults.metrics.chunkMetrics.push({
+			// Build chunk metrics
+			const chunkMetrics = {
 				chunkIndex: chunkIndex + 1,
 				chunkSize,
 				processedOpportunities: chunkSize,
@@ -1217,51 +1206,23 @@ async function performFirstStageFiltering(
 				processingTime: chunkProcessingTime,
 				averageTimePerItem: Math.round(chunkProcessingTime / chunkSize),
 				estimatedTokens: Math.round(JSON.stringify(chunk).length / 4),
-			});
-
-			// Update counts and metrics as before...
-			combinedResults.metrics.passedCount +=
-				result.processingMetrics.passedCount;
-			combinedResults.metrics.rejectedCount +=
-				result.processingMetrics.rejectedCount;
-			combinedResults.metrics.rejectionReasons = [
-				...new Set([
-					...combinedResults.metrics.rejectionReasons,
-					...result.processingMetrics.rejectionReasons,
-				]),
-			];
-
-			// Update weighted averages for scores
-			combinedResults.metrics.averageScoreBeforeFiltering =
-				(combinedResults.metrics.averageScoreBeforeFiltering *
-					(totalProcessed - chunkSize) +
-					result.processingMetrics.averageScoreBeforeFiltering * chunkSize) /
-				totalProcessed;
-
-			combinedResults.metrics.averageScoreAfterFiltering =
-				(combinedResults.metrics.averageScoreAfterFiltering *
-					(totalProcessed - chunkSize) +
-					result.processingMetrics.averageScoreAfterFiltering * chunkSize) /
-				totalProcessed;
-
-			// Append filter reasoning
-			if (result.processingMetrics.filterReasoning) {
-				combinedResults.metrics.filterReasoning +=
-					(combinedResults.metrics.filterReasoning ? ' ' : '') +
-					result.processingMetrics.filterReasoning;
-			}
+			};
 
 			console.log(`Chunk ${chunkIndex + 1} complete:`, {
 				processedInChunk: chunkSize,
-				totalProcessed,
 				passedInChunk: result.processingMetrics.passedCount,
 				rejectedInChunk: result.processingMetrics.rejectedCount,
 				chunkProcessingTime: `${(chunkProcessingTime / 1000).toFixed(2)}s`,
 				averageTimePerItem: `${(chunkProcessingTime / chunkSize).toFixed(2)}ms`,
-				overallProgress: `${Math.round(
-					(totalProcessed / opportunities.length) * 100
-				)}%`,
 			});
+
+			return {
+				filteredItems: result.opportunities,
+				metrics: {
+					...result.processingMetrics,
+					chunkMetrics,
+				},
+			};
 		} catch (error) {
 			console.error(
 				`Error parsing LLM output in performFirstStageFiltering (chunk ${
@@ -1269,16 +1230,92 @@ async function performFirstStageFiltering(
 				}/${totalChunks}):`,
 				error
 			);
+
 			// Add more detailed logging if needed
 			if (error.llmOutput) {
 				console.error('LLM Output that failed parsing:', error.llmOutput);
 			}
-			// Decide how to handle the error: skip chunk, retry, or fail?
-			// For now, let's log and skip the chunk's results
-			combinedResults.metrics.parsingErrors += 1;
-			continue; // Skip to the next chunk
+
+			return {
+				filteredItems: [],
+				metrics: {
+					passedCount: 0,
+					rejectedCount: chunkSize,
+					rejectionReasons: ['Error processing chunk'],
+					averageScoreBeforeFiltering: 0,
+					averageScoreAfterFiltering: 0,
+					chunkMetrics: {
+						chunkIndex: chunkIndex + 1,
+						chunkSize,
+						processedOpportunities: 0,
+						passedCount: 0,
+						rejectedCount: chunkSize,
+						processingTime: Date.now() - chunkStartTime,
+						status: 'failed',
+					},
+					parsingError: error.message,
+				},
+			};
 		}
+	};
+
+	// Process all chunks in parallel with controlled concurrency
+	const chunkResults = await processChunksInParallel(chunks, processChunk, 5);
+
+	// Combine all results
+	for (const result of chunkResults) {
+		// Add filtered opportunities to combined results
+		combinedResults.filteredItems.push(...result.filteredItems);
+
+		// Update metrics
+		combinedResults.metrics.passedCount += result.metrics.passedCount;
+		combinedResults.metrics.rejectedCount += result.metrics.rejectedCount;
+
+		// Add unique rejection reasons
+		if (result.metrics.rejectionReasons) {
+			combinedResults.metrics.rejectionReasons = [
+				...new Set([
+					...combinedResults.metrics.rejectionReasons,
+					...result.metrics.rejectionReasons,
+				]),
+			];
+		}
+
+		// Update filter reasoning
+		if (result.metrics.filterReasoning) {
+			if (!combinedResults.metrics.filterReasoning) {
+				combinedResults.metrics.filterReasoning =
+					result.metrics.filterReasoning;
+			} else {
+				combinedResults.metrics.filterReasoning +=
+					' ' + result.metrics.filterReasoning;
+			}
+		}
+
+		// Add chunk metrics
+		if (result.metrics.chunkMetrics) {
+			combinedResults.metrics.chunkMetrics.push(result.metrics.chunkMetrics);
+		}
+
+		// Update total processed count
+		totalProcessed += result.metrics.chunkMetrics?.processedOpportunities || 0;
 	}
+
+	// Calculate weighted average scores
+	const filteredItems = combinedResults.filteredItems;
+	if (filteredItems.length > 0) {
+		combinedResults.metrics.averageScoreAfterFiltering =
+			filteredItems.reduce((sum, item) => sum + (item.relevanceScore || 0), 0) /
+			filteredItems.length;
+	}
+
+	// For averageScoreBeforeFiltering, we'd need to aggregate from each chunk
+	// This is a simplification - you might need to adjust based on your exact needs
+	combinedResults.metrics.averageScoreBeforeFiltering =
+		chunkResults.reduce(
+			(sum, result) => sum + (result.metrics.averageScoreBeforeFiltering || 0),
+			0
+		) / chunkResults.length;
 
 	// Calculate final metrics
 	const totalTime = Date.now() - startTime;
@@ -1293,16 +1330,7 @@ async function performFirstStageFiltering(
 		totalChunks,
 		filteredCount: combinedResults.filteredItems.length,
 		totalProcessingTime: `${(totalTime / 1000).toFixed(2)}s`,
-		averageTimePerChunk: `${(totalProcessingTime / totalChunks / 1000).toFixed(
-			2
-		)}s`,
 		averageTimePerItem: `${(totalTime / opportunities.length).toFixed(2)}ms`,
-		chunkSummary: combinedResults.metrics.chunkMetrics.map((m) => ({
-			chunk: m.chunkIndex,
-			processed: m.processedOpportunities,
-			passed: m.passedCount,
-			timeSeconds: (m.processingTime / 1000).toFixed(2),
-		})),
 	});
 
 	// After filtering is complete, log a sample opportunity

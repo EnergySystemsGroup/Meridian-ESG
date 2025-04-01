@@ -6,17 +6,19 @@ This document tracks the implementation status of all features in the Funding In
 
 This section highlights the highest priority tasks to be completed next:
 
-1. **Second Filter Performance Investigation**: Analyze why the second stage filter is taking significantly longer than the first stage filter despite having fewer opportunities to process. Investigate potential optimizations for the detailProcessorAgent.
+1. **Data Processor - Update Detection Improvement**: Verify and improve update detection logic to prevent false positives from minor LLM wording differences. Currently, opportunities may be incorrectly marked as "updated" when only the phrasing in description or summary fields has changed.
 
-2. **Data Processor - Update Detection Improvement**: Verify and improve update detection logic to prevent false positives from minor LLM wording differences. Currently, opportunities may be incorrectly marked as "updated" when only the phrasing in description or summary fields has changed.
+2. **Detail Processor - Adaptive Relevance Threshold**: Implement adaptive thresholds for relevance scores based on source quality and historical data.
 
-3. **Detail Processor - Adaptive Relevance Threshold**: Implement adaptive thresholds for relevance scores based on source quality and historical data.
+3. **API Handler - Support for Rate Limiting**: Add rate limiting and throttling capabilities to prevent API usage limits from being exceeded.
 
-4. **API Handler - Support for Rate Limiting**: Add rate limiting and throttling capabilities to prevent API usage limits from being exceeded.
+4. **Error Handling - Automatic Retry Mechanisms**: Implement automatic retry logic for transient failures in API calls.
 
-5. **Error Handling - Automatic Retry Mechanisms**: Implement automatic retry logic for transient failures in API calls.
+5. **Admin Interface - Run Filtering and Search**: Add filtering and search capabilities to the runs listing interface.
 
-6. **Admin Interface - Run Filtering and Search**: Add filtering and search capabilities to the runs listing interface.
+## Recently Completed Tasks
+
+1. **Parallel Processing for Filters**: Implemented parallel processing for both first and second stage filters to improve performance. The second stage filter was taking significantly longer due to processing larger, detailed opportunities individually. Now both filters process multiple chunks concurrently with controlled concurrency.
 
 ## Dynamic Source Prioritization Implementation
 
@@ -319,7 +321,7 @@ The Admin Interface provides tools for managing API sources, viewing processing 
 - [x] Enable real-time updates for run details page by adding the `api_source_runs` table to Supabase real-time publication
 - [x] Implement unified display of stored opportunities with operation type tags
 - [x] Fix first stage filter processing time display in UI
-- [ ] Investigate and optimize second stage filter performance
+- [x] Investigate and optimize second stage filter performance
 - [ ] Add filtering and search for runs
 - [ ] Implement run comparison tools
 - [ ] Add run analytics and reporting

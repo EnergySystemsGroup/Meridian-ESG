@@ -11,6 +11,7 @@ import {
 	TAXONOMIES,
 	generateTaxonomyInstruction,
 } from '../constants/taxonomies';
+import { processChunksInParallel } from '../utils/parallelProcessing';
 
 // Define the output schema for the agent
 const detailProcessingSchema = z.object({
@@ -381,6 +382,7 @@ export async function detailProcessorAgent(
 		model: 'claude-3-5-haiku-20241022',
 		temperature: 0,
 		maxTokensPerRequest: 16000,
+		maxConcurrent: 5, // Control parallel processing concurrency
 	};
 
 	// Merge with provided config
@@ -413,6 +415,7 @@ export async function detailProcessorAgent(
 				chunkMetrics: [],
 				filterReasoning: '',
 			},
+			metrics: {}, // For backward compatibility
 		};
 
 		console.log('\n=== Starting Detail Processing ===');
@@ -427,12 +430,11 @@ export async function detailProcessorAgent(
 		);
 		console.log(`Split opportunities into ${chunks.length} chunks`);
 
-		// Process each chunk
-		for (let i = 0; i < chunks.length; i++) {
-			const chunk = chunks[i];
+		// Define the function to process a single chunk
+		const processChunk = async (chunk, chunkIndex) => {
 			const chunkStartTime = Date.now();
 			console.log(
-				`\nProcessing chunk ${i + 1}/${chunks.length} with ${
+				`\nProcessing chunk ${chunkIndex + 1}/${chunks.length} with ${
 					chunk.length
 				} opportunities...`
 			);
@@ -445,20 +447,17 @@ export async function detailProcessorAgent(
 				sourceInfo: JSON.stringify(source, null, 2),
 			});
 
-			let response;
-			let result;
-
 			try {
 				// Get the LLM response
-				response = await model.invoke(prompt);
+				const response = await model.invoke(prompt);
 
 				// Parse the response
-				result = await parser.parse(response.content);
+				const result = await parser.parse(response.content);
 
 				// Calculate chunk metrics
 				const chunkTime = Date.now() - chunkStartTime;
 				const chunkMetrics = {
-					chunkIndex: i + 1,
+					chunkIndex: chunkIndex + 1,
 					processedOpportunities: chunk.length,
 					passedCount: result.opportunities.length,
 					timeSeconds: (chunkTime / 1000).toFixed(1),
@@ -466,121 +465,132 @@ export async function detailProcessorAgent(
 				};
 
 				console.log(
-					`Chunk ${i + 1} completed successfully: ${
+					`Chunk ${chunkIndex + 1} completed successfully: ${
 						result.opportunities.length
 					}/${chunk.length} opportunities passed filtering (${
 						chunkMetrics.timeSeconds
 					}s)`
 				);
 
-				// Add chunk metrics to the results
-				allResults.processingMetrics.chunkMetrics.push(chunkMetrics);
-
-				// Add the results to the combined results
-				allResults.opportunities = [
-					...allResults.opportunities,
-					...result.opportunities,
-				];
-
-				// Update the processing metrics from LLM response
-				if (result.processingMetrics) {
-					allResults.processingMetrics.passedCount +=
-						result.processingMetrics.passedCount;
-					allResults.processingMetrics.rejectedCount +=
-						result.processingMetrics.rejectedCount;
-
-					// Collect unique rejection reasons
-					if (result.processingMetrics.rejectionReasons) {
-						allResults.processingMetrics.rejectionReasons = [
-							...new Set([
-								...allResults.processingMetrics.rejectionReasons,
-								...result.processingMetrics.rejectionReasons,
-							]),
-						];
-					}
-
-					// Update filter reasoning
-					if (result.processingMetrics.filterReasoning) {
-						if (!allResults.processingMetrics.filterReasoning) {
-							allResults.processingMetrics.filterReasoning =
-								result.processingMetrics.filterReasoning;
-						} else if (
-							!allResults.processingMetrics.filterReasoning.includes(
-								result.processingMetrics.filterReasoning
-							)
-						) {
-							allResults.processingMetrics.filterReasoning +=
-								'; ' + result.processingMetrics.filterReasoning;
-						}
-					}
-
-					// Track token usage if provided
-					if (result.processingMetrics.tokenUsage) {
-						allResults.processingMetrics.tokenUsage +=
-							result.processingMetrics.tokenUsage;
-					}
-
-					// Update average score before filtering from LLM response
-					if (
-						result.processingMetrics.averageScoreBeforeFiltering !== undefined
-					) {
-						// If this is the first chunk with this metric, just use it
-						if (
-							allResults.processingMetrics.averageScoreBeforeFiltering === 0
-						) {
-							allResults.processingMetrics.averageScoreBeforeFiltering =
-								result.processingMetrics.averageScoreBeforeFiltering;
-						} else {
-							// For subsequent chunks, compute a weighted average based on chunk size
-							const currentTotal =
-								allResults.processingMetrics.averageScoreBeforeFiltering *
-								(allResults.processingMetrics.inputCount - chunk.length);
-
-							const newTotal =
-								result.processingMetrics.averageScoreBeforeFiltering *
-								chunk.length;
-
-							allResults.processingMetrics.averageScoreBeforeFiltering =
-								(currentTotal + newTotal) /
-								allResults.processingMetrics.inputCount;
-						}
-
-						console.log(
-							`Updated average score before filtering to: ${allResults.processingMetrics.averageScoreBeforeFiltering.toFixed(
-								2
-							)}`
-						);
-					}
-				}
+				return {
+					opportunities: result.opportunities,
+					processingMetrics: {
+						...result.processingMetrics,
+						chunkMetrics,
+					},
+				};
 			} catch (error) {
 				// Calculate chunk metrics for failed chunk
 				const chunkTime = Date.now() - chunkStartTime;
 				const chunkMetrics = {
-					chunkIndex: i + 1,
+					chunkIndex: chunkIndex + 1,
 					processedOpportunities: chunk.length,
 					passedCount: 0,
 					timeSeconds: (chunkTime / 1000).toFixed(1),
 					status: 'failed',
 					error: error.message,
 				};
-				allResults.processingMetrics.chunkMetrics.push(chunkMetrics);
-				allResults.processingMetrics.rejectedCount += chunk.length; // Count all opportunities in failed chunk as rejected
 
 				console.error(
-					`Error processing chunk ${i + 1}/${chunks.length}: ${error.message}`
-				);
-				console.error(
-					`Failed chunk content (raw LLM response):\n---\n${response?.content}
----
-Raw data for chunk:\n${JSON.stringify(chunk, null, 2)}
----
-`
+					`Error processing chunk ${chunkIndex + 1}/${chunks.length}: ${
+						error.message
+					}`
 				);
 
-				// Optionally, log the error to a persistent store or monitoring system here
-
-				continue; // Move to the next chunk
+				return {
+					opportunities: [],
+					processingMetrics: {
+						passedCount: 0,
+						rejectedCount: chunk.length,
+						rejectionReasons: ['Error processing chunk'],
+						chunkMetrics,
+						error: error.message,
+					},
+				};
 			}
+		};
+
+		// Process all chunks in parallel with controlled concurrency
+		const chunkResults = await processChunksInParallel(
+			chunks,
+			processChunk,
+			processingConfig.maxConcurrent
+		);
+
+		// Combine all results
+		for (const result of chunkResults) {
+			// Add filtered opportunities to combined results
+			allResults.opportunities.push(...result.opportunities);
+
+			// Update metrics
+			allResults.processingMetrics.passedCount +=
+				result.processingMetrics.passedCount || 0;
+			allResults.processingMetrics.rejectedCount +=
+				result.processingMetrics.rejectedCount || 0;
+
+			// Add unique rejection reasons
+			if (result.processingMetrics.rejectionReasons) {
+				allResults.processingMetrics.rejectionReasons = [
+					...new Set([
+						...allResults.processingMetrics.rejectionReasons,
+						...result.processingMetrics.rejectionReasons,
+					]),
+				];
+			}
+
+			// Update filter reasoning
+			if (result.processingMetrics.filterReasoning) {
+				if (!allResults.processingMetrics.filterReasoning) {
+					allResults.processingMetrics.filterReasoning =
+						result.processingMetrics.filterReasoning;
+				} else if (
+					!allResults.processingMetrics.filterReasoning.includes(
+						result.processingMetrics.filterReasoning
+					)
+				) {
+					allResults.processingMetrics.filterReasoning +=
+						'; ' + result.processingMetrics.filterReasoning;
+				}
+			}
+
+			// Track token usage
+			if (result.processingMetrics.tokenUsage) {
+				allResults.processingMetrics.tokenUsage +=
+					result.processingMetrics.tokenUsage;
+			}
+
+			// Add chunk metrics
+			if (result.processingMetrics.chunkMetrics) {
+				allResults.processingMetrics.chunkMetrics.push(
+					result.processingMetrics.chunkMetrics
+				);
+			}
+
+			// Update average score before filtering with weighted approach
+			if (result.processingMetrics.averageScoreBeforeFiltering !== undefined) {
+				// We'll collect all scores and calculate a weighted average after
+				result.processingMetrics._processedCount =
+					result.processingMetrics.passedCount +
+					result.processingMetrics.rejectedCount;
+				result.processingMetrics._weightedScore =
+					result.processingMetrics.averageScoreBeforeFiltering *
+					result.processingMetrics._processedCount;
+			}
+		}
+
+		// Calculate weighted average score before filtering
+		const totalProcessed = chunkResults.reduce(
+			(sum, result) => sum + (result.processingMetrics._processedCount || 0),
+			0
+		);
+		const totalWeightedScore = chunkResults.reduce(
+			(sum, result) => sum + (result.processingMetrics._weightedScore || 0),
+			0
+		);
+
+		if (totalProcessed > 0) {
+			allResults.processingMetrics.averageScoreBeforeFiltering =
+				totalWeightedScore / totalProcessed;
 		}
 
 		// Calculate final average scores from the processed opportunities
@@ -621,35 +631,6 @@ Raw data for chunk:\n${JSON.stringify(chunk, null, 2)}
 			allResults.processingMetrics.tokenUsage
 		);
 
-		// Log a sample opportunity with actionable summary
-		if (allResults.opportunities.length > 0) {
-			console.log('\n=== Sample Opportunity With Actionable Summary ===');
-			const sampleOpp = allResults.opportunities[0];
-			console.log(`ID: ${sampleOpp.id}`);
-			console.log(`Title: ${sampleOpp.title}`);
-			console.log(`Relevance Score: ${sampleOpp.relevanceScore}`);
-			console.log(`Actionable Summary: ${sampleOpp.actionableSummary}`);
-			console.log('================================================\n');
-		}
-
-		// Log the API activity
-		await logApiActivity(supabase, source.id, 'detail_processing', 'success', {
-			inputCount: detailedOpportunities.length,
-			outputCount: allResults.opportunities.length,
-			executionTime,
-		});
-
-		// Calculate accumulated results
-		allResults.opportunities = [...allResults.opportunities];
-		allResults.metrics = {
-			...allResults.processingMetrics,
-			processingTime: executionTime,
-			passedCount: allResults.opportunities.length,
-			inputCount: detailedOpportunities.length,
-			rejectedCount:
-				detailedOpportunities.length - allResults.opportunities.length,
-		};
-
 		// Capture raw filtered samples for debugging
 		if (allResults.opportunities.length > 0) {
 			const rawSampleSize = Math.min(3, allResults.opportunities.length);
@@ -683,11 +664,13 @@ Raw data for chunk:\n${JSON.stringify(chunk, null, 2)}
 
 			// Add raw samples to metrics
 			allResults.metrics.rawFilteredSamples = rawFilteredSamples;
+			// For backward compatibility
+			allResults.processingMetrics.rawFilteredSamples = rawFilteredSamples;
 		}
 
 		// Update run manager with metrics
 		if (runManager) {
-			await runManager.updateSecondStageFilter(allResults.metrics);
+			await runManager.updateSecondStageFilter(allResults.processingMetrics);
 		}
 
 		return allResults;
