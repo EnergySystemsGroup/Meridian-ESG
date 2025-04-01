@@ -22,7 +22,6 @@ const detailProcessingSchema = z.object({
 				description: z
 					.string()
 					.optional()
-					.nullable()
 					.describe(
 						'To the extent possible, a clear, detailed description of various aspects of the opportunity including key requirements, application process, evaluation criteria, and other important details that would help potential applicants understand the full scope of the opportunity.'
 					),
