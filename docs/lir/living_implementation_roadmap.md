@@ -6,36 +6,34 @@ This document tracks the implementation status of all features in the Funding In
 
 This section highlights the highest priority tasks to be completed next:
 
-1. **First Filter Processing Time Issues**: Investigate why first stage filter processingTime is showing 0ms in the UI even though filtering time is tracked in the code (combinedResults.metrics.filteringTime = totalTime). There appears to be a mismatch between variable names.
+1. **Second Filter Performance Investigation**: Analyze why the second stage filter is taking significantly longer than the first stage filter despite having fewer opportunities to process. Investigate potential optimizations for the detailProcessorAgent.
 
-2. **Second Filter Performance Investigation**: Analyze why the second stage filter is taking significantly longer than the first stage filter despite having fewer opportunities to process. Investigate potential optimizations for the detailProcessorAgent.
+2. **Data Processor - Update Detection Improvement**: Verify and improve update detection logic to prevent false positives from minor LLM wording differences. Currently, opportunities may be incorrectly marked as "updated" when only the phrasing in description or summary fields has changed.
 
-3. **Data Processor - Update Detection Improvement**: Verify and improve update detection logic to prevent false positives from minor LLM wording differences. Currently, opportunities may be incorrectly marked as "updated" when only the phrasing in description or summary fields has changed.
+3. **Detail Processor - Adaptive Relevance Threshold**: Implement adaptive thresholds for relevance scores based on source quality and historical data.
 
-4. **Detail Processor - Adaptive Relevance Threshold**: Implement adaptive thresholds for relevance scores based on source quality and historical data.
+4. **API Handler - Support for Rate Limiting**: Add rate limiting and throttling capabilities to prevent API usage limits from being exceeded.
 
-5. **API Handler - Support for Rate Limiting**: Add rate limiting and throttling capabilities to prevent API usage limits from being exceeded.
+5. **Error Handling - Automatic Retry Mechanisms**: Implement automatic retry logic for transient failures in API calls.
 
-6. **Error Handling - Automatic Retry Mechanisms**: Implement automatic retry logic for transient failures in API calls.
-
-7. **Admin Interface - Run Filtering and Search**: Add filtering and search capabilities to the runs listing interface.
+6. **Admin Interface - Run Filtering and Search**: Add filtering and search capabilities to the runs listing interface.
 
 ## Dynamic Source Prioritization Implementation
 
 Tasks to implement dynamic source prioritization:
 
-1. [ ] Remove unused `priority` field from `api_sources` table
+1. [x] Remove unused `priority` field from `api_sources` table
 
    - Create migration to safely remove the field
    - Update any code references to use dynamic prioritization instead
 
-2. [ ] Implement dynamic prioritization system:
+2. [x] Implement dynamic prioritization system:
 
-   - [ ] Create `calculate_source_priority` function that calculates priority based on:
+   - [x] Create `calculate_source_priority` function that calculates priority based on:
      - Update frequency (hourly, daily, weekly, monthly)
      - Time elapsed since last check
      - Whether source has been checked before
-   - [ ] Update `get_next_api_source_to_process` to use the new calculation
+   - [x] Update `get_next_api_source_to_process` to use the new calculation
    - [ ] Add monitoring to verify prioritization is working as expected
 
 3. [ ] Add priority score visibility to admin interface:
@@ -320,7 +318,7 @@ The Admin Interface provides tools for managing API sources, viewing processing 
 - [x] Implement real-time run status updates
 - [x] Enable real-time updates for run details page by adding the `api_source_runs` table to Supabase real-time publication
 - [x] Implement unified display of stored opportunities with operation type tags
-- [ ] Fix first stage filter processing time display in UI
+- [x] Fix first stage filter processing time display in UI
 - [ ] Investigate and optimize second stage filter performance
 - [ ] Add filtering and search for runs
 - [ ] Implement run comparison tools
