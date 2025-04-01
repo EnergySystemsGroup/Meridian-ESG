@@ -126,7 +126,11 @@ const MainNav = () => {
 					<NavigationMenuContent>
 						<ul className='grid w-[400px] gap-4 p-6 md:w-[500px] md:grid-cols-2 lg:w-[600px] animate-in fade-in-50 zoom-in-95 duration-200'>
 							{fundingNavItems.map((item) => (
-								<ListItem key={item.title} title={item.title} href={item.href}>
+								<ListItem
+									key={item.title}
+									title={item.title}
+									href={item.href}
+									comingSoon={item.comingSoon}>
 									{item.description}
 								</ListItem>
 							))}
@@ -146,7 +150,11 @@ const MainNav = () => {
 					<NavigationMenuContent>
 						<ul className='grid w-[400px] gap-4 p-6 md:w-[500px] md:grid-cols-2 lg:w-[600px] animate-in fade-in-50 zoom-in-95 duration-200'>
 							{legislationNavItems.map((item) => (
-								<ListItem key={item.title} title={item.title} href={item.href}>
+								<ListItem
+									key={item.title}
+									title={item.title}
+									href={item.href}
+									comingSoon={item.comingSoon}>
 									{item.description}
 								</ListItem>
 							))}
@@ -195,7 +203,7 @@ const MobileNav = () => {
 };
 
 const ListItem = React.forwardRef(
-	({ className, title, children, href, ...props }, ref) => {
+	({ className, title, children, href, comingSoon, ...props }, ref) => {
 		return (
 			<li>
 				<NavigationMenuLink asChild>
@@ -209,7 +217,14 @@ const ListItem = React.forwardRef(
 							className
 						)}
 						{...props}>
-						<div className='text-sm font-medium leading-none'>{title}</div>
+						<div className='flex items-center justify-between'>
+							<div className='text-sm font-medium leading-none'>{title}</div>
+							{comingSoon && (
+								<span className='ml-2 text-xs px-1.5 py-0.5 bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400 rounded-full'>
+									Coming Soon
+								</span>
+							)}
+						</div>
 						<p className='line-clamp-2 text-sm leading-snug text-neutral-500 dark:text-neutral-400 mt-2'>
 							{children}
 						</p>
@@ -249,21 +264,25 @@ const legislationNavItems = [
 		title: 'Bill Tracker',
 		href: '/legislation/bills',
 		description: 'Monitor relevant legislation and policy changes.',
+		comingSoon: true,
 	},
 	{
 		title: 'Status Board',
-		href: '/legislation/status',
+		href: '/legislation/status-board',
 		description: 'View legislation by stage in the approval process.',
+		comingSoon: true,
 	},
 	{
 		title: 'Impact Analysis',
-		href: '/legislation/impact',
+		href: '/legislation/impact-analysis',
 		description: 'Analyze how legislation affects funding opportunities.',
+		comingSoon: true,
 	},
 	{
 		title: 'Policy Trends',
-		href: '/legislation/trends',
+		href: '/legislation/policy-trends',
 		description: 'Identify emerging trends in policy and legislation.',
+		comingSoon: true,
 	},
 ];
 

@@ -7,11 +7,22 @@ import {
 	CardHeader,
 	CardTitle,
 } from '@/app/components/ui/card';
+import { Alert, AlertDescription, AlertTitle } from '@/app/components/ui/alert';
+import { AlertTriangle } from 'lucide-react';
 
 export default function LegislationPage() {
 	return (
 		<MainLayout>
 			<div className='container py-10'>
+				<Alert variant='warning' className='mb-6 bg-amber-50 border-amber-300'>
+					<AlertTriangle className='h-4 w-4 text-amber-500' />
+					<AlertTitle className='text-amber-600'>Demo Data</AlertTitle>
+					<AlertDescription className='text-amber-700'>
+						This section currently displays sample data for demonstration
+						purposes only. Live legislative data integration is coming soon.
+					</AlertDescription>
+				</Alert>
+
 				<div className='flex justify-between items-center mb-6'>
 					<h1 className='text-3xl font-bold'>Legislation Tracker</h1>
 					<div className='flex gap-2'>

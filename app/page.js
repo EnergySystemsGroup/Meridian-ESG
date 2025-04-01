@@ -10,6 +10,7 @@ import {
 	CardTitle,
 } from '@/app/components/ui/card';
 import { Button } from '@/app/components/ui/button';
+import { AlertTriangle } from 'lucide-react';
 
 export default function Home() {
 	const [upcomingDeadlines, setUpcomingDeadlines] = useState([]);
@@ -132,6 +133,12 @@ export default function Home() {
 							</CardDescription>
 						</CardHeader>
 						<CardContent>
+							<div className='mb-3 px-2 py-1 bg-amber-50 border border-amber-300 rounded-md'>
+								<p className='text-xs text-amber-700 flex items-center'>
+									<AlertTriangle className='h-3 w-3 mr-1 text-amber-500' />
+									Demo data for illustration purposes only
+								</p>
+							</div>
 							<ul className='space-y-4'>
 								{legislativeUpdates.map((item, index) => (
 									<li key={index} className='border-b pb-2 last:border-0'>

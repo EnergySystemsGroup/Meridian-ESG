@@ -6,7 +6,21 @@ This document tracks the implementation status of all features in the Funding In
 
 This section highlights the highest priority tasks to be completed next:
 
-1. **Data Processor - Update Detection Improvement**: Verify and improve update detection logic to prevent false positives from minor LLM wording differences. Currently, opportunities may be incorrectly marked as "updated" when only the phrasing in description or summary fields has changed.
+1. **Frontend - Funding Opportunities Display**: Ensure all funding opportunity data is displayed correctly throughout the UI. Remove any dummy data from funding views and use only real data.
+
+2. **Frontend - Legislative Data Warning Labels**: Add warning labels to all legislative data views indicating that the data is for demonstration purposes only.
+
+3. **Frontend - "Coming Soon" Pages**: Add proper "Coming Soon" messaging to incomplete views and features that are planned but not yet implemented.
+
+4. **Frontend - Opportunity Detail Page Enhancement**: Improve the funding opportunity detail page with better formatting, organization, and highlighting of key information like deadlines and eligibility.
+
+5. **Frontend - Dashboard Improvements**: Update dashboard to prioritize funding opportunity display and add filtering options.
+
+## Downgraded Priority Tasks
+
+These tasks remain important but have been downgraded in priority as we focus on frontend improvements:
+
+1. **Data Processor - Update Detection Improvement**: Verify and improve update detection logic to prevent false positives from minor LLM wording differences.
 
 2. **Detail Processor - Adaptive Relevance Threshold**: Implement adaptive thresholds for relevance scores based on source quality and historical data.
 
