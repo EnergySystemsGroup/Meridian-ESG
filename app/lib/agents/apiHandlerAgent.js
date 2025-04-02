@@ -230,7 +230,7 @@ const apiResponseProcessingSchema = z.object({
 					.min(1)
 					.max(10)
 					.describe(
-						'Relevance score from 1-10. Sum of the scores achieved for each relevance criteria.'
+						'Relevance score from 1-10. This MUST be exactly equal to this sum calculated: [Focus Areas] + [Applicability] + [Funding Type] + [Matching Requirements] + [Implementation]. Do not assign a score that differs from this calculation.'
 					),
 				relevanceReasoning: z
 					.string()
@@ -239,8 +239,11 @@ const apiResponseProcessingSchema = z.object({
 						'Detailed explanation of the relevance score. MUST INCLUDE: ' +
 							'1) Point-by-point scoring breakdown (Focus Areas: X/3, ' +
 							'Applicability: X/3, Funding Type Quality: X/1, Matching Requirements: X/1, Project Implementation Type: X/2), ' +
-							'2) Which specific data fields from the opportunity you examined, and ' +
-							'3) Direct quotes or values from these fields that influenced your scoring.'
+							'2) Which specific data fields from the opportunity you examined, ' +
+							'3) Direct quotes or values from these fields that influenced your scoring, ' +
+							'4) The final total relevance score calculation showing the sum of all individual scores, and ' +
+							'5) An explicit calculation showing the math (e.g., "3.0 + 2.5 + 1.0 + 1.0 + 2.0 = 9.5 points"). The total MUST match this calculation exactly. ' +
+							'6) VERIFICATION STEP: Double-check your math. Add up each component score again to verify the total is correct.'
 					),
 				actionableSummary: z
 					.string()
@@ -283,11 +286,11 @@ SOURCE INFORMATION:
 OPPORTUNITIES:
 {opportunities}
 
-Our organization helps the following types of entities secure funding:
+These are our client types:
 - K-12 schools
 - Community colleges and universities
 - Municipal, county, and state governments
-- Federal facilities
+- Federal agencies
 - Tribal governments
 - Nonprofit organizations
 - For-profit businesses
@@ -302,18 +305,6 @@ We focus on funding in these categories:
 - Community & Economic Development (e.g., revitalization, workforce development)
 - Infrastructure & Planning (e.g., sustainable infrastructure, master planning)
 
-${generateTaxonomyInstruction(
-	'ELIGIBLE_PROJECT_TYPES',
-	'eligible project types'
-)}
-
-${generateTaxonomyInstruction('ELIGIBLE_APPLICANTS', 'eligible applicants')}
-
-${generateTaxonomyInstruction('CATEGORIES', 'funding categories')}
-
-${generateTaxonomyInstruction('FUNDING_TYPES', 'funding types')}
-
-${generateTaxonomyInstruction('ELIGIBLE_LOCATIONS', 'eligible locations')}
 
 For each opportunity, analyze:
 1. Eligibility requirements - Do they match our client types?
@@ -322,36 +313,93 @@ For each opportunity, analyze:
 4. Timeline - Is the opportunity currently active or upcoming?
 5. Match requirements - Are the cost-share requirements reasonable?
 
-## Relevance Scoring System
+Relevance Scoring System:
 
 For each funding opportunity, calculate a relevance score out of 10 points based on the following criteria:
 
-1. **Alignment with Focus Areas (0-3 points)**
-   - 3.0 points: Strong alignment with energy efficiency projects
+1. Alignment with Focus Areas (0-3 points)
+   - 3.0 points: Strong alignment with energy efficiency
    - 2.5 points: Strong alignment with one or more of our focus areas
    - 2.0 points: Moderate alignment with one or more focus areas
    - 1.0 point: Minimal alignment with one or more focus areas
    - 0.0 points: No alignment with any focus area
 
-2. **Applicability to Client Types (0-3 points)**
+2. Applicability to Client Types (0-3 points)
    - 3.0 points: Applicable to K-12 schools
-   - 2.5 points: Applicable to any of our other client types
+   - 2.5 points: Applicable to one or more of our client types outside of k-12 schools (federal agencies, municipalities, universities, etc.)
    - 0.0 points: Not applicable to any of our client types
 
-3. **Funding Type Quality (0-1 point)**
+3. Funding Type Quality (0-1 point)
    - 1.0 point: Pure grant
    - 0.5 points: Any other funding type (rebate, loan, tax incentive, etc.)
 
-4. **Matching Requirements (0-1 point)**
+4. Matching Requirements (0-1 point)
    - 1.0 point: No matching requirements
    - 0.0 points: Any matching requirements
 
-5. **Project Implementation Type (0-2 points)**
+5. Project Implementation Type (0-2 points)
    - 2.0 points: Requires contractor implementation (construction, renovation, installation, etc.)
    - 1.0 point: May partially require contractor work
    - 0.0 points: Likely doesn't require contractor (research, planning, assessment only)
 
-The relevance score is the sum of the scores achieved for each criteria.
+### Relevance Score Calculation
+You MUST calculate the relevance score using simple addition:
+1. Focus Areas score: [X.X points]
+2. Client Types score: [X.X points]
+3. Funding Type score: [X.X points]
+4. Matching Requirements score: [X.X points]
+5. Implementation Type score: [X.X points]
+6. Relevance Score = [Focus Areas] + [Client Types] + [Funding Type] + [Matching Requirements] + [Implementation Type] = [X.X] points
+
+MISSING INFORMATION GUIDANCE:
+When information is missing for any scoring category, assume the most favorable condition:
+- No matching requirement data → Assume no match required (1/1)
+- No funding type specified → Assume pure grant (1/1)
+- No implementation details → Assume contractor work needed (2/2)
+
+For each scoring category, if data is not available, explicitly state "Data not available" in both the Reasoning and Evidence sections, then apply the favorable assumption as specified above.
+
+IMPORTANT FOR RELEVANCE REASONING:
+When explaining your relevance score, you MUST use this exact format:
+
+SCORING CALCULATION:
+[Focus Areas]
+Score: ___ /3.0 points
+Reasoning: (explain which focus areas aligned, or state "Data not available")
+Evidence: "quote from source" or "Data not available - assuming favorable condition"
+
+[Applicability]
+Score: ___ /3.0 points
+Reasoning: (specify which client types, or state "Data not available". if you give a score of 0.0, you must also specify all of our client types are excluded)
+Evidence: "quote from source" or "Data not available - assuming favorable condition"
+
+[Funding Type]
+Score: ___ /1.0 points
+Reasoning: (note what type of funding it is, or state "Data not available")
+Evidence: "quote from source" or "Data not available - assuming favorable condition"
+
+[Matching Requirements]
+Score: ___ /1.0 points
+Reasoning: (note any match requirements, or state "Data not available")
+Evidence: "quote from source" or "Data not available - assuming favorable condition"
+
+[Implementation]
+Score: ___ /2.0 points
+Reasoning: (note to what degree the project requires contractor work, or state "Data not available")
+Evidence: "quote from source" or "Data not available - assuming favorable condition"
+
+[Total Relevance Score]
+score: ___ /10.0 points
+Reasoning: [focus areas] + [applicability] + [funding type] + [matching requirements] + [implementation]
+----------------------------------------
+
+You MUST fill in each blank with the exact numerical score you've determined. The total MUST be the precise sum of the individual scores above.
+
+DATA FIELDS EXAMINED:
+- List each field from the API response you examined
+- Include the specific values found
+
+This structured format is required for every opportunity you analyze. The total score MUST match the sum of the individual components.
 
 Only include opportunities that score {minRelevanceScore} or higher in your final output. In the absence of information, make assumptions to lean on the side of inclusion.
 
@@ -364,18 +412,7 @@ For each selected opportunity, provide:
 6. Key benefits (2-3 bullet points)
 7. Any notable restrictions or requirements
 
-IMPORTANT FOR RELEVANCE REASONING:
-When explaining your relevance score, you MUST include:
-1. DETAILED SCORING BREAKDOWN - Show exactly how you calculated the score:
-   - Focus areas: X/3 points (explain which focus areas aligned)
-   - Applicability to client types: X/3 points (specify which client types)
-   - Funding type quality: X/1 points (note what type of funding it is)
-   - Matching requirements: X/1 points (note any match requirements)
-   - Project implementation type: X/2 points (note to what degree the project requires contractor work)
-2. DATA FIELDS EXAMINED - Explicitly identify which specific fields from the API response you examined (e.g., title, description, eligibility criteria)
-3. EVIDENCE - Include direct quotes or values from these fields that influenced your scoring
 
-This detailed breakdown helps us verify that you're analyzing the right data and understand your decision-making process.
 
 ACTIONABLE SUMMARY REQUIREMENT:
 For each opportunity, provide a concise "actionable summary" in a single paragraph (2-3 sentences) that includes:
@@ -394,6 +431,19 @@ Example with missing information: "This appears to be a grant from the Departmen
 Write this summary in plain language, focusing on clarity and specificity about what is known while being transparent about what is unknown.The goal is for someone to read this single paragraph and immediately understand if the opportunity is worth pursuing.
 
 IMPORTANT: Always preserve the original ID of each opportunity exactly as it appears in the API response. This ID is required for fetching detailed information in the next step.
+
+${generateTaxonomyInstruction(
+	'ELIGIBLE_PROJECT_TYPES',
+	'eligible project types'
+)}
+
+${generateTaxonomyInstruction('ELIGIBLE_APPLICANTS', 'eligible applicants')}
+
+${generateTaxonomyInstruction('CATEGORIES', 'funding categories')}
+
+${generateTaxonomyInstruction('FUNDING_TYPES', 'funding types')}
+
+${generateTaxonomyInstruction('ELIGIBLE_LOCATIONS', 'eligible locations')}
 
 {formatInstructions}
 `
@@ -1138,7 +1188,7 @@ async function performFirstStageFiltering(
 ) {
 	const startTime = Date.now();
 	const secondStageFiltering = processingDetails?.detailConfig?.enabled;
-	const minRelevanceScore = secondStageFiltering ? 5 : 6;
+	const minRelevanceScore = secondStageFiltering ? 3 : 6;
 
 	console.log('\n=== Starting First Stage Filtering ===');
 	console.log(
