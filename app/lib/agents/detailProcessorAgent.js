@@ -150,14 +150,16 @@ const detailProcessingSchema = z.object({
 					.number()
 					.min(1)
 					.max(10)
-					.describe('Relevance score from 1-10'),
+					.describe(
+						'Relevance score from 1-10. Sum of the scores achieved for each relevance criteria.'
+					),
 				relevanceReasoning: z
 					.string()
 					.optional()
 					.describe(
 						'Detailed explanation of the relevance score. MUST INCLUDE: ' +
-							'1) Point-by-point scoring breakdown (Focus areas: X/5, ' +
-							'Applicability: X/3, Funding amount: X/2), ' +
+							'1) Point-by-point scoring breakdown (Focus Areas: X/3, ' +
+							'Applicability: X/3, Funding Type Quality: X/1, Matching Requirements: X/1, Project Implementation Type: X/2), ' +
 							'2) Which specific data fields from the opportunity you examined, and ' +
 							'3) Direct quotes or values from these fields that influenced your scoring.'
 					),
@@ -197,11 +199,11 @@ const detailProcessingSchema = z.object({
 const detailProcessorPromptTemplateString = `You are an expert funding opportunity analyst for energy and infrastructure projects.
 Your task is to perform a detailed analysis of funding opportunities to determine their relevance and value to our clients.
 
-Our organization helps the following types of entities secure funding:
+Our organization helps the following types of clients secure funding:
 - K-12 schools
 - Community colleges and universities
 - Municipal, county, and state governments
-- Federal facilities
+- Federal agencies and facilities
 - Tribal governments
 - Nonprofit organizations
 - For-profit businesses
@@ -242,7 +244,7 @@ For each opportunity, analyze:
 For each funding opportunity, calculate a relevance score out of 10 points based on the following criteria:
 
 1. **Alignment with Focus Areas (0-3 points)**
-   - 3.0 points: Perfect alignment with energy efficiency projects
+   - 3.0 points: Strong alignment with energy efficiency
    - 2.5 points: Strong alignment with one or more of our focus areas
    - 2.0 points: Moderate alignment with one or more focus areas
    - 1.0 point: Minimal alignment with one or more focus areas
@@ -266,7 +268,8 @@ For each funding opportunity, calculate a relevance score out of 10 points based
    - 1.0 point: May partially require contractor work
    - 0.0 points: Likely doesn't require contractor (research, planning, assessment only)
 
-When assessing opportunities, provide the total score and a brief explanation of how you arrived at each component score.
+The relevance score is the sum of the scores achieved for each criteria.
+
 
 Only include opportunities with a {minRelevanceScore} or higher in your final output. In the absence of information, make assumptions to lean on the side of inclusion.
 

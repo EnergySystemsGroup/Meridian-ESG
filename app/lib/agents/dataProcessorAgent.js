@@ -282,6 +282,8 @@ export async function processOpportunitiesBatch(
 				tags: 'tags',
 				isNational: 'is_national',
 				actionableSummary: 'actionable_summary',
+				relevanceScore: 'relevance_score',
+				relevanceReasoning: 'relevance_reasoning',
 				id: 'opportunity_number', // Special case: map external ID to opportunity_number
 				// Agency is handled separately through funding_source_id
 			};
@@ -618,6 +620,8 @@ export async function processOpportunitiesBatch(
 						maximum_award: 'maximumAward',
 						total_funding_available: 'totalFundingAvailable',
 						funding_source_id: 'funding_source_id',
+						relevance_score: 'relevanceScore',
+						relevance_reasoning: 'relevanceReasoning',
 					};
 
 					// Only include critical fields that have changed
@@ -628,35 +632,10 @@ export async function processOpportunitiesBatch(
 						if (field === 'funding_source_id') {
 							limitedUpdateData.funding_source_id = fundingSourceId;
 						} else if (field in criticalFieldsMap) {
-							// For known critical fields, add them to the update
-							if (field === 'open_date' && opportunity.openDate !== undefined) {
-								limitedUpdateData.open_date = opportunity.openDate;
-							} else if (
-								field === 'close_date' &&
-								opportunity.closeDate !== undefined
-							) {
-								limitedUpdateData.close_date = opportunity.closeDate;
-							} else if (
-								field === 'minimum_award' &&
-								opportunity.minimumAward !== undefined
-							) {
-								limitedUpdateData.minimum_award = opportunity.minimumAward;
-							} else if (
-								field === 'maximum_award' &&
-								opportunity.maximumAward !== undefined
-							) {
-								limitedUpdateData.maximum_award = opportunity.maximumAward;
-							} else if (
-								field === 'total_funding_available' &&
-								opportunity.totalFundingAvailable !== undefined
-							) {
-								limitedUpdateData.total_funding_available =
-									opportunity.totalFundingAvailable;
-							} else if (
-								field === 'status' &&
-								opportunity.status !== undefined
-							) {
-								limitedUpdateData.status = opportunity.status;
+							const opportunityKey = criticalFieldsMap[field];
+							// For known critical fields, add them to the update if the value exists in the incoming opportunity
+							if (opportunity[opportunityKey] !== undefined) {
+								limitedUpdateData[field] = opportunity[opportunityKey];
 							}
 						}
 					});
