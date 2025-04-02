@@ -320,23 +320,36 @@ For each opportunity, analyze:
 4. Timeline - Is the opportunity currently active or upcoming?
 5. Match requirements - Are the cost-share requirements reasonable?
 
-For each opportunity in the provided list, assign a relevance score from 1-10 based on:
-1. Alignment with our focus areas (0-5 points):
-   - 0 points: No alignment with any focus area
-   - 1 point: Minimal alignment with one focus area
-   - 2 points: Moderate alignment with one focus area
-   - 3 points: Moderate alignment with multiple focus areas
-   - 4 points: Strong alignment with one or more focus areas
-   - 5 points: Perfect alignment with one or more focus areas
+## Relevance Scoring System
 
-2. Applicability to our client types (0-3 points):
-   - 0 points: Not applicable to any of our client types
-   - 3 points: Applicable to any of our client types
+For each funding opportunity, calculate a relevance score out of 10 points based on the following criteria:
 
-3. Funding amount and accessibility (0-2 points):
-   - 0 points: Insufficient funding or excessive match requirements
-   - 1 point: Moderate funding with reasonable match requirements
-   - 2 points: Substantial funding with minimal match requirements
+1. **Alignment with Focus Areas (0-3 points)**
+   - 3.0 points: Perfect alignment with energy efficiency projects
+   - 2.5 points: Strong alignment with one or more of our focus areas
+   - 2.0 points: Moderate alignment with one or more focus areas
+   - 1.0 point: Minimal alignment with one or more focus areas
+   - 0.0 points: No alignment with any focus area
+
+2. **Applicability to Client Types (0-3 points)**
+   - 3.0 points: Applicable to K-12 schools
+   - 2.5 points: Applicable to any of our other client types
+   - 0.0 points: Not applicable to any of our client types
+
+3. **Funding Type Quality (0-1 point)**
+   - 1.0 point: Pure grant
+   - 0.5 points: Any other funding type (rebate, loan, tax incentive, etc.)
+
+4. **Matching Requirements (0-1 point)**
+   - 1.0 point: No matching requirements
+   - 0.0 points: Any matching requirements
+
+5. **Project Implementation Type (0-2 points)**
+   - 2.0 points: Requires contractor implementation (construction, renovation, installation, etc.)
+   - 1.0 point: May partially require contractor work
+   - 0.0 points: Likely doesn't require contractor (research, planning, assessment only)
+
+When assessing opportunities, provide the total score and a brief explanation of how you arrived at each component score. 
 
 Only include opportunities that score {minRelevanceScore} or higher in your final output. In the absence of information, make assumptions to lean on the side of inclusion.
 
@@ -352,9 +365,11 @@ For each selected opportunity, provide:
 IMPORTANT FOR RELEVANCE REASONING:
 When explaining your relevance score, you MUST include:
 1. DETAILED SCORING BREAKDOWN - Show exactly how you calculated the score:
-   - Focus areas: X/5 points (explain which focus areas aligned)
+   - Focus areas: X/3 points (explain which focus areas aligned)
    - Applicability to client types: X/3 points (specify which client types)
-   - Funding amount and accessibility: X/2 points (note amount and any match requirements)
+   - Funding type quality: X/1 points (note what type of funding it is)
+   - Matching requirements: X/1 points (note any match requirements)
+   - Project implementation type: X/2 points (note to what degree the project requires contractor work)
 2. DATA FIELDS EXAMINED - Explicitly identify which specific fields from the API response you examined (e.g., title, description, eligibility criteria)
 3. EVIDENCE - Include direct quotes or values from these fields that influenced your scoring
 
@@ -1121,7 +1136,7 @@ async function performFirstStageFiltering(
 ) {
 	const startTime = Date.now();
 	const secondStageFiltering = processingDetails?.detailConfig?.enabled;
-	const minRelevanceScore = secondStageFiltering ? 5 : 7;
+	const minRelevanceScore = secondStageFiltering ? 5 : 6;
 
 	console.log('\n=== Starting First Stage Filtering ===');
 	console.log(
