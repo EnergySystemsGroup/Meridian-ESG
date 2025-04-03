@@ -669,15 +669,15 @@ function OpportunityCard({ opportunity }) {
 	};
 
 	return (
-		<Card className='overflow-hidden hover:shadow-md transition-shadow duration-200'>
+		<Card className='overflow-hidden hover:shadow-md transition-shadow duration-200 flex flex-col h-full'>
 			{/* Category color bar */}
 			<CategoryColorBar categories={categories} />
 
 			<CardHeader className='pb-3'>
 				<div className='flex justify-between items-start'>
-					<CardTitle className='text-lg'>{title}</CardTitle>
+					<CardTitle className='text-lg line-clamp-2'>{title}</CardTitle>
 					<span
-						className={`text-xs px-2 py-1 rounded-full`}
+						className={`text-xs px-2 py-1 rounded-full flex-shrink-0 ml-2`}
 						style={{
 							backgroundColor: statusIndicator[status]?.bgColor || '#F5F5F5',
 							color: statusIndicator[status]?.color || '#9E9E9E',
@@ -685,7 +685,7 @@ function OpportunityCard({ opportunity }) {
 						{status}
 					</span>
 				</div>
-				<CardDescription>{source}</CardDescription>
+				<CardDescription className='line-clamp-1'>{source}</CardDescription>
 
 				{/* NEW badge if applicable */}
 				{isNew && (
@@ -697,9 +697,9 @@ function OpportunityCard({ opportunity }) {
 				)}
 			</CardHeader>
 
-			<CardContent>
-				<div className='space-y-4'>
-					{/* Actionable summary with more space (no truncation) */}
+			<CardContent className='flex-grow flex flex-col'>
+				<div className='space-y-4 flex-grow'>
+					{/* Actionable summary - showing in full, without truncation */}
 					<p className='text-sm text-muted-foreground'>{summary}</p>
 
 					{/* Category pills */}
@@ -732,10 +732,13 @@ function OpportunityCard({ opportunity }) {
 							<span>{closeDate}</span>
 						</div>
 					</div>
+				</div>
 
+				{/* Footer section with relevance score and button - fixed at bottom */}
+				<div className='pt-4 mt-auto'>
 					{/* Relevance score if available */}
 					{relevanceScore !== null && (
-						<div className='flex items-center gap-2'>
+						<div className='flex items-center gap-2 mb-4'>
 							<div className='flex-grow bg-gray-200 h-2 rounded-full overflow-hidden'>
 								<div
 									className='h-full rounded-full'
