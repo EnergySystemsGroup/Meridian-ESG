@@ -86,6 +86,19 @@ const fundingOpportunitySchema = z.object({
 		.describe(
 			'A single concise paragraph (2-3 sentences) that clearly states: 1) the funding source, 2) the amount available, 3) who can apply, 4) specifically what the money is for, and 5) when applications are due. Example: "This is a $5M grant from the Department of Energy for schools to implement building performance standards. Applications are due August 2025."'
 		),
+	relevanceReasoning: z
+		.string()
+		.optional()
+		.describe(
+			'Detailed explanation of the relevance score. MUST INCLUDE: ' +
+				'1) Point-by-point scoring breakdown (Focus Areas: X/3, ' +
+				'Applicability: X/3, Funding Type Quality: X/1, Matching Requirements: X/1, Project Type: X/2), ' +
+				'2) Which specific data fields from the opportunity you examined, ' +
+				'3) Direct quotes or values from these fields that influenced your scoring, ' +
+				'4) The final total relevance score calculation showing the sum of all individual scores, and ' +
+				'5) An explicit calculation showing the math (e.g., "3.0 + 2.5 + 1.0 + 1.0 + 2.0 = 9.5 points"). The total MUST match this calculation exactly. ' +
+				'6) VERIFICATION STEP: Double-check your math. Add up each component score again to verify the total is correct.'
+		),
 });
 
 // Define the output schema for the agent
@@ -230,7 +243,7 @@ const apiResponseProcessingSchema = z.object({
 					.min(1)
 					.max(10)
 					.describe(
-						'Relevance score from 1-10. This MUST be exactly equal to this sum calculated: [Focus Areas] + [Applicability] + [Funding Type] + [Matching Requirements] + [Implementation]. Do not assign a score that differs from this calculation.'
+						'Relevance score from 1-10. This MUST be exactly equal to this sum calculated: [Focus Areas] + [Applicability] + [Funding Type] + [Matching Requirements] + [Project Type]. Do not assign a score that differs from this calculation.'
 					),
 				relevanceReasoning: z
 					.string()
@@ -238,7 +251,7 @@ const apiResponseProcessingSchema = z.object({
 					.describe(
 						'Detailed explanation of the relevance score. MUST INCLUDE: ' +
 							'1) Point-by-point scoring breakdown (Focus Areas: X/3, ' +
-							'Applicability: X/3, Funding Type Quality: X/1, Matching Requirements: X/1, Project Implementation Type: X/2), ' +
+							'Applicability: X/3, Funding Type Quality: X/1, Matching Requirements: X/1, Project Type: X/2), ' +
 							'2) Which specific data fields from the opportunity you examined, ' +
 							'3) Direct quotes or values from these fields that influenced your scoring, ' +
 							'4) The final total relevance score calculation showing the sum of all individual scores, and ' +
@@ -337,10 +350,10 @@ For each funding opportunity, calculate a relevance score out of 10 points based
    - 1.0 point: No matching requirements
    - 0.0 points: Any matching requirements
 
-5. Project Implementation Type (0-2 points)
-   - 2.0 points: Requires contractor implementation (construction, renovation, installation, etc.)
-   - 1.0 point: May partially require contractor work
-   - 0.0 points: Likely doesn't require contractor (research, planning, assessment only)
+5. Project Type (0-2 points)
+   - 2.0 points: Focuses on construction, renovations, HVAC systems, lighting, roofing, flooring, windows, or solar
+   - 1.0 point: Focuses on plumbing, water conservation, or electrical systems
+   - 0.0 points: Focuses on other areas or services only (research, planning, assessment only)
 
 ### Relevance Score Calculation
 You MUST calculate the relevance score using simple addition:
@@ -348,14 +361,14 @@ You MUST calculate the relevance score using simple addition:
 2. Client Types score: [X.X points]
 3. Funding Type score: [X.X points]
 4. Matching Requirements score: [X.X points]
-5. Implementation Type score: [X.X points]
-6. Relevance Score = [Focus Areas] + [Client Types] + [Funding Type] + [Matching Requirements] + [Implementation Type] = [X.X] points
+5. Project Type score: [X.X points]
+6. Relevance Score = [Focus Areas] + [Client Types] + [Funding Type] + [Matching Requirements] + [Project Type] = [X.X] points
 
 MISSING INFORMATION GUIDANCE:
 When information is missing for any scoring category, assume the most favorable condition:
 - No matching requirement data → Assume no match required (1/1)
 - No funding type specified → Assume pure grant (1/1)
-- No implementation details → Assume contractor work needed (2/2)
+- No project type details → Assume focuses on high-value project types (2/2)
 
 For each scoring category, if data is not available, explicitly state "Data not available" in both the Reasoning and Evidence sections, then apply the favorable assumption as specified above.
 
@@ -383,14 +396,14 @@ Score: ___ /1.0 points
 Reasoning: (note any match requirements, or state "Data not available")
 Evidence: "quote from source" or "Data not available - assuming favorable condition"
 
-[Implementation]
+[Project Type]
 Score: ___ /2.0 points
-Reasoning: (note to what degree the project requires contractor work, or state "Data not available")
+Reasoning: (specify which project types are covered and their point values, or state "Data not available")
 Evidence: "quote from source" or "Data not available - assuming favorable condition"
 
 [Total Relevance Score]
 score: ___ /10.0 points
-Reasoning: [focus areas] + [applicability] + [funding type] + [matching requirements] + [implementation]
+Reasoning: [focus areas] + [applicability] + [funding type] + [matching requirements] + [project type]
 ----------------------------------------
 
 You MUST fill in each blank with the exact numerical score you've determined. The total MUST be the precise sum of the individual scores above.
