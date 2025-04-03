@@ -638,10 +638,11 @@ function OpportunityCard({ opportunity }) {
 	const categories =
 		opportunity.categories || (tags.length > 0 ? [tags[0]] : ['Other']);
 
-	// Get relevance color
+	// Get relevance color based on a 1-10 scale
 	const getRelevanceColor = (score) => {
-		if (score >= 80) return '#4CAF50'; // High relevance - green
-		if (score >= 60) return '#FF9800'; // Medium relevance - orange
+		const percentScore = score * 10; // Convert 1-10 scale to percentage
+		if (percentScore >= 80) return '#4CAF50'; // High relevance - green
+		if (percentScore >= 60) return '#FF9800'; // Medium relevance - orange
 		return '#9E9E9E'; // Low relevance - gray
 	};
 
@@ -737,20 +738,23 @@ function OpportunityCard({ opportunity }) {
 				{/* Footer section with relevance score and button - fixed at bottom */}
 				<div className='pt-4 mt-auto'>
 					{/* Relevance score if available */}
-					{relevanceScore !== null && (
+					{relevanceScore !== null && relevanceScore !== undefined && (
 						<div className='flex items-center gap-2 mb-4'>
 							<div className='flex-grow bg-gray-200 h-2 rounded-full overflow-hidden'>
 								<div
 									className='h-full rounded-full'
 									style={{
-										width: `${relevanceScore}%`,
+										width: `${Math.max(
+											0,
+											Math.min(100, relevanceScore * 10)
+										)}%`, // Convert 1-10 scale to percentage (0-100%)
 										backgroundColor: getRelevanceColor(relevanceScore),
 									}}></div>
 							</div>
 							<span
-								className='text-xs font-medium'
+								className='text-xs font-medium whitespace-nowrap'
 								style={{ color: getRelevanceColor(relevanceScore) }}>
-								{relevanceScore}% match
+								{Math.round(relevanceScore * 10)}% relevance
 							</span>
 						</div>
 					)}
