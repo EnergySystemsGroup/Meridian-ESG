@@ -602,11 +602,6 @@ function OpportunityCard({ opportunity }) {
 		  })
 		: 'No deadline specified';
 
-	// Calculate days remaining
-	const daysLeft = opportunity.close_date
-		? calculateDaysLeft(opportunity.close_date)
-		: null;
-
 	// Determine status
 	const status =
 		opportunity.status ||
@@ -618,7 +613,7 @@ function OpportunityCard({ opportunity }) {
 		opportunity.description ||
 		'No description available';
 
-	// Get tags
+	// Get tags for category fallback
 	const tags = opportunity.tags || [];
 
 	// Determine if opportunity is new (added in the last 7 days)
@@ -704,10 +699,8 @@ function OpportunityCard({ opportunity }) {
 
 			<CardContent>
 				<div className='space-y-4'>
-					{/* Summary with truncation */}
-					<p className='text-sm text-muted-foreground line-clamp-3'>
-						{summary}
-					</p>
+					{/* Actionable summary with more space (no truncation) */}
+					<p className='text-sm text-muted-foreground'>{summary}</p>
 
 					{/* Category pills */}
 					<div className='flex flex-wrap gap-1'>
@@ -727,22 +720,6 @@ function OpportunityCard({ opportunity }) {
 						})}
 					</div>
 
-					{/* Tags */}
-					<div className='flex flex-wrap gap-1'>
-						{tags.slice(0, 3).map((tag, index) => (
-							<span
-								key={index}
-								className='text-xs bg-secondary text-secondary-foreground px-2 py-1 rounded-full'>
-								{tag}
-							</span>
-						))}
-						{tags.length > 3 && (
-							<span className='text-xs bg-secondary text-secondary-foreground px-2 py-1 rounded-full'>
-								+{tags.length - 3} more
-							</span>
-						)}
-					</div>
-
 					{/* Key details */}
 					<div className='space-y-2 text-sm'>
 						<div className='flex items-center gap-2'>
@@ -754,13 +731,6 @@ function OpportunityCard({ opportunity }) {
 							<Calendar size={16} className='text-gray-500' />
 							<span>{closeDate}</span>
 						</div>
-
-						{daysLeft !== null && (
-							<div className='flex items-center gap-2'>
-								<Clock size={16} className='text-gray-500' />
-								<span>{daysLeft} days remaining</span>
-							</div>
-						)}
 					</div>
 
 					{/* Relevance score if available */}
