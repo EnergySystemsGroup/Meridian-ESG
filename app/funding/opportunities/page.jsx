@@ -578,10 +578,7 @@ export default function OpportunitiesPage() {
 function OpportunityCard({ opportunity }) {
 	// Format the data from our database to match the UI expectations
 	const title = opportunity.title;
-	const source =
-		opportunity.source_display_name ||
-		opportunity.source_name ||
-		'Unknown Source';
+	const source = opportunity.source_display_name || 'Unknown Source';
 
 	// Format amount display
 	const amount =
@@ -616,19 +613,26 @@ function OpportunityCard({ opportunity }) {
 	// Get tags for category fallback
 	const tags = opportunity.tags || [];
 
-	// Determine if opportunity is new (added in the last 7 days)
+	// Determine if opportunity is new (added in the last 6 days)
 	const isNew =
 		opportunity.created_at &&
 		(new Date() - new Date(opportunity.created_at)) / (1000 * 60 * 60 * 24) <=
-			7;
+			6;
 
 	// Calculate days since creation if it's new
 	const addedDaysAgo =
 		isNew && opportunity.created_at
-			? Math.floor(
-					(new Date() - new Date(opportunity.created_at)) /
-						(1000 * 60 * 60 * 24)
-			  )
+			? (() => {
+					const today = new Date();
+					const createdDate = new Date(opportunity.created_at);
+
+					// Reset hours to compare calendar days only
+					today.setHours(0, 0, 0, 0);
+					createdDate.setHours(0, 0, 0, 0);
+
+					// Calculate difference in days
+					return Math.round((today - createdDate) / (1000 * 60 * 60 * 24));
+			  })()
 			: null;
 
 	// Get relevance score if available
@@ -686,13 +690,17 @@ function OpportunityCard({ opportunity }) {
 						{status}
 					</span>
 				</div>
-				<CardDescription className='line-clamp-1'>{source}</CardDescription>
 
 				{/* NEW badge if applicable */}
 				{isNew && (
 					<div className='mt-1'>
 						<span className='bg-blue-500 text-white text-xs font-bold px-2 py-1 rounded'>
-							NEW • {addedDaysAgo === 0 ? 'Today' : `${addedDaysAgo} days ago`}
+							NEW •{' '}
+							{addedDaysAgo === 0
+								? 'Today'
+								: addedDaysAgo === 1
+								? 'Yesterday'
+								: `${addedDaysAgo} days ago`}
 						</span>
 					</div>
 				)}

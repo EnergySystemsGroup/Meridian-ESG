@@ -310,7 +310,12 @@ The Frontend Implementation provides a modern, user-friendly interface for viewi
 - [x] Add visual status indicators for open/upcoming/closed opportunities
 - [x] Design and implement relevance score visualization
 - [x] Convert relevance scores from 1-10 scale to percentage display
-- [ ] Implement "NEW" badge for recently added opportunities (determine optimal placement)
+- [ ] Implement dynamic "NEW" badge system:
+  - [ ] Add creation date tracking to opportunity schema
+  - [ ] Create logic to show "NEW" badge for opportunities added within last 6 days
+  - [ ] Design badge with days-ago indicator (e.g., "NEW • Today" or "NEW • 3 days ago")
+  - [ ] Determine optimal badge placement on opportunity cards
+  - [ ] Add database query parameter to filter/sort by recently added
 - [ ] Implement lazy loading for large opportunity sets
 - [ ] Add animations for improved user experience
 - [ ] Improve description formatting and truncation with intelligent handling of long text
