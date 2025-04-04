@@ -1,4 +1,18 @@
-import { createSupabaseClient, logApiActivity } from '../supabase';
+import { ChatAnthropic } from '@langchain/anthropic';
+import { StructuredOutputParser } from '@langchain/core/output_parsers';
+import { PromptTemplate } from '@langchain/core/prompts';
+import {
+	createSupabaseClient,
+	logAgentExecution,
+	logApiActivity,
+} from '../supabase';
+import { z } from 'zod';
+import {
+	TAXONOMIES,
+	generateTaxonomyInstruction,
+	generateLocationEligibilityInstruction,
+} from '../constants/taxonomies';
+import { processChunksInParallel } from '../utils/parallelProcessing';
 
 /**
  * Process a batch of opportunities
@@ -312,6 +326,187 @@ export async function processOpportunitiesBatch(
 			return sanitized;
 		}
 
+		/**
+		 * Process and create state eligibility records for an opportunity
+		 * @param {Object} supabase - Supabase client
+		 * @param {string} opportunityId - ID of the opportunity
+		 * @param {boolean} isNational - Whether the opportunity is national
+		 * @param {Array|string} eligibleLocations - Array or string of eligible locations
+		 * @returns {Promise<{stateCount: number, error: any}>} - Result of the operation
+		 */
+		async function processStateEligibility(
+			supabase,
+			opportunityId,
+			isNational,
+			eligibleLocations
+		) {
+			console.log(
+				`Processing state eligibility for opportunity ${opportunityId}`
+			);
+
+			// If the opportunity is marked as national, we don't need to create individual state entries
+			if (isNational) {
+				console.log(
+					`Opportunity ${opportunityId} is national, skipping state eligibility entries`
+				);
+				return { stateCount: 0, isNational: true };
+			}
+
+			// First, remove any existing state eligibility entries
+			const { error: deleteError } = await supabase
+				.from('opportunity_state_eligibility')
+				.delete()
+				.eq('opportunity_id', opportunityId);
+
+			if (deleteError) {
+				console.error(
+					`Error deleting existing state eligibility entries: ${deleteError.message}`
+				);
+				return { stateCount: 0, error: deleteError };
+			}
+
+			// Skip if there are no eligible locations
+			if (
+				!eligibleLocations ||
+				(Array.isArray(eligibleLocations) && eligibleLocations.length === 0) ||
+				(typeof eligibleLocations === 'string' &&
+					eligibleLocations.trim() === '')
+			) {
+				console.log(
+					`No eligible locations found for opportunity ${opportunityId}`
+				);
+				return { stateCount: 0 };
+			}
+
+			// Normalize eligible locations to an array
+			let locationArray = [];
+			if (typeof eligibleLocations === 'string') {
+				// Split by commas, semicolons, or newlines and trim each item
+				locationArray = eligibleLocations
+					.split(/[,;\n]/)
+					.map((item) => item.trim())
+					.filter((item) => item.length > 0);
+			} else if (Array.isArray(eligibleLocations)) {
+				locationArray = eligibleLocations;
+			}
+
+			console.log(`Parsed ${locationArray.length} potential locations`);
+
+			// Get all US states from the database for matching
+			const { data: allStates, error: statesError } = await supabase
+				.from('states')
+				.select('id, name, code, region');
+
+			if (statesError) {
+				console.error(`Error fetching states: ${statesError.message}`);
+				return { stateCount: 0, error: statesError };
+			}
+
+			// Create a map of state names to IDs for easy lookup
+			const stateNameMap = new Map();
+			const stateCodeMap = new Map();
+			const regionMap = new Map();
+
+			// Populate maps for efficient lookups
+			allStates.forEach((state) => {
+				stateNameMap.set(state.name.toLowerCase(), state.id);
+				stateCodeMap.set(state.code.toLowerCase(), state.id);
+
+				// Add states to their region
+				if (!regionMap.has(state.region)) {
+					regionMap.set(state.region, []);
+				}
+				regionMap.get(state.region).push(state.id);
+			});
+
+			// Standard US regions for mapping region names to states
+			const standardRegions = {
+				northeast: 'Northeast',
+				'new england': 'Northeast',
+				'mid-atlantic': 'Northeast',
+				midwest: 'Midwest',
+				west: 'West',
+				pacific: 'West',
+				mountain: 'West',
+				south: 'South',
+				southeast: 'South',
+				southwest: 'West',
+			};
+
+			// Find matching states from location array
+			const stateIds = new Set();
+
+			locationArray.forEach((location) => {
+				const normalizedLocation = location.toLowerCase().trim();
+
+				// Check for exact state name match
+				if (stateNameMap.has(normalizedLocation)) {
+					stateIds.add(stateNameMap.get(normalizedLocation));
+					return;
+				}
+
+				// Check for state code match (e.g., "CA" for California)
+				if (
+					normalizedLocation.length === 2 &&
+					stateCodeMap.has(normalizedLocation)
+				) {
+					stateIds.add(stateCodeMap.get(normalizedLocation));
+					return;
+				}
+
+				// Check for region match
+				const regionKey = Object.keys(standardRegions).find((r) =>
+					normalizedLocation.includes(r)
+				);
+
+				if (regionKey) {
+					const regionName = standardRegions[regionKey];
+					const regionStateIds = regionMap.get(regionName) || [];
+					regionStateIds.forEach((id) => stateIds.add(id));
+					return;
+				}
+
+				// For fuzzy state matching, check if the location contains a state name
+				for (const [stateName, stateId] of stateNameMap.entries()) {
+					if (normalizedLocation.includes(stateName)) {
+						stateIds.add(stateId);
+						break;
+					}
+				}
+			});
+
+			console.log(`Found ${stateIds.size} matching states`);
+
+			// If no states were found, return
+			if (stateIds.size === 0) {
+				console.log(
+					`No matching states found for opportunity ${opportunityId}`
+				);
+				return { stateCount: 0 };
+			}
+
+			// Create state eligibility records
+			const stateEntries = Array.from(stateIds).map((stateId) => ({
+				opportunity_id: opportunityId,
+				state_id: stateId,
+				created_at: new Date().toISOString(),
+			}));
+
+			const { error: insertError } = await supabase
+				.from('opportunity_state_eligibility')
+				.insert(stateEntries);
+
+			if (insertError) {
+				console.error(
+					`Error inserting state eligibility entries: ${insertError.message}`
+				);
+				return { stateCount: 0, error: insertError };
+			}
+
+			console.log(`Created ${stateEntries.length} state eligibility entries`);
+			return { stateCount: stateEntries.length };
+		}
+
 		// Process each opportunity
 		for (let i = 0; i < opportunitiesWithRawIds.length; i++) {
 			const { opportunity, rawResponseId } = opportunitiesWithRawIds[i];
@@ -405,6 +600,14 @@ export async function processOpportunitiesBatch(
 				console.log(
 					'Debug - Inserted data raw_response_id:',
 					insertData.raw_response_id
+				);
+
+				// Process state eligibility
+				await processStateEligibility(
+					supabase,
+					insertData.id,
+					insertData.is_national,
+					opportunity.eligibleLocations
 				);
 
 				result.newOpportunities.push(insertData);
@@ -677,7 +880,26 @@ export async function processOpportunitiesBatch(
 					updatedData._changedFields = changedFields;
 					result.updatedOpportunities.push(updatedData);
 					result.metrics.updated++;
+
+					// After updating the opportunity
+					if (!updateError) {
+						// Process state eligibility after update
+						await processStateEligibility(
+							supabase,
+							existingOpportunity.id,
+							existingOpportunity.is_national,
+							opportunity.eligibleLocations
+						);
+					}
 				} else {
+					// Even if no changes to critical fields, we still want to process state eligibility
+					await processStateEligibility(
+						supabase,
+						existingOpportunity.id,
+						existingOpportunity.is_national,
+						opportunity.eligibleLocations
+					);
+
 					// No changes needed
 					result.ignoredOpportunities.push(existingOpportunity);
 					result.metrics.ignored++;

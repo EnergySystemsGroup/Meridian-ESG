@@ -115,9 +115,8 @@ const apiResponseProcessingSchema = z.object({
 				title: z.string().describe('Title of the funding opportunity'),
 				description: z
 					.string()
-					.optional()
 					.describe(
-						'To the extent possible, a clear, detailed description of various aspects of the opportunity including key requirements, application process, evaluation criteria, and other important details that would help potential applicants understand the full scope of the opportunity.'
+						'A clear, comprehensive 4 paragraph description of the funding opportunity, including its purpose, goals, eligibility criteria, application process, and other key details that would help potential applicants understand the full scope of the opportunity.'
 					),
 				fundingType: z
 					.string()
@@ -234,7 +233,9 @@ const apiResponseProcessingSchema = z.object({
 				status: z
 					.string()
 					.optional()
-					.describe('Current status (open, upcoming, closed)'),
+					.describe(
+						'Current status of the opportunity. Must be one of: "open" (currently accepting applications), "upcoming" (announced but not yet accepting applications), or "closed" (no longer accepting applications)'
+					),
 				isNational: z
 					.boolean()
 					.optional()
