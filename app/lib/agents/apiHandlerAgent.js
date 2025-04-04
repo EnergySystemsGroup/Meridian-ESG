@@ -16,6 +16,7 @@ import { z } from 'zod';
 import {
 	TAXONOMIES,
 	generateTaxonomyInstruction,
+	generateLocationEligibilityInstruction,
 } from '../constants/taxonomies';
 import axios from 'axios';
 import crypto from 'crypto';
@@ -456,7 +457,8 @@ ${generateTaxonomyInstruction('CATEGORIES', 'funding categories')}
 
 ${generateTaxonomyInstruction('FUNDING_TYPES', 'funding types')}
 
-${generateTaxonomyInstruction('ELIGIBLE_LOCATIONS', 'eligible locations')}
+
+${generateLocationEligibilityInstruction()}
 
 {formatInstructions}
 `

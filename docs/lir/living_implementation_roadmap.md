@@ -225,6 +225,19 @@ The Funding API Processing System is designed to retrieve, filter, and store fun
 - [ ] Implement parallel processing of sources
 - [ ] Add resource allocation and throttling
 
+**Geographic Eligibility Processing:**
+
+- [x] Define state reference tables and opportunity-state junction tables
+- [x] Create database view with eligible_states array field
+- [x] Add is_national flag for nationwide opportunities
+- [x] Implement taxonomies for state and region specification
+- [ ] Enhance LLM prompt to extract specific state eligibility
+- [ ] Update Data Processor to parse location responses
+- [ ] Implement logic to populate opportunity_state_eligibility table
+- [ ] Create function to expand regional designations to constituent states
+- [ ] Add post-processing validation for geographic eligibility
+- [ ] Implement filtering and map visualization based on geographic eligibility
+
 <a id="funding-api-database"></a>
 
 ### Database Implementation

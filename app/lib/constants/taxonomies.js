@@ -75,18 +75,129 @@ export const TAXONOMIES = {
 	],
 
 	ELIGIBLE_LOCATIONS: [
-		// Location types rather than specific locations
-		'National',
-		'State-specific',
-		'County-specific',
-		'City/Municipal',
-		'Rural',
-		'Urban',
+		// Primary location designations
+		'National', // For opportunities available across all states
+		'Regional', // For multi-state regions (specify which in the format below)
+
+		// All U.S. States and Territories (use exact names for database matching)
+		'Alabama',
+		'Alaska',
+		'Arizona',
+		'Arkansas',
+		'California',
+		'Colorado',
+		'Connecticut',
+		'Delaware',
+		'Florida',
+		'Georgia',
+		'Hawaii',
+		'Idaho',
+		'Illinois',
+		'Indiana',
+		'Iowa',
+		'Kansas',
+		'Kentucky',
+		'Louisiana',
+		'Maine',
+		'Maryland',
+		'Massachusetts',
+		'Michigan',
+		'Minnesota',
+		'Mississippi',
+		'Missouri',
+		'Montana',
+		'Nebraska',
+		'Nevada',
+		'New Hampshire',
+		'New Jersey',
+		'New Mexico',
+		'New York',
+		'North Carolina',
+		'North Dakota',
+		'Ohio',
+		'Oklahoma',
+		'Oregon',
+		'Pennsylvania',
+		'Rhode Island',
+		'South Carolina',
+		'South Dakota',
+		'Tennessee',
+		'Texas',
+		'Utah',
+		'Vermont',
+		'Virginia',
+		'Washington',
+		'West Virginia',
+		'Wisconsin',
+		'Wyoming',
+		'District of Columbia',
+		'Puerto Rico',
+		'U.S. Virgin Islands',
+		'Guam',
+		'American Samoa',
+		'Northern Mariana Islands',
+
+		// Other location designations (to be used in addition to specific states)
 		'Tribal Lands',
+		'Rural Communities',
+		'Urban Areas',
 		'Underserved Communities',
 		'Opportunity Zones',
-		'Specific Geographic Features',
 	],
+
+	// Standardized U.S. regions for processing regional designations
+	US_REGIONS: {
+		Northeast: [
+			'Maine',
+			'New Hampshire',
+			'Vermont',
+			'Massachusetts',
+			'Rhode Island',
+			'Connecticut',
+			'New York',
+			'New Jersey',
+			'Pennsylvania',
+		],
+		Southeast: [
+			'Virginia',
+			'North Carolina',
+			'South Carolina',
+			'Georgia',
+			'Florida',
+			'Alabama',
+			'Mississippi',
+			'Tennessee',
+			'Kentucky',
+			'West Virginia',
+		],
+		Midwest: [
+			'Ohio',
+			'Michigan',
+			'Indiana',
+			'Illinois',
+			'Wisconsin',
+			'Minnesota',
+			'Iowa',
+			'Missouri',
+			'North Dakota',
+			'South Dakota',
+			'Nebraska',
+			'Kansas',
+		],
+		Southwest: ['Texas', 'Oklahoma', 'New Mexico', 'Arizona'],
+		West: [
+			'Colorado',
+			'Wyoming',
+			'Montana',
+			'Idaho',
+			'Washington',
+			'Oregon',
+			'Nevada',
+			'California',
+			'Alaska',
+			'Hawaii',
+		],
+	},
 };
 
 /**
@@ -115,6 +226,29 @@ If a ${fieldName.replace(
 		/s$/,
 		''
 	)} doesn't fit these categories, you must use "Other: [specific detail]"`;
+}
+
+/**
+ * Generate clear instructions for location eligibility formatting
+ * @returns {string} Formatted instruction for the eligible_locations field
+ */
+export function generateLocationEligibilityInstruction() {
+	return `
+When specifying ELIGIBLE_LOCATIONS, follow these strict guidelines:
+
+1. If the opportunity is available nationwide, include ONLY "National" in the list.
+
+2. If the opportunity is available in specific states, list the full name of each eligible state:
+   - Examples: "California", "New York", "Texas"
+   - Always use the full state name, not abbreviations
+
+3. If the opportunity is available in a region, you can include both:
+   - The individual states in that region
+   - Common regional terms may include: Northeast, Southeast, Midwest, Southwest, West, etc.
+
+4. Other designations like "Tribal Lands" or "Rural Communities" should be included when applicable.
+
+IMPORTANT: The eligible_locations field MUST always include specific state names or "National", as this is critical for matching opportunities to users in different geographic areas.`;
 }
 
 export default TAXONOMIES;
