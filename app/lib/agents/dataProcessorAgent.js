@@ -341,6 +341,26 @@ export async function processOpportunitiesBatch(
 			}
 
 			// If no match by ID, try matching by title
+			if (!existingOpportunity && opportunity.title) {
+				console.log(
+					`No match by ID found, checking by title: "${opportunity.title}"`
+				);
+				const { data, error } = await supabase
+					.from('funding_opportunities')
+					.select('*')
+					.eq('title', opportunity.title)
+					.eq('source_id', sourceId)
+					.limit(1);
+
+				if (!error && data && data.length > 0) {
+					console.log(
+						`Found existing opportunity with the same title: "${opportunity.title}"`
+					);
+					existingOpportunity = data[0];
+				}
+			}
+
+			// If no match by ID or title, insert a new record
 			if (!existingOpportunity) {
 				// Sanitize opportunity data for database insertion
 				const opportunityData = sanitizeOpportunityForDatabase(
