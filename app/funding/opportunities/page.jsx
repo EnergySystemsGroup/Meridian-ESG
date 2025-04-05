@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import MainLayout from '@/app/components/layout/main-layout';
 import { Button } from '@/app/components/ui/button';
 import {
@@ -133,6 +133,42 @@ export default function OpportunitiesPage() {
 	const [categorySearchQuery, setCategorySearchQuery] = useState('');
 	const [stateSearchQuery, setStateSearchQuery] = useState('');
 
+	// Create refs for the dropdown containers
+	const categoryDropdownRef = useRef(null);
+	const statusDropdownRef = useRef(null);
+	const stateDropdownRef = useRef(null);
+	const filterContainerRef = useRef(null);
+
+	// Add click outside listener to close dropdown
+	useEffect(() => {
+		const handleClickOutside = (event) => {
+			if (
+				openFilterSection &&
+				filterContainerRef.current &&
+				!filterContainerRef.current.contains(event.target)
+			) {
+				setOpenFilterSection(null);
+			}
+		};
+
+		// Add escape key listener to close dropdown
+		const handleEscapeKey = (event) => {
+			if (event.key === 'Escape' && openFilterSection) {
+				setOpenFilterSection(null);
+			}
+		};
+
+		// Add event listeners
+		document.addEventListener('mousedown', handleClickOutside);
+		document.addEventListener('keydown', handleEscapeKey);
+
+		// Clean up
+		return () => {
+			document.removeEventListener('mousedown', handleClickOutside);
+			document.removeEventListener('keydown', handleEscapeKey);
+		};
+	}, [openFilterSection]);
+
 	// Extract all unique tags and categories from opportunities
 	useEffect(() => {
 		if (opportunities.length > 0) {
@@ -219,6 +255,7 @@ export default function OpportunitiesPage() {
 				}
 			} else {
 				newFilters[type] = newFilters[type] === value ? null : value;
+				setTimeout(() => setOpenFilterSection(null), 50);
 			}
 
 			// Reset page when changing filters
@@ -318,9 +355,9 @@ export default function OpportunitiesPage() {
 						</div>
 
 						{/* Filter dropdown buttons */}
-						<div className='flex flex-wrap gap-2'>
+						<div className='flex flex-wrap gap-2' ref={filterContainerRef}>
 							{/* Category filter */}
-							<div className='relative'>
+							<div className='relative' ref={categoryDropdownRef}>
 								<Button
 									variant={
 										filters.categories.length > 0 ? 'secondary' : 'outline'
@@ -389,7 +426,7 @@ export default function OpportunitiesPage() {
 							</div>
 
 							{/* Status filter */}
-							<div className='relative'>
+							<div className='relative' ref={statusDropdownRef}>
 								<Button
 									variant={filters.status ? 'secondary' : 'outline'}
 									onClick={() => toggleFilterSection('status')}
@@ -431,7 +468,7 @@ export default function OpportunitiesPage() {
 							</div>
 
 							{/* State filter */}
-							<div className='relative'>
+							<div className='relative' ref={stateDropdownRef}>
 								<Button
 									variant={filters.states.length > 0 ? 'secondary' : 'outline'}
 									onClick={() => toggleFilterSection('states')}
