@@ -6,15 +6,17 @@ This document tracks the implementation status of all features in the Funding In
 
 This section highlights the highest priority tasks to be completed next:
 
-1. **Frontend - Funding Opportunities Dashboard Improvements**: Add additional filtering and sorting options for funding opportunities, continue improving the UI elements and functionalities.
+1. **Frontend - Funding Opportunities Dashboard Improvements**: Replace tag filtering with more robust category filtering, add location-based filtering, fix status choices, and improve card components.
 
-2. **Frontend - Legislative Data Warning Labels**: Add warning labels to all legislative data views indicating that the data is for demonstration purposes only.
+2. **Frontend - Opportunity Card Components**: Refactor opportunity cards into modular components with both multi-colored and blue header variants for flexibility.
 
-3. **Frontend - "Coming Soon" Pages**: Add proper "Coming Soon" messaging to incomplete views and features that are planned but not yet implemented.
+3. **Frontend - Pagination Improvements**: Fix pagination issues by moving controls to both top and bottom of results, fixing search behavior, showing "X-Y of Z results", and preserving pagination state during filtering operations.
 
-4. **Frontend - Client Matching UI Design**: Start designing and implementing the client matching interface to display tailored recommendations.
+4. **Frontend - Legislative Data Warning Labels**: Add warning labels to all legislative data views indicating that the data is for demonstration purposes only.
 
-5. **Backend - Audit Opportunity Fields**: Review and audit the opportunity fields to ensure all necessary data is being properly collected, processed and displayed. Improve the description field in the Zod schema to ensure it captures and validates all necessary information.
+5. **Frontend - "Coming Soon" Pages**: Add proper "Coming Soon" messaging to incomplete views and features that are planned but not yet implemented.
+
+6. **Frontend - Client Matching UI Design**: Start designing and implementing the client matching interface to display tailored recommendations.
 
 ## Downgraded Priority Tasks
 
@@ -32,15 +34,15 @@ These tasks remain important but have been downgraded in priority as we focus on
 
 ## Recently Completed Tasks
 
-1. **Frontend - Funding Opportunities Explorer UI**: Implemented modern, visually appealing interface for browsing funding opportunities with dynamic category color assignments, responsive cards, and improved user experience.
+1. **Backend - State Eligibility Processing**: Implemented comprehensive system for processing state eligibility from funding opportunities, creating a junction table linking opportunities to eligible states, and providing structured taxonomies and instructions for LLMs to extract proper state eligibility information.
 
-2. **Frontend - Opportunity Cards Design**: Created standardized card design with multi-category indicator bar, status indicators, relevance meter, and key details display.
+2. **Backend - Duplicate Prevention**: Fixed issue with duplicate entries in the funding_opportunities table by implementing title-based matching when opportunity IDs don't match, preventing duplicate opportunities from being created across different processing runs.
 
-3. **Frontend - Relevance Score Handling**: Updated the relevance score display to correctly convert scores from 1-10 scale to percentage format, with appropriate color coding based on relevance level.
+3. **Backend - Description Field Improvement**: Updated description field in the Zod schema to request more comprehensive 2-4 paragraph descriptions for funding opportunities, ensuring fuller and more useful opportunity descriptions.
 
-4. **Backend - Project Type Scoring Update**: Modified the scoring criteria for the "Project Type" category (formerly "Project Implementation Type") to better reflect the value of different project types, with higher scores for construction, renovations, HVAC, lighting, etc.
+4. **Frontend - Funding Opportunities Explorer UI**: Implemented modern, visually appealing interface for browsing funding opportunities with dynamic category color assignments, responsive cards, and improved user experience.
 
-5. **Parallel Processing for Filters**: Implemented parallel processing for both first and second stage filters to improve performance. The second stage filter was taking significantly longer due to processing larger, detailed opportunities individually. Now both filters process multiple chunks concurrently with controlled concurrency.
+5. **Frontend - Opportunity Cards Design**: Created standardized card design with multi-category indicator bar, status indicators, relevance meter, and key details display.
 
 ## Dynamic Source Prioritization Implementation
 
@@ -190,8 +192,8 @@ The Funding API Processing System is designed to retrieve, filter, and store fun
 - [x] Implement direct batch processing of opportunities
 - [x] Link opportunities to their funding sources by agency name
 - [x] Implement structured funding source object extraction and processing
-- [ ] Enhance the description field in the Zod schema to improve validation, formatting, and handling of various text formats
-- [ ] Verify and improve update detection to prevent false positives from minor LLM wording differences
+- [x] Update the description field in the Zod schema to improve comprehensiveness with 2-4 paragraph descriptions
+- [x] Implement title-based matching to prevent duplicate opportunities when IDs don't match
 - [ ] Replace LLM-based decision making with rule-based processing for better efficiency
 - [ ] Implement versioning for opportunity updates
 - [ ] Add tagging system for categorization
@@ -231,10 +233,10 @@ The Funding API Processing System is designed to retrieve, filter, and store fun
 - [x] Create database view with eligible_states array field
 - [x] Add is_national flag for nationwide opportunities
 - [x] Implement taxonomies for state and region specification
-- [ ] Enhance LLM prompt to extract specific state eligibility
-- [ ] Update Data Processor to parse location responses
-- [ ] Implement logic to populate opportunity_state_eligibility table
-- [ ] Create function to expand regional designations to constituent states
+- [x] Enhance LLM prompt to extract specific state eligibility
+- [x] Update Data Processor to parse location responses
+- [x] Implement logic to populate opportunity_state_eligibility table
+- [x] Create function to expand regional designations to constituent states
 - [ ] Add post-processing validation for geographic eligibility
 - [ ] Implement filtering and map visualization based on geographic eligibility
 
@@ -323,12 +325,23 @@ The Frontend Implementation provides a modern, user-friendly interface for viewi
 - [x] Add visual status indicators for open/upcoming/closed opportunities
 - [x] Design and implement relevance score visualization
 - [x] Convert relevance scores from 1-10 scale to percentage display
-- [ ] Implement dynamic "NEW" badge system:
-  - [ ] Add creation date tracking to opportunity schema
-  - [ ] Create logic to show "NEW" badge for opportunities added within last 6 days
-  - [ ] Design badge with days-ago indicator (e.g., "NEW • Today" or "NEW • 3 days ago")
-  - [ ] Determine optimal badge placement on opportunity cards
+- [x] Implement dynamic "NEW" badge system:
+  - [x] Add creation date tracking to opportunity schema
+  - [x] Create logic to show "NEW" badge for opportunities added within last 6 days
+  - [x] Design badge with days-ago indicator (e.g., "NEW • Today" or "NEW • 3 days ago")
+  - [x] Determine optimal badge placement on opportunity cards
   - [ ] Add database query parameter to filter/sort by recently added
+- [ ] Refactor opportunity cards into modular components:
+  - [ ] Create base OpportunityCard component with shared functionality
+  - [ ] Implement MultiColorHeaderCard variant with category color bar
+  - [ ] Implement BlueHeaderCard variant with solid blue header and colored status badges
+  - [ ] Ensure consistent styling and behavior across variants
+- [ ] Improve pagination implementation:
+  - [ ] Move pagination controls to top of results and duplicate at bottom
+  - [ ] Fix search behavior to maintain proper pagination of results
+  - [ ] Update pagination display to show "Showing X-Y of Z results"
+  - [ ] Add ability to set items per page (10/25/50)
+  - [ ] Ensure pagination state is preserved during filtering
 - [ ] Implement lazy loading for large opportunity sets
 - [ ] Add animations for improved user experience
 - [ ] Improve description formatting and truncation with intelligent handling of long text
@@ -339,6 +352,9 @@ The Frontend Implementation provides a modern, user-friendly interface for viewi
 - [x] Add status filtering
 - [x] Create tag-based filtering
 - [x] Design active filters display with clear indicators
+- [ ] Replace tag filtering with more robust category filtering system
+- [ ] Update status filter with improved status choices and visual indicators
+- [ ] Add location-based filtering using state eligibility data
 - [ ] Enhance sorting capabilities with multiple options (relevance, deadline, amount, date added)
 - [ ] Implement advanced filtering with multiple criteria
 - [ ] Add saved filter presets
