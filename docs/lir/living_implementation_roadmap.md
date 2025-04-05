@@ -6,9 +6,9 @@ This document tracks the implementation status of all features in the Funding In
 
 This section highlights the highest priority tasks to be completed next:
 
-1. **Frontend - Funding Opportunities Filtering Enhancements**: Replace tag filtering with more robust category filtering, add location-based filtering using the state eligibility data, improve status filtering with better visual indicators, and add sorting options.
+1. **Frontend - Items Per Page Option**: Implement ability to adjust number of items per page with options for 10/25/50 funding opportunities.
 
-2. **Frontend - Pagination Improvements**: Fix pagination issues by moving controls to both top and bottom of results, fixing search behavior, showing "X-Y of Z results", and preserving pagination state during filtering operations.
+2. **Frontend - Advanced Filtering**: Add support for advanced filtering with multiple criteria, including date ranges, funding amounts, and eligible applicant types.
 
 3. **Frontend - Legislative Data Warning Labels**: Add warning labels to all legislative data views indicating that the data is for demonstration purposes only.
 
@@ -32,19 +32,25 @@ These tasks remain important but have been downgraded in priority as we focus on
 
 ## Recently Completed Tasks
 
-1. **Frontend - Opportunity Card Refactoring**: Created modular OpportunityCard component with a blue header variant that replaces the multi-colored category bar, featuring a thin blue strip at the top, properly styled status badges with appropriate colors based on opportunity status, and light-styled NEW badges with colored text matching the category pill style.
+1. **Frontend - Funding Opportunities Filtering Enhancements**: Replaced tag filtering with robust category filtering system, added location-based filtering using the state eligibility data, improved status filtering with better visual indicators, and added comprehensive sorting options.
 
-2. **Frontend - Status Badge Improvement**: Implemented case-insensitive status handling to ensure proper color application regardless of database case formatting (Open/open/OPEN), with status colors now correctly displaying green for Open, blue for Upcoming, and gray for Closed.
+2. **Frontend - Pagination Improvements**: Fixed pagination issues by moving controls to both top and bottom of results, improved search behavior, added "Showing X-Y of Z results" display, and preserved pagination state during filtering operations.
 
-3. **Backend - State Eligibility Processing**: Implemented comprehensive system for processing state eligibility from funding opportunities, creating a junction table linking opportunities to eligible states, and providing structured taxonomies and instructions for LLMs to extract proper state eligibility information.
+3. **Frontend - Active Filters UI**: Implemented comprehensive active filters display with pill-based indicators, consistent color coding, and easy clear functionality, improving the overall filtering UX.
 
-4. **Backend - Duplicate Prevention**: Fixed issue with duplicate entries in the funding_opportunities table by implementing title-based matching when opportunity IDs don't match, preventing duplicate opportunities from being created across different processing runs.
+4. **Frontend - Opportunity Card Refactoring**: Created modular OpportunityCard component with a blue header variant that replaces the multi-colored category bar, featuring a thin blue strip at the top, properly styled status badges with appropriate colors based on opportunity status, and light-styled NEW badges with colored text matching the category pill style.
 
-5. **Backend - Description Field Improvement**: Updated description field in the Zod schema to request more comprehensive 2-4 paragraph descriptions for funding opportunities, ensuring fuller and more useful opportunity descriptions.
+5. **Frontend - Status Badge Improvement**: Implemented case-insensitive status handling to ensure proper color application regardless of database case formatting (Open/open/OPEN), with status colors now correctly displaying green for Open, blue for Upcoming, and gray for Closed.
 
-6. **Frontend - Funding Opportunities Explorer UI**: Implemented modern, visually appealing interface for browsing funding opportunities with dynamic category color assignments, responsive cards, and improved user experience.
+6. **Backend - State Eligibility Processing**: Implemented comprehensive system for processing state eligibility from funding opportunities, creating a junction table linking opportunities to eligible states, and providing structured taxonomies and instructions for LLMs to extract proper state eligibility information.
 
-7. **Frontend - Opportunity Cards Design**: Created standardized card design with multi-category indicator bar, status indicators, relevance meter, and key details display.
+7. **Backend - Duplicate Prevention**: Fixed issue with duplicate entries in the funding_opportunities table by implementing title-based matching when opportunity IDs don't match, preventing duplicate opportunities from being created across different processing runs.
+
+8. **Backend - Description Field Improvement**: Updated description field in the Zod schema to request more comprehensive 2-4 paragraph descriptions for funding opportunities, ensuring fuller and more useful opportunity descriptions.
+
+9. **Frontend - Funding Opportunities Explorer UI**: Implemented modern, visually appealing interface for browsing funding opportunities with dynamic category color assignments, responsive cards, and improved user experience.
+
+10. **Frontend - Opportunity Cards Design**: Created standardized card design with multi-category indicator bar, status indicators, relevance meter, and key details display.
 
 ## Dynamic Source Prioritization Implementation
 
@@ -340,12 +346,19 @@ The Frontend Implementation provides a modern, user-friendly interface for viewi
   - [x] Style NEW badge with light background and colored text to match category pills
   - [x] ~Implement MultiColorHeaderCard variant with category color bar~ **(Requirement changed - not needed)**
   - [x] ~Ensure consistent styling and behavior across variants~ **(Completed with blue header implementation)**
-- [ ] Improve pagination implementation:
-  - [ ] Move pagination controls to top of results and duplicate at bottom
-  - [ ] Fix search behavior to maintain proper pagination of results
-  - [ ] Update pagination display to show "Showing X-Y of Z results"
+- [x] Implement active filters UI:
+  - [x] Create pill-based display of active filters with clear indicators
+  - [x] Apply consistent color coding across filter pills and opportunity cards
+  - [x] Include clear buttons for individual filters and clear all option
+  - [x] Handle special formatting for "Other: [description]" categories
+  - [x] Position active filters for high visibility without dominating the interface
+- [x] Improve pagination implementation:
+  - [x] Move pagination controls to top of results and duplicate at bottom
+  - [x] Fix search behavior to maintain proper pagination of results
+  - [x] Update pagination display to show "Showing X-Y of Z results"
+  - [x] Ensure pagination state is preserved during filtering
+  - [x] Add proper disabled states for navigation buttons
   - [ ] Add ability to set items per page (10/25/50)
-  - [ ] Ensure pagination state is preserved during filtering
 - [ ] Implement lazy loading for large opportunity sets
 - [ ] Add animations for improved user experience
 - [ ] Improve description formatting and truncation with intelligent handling of long text
@@ -356,25 +369,33 @@ The Frontend Implementation provides a modern, user-friendly interface for viewi
 - [x] Add status filtering
 - [x] Create tag-based filtering
 - [x] Design active filters display with clear indicators
-- [ ] Replace tag filtering with more robust category filtering system:
-  - [ ] Create dropdown with checkboxes for selecting multiple categories
-  - [ ] Add category color indicators in filter dropdown
-  - [ ] Implement visual indicators for selected categories
-  - [ ] Ensure filtering works with partial category matches
-- [ ] Update status filter with improved status choices and visual indicators
-- [ ] Add location-based filtering using state eligibility data:
-  - [ ] Create state selection dropdown with search and multi-select
-  - [ ] Add option for "National" opportunities
-  - [ ] Implement filter matching based on eligible_states array
-- [ ] Enhance sorting capabilities with multiple options:
-  - [ ] Sort by relevance (default)
-  - [ ] Sort by deadline (soonest first)
-  - [ ] Sort by amount (highest first)
-  - [ ] Sort by recently added
+- [x] Replace tag filtering with more robust category filtering system:
+  - [x] Create dropdown with checkboxes for selecting multiple categories
+  - [x] Add category color indicators in filter dropdown
+  - [x] Implement visual indicators for selected categories
+  - [x] Ensure filtering works with partial category matches
+  - [x] Combine standard taxonomy categories with dynamic categories from opportunities
+  - [x] Enable search within category dropdown for easier navigation
+  - [x] Add proper formatting for "Other: [description]" categories
+- [x] Update status filter with improved status choices and visual indicators:
+  - [x] Implement case-insensitive status handling
+  - [x] Apply consistent color coding matching card status indicators
+  - [x] Add visual indicators in dropdown and filter pills
+  - [x] Ensure automatic closing of single-select dropdowns after selection
+- [x] Add location-based filtering using state eligibility data:
+  - [x] Create state selection dropdown with search and multi-select
+  - [x] Add option for "National" opportunities
+  - [x] Implement filter matching based on eligible_locations array
+  - [x] Fix case sensitivity issues in database filtering
+- [x] Enhance sorting capabilities with multiple options:
+  - [x] Sort by relevance (default)
+  - [x] Sort by deadline (soonest first)
+  - [x] Sort by amount (highest first)
+  - [x] Sort by recently added (using updated_at timestamp)
+  - [x] Add ability to toggle sort direction (ascending/descending)
 - [ ] Implement advanced filtering with multiple criteria
-- [ ] Add saved filter presets
-- [ ] Create custom sorting options with intelligent defaults
-- [ ] Create persistent filter preferences for returning users
+- [ ] Add saved filter preferences for returning users
+- [ ] Improve UX with tooltips and filter explanations
 
 **Search Functionality:**
 
