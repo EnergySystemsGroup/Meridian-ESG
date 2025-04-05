@@ -6,7 +6,7 @@ import {
 	CardTitle,
 } from '@/app/components/ui/card';
 import { Button } from '@/app/components/ui/button';
-import { DollarSign, Calendar, Clock } from 'lucide-react';
+import { DollarSign, Calendar } from 'lucide-react';
 import { calculateDaysLeft, determineStatus } from '@/app/lib/supabase';
 
 // Status indicators with colors for badges
@@ -81,10 +81,6 @@ const getRelevanceColor = (score) => {
 const OpportunityCard = ({ opportunity }) => {
 	// Format the data from our database to match the UI expectations
 	const title = opportunity.title;
-	const source =
-		opportunity.agency_name ||
-		opportunity.source_display_name ||
-		'Unknown Source';
 
 	// Format amount display
 	const amount =
@@ -104,11 +100,6 @@ const OpportunityCard = ({ opportunity }) => {
 				year: 'numeric',
 		  })
 		: 'No deadline specified';
-
-	// Calculate days remaining
-	const daysLeft = opportunity.close_date
-		? calculateDaysLeft(opportunity.close_date)
-		: null;
 
 	// Determine status
 	const status =
@@ -173,9 +164,6 @@ const OpportunityCard = ({ opportunity }) => {
 					</span>
 				</div>
 
-				{/* Source attribution */}
-				<div className='text-xs text-gray-500 mt-1'>{source}</div>
-
 				{/* NEW badge if applicable */}
 				{isNew && (
 					<div className='mt-2'>
@@ -225,13 +213,6 @@ const OpportunityCard = ({ opportunity }) => {
 							<Calendar size={16} className='text-gray-500' />
 							<span>{closeDate}</span>
 						</div>
-
-						{daysLeft !== null && daysLeft > 0 && (
-							<div className='flex items-center gap-2'>
-								<Clock size={16} className='text-gray-500' />
-								<span>{daysLeft} days remaining</span>
-							</div>
-						)}
 					</div>
 				</div>
 
