@@ -103,35 +103,46 @@ export const fundingApi = {
 	// Get all funding opportunities with optional filters
 	getOpportunities: async (filters = {}) => {
 		try {
-			let query = supabase
+			// Create a query builder for the select
+			let querySelect = supabase
 				.from('funding_opportunities_with_geography')
-				.select('*');
+				.select('*', { count: 'exact' });
 
 			// Apply filters
 			if (filters.status) {
 				// Convert status to lowercase to match database values
-				query = query.ilike('status', filters.status.toLowerCase());
+				querySelect = querySelect.ilike('status', filters.status.toLowerCase());
 			}
 
 			if (filters.min_amount) {
-				query = query.gte('minimum_award', filters.min_amount);
+				querySelect = querySelect.gte('minimum_award', filters.min_amount);
 			}
 
 			if (filters.max_amount) {
-				query = query.lte('maximum_award', filters.max_amount);
+				querySelect = querySelect.lte('maximum_award', filters.max_amount);
 			}
 
 			if (filters.close_date_after) {
-				query = query.gte('close_date', filters.close_date_after);
+				querySelect = querySelect.gte('close_date', filters.close_date_after);
 			}
 
 			if (filters.close_date_before) {
-				query = query.lte('close_date', filters.close_date_before);
+				querySelect = querySelect.lte('close_date', filters.close_date_before);
+			}
+
+			// Apply search filter
+			if (filters.search) {
+				const searchTerm = filters.search.trim();
+				if (searchTerm) {
+					querySelect = querySelect.or(
+						`title.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%,actionable_summary.ilike.%${searchTerm}%`
+					);
+				}
 			}
 
 			// Apply categories filter
 			if (filters.categories && filters.categories.length > 0) {
-				query = query.contains('categories', filters.categories);
+				querySelect = querySelect.contains('categories', filters.categories);
 			}
 
 			// Apply states filter
@@ -145,19 +156,19 @@ export const fundingApi = {
 					if (otherStates.length > 0) {
 						// If other states are selected along with National, get both national opportunities
 						// and opportunities specific to those states
-						query = query.or(
+						querySelect = querySelect.or(
 							`is_national.eq.true,eligible_locations.cs.{${otherStates.join(
 								','
 							)}}`
 						);
 					} else {
 						// If only National is selected, just get national opportunities
-						query = query.eq('is_national', true);
+						querySelect = querySelect.eq('is_national', true);
 					}
 				} else {
 					// Filter for specific states using eligible_locations which has full state names
 					// rather than eligible_states which has abbreviations
-					query = query.or(
+					querySelect = querySelect.or(
 						`is_national.eq.true,eligible_locations.cs.{${filters.states.join(
 							','
 						)}}`
@@ -168,10 +179,12 @@ export const fundingApi = {
 			// Apply sorting
 			if (filters.sort_by) {
 				const direction = filters.sort_direction === 'desc' ? true : false;
-				query = query.order(filters.sort_by, { ascending: !direction });
+				querySelect = querySelect.order(filters.sort_by, {
+					ascending: !direction,
+				});
 			} else {
 				// Default sort by close_date
-				query = query.order('close_date', { ascending: true });
+				querySelect = querySelect.order('close_date', { ascending: true });
 			}
 
 			// Apply pagination
@@ -179,15 +192,15 @@ export const fundingApi = {
 			const pageSize = filters.page_size || 10;
 			const start = (page - 1) * pageSize;
 			const end = start + pageSize - 1;
-			query = query.range(start, end);
+			querySelect = querySelect.range(start, end);
 
-			// Debug: Log the constructed query
-			console.log('Supabase query:', query);
-
-			const { data, error } = await query;
+			// Execute the query
+			const { data, error, count } = await querySelect;
 
 			if (error) throw error;
-			return data;
+
+			// Return both the data and the total count
+			return { data, count };
 		} catch (error) {
 			console.error('Error fetching opportunities:', error);
 			throw error;

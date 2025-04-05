@@ -31,23 +31,35 @@ export async function GET(request) {
 			filters.states = states.split(',');
 		}
 
+		// Add search filtering if present
+		const search = searchParams.get('search');
+		if (search) {
+			filters.search = search;
+		}
+
 		// Fetch opportunities with filters
 		let opportunities;
+		let totalCount;
 		try {
-			opportunities = await fundingApi.getOpportunities(filters);
+			const result = await fundingApi.getOpportunities(filters);
+			opportunities = result.data;
+			totalCount = result.count;
 		} catch (error) {
 			console.error('Error fetching from Supabase:', error);
 			// Fallback to mock data
-			opportunities = getMockOpportunities(filters);
+			const mockData = getMockOpportunities(filters);
+			opportunities = mockData;
+			totalCount = mockData.length; // For mock data, the total is just the length
 		}
 
 		return NextResponse.json({
 			success: true,
 			data: opportunities,
+			total_count: totalCount,
 			pagination: {
 				page: filters.page,
 				pageSize: filters.page_size,
-				total: opportunities.length, // Note: For proper pagination, we'd need a count query
+				total: totalCount,
 			},
 		});
 	} catch (error) {

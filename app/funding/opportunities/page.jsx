@@ -26,6 +26,8 @@ import {
 	ArrowUp,
 	ArrowDown,
 	Check,
+	ChevronLeft,
+	ChevronRight,
 } from 'lucide-react';
 import { calculateDaysLeft, determineStatus } from '@/app/lib/supabase';
 import TAXONOMIES from '@/app/lib/constants/taxonomies';
@@ -122,6 +124,7 @@ export default function OpportunitiesPage() {
 	const [opportunities, setOpportunities] = useState([]);
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState(null);
+	const [totalCount, setTotalCount] = useState(0);
 	const [searchQuery, setSearchQuery] = useState('');
 	const [openFilterSection, setOpenFilterSection] = useState(null);
 	const [filters, setFilters] = useState({
@@ -234,6 +237,11 @@ export default function OpportunitiesPage() {
 					queryParams.append('states', filters.states.join(','));
 				}
 
+				// Add search query to API request if it exists
+				if (searchQuery.trim()) {
+					queryParams.append('search', searchQuery.trim());
+				}
+
 				queryParams.append('page', filters.page.toString());
 				queryParams.append('page_size', filters.page_size.toString());
 
@@ -265,22 +273,11 @@ export default function OpportunitiesPage() {
 					throw new Error(result.error || 'Failed to fetch opportunities');
 				}
 
-				// Debug: Log the response data
-				console.log('API response:', result.data);
-				if (result.data.length === 0) {
-					console.log('No results returned from API!');
-				} else {
-					// Log first opportunity details for debugging
-					console.log('First opportunity:', {
-						title: result.data[0].title,
-						status: result.data[0].status,
-						eligible_states: result.data[0].eligible_states,
-						eligible_locations: result.data[0].eligible_locations,
-						is_national: result.data[0].is_national,
-					});
-				}
+				// Log API response for debugging
+				console.log('API response:', result);
 
 				setOpportunities(result.data);
+				setTotalCount(result.total_count || 0);
 			} catch (err) {
 				console.error('Error fetching opportunities:', err);
 				setError(err.message);
@@ -290,7 +287,7 @@ export default function OpportunitiesPage() {
 		}
 
 		fetchOpportunities();
-	}, [filters, sortOption, sortDirection]);
+	}, [filters, sortOption, sortDirection, searchQuery]);
 
 	// Toggle filter section
 	const toggleFilterSection = (section) => {
@@ -438,6 +435,82 @@ export default function OpportunitiesPage() {
 			))}
 		</div>
 	);
+
+	// Calculate pagination values
+	const totalPages = Math.ceil(totalCount / filters.page_size);
+	const startIndex = (filters.page - 1) * filters.page_size;
+	const endIndex = Math.min(startIndex + filters.page_size, totalCount);
+
+	// Handle page change
+	const handlePageChange = (newPage) => {
+		setFilters((prev) => ({
+			...prev,
+			page: newPage,
+		}));
+		// Scroll to top when changing pages
+		window.scrollTo({ top: 0, behavior: 'smooth' });
+	};
+
+	// Reset to page 1 when filters change (except for page itself)
+	useEffect(() => {
+		// Store the current filters except page
+		const currentFiltersWithoutPage = { ...filters };
+		delete currentFiltersWithoutPage.page;
+
+		// Store the previous filters except page
+		const prevFiltersWithoutPage = { ...prevFilters.current };
+		delete prevFiltersWithoutPage.page;
+
+		// Compare if any filter other than page has changed
+		if (
+			JSON.stringify(currentFiltersWithoutPage) !==
+			JSON.stringify(prevFiltersWithoutPage)
+		) {
+			setFilters((prev) => ({
+				...prev,
+				page: 1,
+			}));
+		}
+
+		// Update previous filters reference
+		prevFilters.current = { ...filters };
+	}, [filters.status, filters.categories, filters.states, searchQuery]);
+
+	// Track previous filters
+	const prevFilters = useRef(filters);
+
+	// Render pagination controls
+	const renderPaginationControls = () => {
+		return (
+			<div className='flex justify-between items-center w-full'>
+				<div className='text-sm text-gray-500'>
+					{totalCount > 0 ? (
+						<>
+							Showing {startIndex + 1}-{endIndex} of {totalCount} opportunities
+						</>
+					) : (
+						<>No opportunities found</>
+					)}
+				</div>
+				<div className='flex gap-2'>
+					<Button
+						variant='outline'
+						size='sm'
+						disabled={filters.page === 1}
+						onClick={() => handlePageChange(filters.page - 1)}>
+						<ChevronLeft className='h-4 w-4 mr-1' /> Previous
+					</Button>
+					<Button
+						variant='outline'
+						size='sm'
+						disabled={filters.page >= totalPages || totalCount === 0}
+						onClick={() => handlePageChange(filters.page + 1)}>
+						Next <ChevronRight className='h-4 w-4 ml-1' />
+					</Button>
+				</div>
+			</div>
+		);
+	};
 
 	return (
 		<MainLayout>
@@ -720,156 +793,157 @@ export default function OpportunitiesPage() {
 					)}
 				</div>
 
-				{/* Results count and sort */}
-				<div className='flex justify-between items-center mb-4'>
-					<h2 className='text-lg font-medium text-gray-700'>
-						{filteredOpportunities.length}{' '}
-						{filteredOpportunities.length === 1 ? 'result' : 'results'}
-					</h2>
+				{/* Results count, sort, and pagination (top) */}
+				<div className='flex flex-col gap-4 mb-4'>
+					<div className='flex justify-between items-center'>
+						<h2 className='text-lg font-medium text-gray-700'>
+							{totalCount} {totalCount === 1 ? 'opportunity' : 'opportunities'}
+						</h2>
 
-					<div
-						className='flex items-center gap-2 relative'
-						ref={sortDropdownRef}>
-						<span className='text-sm text-gray-500'>Sort By:</span>
-						<Button
-							variant='outline'
-							className='flex items-center gap-1 h-8 px-3'
-							onClick={() => setSortMenuOpen(!sortMenuOpen)}>
-							{getSortDisplayName(sortOption)}
-							{sortDirection === 'asc' ? (
-								<ArrowUp size={14} className='ml-1' />
-							) : (
-								<ArrowDown size={14} className='ml-1' />
+						<div
+							className='flex items-center gap-2 relative'
+							ref={sortDropdownRef}>
+							<span className='text-sm text-gray-500'>Sort By:</span>
+							<Button
+								variant='outline'
+								className='flex items-center gap-1 h-8 px-3'
+								onClick={() => setSortMenuOpen(!sortMenuOpen)}>
+								{getSortDisplayName(sortOption)}
+								{sortDirection === 'asc' ? (
+									<ArrowUp size={14} className='ml-1' />
+								) : (
+									<ArrowDown size={14} className='ml-1' />
+								)}
+							</Button>
+
+							{sortMenuOpen && (
+								<div className='absolute right-0 top-full mt-1 w-44 bg-white rounded-md shadow-lg z-10 border border-gray-200 py-1'>
+									<div className='p-2 text-sm text-gray-500 border-b border-gray-100'>
+										Sort By
+									</div>
+									<div className='py-1'>
+										<div
+											className={`flex justify-between items-center px-4 py-2 text-sm hover:bg-gray-50 cursor-pointer ${
+												sortOption === 'relevance' ? 'bg-blue-50' : ''
+											}`}
+											onClick={() => handleSortSelect('relevance')}>
+											<span>Relevance</span>
+											<div>
+												{sortOption === 'relevance' &&
+													(sortDirection === 'asc' ? (
+														<ArrowUp size={14} className='text-gray-600' />
+													) : (
+														<ArrowDown size={14} className='text-gray-600' />
+													))}
+											</div>
+										</div>
+
+										<div
+											className={`flex justify-between items-center px-4 py-2 text-sm hover:bg-gray-50 cursor-pointer ${
+												sortOption === 'deadline' ? 'bg-blue-50' : ''
+											}`}
+											onClick={() => handleSortSelect('deadline')}>
+											<span>Deadline</span>
+											<div>
+												{sortOption === 'deadline' &&
+													(sortDirection === 'asc' ? (
+														<ArrowUp size={14} className='text-gray-600' />
+													) : (
+														<ArrowDown size={14} className='text-gray-600' />
+													))}
+											</div>
+										</div>
+
+										<div
+											className={`flex justify-between items-center px-4 py-2 text-sm hover:bg-gray-50 cursor-pointer ${
+												sortOption === 'amount' ? 'bg-blue-50' : ''
+											}`}
+											onClick={() => handleSortSelect('amount')}>
+											<span>Amount</span>
+											<div>
+												{sortOption === 'amount' &&
+													(sortDirection === 'asc' ? (
+														<ArrowUp size={14} className='text-gray-600' />
+													) : (
+														<ArrowDown size={14} className='text-gray-600' />
+													))}
+											</div>
+										</div>
+
+										<div
+											className={`flex justify-between items-center px-4 py-2 text-sm hover:bg-gray-50 cursor-pointer ${
+												sortOption === 'recent' ? 'bg-blue-50' : ''
+											}`}
+											onClick={() => handleSortSelect('recent')}>
+											<span>Recently added</span>
+											<div>
+												{sortOption === 'recent' &&
+													(sortDirection === 'asc' ? (
+														<ArrowUp size={14} className='text-gray-600' />
+													) : (
+														<ArrowDown size={14} className='text-gray-600' />
+													))}
+											</div>
+										</div>
+									</div>
+								</div>
 							)}
-						</Button>
-
-						{sortMenuOpen && (
-							<div className='absolute right-0 top-full mt-1 w-44 bg-white rounded-md shadow-lg z-10 border border-gray-200 py-1'>
-								<div className='p-2 text-sm text-gray-500 border-b border-gray-100'>
-									Sort By
-								</div>
-								<div className='py-1'>
-									<div
-										className={`flex justify-between items-center px-4 py-2 text-sm hover:bg-gray-50 cursor-pointer ${
-											sortOption === 'relevance' ? 'bg-blue-50' : ''
-										}`}
-										onClick={() => handleSortSelect('relevance')}>
-										<span>Relevance</span>
-										<div>
-											{sortOption === 'relevance' &&
-												(sortDirection === 'asc' ? (
-													<ArrowUp size={14} className='text-gray-600' />
-												) : (
-													<ArrowDown size={14} className='text-gray-600' />
-												))}
-										</div>
-									</div>
-
-									<div
-										className={`flex justify-between items-center px-4 py-2 text-sm hover:bg-gray-50 cursor-pointer ${
-											sortOption === 'deadline' ? 'bg-blue-50' : ''
-										}`}
-										onClick={() => handleSortSelect('deadline')}>
-										<span>Deadline</span>
-										<div>
-											{sortOption === 'deadline' &&
-												(sortDirection === 'asc' ? (
-													<ArrowUp size={14} className='text-gray-600' />
-												) : (
-													<ArrowDown size={14} className='text-gray-600' />
-												))}
-										</div>
-									</div>
-
-									<div
-										className={`flex justify-between items-center px-4 py-2 text-sm hover:bg-gray-50 cursor-pointer ${
-											sortOption === 'amount' ? 'bg-blue-50' : ''
-										}`}
-										onClick={() => handleSortSelect('amount')}>
-										<span>Amount</span>
-										<div>
-											{sortOption === 'amount' &&
-												(sortDirection === 'asc' ? (
-													<ArrowUp size={14} className='text-gray-600' />
-												) : (
-													<ArrowDown size={14} className='text-gray-600' />
-												))}
-										</div>
-									</div>
-
-									<div
-										className={`flex justify-between items-center px-4 py-2 text-sm hover:bg-gray-50 cursor-pointer ${
-											sortOption === 'recent' ? 'bg-blue-50' : ''
-										}`}
-										onClick={() => handleSortSelect('recent')}>
-										<span>Recently added</span>
-										<div>
-											{sortOption === 'recent' &&
-												(sortDirection === 'asc' ? (
-													<ArrowUp size={14} className='text-gray-600' />
-												) : (
-													<ArrowDown size={14} className='text-gray-600' />
-												))}
-										</div>
-									</div>
-								</div>
-							</div>
-						)}
+						</div>
 					</div>
+
+					{/* Top pagination controls */}
+					{renderPaginationControls()}
 				</div>
 
+				{/* Loading, error, and no results states */}
 				{loading ? (
-					<div className='flex justify-center items-center min-h-[400px]'>
-						<div className='animate-spin rounded-full h-12 w-12 border-b-2 border-primary'></div>
+					<div className='flex justify-center items-center py-12'>
+						<div className='animate-spin rounded-full h-12 w-12 border-b-2 border-blue-700' />
 					</div>
 				) : error ? (
-					<div className='bg-red-50 text-red-800 p-4 rounded-md'>
-						<p>Error: {error}</p>
-						<Button
-							variant='outline'
-							className='mt-2'
+					<div className='bg-red-50 border border-red-200 rounded-md p-4 mb-6'>
+						<p className='text-red-800 font-medium'>
+							Error loading opportunities: {error}
+						</p>
+						<button
+							className='mt-2 px-4 py-2 bg-red-100 text-red-800 rounded-md'
 							onClick={() => {
 								setError(null);
 								setFilters({ ...filters });
 							}}>
-							Retry
-						</Button>
+							Try Again
+						</button>
 					</div>
-				) : filteredOpportunities.length === 0 ? (
-					<div className='text-center py-12'>
-						<h3 className='text-xl font-medium mb-2'>No opportunities found</h3>
-						<p className='text-muted-foreground mb-4'>
-							Try adjusting your filters or check back later.
-						</p>
-						<Button onClick={clearAllFilters}>Clear Filters</Button>
+				) : opportunities.length === 0 ? (
+					<div className='bg-gray-50 border border-gray-200 rounded-md p-6 text-center'>
+						<p className='text-gray-700 mb-2'>No opportunities found.</p>
+						{hasActiveFilters() && (
+							<p className='text-gray-500 text-sm'>
+								Try adjusting your filters or{' '}
+								<button
+									className='text-blue-600 hover:underline'
+									onClick={clearAllFilters}>
+									clear all filters
+								</button>
+								.
+							</p>
+						)}
 					</div>
 				) : (
-					<div className='grid gap-6 md:grid-cols-2 lg:grid-cols-3 mb-8'>
-						{filteredOpportunities.map((opportunity) => (
-							<OpportunityCard key={opportunity.id} opportunity={opportunity} />
-						))}
-					</div>
-				)}
+					<>
+						{/* Display opportunities in a grid */}
+						<div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6'>
+							{opportunities.map((opportunity) => (
+								<OpportunityCard
+									key={opportunity.id}
+									opportunity={opportunity}
+								/>
+							))}
+						</div>
 
-				{!loading && !error && filteredOpportunities.length > 0 && (
-					<div className='flex justify-center mt-6'>
-						<Button
-							variant='outline'
-							className='mr-2'
-							disabled={filters.page === 1}
-							onClick={() =>
-								setFilters({ ...filters, page: filters.page - 1 })
-							}>
-							Previous
-						</Button>
-						<Button
-							variant='outline'
-							onClick={() =>
-								setFilters({ ...filters, page: filters.page + 1 })
-							}>
-							Next
-						</Button>
-					</div>
+						{/* Bottom pagination controls */}
+						{renderPaginationControls()}
+					</>
 				)}
 			</div>
 		</MainLayout>
