@@ -6,7 +6,7 @@ import {
 	CardTitle,
 } from '@/app/components/ui/card';
 import { Button } from '@/app/components/ui/button';
-import { DollarSign, Calendar } from 'lucide-react';
+import { DollarSign, Calendar, Map } from 'lucide-react';
 import { calculateDaysLeft, determineStatus } from '@/app/lib/supabase';
 
 // Status indicators with colors for badges
@@ -89,6 +89,46 @@ const formatStatus = (status) => {
 	return status.charAt(0).toUpperCase() + status.slice(1).toLowerCase();
 };
 
+// Helper to format location eligibility for display
+const formatLocationEligibility = (opportunity) => {
+	// Check if opportunity is national
+	if (opportunity.is_national) {
+		return 'National';
+	}
+
+	// Check for eligible_states array from our view
+	if (opportunity.eligible_states && opportunity.eligible_states.length > 0) {
+		if (opportunity.eligible_states.length > 3) {
+			return `${opportunity.eligible_states.slice(0, 3).join(', ')} +${
+				opportunity.eligible_states.length - 3
+			} more`;
+		}
+		return opportunity.eligible_states.join(', ');
+	}
+
+	// Fallback to eligible_locations array
+	if (
+		opportunity.eligible_locations &&
+		opportunity.eligible_locations.length > 0
+	) {
+		// If it contains 'National', show that
+		if (opportunity.eligible_locations.includes('National')) {
+			return 'National';
+		}
+
+		// Otherwise, show the list of locations
+		if (opportunity.eligible_locations.length > 3) {
+			return `${opportunity.eligible_locations.slice(0, 3).join(', ')} +${
+				opportunity.eligible_locations.length - 3
+			} more`;
+		}
+		return opportunity.eligible_locations.join(', ');
+	}
+
+	// Default if no location data
+	return 'Location not specified';
+};
+
 // Define colors for the NEW badge to match the pill style
 const newBadgeColors = {
 	color: '#2563EB', // Blue text color
@@ -117,6 +157,9 @@ const OpportunityCard = ({ opportunity }) => {
 				year: 'numeric',
 		  })
 		: 'No deadline specified';
+
+	// Format location eligibility
+	const locationEligibility = formatLocationEligibility(opportunity);
 
 	// Determine status
 	const status =
@@ -237,6 +280,11 @@ const OpportunityCard = ({ opportunity }) => {
 						<div className='flex items-center gap-2'>
 							<Calendar size={16} className='text-gray-500' />
 							<span>{closeDate}</span>
+						</div>
+
+						<div className='flex items-center gap-2'>
+							<Map size={16} className='text-gray-500' />
+							<span className='line-clamp-1'>{locationEligibility}</span>
 						</div>
 					</div>
 				</div>

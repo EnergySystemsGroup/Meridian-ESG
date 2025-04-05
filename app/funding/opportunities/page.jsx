@@ -21,6 +21,8 @@ import {
 	X,
 	ChevronDown,
 	Download,
+	Briefcase,
+	Map,
 } from 'lucide-react';
 import { calculateDaysLeft, determineStatus } from '@/app/lib/supabase';
 import TAXONOMIES from '@/app/lib/constants/taxonomies';
@@ -93,8 +95,6 @@ function getCategoryColor(categoryName) {
 const statusIndicator = {
 	Open: { color: '#4CAF50', bgColor: '#E8F5E9' },
 	Upcoming: { color: '#2196F3', bgColor: '#E3F2FD' },
-	Anticipated: { color: '#2196F3', bgColor: '#E3F2FD' },
-	Active: { color: '#FF9800', bgColor: '#FFF3E0' },
 	Closed: { color: '#9E9E9E', bgColor: '#F5F5F5' },
 };
 
@@ -109,12 +109,31 @@ export default function OpportunitiesPage() {
 		source_type: null,
 		tags: [],
 		categories: [],
+		states: [],
 		page: 1,
 		page_size: 9,
 	});
 	const [availableTags, setAvailableTags] = useState([]);
-	const [availableCategories, setAvailableCategories] = useState([]);
+	const [availableCategories, setAvailableCategories] = useState(
+		TAXONOMIES.CATEGORIES
+	);
+	const [availableStates, setAvailableStates] = useState(
+		TAXONOMIES.ELIGIBLE_LOCATIONS.filter(
+			(location) =>
+				location !== 'National' &&
+				location !== 'Regional' &&
+				![
+					'Tribal Lands',
+					'Rural Communities',
+					'Urban Areas',
+					'Underserved Communities',
+					'Opportunity Zones',
+				].includes(location)
+		)
+	);
 	const [sortOption, setSortOption] = useState('relevance');
+	const [categorySearchQuery, setCategorySearchQuery] = useState('');
+	const [stateSearchQuery, setStateSearchQuery] = useState('');
 
 	// Extract all unique tags and categories from opportunities
 	useEffect(() => {
@@ -125,11 +144,9 @@ export default function OpportunitiesPage() {
 			];
 			setAvailableTags(allTags);
 
-			// Extract all unique categories
-			const allCategories = [
-				...new Set(opportunities.flatMap((opp) => opp.categories || [])),
-			];
-			setAvailableCategories(allCategories);
+			// If we want to use dynamically detected categories instead of taxonomy
+			// const allCategories = [...new Set(opportunities.flatMap((opp) => opp.categories || []))];
+			// setAvailableCategories(allCategories);
 		}
 	}, [opportunities]);
 
@@ -151,6 +168,14 @@ export default function OpportunitiesPage() {
 
 				if (filters.tags.length > 0) {
 					queryParams.append('tags', filters.tags.join(','));
+				}
+
+				if (filters.categories.length > 0) {
+					queryParams.append('categories', filters.categories.join(','));
+				}
+
+				if (filters.states.length > 0) {
+					queryParams.append('states', filters.states.join(','));
 				}
 
 				queryParams.append('page', filters.page.toString());
@@ -202,7 +227,7 @@ export default function OpportunitiesPage() {
 		setFilters((prev) => {
 			const newFilters = { ...prev };
 
-			if (type === 'tags' || type === 'categories') {
+			if (type === 'tags' || type === 'categories' || type === 'states') {
 				if (newFilters[type].includes(value)) {
 					newFilters[type] = newFilters[type].filter((item) => item !== value);
 				} else {
@@ -226,10 +251,13 @@ export default function OpportunitiesPage() {
 			source_type: null,
 			tags: [],
 			categories: [],
+			states: [],
 			page: 1,
 			page_size: 9,
 		});
 		setSearchQuery('');
+		setCategorySearchQuery('');
+		setStateSearchQuery('');
 	};
 
 	// Filter opportunities based on search query
@@ -254,9 +282,24 @@ export default function OpportunitiesPage() {
 			filters.source_type !== null ||
 			filters.tags.length > 0 ||
 			filters.categories.length > 0 ||
+			filters.states.length > 0 ||
 			searchQuery !== ''
 		);
 	};
+
+	// Filter categories for search
+	const filteredCategories = categorySearchQuery
+		? availableCategories.filter((category) =>
+				category.toLowerCase().includes(categorySearchQuery.toLowerCase())
+		  )
+		: availableCategories;
+
+	// Filter states for search
+	const filteredStates = stateSearchQuery
+		? availableStates.filter((state) =>
+				state.toLowerCase().includes(stateSearchQuery.toLowerCase())
+		  )
+		: availableStates;
 
 	// Handle export functionality
 	const handleExport = () => {
@@ -296,13 +339,82 @@ export default function OpportunitiesPage() {
 
 						{/* Filter dropdown buttons */}
 						<div className='flex flex-wrap gap-2'>
+							{/* Category filter */}
+							<div className='relative'>
+								<Button
+									variant={
+										filters.categories.length > 0 ? 'secondary' : 'outline'
+									}
+									onClick={() => toggleFilterSection('categories')}
+									className='flex items-center gap-2'>
+									<Briefcase size={16} />
+									<span>Categories</span>
+									{filters.categories.length > 0 && (
+										<span className='ml-1 bg-primary-foreground text-primary text-xs font-medium px-2 py-0.5 rounded-full'>
+											{filters.categories.length}
+										</span>
+									)}
+									<ChevronDown size={16} />
+								</Button>
+
+								{openFilterSection === 'categories' && (
+									<div className='absolute z-10 mt-2 w-72 bg-white rounded-lg shadow-lg border border-gray-200 p-2 max-h-96 overflow-y-auto'>
+										{/* Category search */}
+										<div className='relative mb-2'>
+											<Input
+												type='text'
+												placeholder='Search categories...'
+												value={categorySearchQuery}
+												onChange={(e) => setCategorySearchQuery(e.target.value)}
+												className='pl-8 py-1 h-8 text-sm'
+											/>
+											<Search
+												size={14}
+												className='absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400'
+											/>
+										</div>
+										{filteredCategories.length > 0 ? (
+											filteredCategories.map((category) => {
+												const categoryColor = getCategoryColor(category);
+												return (
+													<div
+														key={category}
+														className='flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer'
+														onClick={() =>
+															handleFilterSelect('categories', category)
+														}>
+														<input
+															type='checkbox'
+															className='mr-2'
+															checked={filters.categories.includes(category)}
+															onChange={() => {}}
+														/>
+														<span
+															className='w-3 h-3 rounded-full mr-2'
+															style={{
+																backgroundColor: categoryColor.color,
+															}}
+														/>
+														<span>{category}</span>
+													</div>
+												);
+											})
+										) : (
+											<div className='p-2 text-gray-500'>
+												No matching categories
+											</div>
+										)}
+									</div>
+								)}
+							</div>
+
 							{/* Status filter */}
 							<div className='relative'>
 								<Button
 									variant={filters.status ? 'secondary' : 'outline'}
 									onClick={() => toggleFilterSection('status')}
 									className='flex items-center gap-2'>
-									<Filter size={16} />
+									<Clock size={16} />
 									<span>Status</span>
 									{filters.status && (
 										<span className='ml-1 bg-primary-foreground text-primary text-xs font-medium px-2 py-0.5 rounded-full'>
@@ -314,7 +426,7 @@ export default function OpportunitiesPage() {
 
 								{openFilterSection === 'status' && (
 									<div className='absolute z-10 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 p-2'>
-										{['Open', 'Upcoming', 'Active', 'Closed'].map((status) => (
+										{Object.keys(statusIndicator).map((status) => (
 											<div
 												key={status}
 												className='flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer'
@@ -334,6 +446,76 @@ export default function OpportunitiesPage() {
 												<span>{status}</span>
 											</div>
 										))}
+									</div>
+								)}
+							</div>
+
+							{/* State filter */}
+							<div className='relative'>
+								<Button
+									variant={filters.states.length > 0 ? 'secondary' : 'outline'}
+									onClick={() => toggleFilterSection('states')}
+									className='flex items-center gap-2'>
+									<Map size={16} />
+									<span>Location</span>
+									{filters.states.length > 0 && (
+										<span className='ml-1 bg-primary-foreground text-primary text-xs font-medium px-2 py-0.5 rounded-full'>
+											{filters.states.length}
+										</span>
+									)}
+									<ChevronDown size={16} />
+								</Button>
+
+								{openFilterSection === 'states' && (
+									<div className='absolute z-10 mt-2 w-72 bg-white rounded-lg shadow-lg border border-gray-200 p-2 max-h-96 overflow-y-auto'>
+										{/* State search */}
+										<div className='relative mb-2'>
+											<Input
+												type='text'
+												placeholder='Search states...'
+												value={stateSearchQuery}
+												onChange={(e) => setStateSearchQuery(e.target.value)}
+												className='pl-8 py-1 h-8 text-sm'
+											/>
+											<Search
+												size={14}
+												className='absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400'
+											/>
+										</div>
+
+										{/* National option */}
+										<div
+											className='flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer mb-2 border-b border-gray-200'
+											onClick={() => handleFilterSelect('states', 'National')}>
+											<input
+												type='checkbox'
+												className='mr-2'
+												checked={filters.states.includes('National')}
+												onChange={() => {}}
+											/>
+											<span className='font-medium'>National (All States)</span>
+										</div>
+
+										{filteredStates.length > 0 ? (
+											filteredStates.map((state) => (
+												<div
+													key={state}
+													className='flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer'
+													onClick={() => handleFilterSelect('states', state)}>
+													<input
+														type='checkbox'
+														className='mr-2'
+														checked={filters.states.includes(state)}
+														onChange={() => {}}
+													/>
+													<span>{state}</span>
+												</div>
+											))
+										) : (
+											<div className='p-2 text-gray-500'>
+												No matching states
+											</div>
+										)}
 									</div>
 								)}
 							</div>
@@ -443,6 +625,46 @@ export default function OpportunitiesPage() {
 										</button>
 									</div>
 								)}
+
+								{/* Category filters */}
+								{filters.categories.map((category) => {
+									const categoryColor = getCategoryColor(category);
+									return (
+										<div
+											key={`cat-${category}`}
+											className='flex items-center gap-1 bg-blue-50 text-blue-800 px-2 py-1 rounded-full text-sm'>
+											<span
+												className='w-2 h-2 rounded-full'
+												style={{
+													backgroundColor: categoryColor.color,
+												}}
+											/>
+											<span>{category}</span>
+											<button
+												onClick={() =>
+													handleFilterSelect('categories', category)
+												}
+												className='ml-1'>
+												<X size={14} />
+											</button>
+										</div>
+									);
+								})}
+
+								{/* State filters */}
+								{filters.states.map((state) => (
+									<div
+										key={`state-${state}`}
+										className='flex items-center gap-1 bg-blue-50 text-blue-800 px-2 py-1 rounded-full text-sm'>
+										<Map size={14} />
+										<span>{state}</span>
+										<button
+											onClick={() => handleFilterSelect('states', state)}
+											className='ml-1'>
+											<X size={14} />
+										</button>
+									</div>
+								))}
 
 								{/* Status filter */}
 								{filters.status && (

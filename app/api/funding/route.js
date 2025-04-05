@@ -26,6 +26,18 @@ export async function GET(request) {
 			filters.tags = tags.split(',');
 		}
 
+		// Handle categories as array
+		const categories = searchParams.get('categories');
+		if (categories) {
+			filters.categories = categories.split(',');
+		}
+
+		// Handle states as array
+		const states = searchParams.get('states');
+		if (states) {
+			filters.states = states.split(',');
+		}
+
 		// Fetch opportunities with filters
 		let opportunities;
 		try {
@@ -102,6 +114,8 @@ function getMockOpportunities(filters) {
 			description:
 				'Funding for commercial building energy efficiency improvements including HVAC upgrades, lighting retrofits, and building envelope enhancements.',
 			tags: ['Energy Efficiency', 'Commercial', 'Federal'],
+			categories: ['Energy Efficiency', 'Facility Improvements'],
+			eligible_locations: ['National'],
 			source_type: 'Federal',
 		},
 		{
@@ -115,6 +129,8 @@ function getMockOpportunities(filters) {
 			description:
 				'Grants for K-12 schools to modernize facilities with a focus on energy efficiency, indoor air quality, and sustainability improvements.',
 			tags: ['K-12', 'Modernization', 'Federal'],
+			categories: ['Education', 'Energy Efficiency'],
+			eligible_locations: ['National'],
 			source_type: 'Federal',
 		},
 		{
@@ -128,6 +144,8 @@ function getMockOpportunities(filters) {
 			description:
 				'Funding for innovative clean energy projects that reduce greenhouse gas emissions and promote energy independence.',
 			tags: ['Clean Energy', 'Innovation', 'California'],
+			categories: ['Renewable Energy', 'Research & Development'],
+			eligible_locations: ['California'],
 			source_type: 'State',
 		},
 		{
@@ -141,6 +159,8 @@ function getMockOpportunities(filters) {
 			description:
 				'Support for communities to develop and implement climate resilience strategies, including building upgrades and infrastructure improvements.',
 			tags: ['Climate', 'Resilience', 'Federal'],
+			categories: ['Community Development', 'Environmental'],
+			eligible_locations: ['National'],
 			source_type: 'Federal',
 		},
 		{
@@ -154,6 +174,8 @@ function getMockOpportunities(filters) {
 			description:
 				'Funding for local governments to retrofit municipal buildings for improved energy efficiency and reduced operational costs.',
 			tags: ['Municipal', 'Retrofit', 'Federal'],
+			categories: ['Energy Efficiency', 'Facility Improvements'],
+			eligible_locations: ['National'],
 			source_type: 'Federal',
 		},
 		{
@@ -167,6 +189,8 @@ function getMockOpportunities(filters) {
 			description:
 				'Grants to install solar photovoltaic systems on K-12 school facilities to reduce energy costs and provide educational opportunities.',
 			tags: ['Solar', 'K-12', 'California'],
+			categories: ['Renewable Energy', 'Education'],
+			eligible_locations: ['California'],
 			source_type: 'State',
 		},
 		{
@@ -180,6 +204,8 @@ function getMockOpportunities(filters) {
 			description:
 				'Incentives for building owners to convert from fossil fuel systems to electric alternatives for heating, cooling, and water heating.',
 			tags: ['Electrification', 'Oregon', 'State'],
+			categories: ['Energy Efficiency', 'Environmental'],
+			eligible_locations: ['Oregon'],
 			source_type: 'State',
 		},
 		{
@@ -193,6 +219,8 @@ function getMockOpportunities(filters) {
 			description:
 				'Funding for demonstration projects that integrate energy storage with renewable energy systems in commercial and institutional buildings.',
 			tags: ['Energy Storage', 'Renewable', 'Federal'],
+			categories: ['Renewable Energy', 'Research & Development'],
+			eligible_locations: ['National'],
 			source_type: 'Federal',
 		},
 		{
@@ -206,6 +234,8 @@ function getMockOpportunities(filters) {
 			description:
 				'Grants to replace diesel school buses with zero-emission electric buses and install necessary charging infrastructure.',
 			tags: ['Electric Vehicles', 'K-12', 'Federal'],
+			categories: ['Transportation', 'Education', 'Environmental'],
+			eligible_locations: ['National'],
 			source_type: 'Federal',
 		},
 	];
@@ -229,6 +259,40 @@ function getMockOpportunities(filters) {
 		filteredData = filteredData.filter((item) =>
 			filters.tags.some((tag) => item.tags.includes(tag))
 		);
+	}
+
+	if (filters.categories && filters.categories.length > 0) {
+		filteredData = filteredData.filter((item) =>
+			filters.categories.some(
+				(category) => item.categories && item.categories.includes(category)
+			)
+		);
+	}
+
+	if (filters.states && filters.states.length > 0) {
+		// Handle 'National' as a special case
+		if (filters.states.includes('National')) {
+			filteredData = filteredData.filter(
+				(item) =>
+					item.eligible_locations &&
+					(item.eligible_locations.includes('National') ||
+						// If the user selected National and other states, include opportunities eligible in any of those states
+						filters.states.some(
+							(state) =>
+								state !== 'National' && item.eligible_locations.includes(state)
+						))
+			);
+		} else {
+			// Filter for specific states
+			filteredData = filteredData.filter(
+				(item) =>
+					item.eligible_locations &&
+					(item.eligible_locations.includes('National') || // National opportunities are eligible in all states
+						filters.states.some((state) =>
+							item.eligible_locations.includes(state)
+						))
+			);
+		}
 	}
 
 	if (filters.min_amount) {

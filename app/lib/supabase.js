@@ -132,6 +132,46 @@ export const fundingApi = {
 				query = query.lte('close_date', filters.close_date_before);
 			}
 
+			// Apply tags filter
+			if (filters.tags && filters.tags.length > 0) {
+				query = query.contains('tags', filters.tags);
+			}
+
+			// Apply categories filter
+			if (filters.categories && filters.categories.length > 0) {
+				query = query.contains('categories', filters.categories);
+			}
+
+			// Apply states filter
+			if (filters.states && filters.states.length > 0) {
+				// National filter is handled specially
+				if (filters.states.includes('National')) {
+					// Include both national opportunities and those for any other selected states
+					const otherStates = filters.states.filter(
+						(state) => state !== 'National'
+					);
+					if (otherStates.length > 0) {
+						// If other states are selected along with National, get both national opportunities
+						// and opportunities specific to those states
+						query = query.or(
+							`is_national.eq.true,eligible_states.cs.{${otherStates.join(
+								','
+							)}}`
+						);
+					} else {
+						// If only National is selected, just get national opportunities
+						query = query.eq('is_national', true);
+					}
+				} else {
+					// Filter for specific states - include both national opportunities and those matching states
+					query = query.or(
+						`is_national.eq.true,eligible_states.cs.{${filters.states.join(
+							','
+						)}}`
+					);
+				}
+			}
+
 			// Apply sorting
 			if (filters.sort_by) {
 				const direction = filters.sort_direction === 'desc' ? true : false;
