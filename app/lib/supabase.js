@@ -109,7 +109,8 @@ export const fundingApi = {
 
 			// Apply filters
 			if (filters.status) {
-				query = query.eq('status', filters.status);
+				// Convert status to lowercase to match database values
+				query = query.ilike('status', filters.status.toLowerCase());
 			}
 
 			if (filters.min_amount) {
@@ -145,7 +146,7 @@ export const fundingApi = {
 						// If other states are selected along with National, get both national opportunities
 						// and opportunities specific to those states
 						query = query.or(
-							`is_national.eq.true,eligible_states.cs.{${otherStates.join(
+							`is_national.eq.true,eligible_locations.cs.{${otherStates.join(
 								','
 							)}}`
 						);
@@ -154,9 +155,10 @@ export const fundingApi = {
 						query = query.eq('is_national', true);
 					}
 				} else {
-					// Filter for specific states - include both national opportunities and those matching states
+					// Filter for specific states using eligible_locations which has full state names
+					// rather than eligible_states which has abbreviations
 					query = query.or(
-						`is_national.eq.true,eligible_states.cs.{${filters.states.join(
+						`is_national.eq.true,eligible_locations.cs.{${filters.states.join(
 							','
 						)}}`
 					);
@@ -178,6 +180,9 @@ export const fundingApi = {
 			const start = (page - 1) * pageSize;
 			const end = start + pageSize - 1;
 			query = query.range(start, end);
+
+			// Debug: Log the constructed query
+			console.log('Supabase query:', query);
 
 			const { data, error } = await query;
 

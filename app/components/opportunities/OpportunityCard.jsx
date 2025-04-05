@@ -11,9 +11,26 @@ import { calculateDaysLeft, determineStatus } from '@/app/lib/supabase';
 
 // Status indicators with colors for badges
 const statusIndicator = {
-	Open: { color: '#4CAF50', bgColor: '#E8F5E9' },
-	Upcoming: { color: '#2196F3', bgColor: '#E3F2FD' },
-	Closed: { color: '#9E9E9E', bgColor: '#F5F5F5' },
+	open: { color: '#4CAF50', bgColor: '#E8F5E9', display: 'Open' },
+	upcoming: { color: '#2196F3', bgColor: '#E3F2FD', display: 'Upcoming' },
+	closed: { color: '#9E9E9E', bgColor: '#F5F5F5', display: 'Closed' },
+};
+
+// Helper to get status color regardless of case
+const getStatusColor = (status) => {
+	if (!status) return '#9E9E9E';
+	const statusKey = status.toLowerCase();
+	return statusIndicator[statusKey]?.color || '#9E9E9E';
+};
+
+// Helper to format status for display
+const formatStatusForDisplay = (status) => {
+	if (!status) return '';
+	const statusKey = status.toLowerCase();
+	return (
+		statusIndicator[statusKey]?.display ||
+		status.charAt(0).toUpperCase() + status.slice(1).toLowerCase()
+	);
 };
 
 // Helper function to get a consistent color for a category (from original code)
@@ -74,19 +91,6 @@ const getRelevanceColor = (score) => {
 	if (percentScore >= 80) return '#4CAF50'; // High relevance - green
 	if (percentScore >= 60) return '#FF9800'; // Medium relevance - orange
 	return '#9E9E9E'; // Low relevance - gray
-};
-
-// Helper to get status color regardless of case
-const getStatusColor = (status) => {
-	// Normalize status to capitalize first letter
-	const normalizedStatus =
-		status.charAt(0).toUpperCase() + status.slice(1).toLowerCase();
-	return statusIndicator[normalizedStatus]?.color || '#9E9E9E';
-};
-
-// Helper to format status for display
-const formatStatus = (status) => {
-	return status.charAt(0).toUpperCase() + status.slice(1).toLowerCase();
 };
 
 // Helper to format location eligibility for display
@@ -167,7 +171,7 @@ const OpportunityCard = ({ opportunity }) => {
 		determineStatus(opportunity.open_date, opportunity.close_date);
 
 	// Format status for display (ensuring correct capitalization)
-	const displayStatus = formatStatus(status);
+	const displayStatus = formatStatusForDisplay(status);
 
 	// Use actionable summary if available, fall back to description
 	const summary =

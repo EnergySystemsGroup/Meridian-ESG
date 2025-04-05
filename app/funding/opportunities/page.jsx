@@ -93,9 +93,26 @@ function getCategoryColor(categoryName) {
 
 // Status indicators
 const statusIndicator = {
-	Open: { color: '#4CAF50', bgColor: '#E8F5E9' },
-	Upcoming: { color: '#2196F3', bgColor: '#E3F2FD' },
-	Closed: { color: '#9E9E9E', bgColor: '#F5F5F5' },
+	open: { color: '#4CAF50', bgColor: '#E8F5E9', display: 'Open' },
+	upcoming: { color: '#2196F3', bgColor: '#E3F2FD', display: 'Upcoming' },
+	closed: { color: '#9E9E9E', bgColor: '#F5F5F5', display: 'Closed' },
+};
+
+// Helper to format status for display
+const formatStatusForDisplay = (status) => {
+	if (!status) return '';
+	const statusKey = status.toLowerCase();
+	return (
+		statusIndicator[statusKey]?.display ||
+		status.charAt(0).toUpperCase() + status.slice(1).toLowerCase()
+	);
+};
+
+// Helper to get status color regardless of case
+const getStatusColor = (status) => {
+	if (!status) return '#9E9E9E';
+	const statusKey = status.toLowerCase();
+	return statusIndicator[statusKey]?.color || '#9E9E9E';
 };
 
 export default function OpportunitiesPage() {
@@ -217,12 +234,31 @@ export default function OpportunitiesPage() {
 					queryParams.append('sort_direction', 'desc');
 				}
 
+				// Debug: Log the API URL and filters
+				console.log('Current filters:', filters);
+				console.log('API URL:', `/api/funding?${queryParams.toString()}`);
+
 				// Fetch data from our API
 				const response = await fetch(`/api/funding?${queryParams.toString()}`);
 				const result = await response.json();
 
 				if (!result.success) {
 					throw new Error(result.error || 'Failed to fetch opportunities');
+				}
+
+				// Debug: Log the response data
+				console.log('API response:', result.data);
+				if (result.data.length === 0) {
+					console.log('No results returned from API!');
+				} else {
+					// Log first opportunity details for debugging
+					console.log('First opportunity:', {
+						title: result.data[0].title,
+						status: result.data[0].status,
+						eligible_states: result.data[0].eligible_states,
+						eligible_locations: result.data[0].eligible_locations,
+						is_national: result.data[0].is_national,
+					});
 				}
 
 				setOpportunities(result.data);
@@ -323,6 +359,32 @@ export default function OpportunitiesPage() {
 		// Export functionality would be implemented here
 		alert('Export functionality will be implemented here');
 	};
+
+	// Render the status filter dropdown
+	const renderStatusFilter = () => (
+		<div className='absolute z-10 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 p-2'>
+			{Object.entries(statusIndicator).map(([key, value]) => (
+				<div
+					key={key}
+					className='flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer'
+					onClick={() => handleFilterSelect('status', key)}>
+					<input
+						type='checkbox'
+						className='mr-2'
+						checked={filters.status === key}
+						onChange={() => {}}
+					/>
+					<span
+						className='w-3 h-3 rounded-full mr-2'
+						style={{
+							backgroundColor: value.color,
+						}}
+					/>
+					<span>{value.display}</span>
+				</div>
+			))}
+		</div>
+	);
 
 	return (
 		<MainLayout>
@@ -441,30 +503,7 @@ export default function OpportunitiesPage() {
 									<ChevronDown size={16} />
 								</Button>
 
-								{openFilterSection === 'status' && (
-									<div className='absolute z-10 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 p-2'>
-										{Object.keys(statusIndicator).map((status) => (
-											<div
-												key={status}
-												className='flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer'
-												onClick={() => handleFilterSelect('status', status)}>
-												<input
-													type='checkbox'
-													className='mr-2'
-													checked={filters.status === status}
-													onChange={() => {}}
-												/>
-												<span
-													className='w-3 h-3 rounded-full mr-2'
-													style={{
-														backgroundColor: statusIndicator[status].color,
-													}}
-												/>
-												<span>{status}</span>
-											</div>
-										))}
-									</div>
-								)}
+								{openFilterSection === 'status' && renderStatusFilter()}
 							</div>
 
 							{/* State filter */}
@@ -610,10 +649,10 @@ export default function OpportunitiesPage() {
 										<span
 											className='w-2 h-2 rounded-full'
 											style={{
-												backgroundColor: statusIndicator[filters.status].color,
+												backgroundColor: getStatusColor(filters.status),
 											}}
 										/>
-										<span>{filters.status}</span>
+										<span>{formatStatusForDisplay(filters.status)}</span>
 										<button
 											onClick={() =>
 												handleFilterSelect('status', filters.status)
