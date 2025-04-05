@@ -13,8 +13,6 @@ import { calculateDaysLeft, determineStatus } from '@/app/lib/supabase';
 const statusIndicator = {
 	Open: { color: '#4CAF50', bgColor: '#E8F5E9' },
 	Upcoming: { color: '#2196F3', bgColor: '#E3F2FD' },
-	Anticipated: { color: '#2196F3', bgColor: '#E3F2FD' },
-	Active: { color: '#FF9800', bgColor: '#FFF3E0' },
 	Closed: { color: '#9E9E9E', bgColor: '#F5F5F5' },
 };
 
@@ -78,6 +76,25 @@ const getRelevanceColor = (score) => {
 	return '#9E9E9E'; // Low relevance - gray
 };
 
+// Helper to get status color regardless of case
+const getStatusColor = (status) => {
+	// Normalize status to capitalize first letter
+	const normalizedStatus =
+		status.charAt(0).toUpperCase() + status.slice(1).toLowerCase();
+	return statusIndicator[normalizedStatus]?.color || '#9E9E9E';
+};
+
+// Helper to format status for display
+const formatStatus = (status) => {
+	return status.charAt(0).toUpperCase() + status.slice(1).toLowerCase();
+};
+
+// Define colors for the NEW badge to match the pill style
+const newBadgeColors = {
+	color: '#2563EB', // Blue text color
+	bgColor: '#EFF6FF', // Light blue background
+};
+
 const OpportunityCard = ({ opportunity }) => {
 	// Format the data from our database to match the UI expectations
 	const title = opportunity.title;
@@ -105,6 +122,9 @@ const OpportunityCard = ({ opportunity }) => {
 	const status =
 		opportunity.status ||
 		determineStatus(opportunity.open_date, opportunity.close_date);
+
+	// Format status for display (ensuring correct capitalization)
+	const displayStatus = formatStatus(status);
 
 	// Use actionable summary if available, fall back to description
 	const summary =
@@ -157,17 +177,22 @@ const OpportunityCard = ({ opportunity }) => {
 					<span
 						className='text-xs px-2 py-1 rounded-full flex-shrink-0 ml-2 font-medium'
 						style={{
-							backgroundColor: statusIndicator[status]?.color || '#9E9E9E',
+							backgroundColor: getStatusColor(status),
 							color: 'white',
 						}}>
-						{status}
+						{displayStatus}
 					</span>
 				</div>
 
-				{/* NEW badge if applicable */}
+				{/* NEW badge if applicable - updated to match category pill styling */}
 				{isNew && (
 					<div className='mt-2'>
-						<span className='bg-blue-600 text-white text-xs font-bold px-2 py-1 rounded'>
+						<span
+							className='text-xs font-medium px-2 py-1 rounded'
+							style={{
+								backgroundColor: newBadgeColors.bgColor,
+								color: newBadgeColors.color,
+							}}>
 							NEW •{' '}
 							{addedDaysAgo === 0
 								? 'Today'
