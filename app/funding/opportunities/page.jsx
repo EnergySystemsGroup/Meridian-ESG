@@ -98,14 +98,18 @@ const formatStatusForDisplay = (status) => {
 	return statusIndicator[status] || status;
 };
 
-// Get appropriate color for status
+// Get appropriate color for status - updated to match OpportunityCard colors
 const getStatusColor = (status) => {
+	if (!status) return '#9E9E9E';
+
 	const statusColors = {
-		open: '#22c55e', // green
-		upcoming: '#f59e0b', // amber
-		closed: '#ef4444', // red
+		open: '#4CAF50', // green - matches card
+		upcoming: '#2196F3', // blue - matches card
+		closed: '#9E9E9E', // gray - matches card
 	};
-	return statusColors[status] || '#6b7280'; // default to gray
+
+	const statusKey = status.toLowerCase();
+	return statusColors[statusKey] || '#9E9E9E'; // default to gray
 };
 
 // Format category for display - handles "Other: Description" format
