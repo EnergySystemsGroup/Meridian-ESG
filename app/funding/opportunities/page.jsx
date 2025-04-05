@@ -108,6 +108,15 @@ const getStatusColor = (status) => {
 	return statusColors[status] || '#6b7280'; // default to gray
 };
 
+// Format category for display - handles "Other: Description" format
+const formatCategoryForDisplay = (category) => {
+	// If the category starts with "Other: ", extract just the description part
+	if (category && category.startsWith('Other: ')) {
+		return category.substring(7); // Remove "Other: " prefix
+	}
+	return category;
+};
+
 export default function OpportunitiesPage() {
 	const [opportunities, setOpportunities] = useState([]);
 	const [loading, setLoading] = useState(true);
@@ -648,7 +657,9 @@ export default function OpportunitiesPage() {
 													className='w-3 h-3 rounded-full mr-2'
 													style={{ backgroundColor: categoryColor.color }}
 												/>
-												<span className='text-sm'>{category}</span>
+												<span className='text-sm'>
+													{formatCategoryForDisplay(category)}
+												</span>
 											</div>
 										</div>
 									);
@@ -847,7 +858,7 @@ export default function OpportunitiesPage() {
 								backgroundColor: categoryColor.bgColor,
 								color: categoryColor.color,
 							}}>
-							{category}
+							{formatCategoryForDisplay(category)}
 							<X
 								size={14}
 								className='cursor-pointer'
