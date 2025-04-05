@@ -23,6 +23,9 @@ import {
 	Download,
 	Briefcase,
 	Map,
+	ArrowUp,
+	ArrowDown,
+	Check,
 } from 'lucide-react';
 import { calculateDaysLeft, determineStatus } from '@/app/lib/supabase';
 import TAXONOMIES from '@/app/lib/constants/taxonomies';
@@ -147,14 +150,17 @@ export default function OpportunitiesPage() {
 		)
 	);
 	const [sortOption, setSortOption] = useState('relevance');
+	const [sortDirection, setSortDirection] = useState('desc');
 	const [categorySearchQuery, setCategorySearchQuery] = useState('');
 	const [stateSearchQuery, setStateSearchQuery] = useState('');
+	const [sortMenuOpen, setSortMenuOpen] = useState(false);
 
 	// Create refs for the dropdown containers
 	const categoryDropdownRef = useRef(null);
 	const statusDropdownRef = useRef(null);
 	const stateDropdownRef = useRef(null);
 	const filterContainerRef = useRef(null);
+	const sortDropdownRef = useRef(null);
 
 	// Add click outside listener to close dropdown
 	useEffect(() => {
@@ -166,12 +172,25 @@ export default function OpportunitiesPage() {
 			) {
 				setOpenFilterSection(null);
 			}
+
+			if (
+				sortMenuOpen &&
+				sortDropdownRef.current &&
+				!sortDropdownRef.current.contains(event.target)
+			) {
+				setSortMenuOpen(false);
+			}
 		};
 
 		// Add escape key listener to close dropdown
 		const handleEscapeKey = (event) => {
-			if (event.key === 'Escape' && openFilterSection) {
-				setOpenFilterSection(null);
+			if (event.key === 'Escape') {
+				if (openFilterSection) {
+					setOpenFilterSection(null);
+				}
+				if (sortMenuOpen) {
+					setSortMenuOpen(false);
+				}
 			}
 		};
 
@@ -184,7 +203,7 @@ export default function OpportunitiesPage() {
 			document.removeEventListener('mousedown', handleClickOutside);
 			document.removeEventListener('keydown', handleEscapeKey);
 		};
-	}, [openFilterSection]);
+	}, [openFilterSection, sortMenuOpen]);
 
 	// Extract all unique tags and categories from opportunities
 	useEffect(() => {
@@ -221,17 +240,17 @@ export default function OpportunitiesPage() {
 				// Add sort option
 				if (sortOption === 'deadline') {
 					queryParams.append('sort_by', 'close_date');
-					queryParams.append('sort_direction', 'asc');
+					queryParams.append('sort_direction', sortDirection);
 				} else if (sortOption === 'amount') {
 					queryParams.append('sort_by', 'maximum_award');
-					queryParams.append('sort_direction', 'desc');
+					queryParams.append('sort_direction', sortDirection);
 				} else if (sortOption === 'recent') {
 					queryParams.append('sort_by', 'posted_date');
-					queryParams.append('sort_direction', 'desc');
+					queryParams.append('sort_direction', sortDirection);
 				} else {
 					// Default to relevance if available
 					queryParams.append('sort_by', 'relevance_score');
-					queryParams.append('sort_direction', 'desc');
+					queryParams.append('sort_direction', sortDirection);
 				}
 
 				// Debug: Log the API URL and filters
@@ -271,7 +290,7 @@ export default function OpportunitiesPage() {
 		}
 
 		fetchOpportunities();
-	}, [filters, sortOption]);
+	}, [filters, sortOption, sortDirection]);
 
 	// Toggle filter section
 	const toggleFilterSection = (section) => {
@@ -358,6 +377,40 @@ export default function OpportunitiesPage() {
 	const handleExport = () => {
 		// Export functionality would be implemented here
 		alert('Export functionality will be implemented here');
+	};
+
+	// Handle sort option change
+	const handleSortSelect = (option) => {
+		if (option === sortOption) {
+			// Toggle direction if same option is selected
+			setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+		} else {
+			// Set new option with default direction
+			setSortOption(option);
+			// Set default direction based on the sort type
+			if (option === 'deadline') {
+				setSortDirection('asc'); // Soonest deadlines first
+			} else {
+				setSortDirection('desc'); // Higher values first for other sorts
+			}
+		}
+		// Don't close the dropdown when selecting an option
+	};
+
+	// Get display name for sort options
+	const getSortDisplayName = (option) => {
+		switch (option) {
+			case 'relevance':
+				return 'Relevance';
+			case 'deadline':
+				return 'Deadline';
+			case 'amount':
+				return 'Amount';
+			case 'recent':
+				return 'Recently added';
+			default:
+				return 'Relevance';
+		}
 	};
 
 	// Render the status filter dropdown
@@ -674,17 +727,94 @@ export default function OpportunitiesPage() {
 						{filteredOpportunities.length === 1 ? 'result' : 'results'}
 					</h2>
 
-					<div className='flex items-center gap-2'>
-						<span className='text-sm text-gray-500'>Sort by:</span>
-						<select
-							className='text-sm border-gray-300 rounded-md p-1'
-							value={sortOption}
-							onChange={(e) => setSortOption(e.target.value)}>
-							<option value='relevance'>Relevance</option>
-							<option value='deadline'>Deadline (soonest)</option>
-							<option value='amount'>Amount (highest)</option>
-							<option value='recent'>Recently added</option>
-						</select>
+					<div
+						className='flex items-center gap-2 relative'
+						ref={sortDropdownRef}>
+						<span className='text-sm text-gray-500'>Sort By:</span>
+						<Button
+							variant='outline'
+							className='flex items-center gap-1 h-8 px-3'
+							onClick={() => setSortMenuOpen(!sortMenuOpen)}>
+							{getSortDisplayName(sortOption)}
+							{sortDirection === 'asc' ? (
+								<ArrowUp size={14} className='ml-1' />
+							) : (
+								<ArrowDown size={14} className='ml-1' />
+							)}
+						</Button>
+
+						{sortMenuOpen && (
+							<div className='absolute right-0 top-full mt-1 w-44 bg-white rounded-md shadow-lg z-10 border border-gray-200 py-1'>
+								<div className='p-2 text-sm text-gray-500 border-b border-gray-100'>
+									Sort By
+								</div>
+								<div className='py-1'>
+									<div
+										className={`flex justify-between items-center px-4 py-2 text-sm hover:bg-gray-50 cursor-pointer ${
+											sortOption === 'relevance' ? 'bg-blue-50' : ''
+										}`}
+										onClick={() => handleSortSelect('relevance')}>
+										<span>Relevance</span>
+										<div>
+											{sortOption === 'relevance' &&
+												(sortDirection === 'asc' ? (
+													<ArrowUp size={14} className='text-gray-600' />
+												) : (
+													<ArrowDown size={14} className='text-gray-600' />
+												))}
+										</div>
+									</div>
+
+									<div
+										className={`flex justify-between items-center px-4 py-2 text-sm hover:bg-gray-50 cursor-pointer ${
+											sortOption === 'deadline' ? 'bg-blue-50' : ''
+										}`}
+										onClick={() => handleSortSelect('deadline')}>
+										<span>Deadline</span>
+										<div>
+											{sortOption === 'deadline' &&
+												(sortDirection === 'asc' ? (
+													<ArrowUp size={14} className='text-gray-600' />
+												) : (
+													<ArrowDown size={14} className='text-gray-600' />
+												))}
+										</div>
+									</div>
+
+									<div
+										className={`flex justify-between items-center px-4 py-2 text-sm hover:bg-gray-50 cursor-pointer ${
+											sortOption === 'amount' ? 'bg-blue-50' : ''
+										}`}
+										onClick={() => handleSortSelect('amount')}>
+										<span>Amount</span>
+										<div>
+											{sortOption === 'amount' &&
+												(sortDirection === 'asc' ? (
+													<ArrowUp size={14} className='text-gray-600' />
+												) : (
+													<ArrowDown size={14} className='text-gray-600' />
+												))}
+										</div>
+									</div>
+
+									<div
+										className={`flex justify-between items-center px-4 py-2 text-sm hover:bg-gray-50 cursor-pointer ${
+											sortOption === 'recent' ? 'bg-blue-50' : ''
+										}`}
+										onClick={() => handleSortSelect('recent')}>
+										<span>Recently added</span>
+										<div>
+											{sortOption === 'recent' &&
+												(sortDirection === 'asc' ? (
+													<ArrowUp size={14} className='text-gray-600' />
+												) : (
+													<ArrowDown size={14} className='text-gray-600' />
+												))}
+										</div>
+									</div>
+								</div>
+							</div>
+						)}
 					</div>
 				</div>
 
