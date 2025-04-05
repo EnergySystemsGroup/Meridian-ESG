@@ -9,7 +9,6 @@ export async function GET(request) {
 		// Build filters from query parameters
 		const filters = {
 			status: searchParams.get('status'),
-			source_type: searchParams.get('source_type'),
 			min_amount: searchParams.get('min_amount'),
 			max_amount: searchParams.get('max_amount'),
 			close_date_after: searchParams.get('close_date_after'),
@@ -19,12 +18,6 @@ export async function GET(request) {
 			page: parseInt(searchParams.get('page') || '1'),
 			page_size: parseInt(searchParams.get('page_size') || '10'),
 		};
-
-		// Handle tags as array
-		const tags = searchParams.get('tags');
-		if (tags) {
-			filters.tags = tags.split(',');
-		}
 
 		// Handle categories as array
 		const categories = searchParams.get('categories');
@@ -113,7 +106,6 @@ function getMockOpportunities(filters) {
 			status: 'Open',
 			description:
 				'Funding for commercial building energy efficiency improvements including HVAC upgrades, lighting retrofits, and building envelope enhancements.',
-			tags: ['Energy Efficiency', 'Commercial', 'Federal'],
 			categories: ['Energy Efficiency', 'Facility Improvements'],
 			eligible_locations: ['National'],
 			source_type: 'Federal',
@@ -128,7 +120,6 @@ function getMockOpportunities(filters) {
 			status: 'Open',
 			description:
 				'Grants for K-12 schools to modernize facilities with a focus on energy efficiency, indoor air quality, and sustainability improvements.',
-			tags: ['K-12', 'Modernization', 'Federal'],
 			categories: ['Education', 'Energy Efficiency'],
 			eligible_locations: ['National'],
 			source_type: 'Federal',
@@ -143,7 +134,6 @@ function getMockOpportunities(filters) {
 			status: 'Open',
 			description:
 				'Funding for innovative clean energy projects that reduce greenhouse gas emissions and promote energy independence.',
-			tags: ['Clean Energy', 'Innovation', 'California'],
 			categories: ['Renewable Energy', 'Research & Development'],
 			eligible_locations: ['California'],
 			source_type: 'State',
@@ -158,7 +148,6 @@ function getMockOpportunities(filters) {
 			status: 'Upcoming',
 			description:
 				'Support for communities to develop and implement climate resilience strategies, including building upgrades and infrastructure improvements.',
-			tags: ['Climate', 'Resilience', 'Federal'],
 			categories: ['Community Development', 'Environmental'],
 			eligible_locations: ['National'],
 			source_type: 'Federal',
@@ -173,7 +162,6 @@ function getMockOpportunities(filters) {
 			status: 'Upcoming',
 			description:
 				'Funding for local governments to retrofit municipal buildings for improved energy efficiency and reduced operational costs.',
-			tags: ['Municipal', 'Retrofit', 'Federal'],
 			categories: ['Energy Efficiency', 'Facility Improvements'],
 			eligible_locations: ['National'],
 			source_type: 'Federal',
@@ -188,7 +176,6 @@ function getMockOpportunities(filters) {
 			status: 'Open',
 			description:
 				'Grants to install solar photovoltaic systems on K-12 school facilities to reduce energy costs and provide educational opportunities.',
-			tags: ['Solar', 'K-12', 'California'],
 			categories: ['Renewable Energy', 'Education'],
 			eligible_locations: ['California'],
 			source_type: 'State',
@@ -203,7 +190,6 @@ function getMockOpportunities(filters) {
 			status: 'Upcoming',
 			description:
 				'Incentives for building owners to convert from fossil fuel systems to electric alternatives for heating, cooling, and water heating.',
-			tags: ['Electrification', 'Oregon', 'State'],
 			categories: ['Energy Efficiency', 'Environmental'],
 			eligible_locations: ['Oregon'],
 			source_type: 'State',
@@ -218,7 +204,6 @@ function getMockOpportunities(filters) {
 			status: 'Upcoming',
 			description:
 				'Funding for demonstration projects that integrate energy storage with renewable energy systems in commercial and institutional buildings.',
-			tags: ['Energy Storage', 'Renewable', 'Federal'],
 			categories: ['Renewable Energy', 'Research & Development'],
 			eligible_locations: ['National'],
 			source_type: 'Federal',
@@ -233,7 +218,6 @@ function getMockOpportunities(filters) {
 			status: 'Open',
 			description:
 				'Grants to replace diesel school buses with zero-emission electric buses and install necessary charging infrastructure.',
-			tags: ['Electric Vehicles', 'K-12', 'Federal'],
 			categories: ['Transportation', 'Education', 'Environmental'],
 			eligible_locations: ['National'],
 			source_type: 'Federal',
@@ -246,18 +230,6 @@ function getMockOpportunities(filters) {
 	if (filters.status) {
 		filteredData = filteredData.filter(
 			(item) => item.status === filters.status
-		);
-	}
-
-	if (filters.source_type) {
-		filteredData = filteredData.filter(
-			(item) => item.source_type === filters.source_type
-		);
-	}
-
-	if (filters.tags && filters.tags.length > 0) {
-		filteredData = filteredData.filter((item) =>
-			filters.tags.some((tag) => item.tags.includes(tag))
 		);
 	}
 

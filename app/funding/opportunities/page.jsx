@@ -106,8 +106,6 @@ export default function OpportunitiesPage() {
 	const [openFilterSection, setOpenFilterSection] = useState(null);
 	const [filters, setFilters] = useState({
 		status: null,
-		source_type: null,
-		tags: [],
 		categories: [],
 		states: [],
 		page: 1,
@@ -138,12 +136,6 @@ export default function OpportunitiesPage() {
 	// Extract all unique tags and categories from opportunities
 	useEffect(() => {
 		if (opportunities.length > 0) {
-			// Extract all unique tags
-			const allTags = [
-				...new Set(opportunities.flatMap((opp) => opp.tags || [])),
-			];
-			setAvailableTags(allTags);
-
 			// If we want to use dynamically detected categories instead of taxonomy
 			// const allCategories = [...new Set(opportunities.flatMap((opp) => opp.categories || []))];
 			// setAvailableCategories(allCategories);
@@ -160,14 +152,6 @@ export default function OpportunitiesPage() {
 
 				if (filters.status) {
 					queryParams.append('status', filters.status);
-				}
-
-				if (filters.source_type) {
-					queryParams.append('source_type', filters.source_type);
-				}
-
-				if (filters.tags.length > 0) {
-					queryParams.append('tags', filters.tags.join(','));
 				}
 
 				if (filters.categories.length > 0) {
@@ -227,7 +211,7 @@ export default function OpportunitiesPage() {
 		setFilters((prev) => {
 			const newFilters = { ...prev };
 
-			if (type === 'tags' || type === 'categories' || type === 'states') {
+			if (type === 'categories' || type === 'states') {
 				if (newFilters[type].includes(value)) {
 					newFilters[type] = newFilters[type].filter((item) => item !== value);
 				} else {
@@ -248,8 +232,6 @@ export default function OpportunitiesPage() {
 	const clearAllFilters = () => {
 		setFilters({
 			status: null,
-			source_type: null,
-			tags: [],
 			categories: [],
 			states: [],
 			page: 1,
@@ -279,8 +261,6 @@ export default function OpportunitiesPage() {
 	const hasActiveFilters = () => {
 		return (
 			filters.status !== null ||
-			filters.source_type !== null ||
-			filters.tags.length > 0 ||
 			filters.categories.length > 0 ||
 			filters.states.length > 0 ||
 			searchQuery !== ''
@@ -519,85 +499,6 @@ export default function OpportunitiesPage() {
 									</div>
 								)}
 							</div>
-
-							{/* Source type filter */}
-							<div className='relative'>
-								<Button
-									variant={filters.source_type ? 'secondary' : 'outline'}
-									onClick={() => toggleFilterSection('source_type')}
-									className='flex items-center gap-2'>
-									<Filter size={16} />
-									<span>Source</span>
-									{filters.source_type && (
-										<span className='ml-1 bg-primary-foreground text-primary text-xs font-medium px-2 py-0.5 rounded-full'>
-											1
-										</span>
-									)}
-									<ChevronDown size={16} />
-								</Button>
-
-								{openFilterSection === 'source_type' && (
-									<div className='absolute z-10 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 p-2'>
-										{['Federal', 'State', 'Local', 'Foundation', 'Private'].map(
-											(type) => (
-												<div
-													key={type}
-													className='flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer'
-													onClick={() =>
-														handleFilterSelect('source_type', type)
-													}>
-													<input
-														type='checkbox'
-														className='mr-2'
-														checked={filters.source_type === type}
-														onChange={() => {}}
-													/>
-													<span>{type}</span>
-												</div>
-											)
-										)}
-									</div>
-								)}
-							</div>
-
-							{/* Tags filter */}
-							<div className='relative'>
-								<Button
-									variant={filters.tags.length > 0 ? 'secondary' : 'outline'}
-									onClick={() => toggleFilterSection('tags')}
-									className='flex items-center gap-2'>
-									<Tag size={16} />
-									<span>Tags</span>
-									{filters.tags.length > 0 && (
-										<span className='ml-1 bg-primary-foreground text-primary text-xs font-medium px-2 py-0.5 rounded-full'>
-											{filters.tags.length}
-										</span>
-									)}
-									<ChevronDown size={16} />
-								</Button>
-
-								{openFilterSection === 'tags' && (
-									<div className='absolute z-10 mt-2 w-64 bg-white rounded-lg shadow-lg border border-gray-200 p-2 max-h-64 overflow-y-auto'>
-										{availableTags.map((tag) => (
-											<div
-												key={tag}
-												className='flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer'
-												onClick={() => handleFilterSelect('tags', tag)}>
-												<input
-													type='checkbox'
-													className='mr-2'
-													checked={filters.tags.includes(tag)}
-													onChange={() => {}}
-												/>
-												<span>{tag}</span>
-											</div>
-										))}
-										{availableTags.length === 0 && (
-											<div className='p-2 text-gray-500'>No tags available</div>
-										)}
-									</div>
-								)}
-							</div>
 						</div>
 					</div>
 
@@ -685,35 +586,6 @@ export default function OpportunitiesPage() {
 										</button>
 									</div>
 								)}
-
-								{/* Source type filter */}
-								{filters.source_type && (
-									<div className='flex items-center gap-1 bg-blue-50 text-blue-800 px-2 py-1 rounded-full text-sm'>
-										<span>{filters.source_type}</span>
-										<button
-											onClick={() =>
-												handleFilterSelect('source_type', filters.source_type)
-											}
-											className='ml-1'>
-											<X size={14} />
-										</button>
-									</div>
-								)}
-
-								{/* Tag filters */}
-								{filters.tags.map((tag) => (
-									<div
-										key={`tag-${tag}`}
-										className='flex items-center gap-1 bg-blue-50 text-blue-800 px-2 py-1 rounded-full text-sm'>
-										<Tag size={14} />
-										<span>{tag}</span>
-										<button
-											onClick={() => handleFilterSelect('tags', tag)}
-											className='ml-1'>
-											<X size={14} />
-										</button>
-									</div>
-								))}
 							</div>
 						</div>
 					)}

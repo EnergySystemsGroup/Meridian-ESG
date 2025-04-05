@@ -112,10 +112,6 @@ export const fundingApi = {
 				query = query.eq('status', filters.status);
 			}
 
-			if (filters.source_type) {
-				query = query.eq('source_type', filters.source_type);
-			}
-
 			if (filters.min_amount) {
 				query = query.gte('minimum_award', filters.min_amount);
 			}
@@ -130,11 +126,6 @@ export const fundingApi = {
 
 			if (filters.close_date_before) {
 				query = query.lte('close_date', filters.close_date_before);
-			}
-
-			// Apply tags filter
-			if (filters.tags && filters.tags.length > 0) {
-				query = query.contains('tags', filters.tags);
 			}
 
 			// Apply categories filter
