@@ -32,9 +32,10 @@ import {
 import { calculateDaysLeft, determineStatus } from '@/app/lib/supabase';
 import TAXONOMIES from '@/app/lib/constants/taxonomies';
 import OpportunityCard from '@/app/components/opportunities/OpportunityCard';
+import { classNames } from '@/app/lib/utils';
 
 // Helper function to get a consistent color for a category
-function getCategoryColor(categoryName) {
+const getCategoryColor = (categoryName) => {
 	// Define a color map for the standard categories from taxonomies
 	const categoryColors = {
 		// Energy categories with orange-yellow hues
@@ -65,20 +66,9 @@ function getCategoryColor(categoryName) {
 		'Planning & Assessment': { color: '#5D4037', bgColor: '#EFEBE9' },
 	};
 
-	// Check if it's one of our standard categories (accounting for case differences)
-	const standardCategories = TAXONOMIES.CATEGORIES.map((c) => c.toLowerCase());
-	const normalizedCategoryName = categoryName.toLowerCase();
-
-	if (standardCategories.includes(normalizedCategoryName)) {
-		// Find the exact match in the original case
-		const matchedCategory = TAXONOMIES.CATEGORIES.find(
-			(c) => c.toLowerCase() === normalizedCategoryName
-		);
-
-		// Return the predefined color if available
-		if (matchedCategory && categoryColors[matchedCategory]) {
-			return categoryColors[matchedCategory];
-		}
+	// Check if it's one of our standard categories
+	if (categoryColors[categoryName]) {
+		return categoryColors[categoryName];
 	}
 
 	// For non-standard categories, generate a color using the hash function
@@ -94,30 +84,28 @@ function getCategoryColor(categoryName) {
 		color: `hsl(${hue}, 65%, 45%)`,
 		bgColor: `hsl(${hue}, 65%, 95%)`,
 	};
-}
+};
 
-// Status indicators
+// Status indicator styling
 const statusIndicator = {
-	open: { color: '#4CAF50', bgColor: '#E8F5E9', display: 'Open' },
-	upcoming: { color: '#2196F3', bgColor: '#E3F2FD', display: 'Upcoming' },
-	closed: { color: '#9E9E9E', bgColor: '#F5F5F5', display: 'Closed' },
+	open: 'Open',
+	upcoming: 'Upcoming',
+	closed: 'Closed',
 };
 
 // Helper to format status for display
 const formatStatusForDisplay = (status) => {
-	if (!status) return '';
-	const statusKey = status.toLowerCase();
-	return (
-		statusIndicator[statusKey]?.display ||
-		status.charAt(0).toUpperCase() + status.slice(1).toLowerCase()
-	);
+	return statusIndicator[status] || status;
 };
 
-// Helper to get status color regardless of case
+// Get appropriate color for status
 const getStatusColor = (status) => {
-	if (!status) return '#9E9E9E';
-	const statusKey = status.toLowerCase();
-	return statusIndicator[statusKey]?.color || '#9E9E9E';
+	const statusColors = {
+		open: '#22c55e', // green
+		upcoming: '#f59e0b', // amber
+		closed: '#ef4444', // red
+	};
+	return statusColors[status] || '#6b7280'; // default to gray
 };
 
 export default function OpportunitiesPage() {
@@ -154,8 +142,8 @@ export default function OpportunitiesPage() {
 	);
 	const [sortOption, setSortOption] = useState('relevance');
 	const [sortDirection, setSortDirection] = useState('desc');
-	const [categorySearchQuery, setCategorySearchQuery] = useState('');
-	const [stateSearchQuery, setStateSearchQuery] = useState('');
+	const [categorySearchInput, setCategorySearchInput] = useState('');
+	const [stateSearchInput, setStateSearchInput] = useState('');
 	const [sortMenuOpen, setSortMenuOpen] = useState(false);
 
 	// Create refs for the dropdown containers
@@ -208,12 +196,29 @@ export default function OpportunitiesPage() {
 		};
 	}, [openFilterSection, sortMenuOpen]);
 
-	// Extract all unique tags and categories from opportunities
+	// Extract unique categories from opportunities and combine with taxonomy
 	useEffect(() => {
 		if (opportunities.length > 0) {
-			// If we want to use dynamically detected categories instead of taxonomy
-			// const allCategories = [...new Set(opportunities.flatMap((opp) => opp.categories || []))];
-			// setAvailableCategories(allCategories);
+			// Extract all unique categories from opportunities
+			const dynamicCategories = [
+				...new Set(
+					opportunities.flatMap((opportunity) =>
+						opportunity.categories ? opportunity.categories : []
+					)
+				),
+			];
+
+			// Combine with taxonomy categories (avoiding duplicates)
+			const taxonomyCategories = TAXONOMIES.CATEGORIES;
+			const allCategories = [
+				...new Set([...taxonomyCategories, ...dynamicCategories]),
+			];
+
+			// Sort alphabetically for better usability
+			allCategories.sort();
+
+			// Update state with combined list
+			setAvailableCategories(allCategories);
 		}
 	}, [opportunities]);
 
@@ -327,8 +332,8 @@ export default function OpportunitiesPage() {
 			page_size: 9,
 		});
 		setSearchQuery('');
-		setCategorySearchQuery('');
-		setStateSearchQuery('');
+		setCategorySearchInput('');
+		setStateSearchInput('');
 	};
 
 	// Filter opportunities based on search query
@@ -357,16 +362,16 @@ export default function OpportunitiesPage() {
 	};
 
 	// Filter categories for search
-	const filteredCategories = categorySearchQuery
+	const filteredCategories = categorySearchInput
 		? availableCategories.filter((category) =>
-				category.toLowerCase().includes(categorySearchQuery.toLowerCase())
+				category.toLowerCase().includes(categorySearchInput.toLowerCase())
 		  )
 		: availableCategories;
 
 	// Filter states for search
-	const filteredStates = stateSearchQuery
+	const filteredStates = stateSearchInput
 		? availableStates.filter((state) =>
-				state.toLowerCase().includes(stateSearchQuery.toLowerCase())
+				state.toLowerCase().includes(stateSearchInput.toLowerCase())
 		  )
 		: availableStates;
 
@@ -411,30 +416,69 @@ export default function OpportunitiesPage() {
 	};
 
 	// Render the status filter dropdown
-	const renderStatusFilter = () => (
-		<div className='absolute z-10 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 p-2'>
-			{Object.entries(statusIndicator).map(([key, value]) => (
-				<div
-					key={key}
-					className='flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer'
-					onClick={() => handleFilterSelect('status', key)}>
-					<input
-						type='checkbox'
-						className='mr-2'
-						checked={filters.status === key}
-						onChange={() => {}}
-					/>
-					<span
-						className='w-3 h-3 rounded-full mr-2'
-						style={{
-							backgroundColor: value.color,
-						}}
-					/>
-					<span>{value.display}</span>
+	const renderStatusFilter = () => {
+		return (
+			<div className='relative inline-block text-left'>
+				<div>
+					<Button
+						variant='outline'
+						onClick={() => toggleFilterSection('status')}
+						className={classNames(
+							'flex items-center justify-between gap-1 px-4 py-2 text-sm',
+							openFilterSection === 'status'
+								? 'bg-blue-50 text-blue-800 border-blue-200'
+								: 'border-gray-300',
+							openFilterSection === 'status' && filters.status
+								? 'bg-blue-100'
+								: ''
+						)}>
+						{filters.status
+							? `Status: ${formatStatusForDisplay(filters.status)}`
+							: 'Status'}
+						<ChevronDown
+							size={16}
+							className={classNames(
+								'transition-transform',
+								openFilterSection === 'status' ? 'rotate-180' : ''
+							)}
+						/>
+					</Button>
 				</div>
-			))}
-		</div>
-	);
+
+				{openFilterSection === 'status' && (
+					<div
+						className='absolute left-0 z-20 mt-2 origin-top-left bg-white rounded-md shadow-lg w-48 ring-1 ring-black ring-opacity-5 focus:outline-none'
+						tabIndex={-1}
+						ref={statusDropdownRef}>
+						<div className='p-4'>
+							{Object.entries(statusIndicator).map(([key, value]) => (
+								<div
+									key={key}
+									className='flex items-center py-1 cursor-pointer hover:bg-gray-50'
+									onClick={() => handleFilterSelect('status', key)}>
+									<div className='flex items-center'>
+										<input
+											type='checkbox'
+											className='mr-2'
+											checked={filters.status === key}
+											readOnly
+										/>
+										<span
+											className='w-3 h-3 rounded-full mr-2'
+											style={{
+												backgroundColor: getStatusColor(key),
+											}}
+										/>
+										<span className='text-sm'>{value}</span>
+									</div>
+								</div>
+							))}
+						</div>
+					</div>
+				)}
+			</div>
+		);
+	};
 
 	// Calculate pagination values
 	const totalPages = Math.ceil(totalCount / filters.page_size);
@@ -512,6 +556,359 @@ export default function OpportunitiesPage() {
 		);
 	};
 
+	// Render the category filter dropdown
+	const renderCategoryFilter = () => {
+		// Filter visible categories based on search input
+		const filteredCategories = (availableCategories || []).filter((category) =>
+			category.toLowerCase().includes(categorySearchInput.toLowerCase())
+		);
+
+		// Count selected categories for display
+		const selectedCount = filters.categories.length;
+		const displayText =
+			selectedCount > 0 ? `Categories (${selectedCount})` : 'Categories';
+
+		return (
+			<div className='relative inline-block text-left'>
+				<div>
+					<Button
+						variant='outline'
+						onClick={() => toggleFilterSection('categories')}
+						className={classNames(
+							'flex items-center justify-between gap-1 px-4 py-2 text-sm',
+							openFilterSection === 'categories'
+								? 'bg-blue-50 text-blue-800 border-blue-200'
+								: 'border-gray-300',
+							openFilterSection === 'categories' &&
+								filters.categories.length > 0
+								? 'bg-blue-100'
+								: ''
+						)}>
+						{displayText}
+						<ChevronDown
+							size={16}
+							className={classNames(
+								'transition-transform',
+								openFilterSection === 'categories' ? 'rotate-180' : ''
+							)}
+						/>
+					</Button>
+				</div>
+
+				{openFilterSection === 'categories' && (
+					<div
+						className='absolute left-0 z-20 mt-2 origin-top-left bg-white rounded-md shadow-lg w-64 ring-1 ring-black ring-opacity-5 focus:outline-none'
+						tabIndex={-1}
+						ref={categoryDropdownRef}>
+						<div className='p-4'>
+							{/* Search input */}
+							<div className='mb-4'>
+								<div className='relative'>
+									<Search
+										className='absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400'
+										size={16}
+									/>
+									<input
+										type='text'
+										className='w-full pl-9 pr-4 py-2 border border-gray-300 rounded-md text-sm'
+										placeholder='Search categories...'
+										value={categorySearchInput}
+										onChange={(e) => setCategorySearchInput(e.target.value)}
+									/>
+									{categorySearchInput && (
+										<X
+											className='absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 cursor-pointer'
+											size={16}
+											onClick={() => setCategorySearchInput('')}
+										/>
+									)}
+								</div>
+							</div>
+
+							{/* All categories */}
+							<div className='max-h-60 overflow-y-auto'>
+								{filteredCategories.map((category) => {
+									const isSelected = filters.categories.includes(category);
+									const categoryColor = getCategoryColor(category);
+									return (
+										<div
+											key={category}
+											className='flex items-center py-1 cursor-pointer hover:bg-gray-50'
+											onClick={() =>
+												handleFilterSelect('categories', category)
+											}>
+											<div className='flex items-center'>
+												<input
+													type='checkbox'
+													className='mr-2'
+													checked={isSelected}
+													readOnly
+												/>
+												<span
+													className='w-3 h-3 rounded-full mr-2'
+													style={{ backgroundColor: categoryColor.color }}
+												/>
+												<span className='text-sm'>{category}</span>
+											</div>
+										</div>
+									);
+								})}
+							</div>
+
+							{/* No results */}
+							{filteredCategories.length === 0 && (
+								<div className='py-3 text-center text-sm text-gray-500'>
+									No categories found
+								</div>
+							)}
+
+							{/* Clear selections button if any selected */}
+							{filters.categories.length > 0 && (
+								<div className='mt-4 pt-3 border-t border-gray-200 flex justify-end'>
+									<Button
+										variant='link'
+										size='sm'
+										className='text-blue-600 hover:text-blue-800'
+										onClick={() => {
+											setFilters({ ...filters, categories: [], page: 1 });
+										}}>
+										Clear selections
+									</Button>
+								</div>
+							)}
+						</div>
+					</div>
+				)}
+			</div>
+		);
+	};
+
+	// Render state filter dropdown
+	const renderStateFilter = () => {
+		// Count selected states for display
+		const selectedCount = filters.states.length;
+		const displayText =
+			selectedCount > 0 ? `Locations (${selectedCount})` : 'Locations';
+
+		return (
+			<div className='relative inline-block text-left'>
+				<div>
+					<Button
+						variant='outline'
+						onClick={() => toggleFilterSection('states')}
+						className={classNames(
+							'flex items-center justify-between gap-1 px-4 py-2 text-sm',
+							openFilterSection === 'states'
+								? 'bg-blue-50 text-blue-800 border-blue-200'
+								: 'border-gray-300',
+							openFilterSection === 'states' && filters.states.length > 0
+								? 'bg-blue-100'
+								: ''
+						)}>
+						{displayText}
+						<ChevronDown
+							size={16}
+							className={classNames(
+								'transition-transform',
+								openFilterSection === 'states' ? 'rotate-180' : ''
+							)}
+						/>
+					</Button>
+				</div>
+
+				{openFilterSection === 'states' && (
+					<div
+						className='absolute left-0 z-20 mt-2 origin-top-left bg-white rounded-md shadow-lg w-64 ring-1 ring-black ring-opacity-5 focus:outline-none'
+						tabIndex={-1}
+						ref={stateDropdownRef}>
+						<div className='p-4'>
+							{/* Search input */}
+							<div className='mb-4'>
+								<div className='relative'>
+									<Search
+										className='absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400'
+										size={16}
+									/>
+									<input
+										type='text'
+										className='w-full pl-9 pr-4 py-2 border border-gray-300 rounded-md text-sm'
+										placeholder='Search locations...'
+										value={stateSearchInput}
+										onChange={(e) => setStateSearchInput(e.target.value)}
+									/>
+									{stateSearchInput && (
+										<X
+											className='absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 cursor-pointer'
+											size={16}
+											onClick={() => setStateSearchInput('')}
+										/>
+									)}
+								</div>
+							</div>
+
+							{/* National option */}
+							<div
+								className='flex items-center py-1 cursor-pointer hover:bg-gray-50 mb-2 border-b border-gray-200 pb-2'
+								onClick={() => handleFilterSelect('states', 'National')}>
+								<div className='flex items-center'>
+									<input
+										type='checkbox'
+										className='mr-2'
+										checked={filters.states.includes('National')}
+										readOnly
+									/>
+									<span className='text-sm font-medium'>
+										National (All States)
+									</span>
+								</div>
+							</div>
+
+							{/* State list */}
+							<div className='max-h-60 overflow-y-auto'>
+								{filteredStates.map((state) => (
+									<div
+										key={state}
+										className='flex items-center py-1 cursor-pointer hover:bg-gray-50'
+										onClick={() => handleFilterSelect('states', state)}>
+										<div className='flex items-center'>
+											<input
+												type='checkbox'
+												className='mr-2'
+												checked={filters.states.includes(state)}
+												readOnly
+											/>
+											<span className='text-sm'>{state}</span>
+										</div>
+									</div>
+								))}
+							</div>
+
+							{/* No results */}
+							{filteredStates.length === 0 && (
+								<div className='py-3 text-center text-sm text-gray-500'>
+									No locations found
+								</div>
+							)}
+
+							{/* Clear selections button if any selected */}
+							{filters.states.length > 0 && (
+								<div className='mt-4 pt-3 border-t border-gray-200 flex justify-end'>
+									<Button
+										variant='link'
+										size='sm'
+										className='text-blue-600 hover:text-blue-800'
+										onClick={() => {
+											setFilters({ ...filters, states: [], page: 1 });
+										}}>
+										Clear selections
+									</Button>
+								</div>
+							)}
+						</div>
+					</div>
+				)}
+			</div>
+		);
+	};
+
+	// Render active filters
+	const renderActiveFilters = () => {
+		if (!hasActiveFilters()) return null;
+
+		return (
+			<div className='flex flex-wrap gap-2 mt-4 py-2 border-t border-gray-100'>
+				<span className='text-sm text-gray-500 mr-1'>Active filters:</span>
+
+				{/* Status filter */}
+				{filters.status && (
+					<span
+						className='flex items-center gap-1 px-2 py-1 bg-gray-100 rounded-full text-xs font-medium'
+						style={{
+							backgroundColor: getStatusColor(filters.status),
+							color: 'white',
+						}}>
+						{formatStatusForDisplay(filters.status)}
+						<X
+							size={14}
+							className='cursor-pointer'
+							onClick={() => setFilters({ ...filters, status: null, page: 1 })}
+						/>
+					</span>
+				)}
+
+				{/* Category filters */}
+				{filters.categories.map((category) => {
+					const categoryColor = getCategoryColor(category);
+					return (
+						<span
+							key={category}
+							className='flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium'
+							style={{
+								backgroundColor: categoryColor.bgColor,
+								color: categoryColor.color,
+							}}>
+							{category}
+							<X
+								size={14}
+								className='cursor-pointer'
+								onClick={() => {
+									const updatedCategories = filters.categories.filter(
+										(c) => c !== category
+									);
+									setFilters({
+										...filters,
+										categories: updatedCategories,
+										page: 1,
+									});
+								}}
+							/>
+						</span>
+					);
+				})}
+
+				{/* State filters */}
+				{filters.states.map((state) => (
+					<span
+						key={state}
+						className='flex items-center gap-1 px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs font-medium'>
+						{state}
+						<X
+							size={14}
+							className='cursor-pointer'
+							onClick={() => {
+								const updatedStates = filters.states.filter((s) => s !== state);
+								setFilters({
+									...filters,
+									states: updatedStates,
+									page: 1,
+								});
+							}}
+						/>
+					</span>
+				))}
+
+				{/* Search query */}
+				{searchQuery && (
+					<span className='flex items-center gap-1 px-2 py-1 bg-purple-100 text-purple-800 rounded-full text-xs font-medium'>
+						Search: {searchQuery}
+						<X
+							size={14}
+							className='cursor-pointer'
+							onClick={() => setSearchQuery('')}
+						/>
+					</span>
+				)}
+
+				{/* Clear all */}
+				<button
+					className='text-blue-600 hover:underline text-xs font-medium ml-2'
+					onClick={clearAllFilters}>
+					Clear all
+				</button>
+			</div>
+		);
+	};
+
 	return (
 		<MainLayout>
 			<div className='container py-10'>
@@ -545,252 +942,18 @@ export default function OpportunitiesPage() {
 						{/* Filter dropdown buttons */}
 						<div className='flex flex-wrap gap-2' ref={filterContainerRef}>
 							{/* Category filter */}
-							<div className='relative' ref={categoryDropdownRef}>
-								<Button
-									variant={
-										filters.categories.length > 0 ? 'secondary' : 'outline'
-									}
-									onClick={() => toggleFilterSection('categories')}
-									className='flex items-center gap-2'>
-									<Briefcase size={16} />
-									<span>Categories</span>
-									{filters.categories.length > 0 && (
-										<span className='ml-1 bg-primary-foreground text-primary text-xs font-medium px-2 py-0.5 rounded-full'>
-											{filters.categories.length}
-										</span>
-									)}
-									<ChevronDown size={16} />
-								</Button>
-
-								{openFilterSection === 'categories' && (
-									<div className='absolute z-10 mt-2 w-72 bg-white rounded-lg shadow-lg border border-gray-200 p-2 max-h-96 overflow-y-auto'>
-										{/* Category search */}
-										<div className='relative mb-2'>
-											<Input
-												type='text'
-												placeholder='Search categories...'
-												value={categorySearchQuery}
-												onChange={(e) => setCategorySearchQuery(e.target.value)}
-												className='pl-8 py-1 h-8 text-sm'
-											/>
-											<Search
-												size={14}
-												className='absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400'
-											/>
-										</div>
-										{filteredCategories.length > 0 ? (
-											filteredCategories.map((category) => {
-												const categoryColor = getCategoryColor(category);
-												return (
-													<div
-														key={category}
-														className='flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer'
-														onClick={() =>
-															handleFilterSelect('categories', category)
-														}>
-														<input
-															type='checkbox'
-															className='mr-2'
-															checked={filters.categories.includes(category)}
-															onChange={() => {}}
-														/>
-														<span
-															className='w-3 h-3 rounded-full mr-2'
-															style={{
-																backgroundColor: categoryColor.color,
-															}}
-														/>
-														<span>{category}</span>
-													</div>
-												);
-											})
-										) : (
-											<div className='p-2 text-gray-500'>
-												No matching categories
-											</div>
-										)}
-									</div>
-								)}
-							</div>
+							{renderCategoryFilter()}
 
 							{/* Status filter */}
-							<div className='relative' ref={statusDropdownRef}>
-								<Button
-									variant={filters.status ? 'secondary' : 'outline'}
-									onClick={() => toggleFilterSection('status')}
-									className='flex items-center gap-2'>
-									<Clock size={16} />
-									<span>Status</span>
-									{filters.status && (
-										<span className='ml-1 bg-primary-foreground text-primary text-xs font-medium px-2 py-0.5 rounded-full'>
-											1
-										</span>
-									)}
-									<ChevronDown size={16} />
-								</Button>
-
-								{openFilterSection === 'status' && renderStatusFilter()}
-							</div>
+							{renderStatusFilter()}
 
 							{/* State filter */}
-							<div className='relative' ref={stateDropdownRef}>
-								<Button
-									variant={filters.states.length > 0 ? 'secondary' : 'outline'}
-									onClick={() => toggleFilterSection('states')}
-									className='flex items-center gap-2'>
-									<Map size={16} />
-									<span>Location</span>
-									{filters.states.length > 0 && (
-										<span className='ml-1 bg-primary-foreground text-primary text-xs font-medium px-2 py-0.5 rounded-full'>
-											{filters.states.length}
-										</span>
-									)}
-									<ChevronDown size={16} />
-								</Button>
-
-								{openFilterSection === 'states' && (
-									<div className='absolute z-10 mt-2 w-72 bg-white rounded-lg shadow-lg border border-gray-200 p-2 max-h-96 overflow-y-auto'>
-										{/* State search */}
-										<div className='relative mb-2'>
-											<Input
-												type='text'
-												placeholder='Search states...'
-												value={stateSearchQuery}
-												onChange={(e) => setStateSearchQuery(e.target.value)}
-												className='pl-8 py-1 h-8 text-sm'
-											/>
-											<Search
-												size={14}
-												className='absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400'
-											/>
-										</div>
-
-										{/* National option */}
-										<div
-											className='flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer mb-2 border-b border-gray-200'
-											onClick={() => handleFilterSelect('states', 'National')}>
-											<input
-												type='checkbox'
-												className='mr-2'
-												checked={filters.states.includes('National')}
-												onChange={() => {}}
-											/>
-											<span className='font-medium'>National (All States)</span>
-										</div>
-
-										{filteredStates.length > 0 ? (
-											filteredStates.map((state) => (
-												<div
-													key={state}
-													className='flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer'
-													onClick={() => handleFilterSelect('states', state)}>
-													<input
-														type='checkbox'
-														className='mr-2'
-														checked={filters.states.includes(state)}
-														onChange={() => {}}
-													/>
-													<span>{state}</span>
-												</div>
-											))
-										) : (
-											<div className='p-2 text-gray-500'>
-												No matching states
-											</div>
-										)}
-									</div>
-								)}
-							</div>
+							{renderStateFilter()}
 						</div>
 					</div>
 
 					{/* Active filters */}
-					{hasActiveFilters() && (
-						<div className='mt-4 pt-4 border-t border-gray-200'>
-							<div className='flex justify-between items-center mb-2'>
-								<h3 className='font-medium text-gray-700'>Active Filters</h3>
-								<Button
-									variant='link'
-									className='h-auto p-0 text-sm'
-									onClick={clearAllFilters}>
-									Clear All
-								</Button>
-							</div>
-
-							<div className='flex flex-wrap gap-2'>
-								{/* Search query filter */}
-								{searchQuery && (
-									<div className='flex items-center gap-1 bg-blue-50 text-blue-800 px-2 py-1 rounded-full text-sm'>
-										<Search size={14} />
-										<span>{searchQuery}</span>
-										<button onClick={() => setSearchQuery('')} className='ml-1'>
-											<X size={14} />
-										</button>
-									</div>
-								)}
-
-								{/* Category filters */}
-								{filters.categories.map((category) => {
-									const categoryColor = getCategoryColor(category);
-									return (
-										<div
-											key={`cat-${category}`}
-											className='flex items-center gap-1 bg-blue-50 text-blue-800 px-2 py-1 rounded-full text-sm'>
-											<span
-												className='w-2 h-2 rounded-full'
-												style={{
-													backgroundColor: categoryColor.color,
-												}}
-											/>
-											<span>{category}</span>
-											<button
-												onClick={() =>
-													handleFilterSelect('categories', category)
-												}
-												className='ml-1'>
-												<X size={14} />
-											</button>
-										</div>
-									);
-								})}
-
-								{/* State filters */}
-								{filters.states.map((state) => (
-									<div
-										key={`state-${state}`}
-										className='flex items-center gap-1 bg-blue-50 text-blue-800 px-2 py-1 rounded-full text-sm'>
-										<Map size={14} />
-										<span>{state}</span>
-										<button
-											onClick={() => handleFilterSelect('states', state)}
-											className='ml-1'>
-											<X size={14} />
-										</button>
-									</div>
-								))}
-
-								{/* Status filter */}
-								{filters.status && (
-									<div className='flex items-center gap-1 bg-blue-50 text-blue-800 px-2 py-1 rounded-full text-sm'>
-										<span
-											className='w-2 h-2 rounded-full'
-											style={{
-												backgroundColor: getStatusColor(filters.status),
-											}}
-										/>
-										<span>{formatStatusForDisplay(filters.status)}</span>
-										<button
-											onClick={() =>
-												handleFilterSelect('status', filters.status)
-											}
-											className='ml-1'>
-											<X size={14} />
-										</button>
-									</div>
-								)}
-							</div>
-						</div>
-					)}
+					{renderActiveFilters()}
 				</div>
 
 				{/* Results count, sort, and pagination (top) */}
