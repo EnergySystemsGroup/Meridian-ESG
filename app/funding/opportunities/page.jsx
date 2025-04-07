@@ -271,7 +271,7 @@ export default function OpportunitiesPage() {
 					queryParams.append('sort_by', 'maximum_award');
 					queryParams.append('sort_direction', sortDirection);
 				} else if (sortOption === 'recent') {
-					queryParams.append('sort_by', 'posted_date');
+					queryParams.append('sort_by', 'updated_at');
 					queryParams.append('sort_direction', sortDirection);
 				} else {
 					// Default to relevance if available
