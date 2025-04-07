@@ -151,6 +151,8 @@ const OpportunityCard = ({ opportunity }) => {
 			? `Up to $${opportunity.maximum_award.toLocaleString()}`
 			: opportunity.minimum_award
 			? `From $${opportunity.minimum_award.toLocaleString()}`
+			: opportunity.total_funding_available
+			? `$${opportunity.total_funding_available.toLocaleString()} total`
 			: 'Amount not specified';
 
 	// Format close date
