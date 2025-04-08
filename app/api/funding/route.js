@@ -37,20 +37,10 @@ export async function GET(request) {
 			filters.search = search;
 		}
 
-		// Fetch opportunities with filters
-		let opportunities;
-		let totalCount;
-		try {
-			const result = await fundingApi.getOpportunities(filters);
-			opportunities = result.data;
-			totalCount = result.count;
-		} catch (error) {
-			console.error('Error fetching from Supabase:', error);
-			// Fallback to mock data
-			const mockData = getMockOpportunities(filters);
-			opportunities = mockData;
-			totalCount = mockData.length; // For mock data, the total is just the length
-		}
+		// Fetch opportunities with filters - Remove try/catch fallback again
+		const result = await fundingApi.getOpportunities(filters);
+		const opportunities = result.data;
+		const totalCount = result.count;
 
 		return NextResponse.json({
 			success: true,
