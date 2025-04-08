@@ -1,0 +1,1 @@
+-- Dummy migration file created to resolve history inconsistency 
