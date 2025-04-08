@@ -127,6 +127,7 @@ export default function OpportunitiesPage() {
 	const [error, setError] = useState(null);
 	const [totalCount, setTotalCount] = useState(0);
 	const [searchQuery, setSearchQuery] = useState('');
+	const [debouncedSearchQuery, setDebouncedSearchQuery] = useState(searchQuery);
 	const [openFilterSection, setOpenFilterSection] = useState(null);
 	const [filters, setFilters] = useState({
 		status: null,
@@ -235,6 +236,20 @@ export default function OpportunitiesPage() {
 		}
 	}, [opportunities]);
 
+	// Debounce search query
+	useEffect(() => {
+		const handler = setTimeout(() => {
+			setDebouncedSearchQuery(searchQuery);
+			// Reset page to 1 when the actual search query changes
+			setFilters((prev) => ({ ...prev, page: 1 }));
+		}, 500); // 500ms delay
+
+		// Cleanup function to clear the timeout if the user types again quickly
+		return () => {
+			clearTimeout(handler);
+		};
+	}, [searchQuery]); // Only re-run the effect if searchQuery changes
+
 	useEffect(() => {
 		async function fetchOpportunities() {
 			try {
@@ -255,9 +270,9 @@ export default function OpportunitiesPage() {
 					queryParams.append('states', filters.states.join(','));
 				}
 
-				// Add search query to API request if it exists
-				if (searchQuery.trim()) {
-					queryParams.append('search', searchQuery.trim());
+				// Add debounced search query to API request if it exists
+				if (debouncedSearchQuery.trim()) {
+					queryParams.append('search', debouncedSearchQuery.trim());
 				}
 
 				queryParams.append('page', filters.page.toString());
@@ -306,7 +321,7 @@ export default function OpportunitiesPage() {
 		}
 
 		fetchOpportunities();
-	}, [filters, sortOption, sortDirection, searchQuery]);
+	}, [filters, sortOption, sortDirection, debouncedSearchQuery]);
 
 	// Toggle filter section
 	const toggleFilterSection = (section) => {
@@ -507,7 +522,12 @@ export default function OpportunitiesPage() {
 
 		// Update previous filters reference
 		prevFilters.current = { ...filters };
-	}, [filters.status, filters.categories, filters.states, searchQuery]);
+	}, [
+		filters.status,
+		filters.categories,
+		filters.states,
+		debouncedSearchQuery,
+	]);
 
 	// Track previous filters
 	const prevFilters = useRef(filters);
@@ -879,9 +899,9 @@ export default function OpportunitiesPage() {
 				))}
 
 				{/* Search query */}
-				{searchQuery && (
+				{debouncedSearchQuery && (
 					<span className='flex items-center gap-1 px-2 py-1 bg-purple-100 text-purple-800 rounded-full text-xs font-medium'>
-						Search: {searchQuery}
+						Search: {debouncedSearchQuery}
 						<X
 							size={14}
 							className='cursor-pointer'
@@ -906,7 +926,7 @@ export default function OpportunitiesPage() {
 			filters.status !== null ||
 			filters.categories.length > 0 ||
 			filters.states.length > 0 ||
-			searchQuery !== ''
+			debouncedSearchQuery !== ''
 		);
 	};
 
