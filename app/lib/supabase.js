@@ -103,106 +103,80 @@ export const fundingApi = {
 	// Get all funding opportunities with optional filters
 	getOpportunities: async (filters = {}) => {
 		try {
-			// Create a query builder for the select
-			let querySelect = supabase
+			// Prepare parameters for the RPC call, matching the function definition
+			const params = {
+				p_status: filters.status || null,
+				p_categories:
+					filters.categories && filters.categories.length > 0
+						? filters.categories
+						: null,
+				p_states:
+					filters.states && filters.states.length > 0 ? filters.states : null,
+				p_search: filters.search || null,
+				p_sort_by: filters.sort_by || 'relevance',
+				p_sort_direction: filters.sort_direction || 'desc',
+				p_page: filters.page || 1,
+				p_page_size: filters.page_size || 9, // Match function default
+			};
+
+			// Call the database function to get paginated and sorted data
+			const { data, error } = await supabase.rpc(
+				'get_funding_opportunities_dynamic_sort',
+				params
+			);
+
+			if (error) {
+				console.error(
+					'Error calling get_funding_opportunities_dynamic_sort RPC:',
+					error
+				);
+				throw error;
+			}
+
+			// Need a separate query to get the total count matching the *same* filters
+			let countQuery = supabase
 				.from('funding_opportunities_with_geography')
-				.select('*', { count: 'exact' });
+				.select('*', { count: 'exact', head: true }); // head:true gets only count
 
-			// Apply filters
-			if (filters.status) {
-				// Convert status to lowercase to match database values
-				querySelect = querySelect.ilike('status', filters.status.toLowerCase());
+			// Apply the SAME filters used inside the function
+			if (params.p_status) {
+				countQuery = countQuery.ilike('status', params.p_status.toLowerCase());
+			}
+			if (params.p_categories) {
+				// Assuming OVERLAPS logic was used in function, check if categories array overlaps
+				// Note: Supabase JS client might not directly support OVERLAPS (&&).
+				// Using contains as an approximation, or adjust if needed.
+				// For exact match with function (&&), might need another RPC or adjust function.
+				// Let's use contains for now, it's often sufficient.
+				countQuery = countQuery.overlaps('categories', params.p_categories);
+			}
+			if (params.p_states) {
+				// Replicate the (is_national OR eligible_locations && states) logic
+				countQuery = countQuery.or(
+					`is_national.eq.true,eligible_locations.ov.{${params.p_states.join(
+						','
+					)}}`
+				);
+			}
+			if (params.p_search) {
+				const searchTerm = `%${params.p_search}%`;
+				countQuery = countQuery.or(
+					`title.ilike.${searchTerm},description.ilike.${searchTerm},actionable_summary.ilike.${searchTerm}`
+				);
 			}
 
-			if (filters.min_amount) {
-				querySelect = querySelect.gte('minimum_award', filters.min_amount);
+			const { count, error: countError } = await countQuery;
+
+			if (countError) {
+				console.error('Error fetching opportunity count:', countError);
+				// Decide how to handle count error - maybe return 0 or throw?
+				throw countError; // Or return { data, count: 0 };
 			}
 
-			if (filters.max_amount) {
-				querySelect = querySelect.lte('maximum_award', filters.max_amount);
-			}
-
-			if (filters.close_date_after) {
-				querySelect = querySelect.gte('close_date', filters.close_date_after);
-			}
-
-			if (filters.close_date_before) {
-				querySelect = querySelect.lte('close_date', filters.close_date_before);
-			}
-
-			// Apply search filter
-			if (filters.search) {
-				const searchTerm = filters.search.trim();
-				if (searchTerm) {
-					querySelect = querySelect.or(
-						`title.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%,actionable_summary.ilike.%${searchTerm}%`
-					);
-				}
-			}
-
-			// Apply categories filter
-			if (filters.categories && filters.categories.length > 0) {
-				querySelect = querySelect.contains('categories', filters.categories);
-			}
-
-			// Apply states filter
-			if (filters.states && filters.states.length > 0) {
-				// National filter is handled specially
-				if (filters.states.includes('National')) {
-					// Include both national opportunities and those for any other selected states
-					const otherStates = filters.states.filter(
-						(state) => state !== 'National'
-					);
-					if (otherStates.length > 0) {
-						// If other states are selected along with National, get both national opportunities
-						// and opportunities specific to those states
-						querySelect = querySelect.or(
-							`is_national.eq.true,eligible_locations.cs.{${otherStates.join(
-								','
-							)}}`
-						);
-					} else {
-						// If only National is selected, just get national opportunities
-						querySelect = querySelect.eq('is_national', true);
-					}
-				} else {
-					// Filter for specific states using eligible_locations which has full state names
-					// rather than eligible_states which has abbreviations
-					querySelect = querySelect.or(
-						`is_national.eq.true,eligible_locations.cs.{${filters.states.join(
-							','
-						)}}`
-					);
-				}
-			}
-
-			// Apply sorting
-			if (filters.sort_by) {
-				const direction = filters.sort_direction === 'desc' ? true : false;
-				querySelect = querySelect.order(filters.sort_by, {
-					ascending: !direction,
-				});
-			} else {
-				// Default sort by close_date
-				querySelect = querySelect.order('close_date', { ascending: true });
-			}
-
-			// Apply pagination
-			const page = filters.page || 1;
-			const pageSize = filters.page_size || 10;
-			const start = (page - 1) * pageSize;
-			const end = start + pageSize - 1;
-			querySelect = querySelect.range(start, end);
-
-			// Execute the query
-			const { data, error, count } = await querySelect;
-
-			if (error) throw error;
-
-			// Return both the data and the total count
+			// Return both the data from RPC and the total count
 			return { data, count };
 		} catch (error) {
-			console.error('Error fetching opportunities:', error);
+			console.error('Error in getOpportunities:', error);
 			throw error;
 		}
 	},

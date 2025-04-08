@@ -268,14 +268,15 @@ export default function OpportunitiesPage() {
 					queryParams.append('sort_by', 'close_date');
 					queryParams.append('sort_direction', sortDirection);
 				} else if (sortOption === 'amount') {
-					queryParams.append('sort_by', 'maximum_award');
+					// Send 'amount' to trigger the backend RPC logic
+					queryParams.append('sort_by', 'amount');
 					queryParams.append('sort_direction', sortDirection);
 				} else if (sortOption === 'recent') {
 					queryParams.append('sort_by', 'updated_at');
 					queryParams.append('sort_direction', sortDirection);
 				} else {
-					// Default to relevance if available
-					queryParams.append('sort_by', 'relevance_score');
+					// Default to relevance, send 'relevance'
+					queryParams.append('sort_by', 'relevance');
 					queryParams.append('sort_direction', sortDirection);
 				}
 
@@ -347,31 +348,6 @@ export default function OpportunitiesPage() {
 		setSearchQuery('');
 		setCategorySearchInput('');
 		setStateSearchInput('');
-	};
-
-	// Filter opportunities based on search query
-	const filteredOpportunities = opportunities.filter((opportunity) => {
-		if (!searchQuery) return true;
-
-		const searchLower = searchQuery.toLowerCase();
-		return (
-			(opportunity.title &&
-				opportunity.title.toLowerCase().includes(searchLower)) ||
-			(opportunity.description &&
-				opportunity.description.toLowerCase().includes(searchLower)) ||
-			(opportunity.actionable_summary &&
-				opportunity.actionable_summary.toLowerCase().includes(searchLower))
-		);
-	});
-
-	// Check if any filters are applied
-	const hasActiveFilters = () => {
-		return (
-			filters.status !== null ||
-			filters.categories.length > 0 ||
-			filters.states.length > 0 ||
-			searchQuery !== ''
-		);
 	};
 
 	// Filter categories for search
@@ -924,6 +900,16 @@ export default function OpportunitiesPage() {
 		);
 	};
 
+	// Check if any filters are applied
+	const hasActiveFilters = () => {
+		return (
+			filters.status !== null ||
+			filters.categories.length > 0 ||
+			filters.states.length > 0 ||
+			searchQuery !== ''
+		);
+	};
+
 	return (
 		<MainLayout>
 			<div className='container py-10'>
@@ -1111,6 +1097,7 @@ export default function OpportunitiesPage() {
 					<>
 						{/* Display opportunities in a grid */}
 						<div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6'>
+							{/* Use opportunities directly */}
 							{opportunities.map((opportunity) => (
 								<OpportunityCard
 									key={opportunity.id}
