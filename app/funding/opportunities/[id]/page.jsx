@@ -212,6 +212,7 @@ export default function OpportunityDetailPage() {
 						Back to Opportunities
 					</Button>
 
+					{/* Comment out Previous/Next buttons
 					<div className='flex gap-2'>
 						<Button variant='outline' size='sm'>
 							<ArrowLeft className='h-4 w-4 mr-2' /> Previous
@@ -220,6 +221,7 @@ export default function OpportunityDetailPage() {
 							Next <ArrowLeft className='h-4 w-4 ml-2 rotate-180' />
 						</Button>
 					</div>
+					*/}
 				</div>
 
 				<div className='grid grid-cols-1 lg:grid-cols-3 gap-6'>
@@ -1241,18 +1243,22 @@ export default function OpportunityDetailPage() {
 								<Button className='w-full bg-blue-600 hover:bg-blue-700 text-white shadow-sm transition-all duration-200'>
 									Track This Opportunity
 								</Button>
+								{/* Comment out Export PDF button
 								<Button
 									variant='outline'
 									className='w-full flex items-center justify-center border-blue-200 dark:border-blue-800 hover:bg-blue-50 dark:hover:bg-blue-950 transition-all duration-200'>
 									<FileText className='h-4 w-4 mr-2 text-blue-700 dark:text-blue-400' />
 									Export PDF
 								</Button>
+								*/}
+								{/* Comment out Share by Email button
 								<Button
 									variant='outline'
 									className='w-full flex items-center justify-center border-blue-200 dark:border-blue-800 hover:bg-blue-50 dark:hover:bg-blue-950 transition-all duration-200'>
 									<Mail className='h-4 w-4 mr-2 text-blue-700 dark:text-blue-400' />
 									Share by Email
 								</Button>
+								*/}
 							</CardContent>
 						</Card>
 					</div>
