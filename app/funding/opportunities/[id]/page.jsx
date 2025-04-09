@@ -173,66 +173,81 @@ export default function OpportunityDetailPage() {
 				<div className='grid grid-cols-1 lg:grid-cols-3 gap-6'>
 					{/* Main Content */}
 					<div className='lg:col-span-2 space-y-6'>
-						<Card className='border-t-4 border-t-blue-500'>
-							<CardHeader>
+						<Card className='border-t-4 border-t-blue-500 shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden'>
+							{/* Add subtle gradient overlay */}
+							<div className='absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-blue-400 via-blue-500 to-blue-600' />
+
+							<CardHeader className='bg-gradient-to-b from-blue-50/50 to-transparent dark:from-blue-950/10 dark:to-transparent pb-4'>
 								<div className='flex justify-between items-start'>
 									<div>
-										<CardTitle className='text-2xl'>
+										<CardTitle className='text-2xl font-semibold text-neutral-900 dark:text-neutral-50'>
 											{opportunity.title}
 										</CardTitle>
-										<CardDescription className='text-base mt-1'>
+										<CardDescription className='text-base mt-1.5 text-neutral-600 dark:text-neutral-400'>
 											{opportunity.agency_name ||
 												opportunity.source_display_name}
 										</CardDescription>
 									</div>
 									<span
-										className={`text-sm px-3 py-1 rounded-full ${
+										className={`text-sm px-3 py-1 rounded-full shadow-sm font-medium transition-all ${
 											status.toLowerCase() === 'open'
-												? 'bg-green-100 text-green-800'
+												? 'bg-gradient-to-r from-green-100 to-green-50 text-green-800 border border-green-200'
 												: status.toLowerCase() === 'upcoming' ||
 												  status.toLowerCase() === 'anticipated'
-												? 'bg-blue-100 text-blue-800'
-												: 'bg-gray-100 text-gray-800'
+												? 'bg-gradient-to-r from-blue-100 to-blue-50 text-blue-800 border border-blue-200'
+												: 'bg-gradient-to-r from-gray-100 to-gray-50 text-gray-800 border border-gray-200'
 										}`}>
 										{status}
 									</span>
 								</div>
 							</CardHeader>
-							<CardContent>
+							<CardContent className='px-6 pt-2 pb-6'>
 								<Tabs defaultValue='overview' className='w-full'>
-									<TabsList className='mb-4'>
-										<TabsTrigger value='overview'>Overview</TabsTrigger>
-										<TabsTrigger value='details'>Full Details</TabsTrigger>
-										<TabsTrigger value='eligibility'>Eligibility</TabsTrigger>
-										<TabsTrigger value='relevance'>Relevance</TabsTrigger>
+									<TabsList className='mb-6 bg-neutral-100/70 dark:bg-neutral-900/30 p-1 rounded-lg'>
+										{['overview', 'details', 'eligibility', 'relevance'].map(
+											(tab) => (
+												<TabsTrigger
+													key={tab}
+													value={tab}
+													className='capitalize data-[state=active]:bg-white dark:data-[state=active]:bg-neutral-800 data-[state=active]:text-blue-700 dark:data-[state=active]:text-blue-400 data-[state=active]:shadow-sm transition-all duration-200 rounded-md'>
+													{tab}
+												</TabsTrigger>
+											)
+										)}
 									</TabsList>
 
-									<TabsContent value='overview'>
+									<TabsContent
+										value='overview'
+										className='animate-in fade-in-50 duration-300'>
 										{opportunity.actionable_summary && (
-											<div className='mb-6 bg-amber-50 p-4 rounded-lg border border-amber-200'>
+											<div className='mb-6 bg-gradient-to-br from-amber-50 to-amber-50/50 dark:from-amber-900/20 dark:to-amber-900/5 p-5 rounded-lg border border-amber-200/70 dark:border-amber-800/30 shadow-sm'>
 												<div className='flex items-start mb-2'>
-													<Lightbulb className='h-5 w-5 text-amber-500 mr-2 mt-0.5' />
-													<h3 className='text-lg font-medium text-amber-800'>
+													<div className='mr-3 p-1.5 rounded-full bg-gradient-to-br from-amber-100 to-amber-50 dark:from-amber-800/30 dark:to-amber-700/20 shadow-sm'>
+														<Lightbulb className='h-5 w-5 text-amber-600 dark:text-amber-400' />
+													</div>
+													<h3 className='text-lg font-medium text-amber-800 dark:text-amber-400'>
 														Actionable Summary
 													</h3>
 												</div>
-												<p className='text-amber-900'>
+												<p className='text-amber-900 dark:text-amber-300 pl-10'>
 													{opportunity.actionable_summary}
 												</p>
 											</div>
 										)}
 
-										<div className='mb-6'>
-											<h3 className='text-lg font-medium mb-2'>Description</h3>
-											<p className='text-muted-foreground whitespace-pre-line'>
+										<div className='mb-6 bg-white dark:bg-neutral-900/30 p-5 rounded-lg border border-neutral-200/70 dark:border-neutral-800/30 shadow-sm'>
+											<h3 className='text-lg font-medium mb-3 text-neutral-900 dark:text-neutral-200'>
+												Description
+											</h3>
+											<p className='text-neutral-700 dark:text-neutral-300 whitespace-pre-line leading-relaxed'>
 												{opportunity.description || 'No description available.'}
 											</p>
 										</div>
 
 										{opportunity.categories &&
 											opportunity.categories.length > 0 && (
-												<div className='mb-6'>
-													<h3 className='text-lg font-medium mb-2'>
+												<div className='mb-6 bg-white dark:bg-neutral-900/30 p-5 rounded-lg border border-neutral-200/70 dark:border-neutral-800/30 shadow-sm'>
+													<h3 className='text-lg font-medium mb-3 text-neutral-900 dark:text-neutral-200'>
 														Categories
 													</h3>
 													<div className='flex flex-wrap gap-2'>
@@ -240,7 +255,7 @@ export default function OpportunityDetailPage() {
 															<Badge
 																key={index}
 																variant='secondary'
-																className='px-2 py-1'>
+																className='px-3 py-1.5 text-sm bg-gradient-to-r from-blue-50 to-blue-100/70 dark:from-blue-900/20 dark:to-blue-800/10 text-blue-700 dark:text-blue-300 border border-blue-200/50 dark:border-blue-800/30 hover:bg-blue-100 dark:hover:bg-blue-800/30 transition-colors duration-200 cursor-default shadow-sm'>
 																{category}
 															</Badge>
 														))}
@@ -249,22 +264,27 @@ export default function OpportunityDetailPage() {
 											)}
 
 										{opportunity.funding_type && (
-											<div className='mb-6'>
-												<h3 className='text-lg font-medium mb-2'>
+											<div className='mb-6 bg-white dark:bg-neutral-900/30 p-5 rounded-lg border border-neutral-200/70 dark:border-neutral-800/30 shadow-sm'>
+												<h3 className='text-lg font-medium mb-3 text-neutral-900 dark:text-neutral-200'>
 													Funding Type
 												</h3>
-												<Badge className='bg-blue-100 text-blue-800 hover:bg-blue-100'>
+												<Badge className='px-3 py-1.5 text-sm bg-gradient-to-r from-purple-50 to-purple-100/70 dark:from-purple-900/20 dark:to-purple-800/10 text-purple-700 dark:text-purple-300 border border-purple-200/50 dark:border-purple-800/30 shadow-sm'>
 													{opportunity.funding_type}
 												</Badge>
 											</div>
 										)}
 
 										{opportunity.tags && opportunity.tags.length > 0 && (
-											<div className='mb-6'>
-												<h3 className='text-lg font-medium mb-2'>Tags</h3>
+											<div className='mb-6 bg-white dark:bg-neutral-900/30 p-5 rounded-lg border border-neutral-200/70 dark:border-neutral-800/30 shadow-sm'>
+												<h3 className='text-lg font-medium mb-3 text-neutral-900 dark:text-neutral-200'>
+													Tags
+												</h3>
 												<div className='flex flex-wrap gap-2'>
 													{opportunity.tags.map((tag, index) => (
-														<Badge key={index} variant='outline'>
+														<Badge
+															key={index}
+															variant='outline'
+															className='px-2 py-1 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors duration-200 cursor-default border-neutral-300 dark:border-neutral-700'>
 															{tag}
 														</Badge>
 													))}
@@ -273,7 +293,9 @@ export default function OpportunityDetailPage() {
 										)}
 									</TabsContent>
 
-									<TabsContent value='details'>
+									<TabsContent
+										value='details'
+										className='animate-in fade-in-50 duration-300'>
 										<div className='space-y-6'>
 											<div>
 												<h3 className='text-lg font-medium mb-2'>
@@ -481,43 +503,49 @@ export default function OpportunityDetailPage() {
 						</Card>
 
 						{opportunity.url && (
-							<Card>
-								<CardHeader>
-									<CardTitle className='text-xl'>
+							<Card className='shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden'>
+								<CardHeader className='border-b border-neutral-100 dark:border-neutral-800 pb-3 bg-gradient-to-b from-blue-50/50 to-transparent dark:from-blue-950/10 dark:to-transparent'>
+									<CardTitle className='text-xl font-semibold text-blue-700 dark:text-blue-400'>
 										Application Resources
 									</CardTitle>
 								</CardHeader>
-								<CardContent className='space-y-4'>
-									<div className='flex items-center'>
-										<Globe className='h-5 w-5 mr-2 text-muted-foreground' />
+								<CardContent className='space-y-4 pt-5 px-6 pb-6'>
+									<div className='flex items-center hover:bg-blue-50/50 dark:hover:bg-blue-900/10 rounded-lg p-2 transition-colors duration-200 -mx-2'>
+										<div className='mr-3 p-1.5 rounded-full bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/30 dark:to-blue-800/20 shadow-sm'>
+											<Globe className='h-5 w-5 text-blue-600 dark:text-blue-400' />
+										</div>
 										<a
 											href={opportunity.url}
 											target='_blank'
 											rel='noopener noreferrer'
-											className='text-blue-600 hover:underline'>
+											className='text-blue-600 hover:text-blue-800 dark:hover:text-blue-300 hover:underline font-medium'>
 											View Official Opportunity
 										</a>
 									</div>
 									{opportunity.application_url && (
-										<div className='flex items-center'>
-											<FileText className='h-5 w-5 mr-2 text-muted-foreground' />
+										<div className='flex items-center hover:bg-blue-50/50 dark:hover:bg-blue-900/10 rounded-lg p-2 transition-colors duration-200 -mx-2'>
+											<div className='mr-3 p-1.5 rounded-full bg-gradient-to-br from-neutral-50 to-neutral-100 dark:from-neutral-800/30 dark:to-neutral-700/20 shadow-sm'>
+												<FileText className='h-5 w-5 text-neutral-600 dark:text-neutral-400' />
+											</div>
 											<a
 												href={opportunity.application_url}
 												target='_blank'
 												rel='noopener noreferrer'
-												className='text-blue-600 hover:underline'>
+												className='text-blue-600 hover:text-blue-800 dark:hover:text-blue-300 hover:underline font-medium'>
 												Application Portal
 											</a>
 										</div>
 									)}
 									{opportunity.guidelines_url && (
-										<div className='flex items-center'>
-											<FileText className='h-5 w-5 mr-2 text-muted-foreground' />
+										<div className='flex items-center hover:bg-blue-50/50 dark:hover:bg-blue-900/10 rounded-lg p-2 transition-colors duration-200 -mx-2'>
+											<div className='mr-3 p-1.5 rounded-full bg-gradient-to-br from-neutral-50 to-neutral-100 dark:from-neutral-800/30 dark:to-neutral-700/20 shadow-sm'>
+												<FileText className='h-5 w-5 text-neutral-600 dark:text-neutral-400' />
+											</div>
 											<a
 												href={opportunity.guidelines_url}
 												target='_blank'
 												rel='noopener noreferrer'
-												className='text-blue-600 hover:underline'>
+												className='text-blue-600 hover:text-blue-800 dark:hover:text-blue-300 hover:underline font-medium'>
 												Guidelines Document
 											</a>
 										</div>
@@ -529,16 +557,24 @@ export default function OpportunityDetailPage() {
 
 					{/* Sidebar */}
 					<div className='space-y-6'>
-						<Card className='border-l-4 border-l-blue-500'>
-							<CardHeader>
-								<CardTitle className='text-xl'>Key Details</CardTitle>
+						<Card className='overflow-hidden shadow-sm hover:shadow-md transition-all duration-300'>
+							<CardHeader className='relative border-b border-neutral-100 dark:border-neutral-800 pb-3'>
+								<CardTitle className='text-xl font-semibold text-blue-700 dark:text-blue-400'>
+									Key Details
+								</CardTitle>
 							</CardHeader>
-							<CardContent className='space-y-4'>
+
+							<CardContent className='relative space-y-5 pt-5'>
+								{/* Award Amount Section */}
 								<div className='flex items-start'>
-									<DollarSign className='h-5 w-5 mr-2 text-muted-foreground mt-0.5' />
+									<div className='mr-3 p-1.5 rounded-full bg-gradient-to-br from-amber-50 to-amber-100 dark:from-amber-900/30 dark:to-amber-800/20'>
+										<DollarSign className='h-5 w-5 text-amber-600 dark:text-amber-400' />
+									</div>
 									<div>
-										<div className='font-medium'>Award Amount</div>
-										<div className='text-muted-foreground'>
+										<div className='font-medium text-neutral-900 dark:text-neutral-100'>
+											Award Amount
+										</div>
+										<div className='text-lg font-semibold text-amber-700 dark:text-amber-300 mt-0.5'>
 											{opportunity.minimum_award && opportunity.maximum_award
 												? `${formatCurrency(
 														opportunity.minimum_award
@@ -550,37 +586,57 @@ export default function OpportunityDetailPage() {
 												: 'Not specified'}
 										</div>
 										{opportunity.total_funding_available && (
-											<div className='text-sm text-muted-foreground mt-1'>
-												Total available:{' '}
+											<div className='text-sm text-neutral-600 dark:text-neutral-400 mt-1'>
+												Total available pool:{' '}
 												{formatCurrency(opportunity.total_funding_available)}
 											</div>
 										)}
 									</div>
 								</div>
 
+								{/* Important Dates Section with improved layout */}
 								<div className='flex items-start'>
-									<Calendar className='h-5 w-5 mr-2 text-muted-foreground mt-0.5' />
-									<div>
-										<div className='font-medium'>Important Dates</div>
-										<div className='grid grid-cols-2 gap-x-4 text-sm'>
-											<div className='text-muted-foreground'>Posted:</div>
-											<div>{formatDate(opportunity.posted_date)}</div>
-											<div className='text-muted-foreground'>Opens:</div>
-											<div>{formatDate(opportunity.open_date)}</div>
-											<div className='text-muted-foreground'>Closes:</div>
-											<div>{formatDate(opportunity.close_date)}</div>
+									<div className='mr-3 p-1.5 rounded-full bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/30 dark:to-blue-800/20'>
+										<Calendar className='h-5 w-5 text-blue-600 dark:text-blue-400' />
+									</div>
+									<div className='flex-1'>
+										<div className='font-medium text-neutral-900 dark:text-neutral-100 mb-1.5'>
+											Important Dates
+										</div>
+										<div className='grid grid-cols-2 gap-x-4 gap-y-2'>
+											<div className='text-sm text-neutral-600 dark:text-neutral-400 font-medium'>
+												Posted:
+											</div>
+											<div className='text-sm'>
+												{formatDate(opportunity.posted_date)}
+											</div>
+
+											<div className='text-sm text-neutral-600 dark:text-neutral-400 font-medium'>
+												Opens:
+											</div>
+											<div className='text-sm'>
+												{formatDate(opportunity.open_date)}
+											</div>
+
+											<div className='text-sm text-neutral-600 dark:text-neutral-400 font-medium'>
+												Closes:
+											</div>
+											<div className='text-sm font-medium'>
+												{formatDate(opportunity.close_date)}
+											</div>
+
 											{daysLeft !== null && (
 												<>
-													<div className='text-muted-foreground'>
+													<div className='text-sm text-neutral-600 dark:text-neutral-400 font-medium'>
 														Time Left:
 													</div>
 													<div
-														className={`font-medium ${
+														className={`text-sm font-medium ${
 															daysLeft < 7
-																? 'text-red-600'
+																? 'text-red-600 dark:text-red-400'
 																: daysLeft < 30
-																? 'text-yellow-600'
-																: ''
+																? 'text-amber-600 dark:text-amber-400'
+																: 'text-green-600 dark:text-green-400'
 														}`}>
 														{daysLeft > 0 ? `${daysLeft} days` : 'Closed'}
 													</div>
@@ -590,12 +646,17 @@ export default function OpportunityDetailPage() {
 									</div>
 								</div>
 
+								{/* Cost Share Section */}
 								{opportunity.cost_share_required !== null && (
 									<div className='flex items-start'>
-										<Tag className='h-5 w-5 mr-2 text-muted-foreground mt-0.5' />
+										<div className='mr-3 p-1.5 rounded-full bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-900/30 dark:to-purple-800/20'>
+											<Tag className='h-5 w-5 text-purple-600 dark:text-purple-400' />
+										</div>
 										<div>
-											<div className='font-medium'>Cost Share</div>
-											<div className='text-muted-foreground'>
+											<div className='font-medium text-neutral-900 dark:text-neutral-100'>
+												Cost Share
+											</div>
+											<div className='text-neutral-700 dark:text-neutral-300 mt-0.5'>
 												{opportunity.cost_share_required
 													? `Required (${
 															opportunity.cost_share_percentage || ''
@@ -606,70 +667,119 @@ export default function OpportunityDetailPage() {
 									</div>
 								)}
 
-								<Separator />
+								{/* Elegant separator with gradient */}
+								<div className='py-1'>
+									<div className='h-px w-full bg-gradient-to-r from-transparent via-neutral-200 dark:via-neutral-700 to-transparent' />
+								</div>
 
+								{/* Source Information Section */}
 								<div className='flex items-start'>
-									<Building className='h-5 w-5 mr-2 text-muted-foreground mt-0.5' />
+									<div className='mr-3 p-1.5 rounded-full bg-gradient-to-br from-green-50 to-green-100 dark:from-green-900/30 dark:to-green-800/20'>
+										<Building className='h-5 w-5 text-green-600 dark:text-green-400' />
+									</div>
 									<div>
-										<div className='font-medium'>Source Information</div>
-										<div className='text-muted-foreground'>
-											<strong>Agency:</strong>{' '}
-											{opportunity.agency_name || 'Not specified'}
+										<div className='font-medium text-neutral-900 dark:text-neutral-100 mb-1'>
+											Source Information
 										</div>
-										<div className='text-sm text-muted-foreground mt-1'>
-											<strong>Source:</strong>{' '}
-											{opportunity.source_display_name || 'Unknown'}
-										</div>
-										<div className='text-sm text-muted-foreground'>
-											<strong>Type:</strong>{' '}
-											{opportunity.source_type_display || 'Not specified'}
-										</div>
-										<div className='text-sm text-muted-foreground'>
-											<strong>Scope:</strong>{' '}
-											{opportunity.is_national ? 'National' : 'Regional'}
+										<div className='grid gap-y-1'>
+											<div className='text-sm'>
+												<span className='text-neutral-600 dark:text-neutral-400 font-medium'>
+													Agency:
+												</span>{' '}
+												<span className='text-neutral-800 dark:text-neutral-200'>
+													{opportunity.agency_name || 'Not specified'}
+												</span>
+											</div>
+											<div className='text-sm'>
+												<span className='text-neutral-600 dark:text-neutral-400 font-medium'>
+													Source:
+												</span>{' '}
+												<span className='text-neutral-800 dark:text-neutral-200'>
+													{opportunity.source_display_name || 'Unknown'}
+												</span>
+											</div>
+											<div className='text-sm'>
+												<span className='text-neutral-600 dark:text-neutral-400 font-medium'>
+													Type:
+												</span>{' '}
+												<span className='text-neutral-800 dark:text-neutral-200'>
+													{opportunity.source_type_display || 'Not specified'}
+												</span>
+											</div>
+											<div className='text-sm'>
+												<span className='text-neutral-600 dark:text-neutral-400 font-medium'>
+													Scope:
+												</span>{' '}
+												<span className='text-neutral-800 dark:text-neutral-200'>
+													{opportunity.is_national ? 'National' : 'Regional'}
+												</span>
+											</div>
 										</div>
 									</div>
 								</div>
 
+								{/* Opportunity Details Section */}
 								<div className='flex items-start'>
-									<Info className='h-5 w-5 mr-2 text-muted-foreground mt-0.5' />
+									<div className='mr-3 p-1.5 rounded-full bg-gradient-to-br from-neutral-50 to-neutral-100 dark:from-neutral-800/30 dark:to-neutral-700/20'>
+										<Info className='h-5 w-5 text-neutral-600 dark:text-neutral-400' />
+									</div>
 									<div>
-										<div className='font-medium'>Opportunity Details</div>
-										{opportunity.opportunity_number && (
-											<div className='text-sm text-muted-foreground'>
-												<strong>Number:</strong>{' '}
-												{opportunity.opportunity_number}
-											</div>
-										)}
-										<div className='text-sm text-muted-foreground'>
-											<strong>Last Updated:</strong>{' '}
-											{formatDate(opportunity.updated_at)}
+										<div className='font-medium text-neutral-900 dark:text-neutral-100 mb-1'>
+											Opportunity Details
 										</div>
-										<div className='text-sm text-muted-foreground'>
-											<strong>Added On:</strong>{' '}
-											{formatDate(opportunity.created_at)}
+										<div className='grid gap-y-1'>
+											{opportunity.opportunity_number && (
+												<div className='text-sm'>
+													<span className='text-neutral-600 dark:text-neutral-400 font-medium'>
+														Number:
+													</span>{' '}
+													<span className='text-neutral-800 dark:text-neutral-200 font-mono'>
+														{opportunity.opportunity_number}
+													</span>
+												</div>
+											)}
+											<div className='text-sm'>
+												<span className='text-neutral-600 dark:text-neutral-400 font-medium'>
+													Last Updated:
+												</span>{' '}
+												<span className='text-neutral-800 dark:text-neutral-200'>
+													{formatDate(opportunity.updated_at)}
+												</span>
+											</div>
+											<div className='text-sm'>
+												<span className='text-neutral-600 dark:text-neutral-400 font-medium'>
+													Added On:
+												</span>{' '}
+												<span className='text-neutral-800 dark:text-neutral-200'>
+													{formatDate(opportunity.created_at)}
+												</span>
+											</div>
 										</div>
 									</div>
 								</div>
 							</CardContent>
 						</Card>
 
-						<Card>
-							<CardHeader>
-								<CardTitle className='text-xl'>Actions</CardTitle>
+						<Card className='overflow-hidden shadow-sm hover:shadow-md transition-all duration-300'>
+							<CardHeader className='relative border-b border-neutral-100 dark:border-neutral-800 pb-3'>
+								<CardTitle className='text-xl font-semibold text-blue-700 dark:text-blue-400'>
+									Actions
+								</CardTitle>
 							</CardHeader>
-							<CardContent className='space-y-3'>
-								<Button className='w-full'>Track This Opportunity</Button>
+							<CardContent className='space-y-4 pt-4'>
+								<Button className='w-full bg-blue-600 hover:bg-blue-700 text-white shadow-sm transition-all duration-200'>
+									Track This Opportunity
+								</Button>
 								<Button
 									variant='outline'
-									className='w-full flex items-center justify-center'>
-									<FileText className='h-4 w-4 mr-2' />
+									className='w-full flex items-center justify-center border-blue-200 dark:border-blue-800 hover:bg-blue-50 dark:hover:bg-blue-950 transition-all duration-200'>
+									<FileText className='h-4 w-4 mr-2 text-blue-700 dark:text-blue-400' />
 									Export PDF
 								</Button>
 								<Button
 									variant='outline'
-									className='w-full flex items-center justify-center'>
-									<Mail className='h-4 w-4 mr-2' />
+									className='w-full flex items-center justify-center border-blue-200 dark:border-blue-800 hover:bg-blue-50 dark:hover:bg-blue-950 transition-all duration-200'>
+									<Mail className='h-4 w-4 mr-2 text-blue-700 dark:text-blue-400' />
 									Share by Email
 								</Button>
 							</CardContent>
