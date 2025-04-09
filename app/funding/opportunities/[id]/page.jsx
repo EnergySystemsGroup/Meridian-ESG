@@ -335,8 +335,53 @@ export default function OpportunityDetailPage() {
 												opportunity.eligible_applicants.length > 0 && (
 													<div className='bg-white dark:bg-neutral-900/30 p-5 rounded-lg border border-neutral-200/70 dark:border-neutral-800/30 shadow-sm'>
 														<div className='flex items-start mb-4'>
-															<div className='mr-3 p-1.5 rounded-full bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/30 dark:to-blue-800/20 shadow-sm'>
-																<Users className='h-5 w-5 text-blue-600 dark:text-blue-400' />
+															<div className='mr-3 flex-shrink-0 h-9 w-9'>
+																<svg
+																	viewBox='0 0 36 36'
+																	className='h-full w-full'>
+																	<rect
+																		x='3'
+																		y='5'
+																		width='30'
+																		height='26'
+																		rx='2'
+																		fill='#5c6bc0'
+																	/>
+																	<rect
+																		x='7'
+																		y='9'
+																		width='22'
+																		height='18'
+																		rx='1'
+																		fill='#e8eaf6'
+																	/>
+																	<circle
+																		cx='13'
+																		cy='13'
+																		r='3.5'
+																		fill='#5c6bc0'
+																	/>
+																	<circle
+																		cx='23'
+																		cy='13'
+																		r='3.5'
+																		fill='#5c6bc0'
+																	/>
+																	<circle
+																		cx='18'
+																		cy='20'
+																		r='3.5'
+																		fill='#5c6bc0'
+																	/>
+																	<rect
+																		x='6'
+																		y='27'
+																		width='24'
+																		height='3'
+																		rx='1'
+																		fill='#3949ab'
+																	/>
+																</svg>
 															</div>
 															<h3 className='text-lg font-medium text-neutral-900 dark:text-neutral-200'>
 																Eligible Applicants
@@ -367,8 +412,41 @@ export default function OpportunityDetailPage() {
 												opportunity.eligible_project_types.length > 0 && (
 													<div className='bg-white dark:bg-neutral-900/30 p-5 rounded-lg border border-neutral-200/70 dark:border-neutral-800/30 shadow-sm'>
 														<div className='flex items-start mb-4'>
-															<div className='mr-3 p-1.5 rounded-full bg-gradient-to-br from-green-50 to-green-100 dark:from-green-900/30 dark:to-green-800/20 shadow-sm'>
-																<Target className='h-5 w-5 text-green-600 dark:text-green-400' />
+															<div className='mr-3 flex-shrink-0 h-9 w-9'>
+																<svg
+																	viewBox='0 0 36 36'
+																	className='h-full w-full'>
+																	<rect
+																		x='4'
+																		y='4'
+																		width='28'
+																		height='28'
+																		rx='3'
+																		fill='#43a047'
+																	/>
+																	<circle
+																		cx='18'
+																		cy='18'
+																		r='9'
+																		fill='#e8f5e9'
+																		stroke='#2e7d32'
+																		strokeWidth='1.5'
+																	/>
+																	<circle
+																		cx='18'
+																		cy='18'
+																		r='5'
+																		fill='#66bb6a'
+																	/>
+																	<path
+																		d='M15,18 L17,20 L22,15'
+																		stroke='#fff'
+																		strokeWidth='1.5'
+																		fill='none'
+																		strokeLinecap='round'
+																		strokeLinejoin='round'
+																	/>
+																</svg>
 															</div>
 															<h3 className='text-lg font-medium text-neutral-900 dark:text-neutral-200'>
 																Eligible Project Types
@@ -393,8 +471,21 @@ export default function OpportunityDetailPage() {
 
 											<div className='bg-white dark:bg-neutral-900/30 p-5 rounded-lg border border-neutral-200/70 dark:border-neutral-800/30 shadow-sm'>
 												<div className='flex items-start mb-4'>
-													<div className='mr-3 p-1.5 rounded-full bg-gradient-to-br from-amber-50 to-amber-100 dark:from-amber-900/30 dark:to-amber-800/20 shadow-sm'>
-														<MapPin className='h-5 w-5 text-amber-600 dark:text-amber-400' />
+													<div className='mr-3 flex-shrink-0 h-9 w-9'>
+														<svg viewBox='0 0 36 36' className='h-full w-full'>
+															<path
+																d='M18,3 C11.4,3 6,8.4 6,15 C6,25 18,33 18,33 C18,33 30,25 30,15 C30,8.4 24.6,3 18,3 Z'
+																fill='#f57c00'
+															/>
+															<path
+																d='M18,8 C14.1,8 11,11.1 11,15 C11,18.9 14.1,22 18,22 C21.9,22 25,18.9 25,15 C25,11.1 21.9,8 18,8 Z'
+																fill='#ffe0b2'
+															/>
+															<path
+																d='M18,10 C15.2,10 13,12.2 13,15 C13,17.8 15.2,20 18,20 C20.8,20 23,17.8 23,15 C23,12.2 20.8,10 18,10 Z M18,18 C16.3,18 15,16.7 15,15 C15,13.3 16.3,12 18,12 C19.7,12 21,13.3 21,15 C21,16.7 19.7,18 18,18 Z'
+																fill='#fff3e0'
+															/>
+														</svg>
 													</div>
 													<h3 className='text-lg font-medium text-neutral-900 dark:text-neutral-200'>
 														Geographic Eligibility
@@ -442,8 +533,49 @@ export default function OpportunityDetailPage() {
 											{opportunity.eligibility_criteria && (
 												<div className='bg-white dark:bg-neutral-900/30 p-5 rounded-lg border border-neutral-200/70 dark:border-neutral-800/30 shadow-sm'>
 													<div className='flex items-start mb-4'>
-														<div className='mr-3 p-1.5 rounded-full bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-900/30 dark:to-purple-800/20 shadow-sm'>
-															<Info className='h-5 w-5 text-purple-600 dark:text-purple-400' />
+														<div className='mr-3 flex-shrink-0 h-9 w-9'>
+															<svg
+																viewBox='0 0 36 36'
+																className='h-full w-full'>
+																<rect
+																	x='4'
+																	y='4'
+																	width='28'
+																	height='28'
+																	rx='3'
+																	fill='#9c27b0'
+																/>
+																<rect
+																	x='8'
+																	y='8'
+																	width='20'
+																	height='20'
+																	rx='2'
+																	fill='#f3e5f5'
+																/>
+																<rect
+																	x='11'
+																	y='14'
+																	width='14'
+																	height='2'
+																	rx='1'
+																	fill='#9c27b0'
+																/>
+																<rect
+																	x='11'
+																	y='20'
+																	width='14'
+																	height='2'
+																	rx='1'
+																	fill='#9c27b0'
+																/>
+																<circle
+																	cx='18'
+																	cy='10'
+																	r='2.5'
+																	fill='#9c27b0'
+																/>
+															</svg>
 														</div>
 														<h3 className='text-lg font-medium text-neutral-900 dark:text-neutral-200'>
 															Additional Eligibility Information
@@ -466,8 +598,29 @@ export default function OpportunityDetailPage() {
 											{opportunity.cost_share_required !== null && (
 												<div className='bg-white dark:bg-neutral-900/30 p-5 rounded-lg border border-neutral-200/70 dark:border-neutral-800/30 shadow-sm'>
 													<div className='flex items-start mb-4'>
-														<div className='mr-3 p-1.5 rounded-full bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-900/30 dark:to-purple-800/20 shadow-sm'>
-															<DollarSign className='h-5 w-5 text-purple-600 dark:text-purple-400' />
+														<div className='mr-3 flex-shrink-0 h-9 w-9'>
+															<svg
+																viewBox='0 0 36 36'
+																className='h-full w-full'>
+																<path
+																	d='M32,15.5 C32,10.8 28.2,7 23.5,7 C20.8,7 18.6,8.5 16.5,10.5 C14.4,8.5 12.2,7 9.5,7 C4.8,7 1,10.8 1,15.5 C1,16.5 1.2,17.4 1.5,18.3 C3.2,24.5 16.5,32 16.5,32 C16.5,32 29.8,24.5 31.5,18.3 C31.8,17.4 32,16.5 32,15.5 Z'
+																	fill='#ef5350'
+																/>
+																<path
+																	d='M23.5,11 C21.2,11 20,11.9 18,13.9 C16,11.9 14.8,11 12.5,11 C9.5,11 7,13.5 7,16.5 C7,17.2 7.1,17.8 7.3,18.3 C8.5,22.8 18,28 18,28 C18,28 27.5,22.8 28.7,18.3 C28.9,17.8 29,17.2 29,16.5 C29,13.5 26.5,11 23.5,11 Z'
+																	fill='#ff8a80'
+																/>
+																<text
+																	x='18'
+																	y='20'
+																	fontFamily='Arial'
+																	fontSize='9'
+																	fontWeight='bold'
+																	fill='white'
+																	textAnchor='middle'>
+																	%
+																</text>
+															</svg>
 														</div>
 														<h3 className='text-lg font-medium text-neutral-900 dark:text-neutral-200'>
 															Cost Share Requirements
@@ -620,8 +773,49 @@ export default function OpportunityDetailPage() {
 							<CardContent className='relative space-y-5 pt-5'>
 								{/* Award Amount Section */}
 								<div className='flex items-start'>
-									<div className='mr-3 p-1.5 rounded-full bg-gradient-to-br from-amber-50 to-amber-100 dark:from-amber-900/30 dark:to-amber-800/20'>
-										<DollarSign className='h-5 w-5 text-amber-600 dark:text-amber-400' />
+									<div className='mr-3 flex-shrink-0 h-9 w-9'>
+										<svg viewBox='0 0 36 36' className='h-full w-full'>
+											<rect
+												x='3'
+												y='6'
+												width='30'
+												height='24'
+												rx='2'
+												fill='#81c784'
+											/>
+											<rect
+												x='6'
+												y='10'
+												width='24'
+												height='16'
+												rx='1'
+												fill='#e8f5e9'
+											/>
+											<text
+												x='18'
+												y='21'
+												fontFamily='Arial'
+												fontSize='12'
+												fontWeight='bold'
+												fill='#2e7d32'
+												textAnchor='middle'>
+												$
+											</text>
+											<circle
+												cx='10'
+												cy='16'
+												r='4'
+												fill='#e8f5e9'
+												opacity='0.8'
+											/>
+											<circle
+												cx='26'
+												cy='20'
+												r='4'
+												fill='#e8f5e9'
+												opacity='0.8'
+											/>
+										</svg>
 									</div>
 									<div>
 										<div className='font-medium text-neutral-900 dark:text-neutral-100'>
@@ -650,8 +844,49 @@ export default function OpportunityDetailPage() {
 								{/* Funding Type Section */}
 								{opportunity.funding_type && (
 									<div className='flex items-start'>
-										<div className='mr-3 p-1.5 rounded-full bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-900/30 dark:to-purple-800/20'>
-											<Tag className='h-5 w-5 text-purple-600 dark:text-purple-400' />
+										<div className='mr-3 flex-shrink-0 h-9 w-9'>
+											<svg viewBox='0 0 36 36' className='h-full w-full'>
+												<rect
+													x='6'
+													y='8'
+													width='24'
+													height='20'
+													rx='2'
+													fill='#9575cd'
+												/>
+												<rect
+													x='8'
+													y='10'
+													width='20'
+													height='16'
+													rx='1'
+													fill='#ede7f6'
+												/>
+												<rect
+													x='10'
+													y='12'
+													width='16'
+													height='3'
+													rx='0.5'
+													fill='#7e57c2'
+												/>
+												<rect
+													x='10'
+													y='17'
+													width='10'
+													height='2'
+													rx='0.5'
+													fill='#7e57c2'
+												/>
+												<rect
+													x='10'
+													y='21'
+													width='14'
+													height='2'
+													rx='0.5'
+													fill='#7e57c2'
+												/>
+											</svg>
 										</div>
 										<div>
 											<div className='font-medium text-neutral-900 dark:text-neutral-100'>
@@ -666,8 +901,71 @@ export default function OpportunityDetailPage() {
 
 								{/* Important Dates Section with improved layout */}
 								<div className='flex items-start'>
-									<div className='mr-3 p-1.5 rounded-full bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/30 dark:to-blue-800/20'>
-										<Calendar className='h-5 w-5 text-blue-600 dark:text-blue-400' />
+									<div className='mr-3 flex-shrink-0 h-9 w-9'>
+										<svg viewBox='0 0 36 36' className='h-full w-full'>
+											<rect
+												x='4'
+												y='5'
+												width='28'
+												height='26'
+												rx='2'
+												fill='#2196f3'
+											/>
+											<rect
+												x='6'
+												y='10'
+												width='24'
+												height='19'
+												rx='1'
+												fill='#e3f2fd'
+											/>
+											<rect
+												x='4'
+												y='5'
+												width='28'
+												height='5'
+												rx='1'
+												fill='#1976d2'
+											/>
+											<text
+												x='10'
+												y='9'
+												fontFamily='Arial'
+												fontSize='6'
+												fontWeight='bold'
+												fill='white'>
+												MON
+											</text>
+											<text
+												x='20'
+												y='9'
+												fontFamily='Arial'
+												fontSize='6'
+												fontWeight='bold'
+												fill='white'>
+												TUE
+											</text>
+											<text
+												x='30'
+												y='9'
+												fontFamily='Arial'
+												fontSize='6'
+												fontWeight='bold'
+												fill='white'>
+												WED
+											</text>
+											<circle cx='18' cy='18' r='4' fill='#1976d2' />
+											<text
+												x='18'
+												y='20'
+												fontFamily='Arial'
+												fontSize='5'
+												fontWeight='bold'
+												fill='white'
+												textAnchor='middle'>
+												15
+											</text>
+										</svg>
 									</div>
 									<div className='flex-1'>
 										<div className='font-medium text-neutral-900 dark:text-neutral-100 mb-1.5'>
@@ -712,8 +1010,24 @@ export default function OpportunityDetailPage() {
 								{/* Cost Share Section */}
 								{opportunity.cost_share_required !== null && (
 									<div className='flex items-start'>
-										<div className='mr-3 p-1.5 rounded-full bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-900/30 dark:to-purple-800/20'>
-											<Tag className='h-5 w-5 text-purple-600 dark:text-purple-400' />
+										<div className='mr-3 flex-shrink-0 h-9 w-9'>
+											<svg viewBox='0 0 36 36' className='h-full w-full'>
+												<path
+													d='M18,5 L7,16 L7,26 C7,27.1 7.9,28 9,28 L27,28 C28.1,28 29,27.1 29,26 L29,16 L18,5 Z'
+													fill='#9c27b0'
+												/>
+												<path d='M18,5 L7,16 L29,16 L18,5 Z' fill='#ce93d8' />
+												<text
+													x='18'
+													y='24'
+													fontFamily='Arial'
+													fontSize='12'
+													fontWeight='bold'
+													fill='white'
+													textAnchor='middle'>
+													%
+												</text>
+											</svg>
 										</div>
 										<div>
 											<div className='font-medium text-neutral-900 dark:text-neutral-100'>
@@ -737,8 +1051,48 @@ export default function OpportunityDetailPage() {
 
 								{/* Source Information Section */}
 								<div className='flex items-start'>
-									<div className='mr-3 p-1.5 rounded-full bg-gradient-to-br from-green-50 to-green-100 dark:from-green-900/30 dark:to-green-800/20'>
-										<Building className='h-5 w-5 text-green-600 dark:text-green-400' />
+									<div className='mr-3 flex-shrink-0 h-9 w-9'>
+										<svg viewBox='0 0 36 36' className='h-full w-full'>
+											<rect
+												x='6'
+												y='4'
+												width='24'
+												height='28'
+												rx='2'
+												fill='#4caf50'
+											/>
+											<rect
+												x='10'
+												y='10'
+												width='16'
+												height='16'
+												rx='1'
+												fill='#e8f5e9'
+											/>
+											<rect
+												x='10'
+												y='5'
+												width='16'
+												height='3'
+												rx='1'
+												fill='#c8e6c9'
+											/>
+											<rect
+												x='13'
+												y='14'
+												width='10'
+												height='2'
+												fill='#4caf50'
+											/>
+											<rect
+												x='13'
+												y='18'
+												width='10'
+												height='2'
+												fill='#4caf50'
+											/>
+											<rect x='13' y='22' width='5' height='2' fill='#4caf50' />
+										</svg>
 									</div>
 									<div>
 										<div className='font-medium text-neutral-900 dark:text-neutral-100 mb-1'>
@@ -767,8 +1121,21 @@ export default function OpportunityDetailPage() {
 
 								{/* Eligible Locations Section */}
 								<div className='flex items-start'>
-									<div className='mr-3 p-1.5 rounded-full bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/30 dark:to-blue-800/20'>
-										<MapPin className='h-5 w-5 text-blue-600 dark:text-blue-400' />
+									<div className='mr-3 flex-shrink-0 h-9 w-9'>
+										<svg viewBox='0 0 36 36' className='h-full w-full'>
+											<path
+												d='M18,4 C12.48,4 8,8.48 8,14 C8,22 18,32 18,32 C18,32 28,22 28,14 C28,8.48 23.52,4 18,4 Z'
+												fill='#ff9800'
+											/>
+											<path
+												d='M18,8 C15,8 12.5,10.5 12.5,13.5 C12.5,16.5 15,19 18,19 C21,19 23.5,16.5 23.5,13.5 C23.5,10.5 21,8 18,8 Z'
+												fill='#ffe082'
+											/>
+											<path
+												d='M18,9 C15.5,9 13.5,11 13.5,13.5 C13.5,16 15.5,18 18,18 C20.5,18 22.5,16 22.5,13.5 C22.5,11 20.5,9 18,9 Z'
+												fill='#ffecb3'
+											/>
+										</svg>
 									</div>
 									<div>
 										<div className='font-medium text-neutral-900 dark:text-neutral-100 mb-1'>
@@ -808,8 +1175,13 @@ export default function OpportunityDetailPage() {
 
 								{/* Opportunity Details Section */}
 								<div className='flex items-start'>
-									<div className='mr-3 p-1.5 rounded-full bg-gradient-to-br from-neutral-50 to-neutral-100 dark:from-neutral-800/30 dark:to-neutral-700/20'>
-										<Info className='h-5 w-5 text-neutral-600 dark:text-neutral-400' />
+									<div className='mr-3 flex-shrink-0 h-9 w-9'>
+										<svg viewBox='0 0 36 36' className='h-full w-full'>
+											<circle cx='18' cy='18' r='12' fill='#9e9e9e' />
+											<circle cx='18' cy='18' r='10' fill='#f5f5f5' />
+											<rect x='17' y='10' width='2' height='8' fill='#616161' />
+											<rect x='17' y='20' width='2' height='2' fill='#616161' />
+										</svg>
 									</div>
 									<div>
 										<div className='font-medium text-neutral-900 dark:text-neutral-100 mb-1'>
