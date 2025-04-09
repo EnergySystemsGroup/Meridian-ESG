@@ -734,22 +734,28 @@ export default function OpportunityDetailPage() {
 								</CardHeader>
 								<CardContent className='space-y-4 pt-5 px-6 pb-6'>
 									<div className='flex items-center hover:bg-blue-50/50 dark:hover:bg-blue-900/10 rounded-lg p-2 transition-colors duration-200 -mx-2'>
-										<div className='mr-3 p-1.5 rounded-full bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/30 dark:to-blue-800/20 shadow-sm'>
-											<Globe className='h-5 w-5 text-blue-600 dark:text-blue-400' />
-										</div>
+										<Globe className='h-5 w-5 mr-3 text-blue-600 dark:text-blue-400' />
 										<a
-											href={opportunity.url}
+											href={opportunity.url || '#'}
 											target='_blank'
 											rel='noopener noreferrer'
 											className='text-blue-600 hover:text-blue-800 dark:hover:text-blue-300 hover:underline font-medium'>
 											View Official Opportunity
 										</a>
 									</div>
+									<div className='flex items-center hover:bg-blue-50/50 dark:hover:bg-blue-900/10 rounded-lg p-2 transition-colors duration-200 -mx-2'>
+										<Info className='h-5 w-5 mr-3 text-blue-600 dark:text-blue-400' />
+										<a
+											href={opportunity.api_source_url || '#'}
+											target='_blank'
+											rel='noopener noreferrer'
+											className='text-blue-600 hover:text-blue-800 dark:hover:text-blue-300 hover:underline font-medium'>
+											Data Source
+										</a>
+									</div>
 									{opportunity.application_url && (
 										<div className='flex items-center hover:bg-blue-50/50 dark:hover:bg-blue-900/10 rounded-lg p-2 transition-colors duration-200 -mx-2'>
-											<div className='mr-3 p-1.5 rounded-full bg-gradient-to-br from-neutral-50 to-neutral-100 dark:from-neutral-800/30 dark:to-neutral-700/20 shadow-sm'>
-												<FileText className='h-5 w-5 text-neutral-600 dark:text-neutral-400' />
-											</div>
+											<FileText className='h-5 w-5 mr-3 text-neutral-600 dark:text-neutral-400' />
 											<a
 												href={opportunity.application_url}
 												target='_blank'
@@ -761,9 +767,7 @@ export default function OpportunityDetailPage() {
 									)}
 									{opportunity.guidelines_url && (
 										<div className='flex items-center hover:bg-blue-50/50 dark:hover:bg-blue-900/10 rounded-lg p-2 transition-colors duration-200 -mx-2'>
-											<div className='mr-3 p-1.5 rounded-full bg-gradient-to-br from-neutral-50 to-neutral-100 dark:from-neutral-800/30 dark:to-neutral-700/20 shadow-sm'>
-												<FileText className='h-5 w-5 text-neutral-600 dark:text-neutral-400' />
-											</div>
+											<FileText className='h-5 w-5 mr-3 text-neutral-600 dark:text-neutral-400' />
 											<a
 												href={opportunity.guidelines_url}
 												target='_blank'

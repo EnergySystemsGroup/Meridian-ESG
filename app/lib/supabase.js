@@ -186,12 +186,27 @@ export const fundingApi = {
 		try {
 			const { data, error } = await supabase
 				.from('funding_opportunities_with_geography')
-				.select('*')
+				.select(
+					`
+					*,
+					api_sources ( url ) 
+				`
+				)
 				.eq('id', id)
 				.single();
 
 			if (error) throw error;
-			return data;
+
+			// Flatten the result to include api_source_url directly
+			const opportunityData = { ...data };
+			if (data.api_sources) {
+				opportunityData.api_source_url = data.api_sources.url;
+				delete opportunityData.api_sources; // Clean up nested object
+			} else {
+				opportunityData.api_source_url = null; // Ensure the field exists
+			}
+
+			return opportunityData;
 		} catch (error) {
 			console.error('Error fetching opportunity by ID:', error);
 			throw error;
