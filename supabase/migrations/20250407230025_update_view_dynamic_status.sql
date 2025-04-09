@@ -49,3 +49,4 @@ FROM
   funding_opportunities fo
 LEFT JOIN
   funding_sources fs ON fo.funding_source_id = fs.id;
+

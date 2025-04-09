@@ -30,3 +30,4 @@ $$ LANGUAGE plpgsql;
 
 -- Optional: Perform an initial run immediately after creation
 -- SELECT update_opportunity_statuses();
+
