@@ -6,51 +6,19 @@ This document tracks the implementation status of all features in the Funding In
 
 This section highlights the highest priority tasks to be completed next:
 
-1. **Frontend - Items Per Page Option**: Implement ability to adjust number of items per page with options for 10/25/50 funding opportunities.
-
-2. **Frontend - Advanced Filtering**: Add support for advanced filtering with multiple criteria, including date ranges, funding amounts, and eligible applicant types.
-
-3. **Frontend - Legislative Data Warning Labels**: Add warning labels to all legislative data views indicating that the data is for demonstration purposes only.
-
-4. **Frontend - "Coming Soon" Pages**: Add proper "Coming Soon" messaging to incomplete views and features that are planned but not yet implemented.
-
-5. **Frontend - Client Matching UI Design**: Start designing and implementing the client matching interface to display tailored recommendations.
-
-## Downgraded Priority Tasks
-
-These tasks remain important but have been downgraded in priority as we focus on frontend improvements:
-
-1. **Data Processor - Update Detection Improvement**: Verify and improve update detection logic to prevent false positives from minor LLM wording differences.
-
-2. **Detail Processor - Adaptive Relevance Threshold**: Implement adaptive thresholds for relevance scores based on source quality and historical data.
-
-3. **API Handler - Support for Rate Limiting**: Add rate limiting and throttling capabilities to prevent API usage limits from being exceeded.
-
-4. **Error Handling - Automatic Retry Mechanisms**: Implement automatic retry logic for transient failures in API calls.
-
-5. **Admin Interface - Run Filtering and Search**: Add filtering and search capabilities to the runs listing interface.
+1. **Frontend - Opportunity Tracking/Bookmarking**: Implement save/bookmark functionality on the opportunity detail page, storing tracked items in local storage.
+2. **Frontend - Map Module/Visualization**: Implement filtering and map visualization based on geographic eligibility.
+3. **Frontend - Items Per Page Option**: Implement ability to adjust number of items per page with options for 10/25/50 funding opportunities.
+4. **Frontend - Advanced Filtering**: Add support for advanced filtering with multiple criteria, including date ranges, funding amounts, and eligible applicant types.
+5. **Frontend - Legislative Data Warning Labels**: Add warning labels to all legislative data views indicating that the data is for demonstration purposes only.
 
 ## Recently Completed Tasks
 
-1. **Frontend - Funding Opportunities Filtering Enhancements**: Replaced tag filtering with robust category filtering system, added location-based filtering using the state eligibility data, improved status filtering with better visual indicators, and added comprehensive sorting options.
-
-2. **Frontend - Pagination Improvements**: Fixed pagination issues by moving controls to both top and bottom of results, improved search behavior, added "Showing X-Y of Z results" display, and preserved pagination state during filtering operations.
-
-3. **Frontend - Active Filters UI**: Implemented comprehensive active filters display with pill-based indicators, consistent color coding, and easy clear functionality, improving the overall filtering UX.
-
-4. **Frontend - Opportunity Card Refactoring**: Created modular OpportunityCard component with a blue header variant that replaces the multi-colored category bar, featuring a thin blue strip at the top, properly styled status badges with appropriate colors based on opportunity status, and light-styled NEW badges with colored text matching the category pill style.
-
-5. **Frontend - Status Badge Improvement**: Implemented case-insensitive status handling to ensure proper color application regardless of database case formatting (Open/open/OPEN), with status colors now correctly displaying green for Open, blue for Upcoming, and gray for Closed.
-
-6. **Backend - State Eligibility Processing**: Implemented comprehensive system for processing state eligibility from funding opportunities, creating a junction table linking opportunities to eligible states, and providing structured taxonomies and instructions for LLMs to extract proper state eligibility information.
-
-7. **Backend - Duplicate Prevention**: Fixed issue with duplicate entries in the funding_opportunities table by implementing title-based matching when opportunity IDs don't match, preventing duplicate opportunities from being created across different processing runs.
-
-8. **Backend - Description Field Improvement**: Updated description field in the Zod schema to request more comprehensive 2-4 paragraph descriptions for funding opportunities, ensuring fuller and more useful opportunity descriptions.
-
-9. **Frontend - Funding Opportunities Explorer UI**: Implemented modern, visually appealing interface for browsing funding opportunities with dynamic category color assignments, responsive cards, and improved user experience.
-
-10. **Frontend - Opportunity Cards Design**: Created standardized card design with multi-category indicator bar, status indicators, relevance meter, and key details display.
+1. **Frontend - Opportunity Detail Page UI/UX Enhancements**: Implemented numerous styling and layout improvements to the opportunity detail page, including refined card designs, tab navigation, content sections, and consistent status/category visuals.
+2. **Frontend - Application Resources Update**: Refined the Application Resources section on the detail page with improved icons and added a functional 'Data Source' link dynamically pulling the correct URL from the associated API Source.
+3. **Frontend - Funding Opportunities Filtering Enhancements**: Replaced tag filtering with robust category filtering system, added location-based filtering using the state eligibility data, improved status filtering with better visual indicators, and added comprehensive sorting options.
+4. **Frontend - Pagination Improvements**: Fixed pagination issues by moving controls to both top and bottom of results, improved search behavior, added "Showing X-Y of Z results" display, and preserved pagination state during filtering operations.
+5. **Frontend - Active Filters UI**: Implemented comprehensive active filters display with pill-based indicators, consistent color coding, and easy clear functionality, improving the overall filtering UX.
 
 ## Dynamic Source Prioritization Implementation
 
@@ -408,16 +376,16 @@ The Frontend Implementation provides a modern, user-friendly interface for viewi
 
 **Detail Layout:**
 
-- [ ] Design comprehensive detail layout
-- [ ] Implement tabbed interface for different information categories
+- [x] Design comprehensive detail layout with enhanced styling
+- [x] Implement tabbed interface for different information categories
 - [ ] Create visual timeline for opportunity deadlines
 - [ ] Add related opportunities section
 
 **User Interaction:**
 
-- [ ] Implement save/bookmark functionality
-- [ ] Add sharing options
-- [ ] Create printable view
+- [ ] Implement save/bookmark functionality (using local storage)
+- [ ] Add sharing options (commented out)
+- [ ] Create printable view (commented out)
 - [ ] Implement notes and tracking features
 
 <a id="admin-interface"></a>
