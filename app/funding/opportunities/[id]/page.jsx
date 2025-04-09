@@ -39,6 +39,58 @@ import {
 } from '@/app/components/ui/tabs';
 import { Separator } from '@/app/components/ui/separator';
 
+// Helper function to get a consistent color for a category (from original code)
+const getCategoryColor = (categoryName) => {
+	// Define a color map for the standard categories from taxonomies
+	const categoryColors = {
+		// Energy categories with orange-yellow hues
+		'Energy Efficiency': { color: '#F57C00', bgColor: '#FFF3E0' },
+		'Renewable Energy': { color: '#FF9800', bgColor: '#FFF8E1' },
+
+		// Environmental/Water with blue-green hues
+		'Water Conservation': { color: '#0288D1', bgColor: '#E1F5FE' },
+		Environmental: { color: '#00796B', bgColor: '#E0F2F1' },
+		Sustainability: { color: '#43A047', bgColor: '#E8F5E9' },
+
+		// Infrastructure/Facilities with gray-blue hues
+		Infrastructure: { color: '#546E7A', bgColor: '#ECEFF1' },
+		Transportation: { color: '#455A64', bgColor: '#E0E6EA' },
+		'Facility Improvements': { color: '#607D8B', bgColor: '#F5F7F8' },
+
+		// Education/Development with purple hues
+		Education: { color: '#7B1FA2', bgColor: '#F3E5F5' },
+		'Research & Development': { color: '#9C27B0', bgColor: '#F5E9F7' },
+		'Economic Development': { color: '#6A1B9A', bgColor: '#EFE5F7' },
+
+		// Community/Health with red-pink hues
+		'Community Development': { color: '#C62828', bgColor: '#FFEBEE' },
+		'Health & Safety': { color: '#D32F2F', bgColor: '#FFEBEE' },
+		'Disaster Recovery': { color: '#E53935', bgColor: '#FFEBEE' },
+
+		// Planning with neutral hues
+		'Planning & Assessment': { color: '#5D4037', bgColor: '#EFEBE9' },
+	};
+
+	// Check if it's one of our standard categories
+	if (categoryColors[categoryName]) {
+		return categoryColors[categoryName];
+	}
+
+	// For non-standard categories, generate a color using the hash function
+	let hash = 0;
+	for (let i = 0; i < categoryName.length; i++) {
+		hash = categoryName.charCodeAt(i) + ((hash << 5) - hash);
+	}
+
+	// Multiply by a prime number to better distribute the hue values
+	const hue = (hash * 13) % 360;
+
+	return {
+		color: `hsl(${hue}, 65%, 45%)`,
+		bgColor: `hsl(${hue}, 65%, 95%)`,
+	};
+};
+
 export default function OpportunityDetailPage() {
 	const params = useParams();
 	const router = useRouter();
@@ -204,16 +256,15 @@ export default function OpportunityDetailPage() {
 							<CardContent className='px-6 pt-2 pb-6'>
 								<Tabs defaultValue='overview' className='w-full'>
 									<TabsList className='mb-6 bg-neutral-100/70 dark:bg-neutral-900/30 p-1 rounded-lg'>
-										{['overview', 'details', 'eligibility', 'relevance'].map(
-											(tab) => (
-												<TabsTrigger
-													key={tab}
-													value={tab}
-													className='capitalize data-[state=active]:bg-white dark:data-[state=active]:bg-neutral-800 data-[state=active]:text-blue-700 dark:data-[state=active]:text-blue-400 data-[state=active]:shadow-sm transition-all duration-200 rounded-md'>
-													{tab}
-												</TabsTrigger>
-											)
-										)}
+										{/* Relevance tab temporarily hidden - add 'relevance' back to this array when needed */}
+										{['overview', 'eligibility'].map((tab) => (
+											<TabsTrigger
+												key={tab}
+												value={tab}
+												className='capitalize data-[state=active]:bg-white dark:data-[state=active]:bg-neutral-800 data-[state=active]:text-blue-700 dark:data-[state=active]:text-blue-400 data-[state=active]:shadow-sm transition-all duration-200 rounded-md'>
+												{tab}
+											</TabsTrigger>
+										))}
 									</TabsList>
 
 									<TabsContent
@@ -251,14 +302,22 @@ export default function OpportunityDetailPage() {
 														Categories
 													</h3>
 													<div className='flex flex-wrap gap-2'>
-														{opportunity.categories.map((category, index) => (
-															<Badge
-																key={index}
-																variant='secondary'
-																className='px-3 py-1.5 text-sm bg-gradient-to-r from-blue-50 to-blue-100/70 dark:from-blue-900/20 dark:to-blue-800/10 text-blue-700 dark:text-blue-300 border border-blue-200/50 dark:border-blue-800/30 hover:bg-blue-100 dark:hover:bg-blue-800/30 transition-colors duration-200 cursor-default shadow-sm'>
-																{category}
-															</Badge>
-														))}
+														{opportunity.categories.map((category, index) => {
+															const categoryColor = getCategoryColor(category);
+															return (
+																<Badge
+																	key={index}
+																	variant='secondary'
+																	className='px-3 py-1.5 text-sm border hover:bg-opacity-90 transition-colors duration-200 cursor-default shadow-sm'
+																	style={{
+																		backgroundColor: categoryColor.bgColor,
+																		color: categoryColor.color,
+																		borderColor: `${categoryColor.color}20`,
+																	}}>
+																	{category}
+																</Badge>
+															);
+														})}
 													</div>
 												</div>
 											)}
@@ -280,53 +339,6 @@ export default function OpportunityDetailPage() {
 												</div>
 											</div>
 										)}
-									</TabsContent>
-
-									<TabsContent
-										value='details'
-										className='animate-in fade-in-50 duration-300'>
-										<div className='space-y-6'>
-											<div>
-												<h3 className='text-lg font-medium mb-2'>
-													Full Description
-												</h3>
-												<p className='text-muted-foreground whitespace-pre-line'>
-													{opportunity.description ||
-														'No description available.'}
-												</p>
-											</div>
-
-											{opportunity.opportunity_number && (
-												<div>
-													<h3 className='text-lg font-medium mb-2'>
-														Opportunity Number
-													</h3>
-													<p className='font-mono bg-gray-50 px-3 py-1 rounded inline-block'>
-														{opportunity.opportunity_number}
-													</p>
-												</div>
-											)}
-
-											{opportunity.program_name && (
-												<div>
-													<h3 className='text-lg font-medium mb-2'>Program</h3>
-													<p className='text-muted-foreground'>
-														{opportunity.program_name}
-													</p>
-												</div>
-											)}
-
-											{opportunity.notes && (
-												<div>
-													<h3 className='text-lg font-medium mb-2'>
-														Additional Notes
-													</h3>
-													<p className='text-muted-foreground'>
-														{opportunity.notes}
-													</p>
-												</div>
-											)}
-										</div>
 									</TabsContent>
 
 									<TabsContent value='eligibility'>
@@ -657,7 +669,12 @@ export default function OpportunityDetailPage() {
 										</div>
 									</TabsContent>
 
-									<TabsContent value='relevance'>
+									{/* 
+									Relevance Tab - Temporarily hidden
+									Uncomment this section when ready to show the Relevance tab
+									Don't forget to add 'relevance' back to the tabs array above
+									*/}
+									{/* <TabsContent value='relevance'>
 										<div className='space-y-6'>
 											{opportunity.relevance_score !== null && (
 												<div>
@@ -703,7 +720,7 @@ export default function OpportunityDetailPage() {
 												</div>
 											)}
 										</div>
-									</TabsContent>
+									</TabsContent> */}
 								</Tabs>
 							</CardContent>
 						</Card>
@@ -711,7 +728,7 @@ export default function OpportunityDetailPage() {
 						{opportunity.url && (
 							<Card className='shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden'>
 								<CardHeader className='border-b border-neutral-100 dark:border-neutral-800 pb-3 bg-gradient-to-b from-blue-50/50 to-transparent dark:from-blue-950/10 dark:to-transparent'>
-									<CardTitle className='text-xl font-semibold text-blue-700 dark:text-blue-400'>
+									<CardTitle className='text-xl font-semibold text-neutral-900 dark:text-neutral-100'>
 										Application Resources
 									</CardTitle>
 								</CardHeader>
@@ -1212,7 +1229,7 @@ export default function OpportunityDetailPage() {
 
 						<Card className='overflow-hidden shadow-sm hover:shadow-md transition-all duration-300'>
 							<CardHeader className='relative border-b border-neutral-100 dark:border-neutral-800 pb-3'>
-								<CardTitle className='text-xl font-semibold text-blue-700 dark:text-blue-400'>
+								<CardTitle className='text-xl font-semibold text-neutral-900 dark:text-neutral-100'>
 									Actions
 								</CardTitle>
 							</CardHeader>
