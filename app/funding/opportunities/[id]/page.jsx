@@ -263,17 +263,6 @@ export default function OpportunityDetailPage() {
 												</div>
 											)}
 
-										{opportunity.funding_type && (
-											<div className='mb-6 bg-white dark:bg-neutral-900/30 p-5 rounded-lg border border-neutral-200/70 dark:border-neutral-800/30 shadow-sm'>
-												<h3 className='text-lg font-medium mb-3 text-neutral-900 dark:text-neutral-200'>
-													Funding Type
-												</h3>
-												<Badge className='px-3 py-1.5 text-sm bg-gradient-to-r from-purple-50 to-purple-100/70 dark:from-purple-900/20 dark:to-purple-800/10 text-purple-700 dark:text-purple-300 border border-purple-200/50 dark:border-purple-800/30 shadow-sm'>
-													{opportunity.funding_type}
-												</Badge>
-											</div>
-										)}
-
 										{opportunity.tags && opportunity.tags.length > 0 && (
 											<div className='mb-6 bg-white dark:bg-neutral-900/30 p-5 rounded-lg border border-neutral-200/70 dark:border-neutral-800/30 shadow-sm'>
 												<h3 className='text-lg font-medium mb-3 text-neutral-900 dark:text-neutral-200'>
@@ -594,6 +583,23 @@ export default function OpportunityDetailPage() {
 									</div>
 								</div>
 
+								{/* Funding Type Section */}
+								{opportunity.funding_type && (
+									<div className='flex items-start'>
+										<div className='mr-3 p-1.5 rounded-full bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-900/30 dark:to-purple-800/20'>
+											<Tag className='h-5 w-5 text-purple-600 dark:text-purple-400' />
+										</div>
+										<div>
+											<div className='font-medium text-neutral-900 dark:text-neutral-100'>
+												Funding Type
+											</div>
+											<div className='text-neutral-700 dark:text-neutral-300 mt-0.5'>
+												{opportunity.funding_type}
+											</div>
+										</div>
+									</div>
+								)}
+
 								{/* Important Dates Section with improved layout */}
 								<div className='flex items-start'>
 									<div className='mr-3 p-1.5 rounded-full bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/30 dark:to-blue-800/20'>
@@ -676,7 +682,7 @@ export default function OpportunityDetailPage() {
 										</div>
 										<div className='grid gap-y-1'>
 											<div className='text-sm'>
-												<span className='text-neutral-600 dark:text-neutral-400 font-medium'>
+												<span className='text-neutral-600 dark:text-neutral-400 font-medium inline-block w-14'>
 													Source:
 												</span>{' '}
 												<span className='text-neutral-800 dark:text-neutral-200'>
@@ -684,7 +690,7 @@ export default function OpportunityDetailPage() {
 												</span>
 											</div>
 											<div className='text-sm'>
-												<span className='text-neutral-600 dark:text-neutral-400 font-medium'>
+												<span className='text-neutral-600 dark:text-neutral-400 font-medium inline-block w-14'>
 													Type:
 												</span>{' '}
 												<span className='text-neutral-800 dark:text-neutral-200'>
