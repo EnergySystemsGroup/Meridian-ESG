@@ -559,7 +559,7 @@ export default function OpportunityDetailPage() {
 					<div className='space-y-6'>
 						<Card className='overflow-hidden shadow-sm hover:shadow-md transition-all duration-300'>
 							<CardHeader className='relative border-b border-neutral-100 dark:border-neutral-800 pb-3'>
-								<CardTitle className='text-xl font-semibold text-blue-700 dark:text-blue-400'>
+								<CardTitle className='text-xl font-semibold text-neutral-900 dark:text-neutral-100'>
 									Key Details
 								</CardTitle>
 							</CardHeader>
@@ -604,13 +604,6 @@ export default function OpportunityDetailPage() {
 											Important Dates
 										</div>
 										<div className='grid grid-cols-2 gap-x-4 gap-y-2'>
-											<div className='text-sm text-neutral-600 dark:text-neutral-400 font-medium'>
-												Posted:
-											</div>
-											<div className='text-sm'>
-												{formatDate(opportunity.posted_date)}
-											</div>
-
 											<div className='text-sm text-neutral-600 dark:text-neutral-400 font-medium'>
 												Opens:
 											</div>
@@ -684,14 +677,6 @@ export default function OpportunityDetailPage() {
 										<div className='grid gap-y-1'>
 											<div className='text-sm'>
 												<span className='text-neutral-600 dark:text-neutral-400 font-medium'>
-													Agency:
-												</span>{' '}
-												<span className='text-neutral-800 dark:text-neutral-200'>
-													{opportunity.agency_name || 'Not specified'}
-												</span>
-											</div>
-											<div className='text-sm'>
-												<span className='text-neutral-600 dark:text-neutral-400 font-medium'>
 													Source:
 												</span>{' '}
 												<span className='text-neutral-800 dark:text-neutral-200'>
@@ -706,15 +691,48 @@ export default function OpportunityDetailPage() {
 													{opportunity.source_type_display || 'Not specified'}
 												</span>
 											</div>
-											<div className='text-sm'>
-												<span className='text-neutral-600 dark:text-neutral-400 font-medium'>
-													Scope:
-												</span>{' '}
-												<span className='text-neutral-800 dark:text-neutral-200'>
-													{opportunity.is_national ? 'National' : 'Regional'}
-												</span>
-											</div>
 										</div>
+									</div>
+								</div>
+
+								{/* Eligible Locations Section */}
+								<div className='flex items-start'>
+									<div className='mr-3 p-1.5 rounded-full bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/30 dark:to-blue-800/20'>
+										<MapPin className='h-5 w-5 text-blue-600 dark:text-blue-400' />
+									</div>
+									<div>
+										<div className='font-medium text-neutral-900 dark:text-neutral-100 mb-1'>
+											Eligible Locations
+										</div>
+										{opportunity.is_national ? (
+											<div className='text-sm text-neutral-800 dark:text-neutral-200'>
+												National - All states
+											</div>
+										) : opportunity.eligible_states &&
+										  opportunity.eligible_states.length > 0 ? (
+											<div>
+												<div className='text-sm text-neutral-800 dark:text-neutral-200 mb-1'>
+													Available in {opportunity.eligible_states.length}{' '}
+													states:
+												</div>
+												<div className='flex flex-wrap gap-1 max-w-[240px]'>
+													{opportunity.eligible_states
+														.sort()
+														.map((state, index) => (
+															<Badge
+																key={index}
+																variant='outline'
+																className='text-xs border-neutral-200 dark:border-neutral-700'>
+																{state}
+															</Badge>
+														))}
+												</div>
+											</div>
+										) : (
+											<div className='text-sm text-neutral-500 dark:text-neutral-400'>
+												Not specified
+											</div>
+										)}
 									</div>
 								</div>
 
@@ -728,16 +746,6 @@ export default function OpportunityDetailPage() {
 											Opportunity Details
 										</div>
 										<div className='grid gap-y-1'>
-											{opportunity.opportunity_number && (
-												<div className='text-sm'>
-													<span className='text-neutral-600 dark:text-neutral-400 font-medium'>
-														Number:
-													</span>{' '}
-													<span className='text-neutral-800 dark:text-neutral-200 font-mono'>
-														{opportunity.opportunity_number}
-													</span>
-												</div>
-											)}
 											<div className='text-sm'>
 												<span className='text-neutral-600 dark:text-neutral-400 font-medium'>
 													Last Updated:
