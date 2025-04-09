@@ -28,11 +28,13 @@ import {
 	Check,
 	ChevronLeft,
 	ChevronRight,
+	Star,
 } from 'lucide-react';
 import { calculateDaysLeft, determineStatus } from '@/app/lib/supabase';
 import TAXONOMIES from '@/app/lib/constants/taxonomies';
 import OpportunityCard from '@/app/components/opportunities/OpportunityCard';
 import { classNames } from '@/app/lib/utils';
+import { useTrackedOpportunities } from '@/app/hooks/useTrackedOpportunities';
 
 // Helper function to get a consistent color for a category
 const getCategoryColor = (categoryName) => {
@@ -135,6 +137,7 @@ export default function OpportunitiesPage() {
 		states: [],
 		page: 1,
 		page_size: 9,
+		tracked: false,
 	});
 	const [availableTags, setAvailableTags] = useState([]);
 	const [availableCategories, setAvailableCategories] = useState(
@@ -166,6 +169,10 @@ export default function OpportunitiesPage() {
 	const stateDropdownRef = useRef(null);
 	const filterContainerRef = useRef(null);
 	const sortDropdownRef = useRef(null);
+
+	// Use our custom hook for tracking opportunities
+	const { getTrackedIds, trackedCount, isInitialized } =
+		useTrackedOpportunities();
 
 	// Add click outside listener to close dropdown
 	useEffect(() => {
@@ -295,6 +302,14 @@ export default function OpportunitiesPage() {
 					queryParams.append('sort_direction', sortDirection);
 				}
 
+				// Add tracked IDs filter if tracked filter is on
+				if (filters.tracked && isInitialized) {
+					const trackedIds = getTrackedIds();
+					if (trackedIds.length > 0) {
+						queryParams.append('trackedIds', trackedIds.join(','));
+					}
+				}
+
 				// Debug: Log the API URL and filters
 				console.log('Current filters:', filters);
 				console.log('API URL:', `/api/funding?${queryParams.toString()}`);
@@ -310,8 +325,16 @@ export default function OpportunitiesPage() {
 				// Log API response for debugging
 				console.log('API response:', result);
 
+				// If trackedIds is used but no opportunities match (empty array),
+				// we handle this edge case by showing no results
 				setOpportunities(result.data);
 				setTotalCount(result.total_count || 0);
+
+				// Show a message if tracked is enabled but no tracked opportunities exist
+				if (filters.tracked && getTrackedIds().length === 0) {
+					setOpportunities([]);
+					setTotalCount(0);
+				}
 			} catch (err) {
 				console.error('Error fetching opportunities:', err);
 				setError(err.message);
@@ -321,7 +344,14 @@ export default function OpportunitiesPage() {
 		}
 
 		fetchOpportunities();
-	}, [filters, sortOption, sortDirection, debouncedSearchQuery]);
+	}, [
+		filters,
+		sortOption,
+		sortDirection,
+		debouncedSearchQuery,
+		isInitialized,
+		getTrackedIds,
+	]);
 
 	// Toggle filter section
 	const toggleFilterSection = (section) => {
@@ -359,6 +389,7 @@ export default function OpportunitiesPage() {
 			states: [],
 			page: 1,
 			page_size: 9,
+			tracked: false,
 		});
 		setSearchQuery('');
 		setCategorySearchInput('');
@@ -417,6 +448,39 @@ export default function OpportunitiesPage() {
 			default:
 				return 'Relevance';
 		}
+	};
+
+	// Toggle tracked opportunities filter
+	const toggleTrackedFilter = () => {
+		setFilters((prevFilters) => ({
+			...prevFilters,
+			tracked: !prevFilters.tracked,
+			page: 1, // Reset to first page when toggling filter
+		}));
+	};
+
+	// Render tracked opportunities filter button
+	const renderTrackedFilter = () => {
+		return (
+			<div className='relative'>
+				<Button
+					variant={filters.tracked ? 'default' : 'outline'}
+					size='sm'
+					className={`flex items-center ${
+						filters.tracked
+							? 'bg-amber-500 text-white hover:bg-amber-600 border-amber-500'
+							: 'border-amber-300 text-amber-700 hover:bg-amber-50'
+					}`}
+					onClick={toggleTrackedFilter}>
+					<Star
+						className={`mr-1 h-4 w-4 ${
+							filters.tracked ? 'fill-white' : 'fill-amber-500'
+						}`}
+					/>
+					My Opportunities {trackedCount > 0 && `(${trackedCount})`}
+				</Button>
+			</div>
+		);
 	};
 
 	// Render the status filter dropdown
@@ -827,22 +891,49 @@ export default function OpportunitiesPage() {
 		if (!hasActiveFilters()) return null;
 
 		return (
-			<div className='flex flex-wrap gap-2 mt-4 py-2 border-t border-gray-100'>
-				<span className='text-sm text-gray-500 mr-1'>Active filters:</span>
+			<div className='flex flex-wrap items-center mt-4 text-xs gap-2'>
+				<span className='text-neutral-500 font-medium'>Active filters:</span>
+
+				{/* Tracked filter */}
+				{filters.tracked && (
+					<span className='flex items-center gap-1 px-2 py-1 bg-amber-100 text-amber-800 rounded-full text-xs font-medium'>
+						My Opportunities
+						<X
+							size={14}
+							className='cursor-pointer'
+							onClick={() => {
+								setFilters({
+									...filters,
+									tracked: false,
+									page: 1,
+								});
+							}}
+						/>
+					</span>
+				)}
 
 				{/* Status filter */}
 				{filters.status && (
 					<span
-						className='flex items-center gap-1 px-2 py-1 bg-gray-100 rounded-full text-xs font-medium'
+						className='flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium'
 						style={{
-							backgroundColor: getStatusColor(filters.status),
-							color: 'white',
+							backgroundColor: 'white',
+							color: getStatusColor(filters.status),
+							borderWidth: '1px',
+							borderStyle: 'solid',
+							borderColor: getStatusColor(filters.status) + '50',
 						}}>
-						{formatStatusForDisplay(filters.status)}
+						Status: {filters.status}
 						<X
 							size={14}
 							className='cursor-pointer'
-							onClick={() => setFilters({ ...filters, status: null, page: 1 })}
+							onClick={() => {
+								setFilters({
+									...filters,
+									status: null,
+									page: 1,
+								});
+							}}
 						/>
 					</span>
 				)}
@@ -926,7 +1017,8 @@ export default function OpportunitiesPage() {
 			filters.status !== null ||
 			filters.categories.length > 0 ||
 			filters.states.length > 0 ||
-			debouncedSearchQuery !== ''
+			debouncedSearchQuery !== '' ||
+			filters.tracked
 		);
 	};
 
@@ -962,6 +1054,9 @@ export default function OpportunitiesPage() {
 
 						{/* Filter dropdown buttons */}
 						<div className='flex flex-wrap gap-2' ref={filterContainerRef}>
+							{/* Tracked opportunities filter */}
+							{renderTrackedFilter()}
+
 							{/* Category filter */}
 							{renderCategoryFilter()}
 

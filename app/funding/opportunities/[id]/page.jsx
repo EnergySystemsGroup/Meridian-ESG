@@ -38,6 +38,7 @@ import {
 	TabsTrigger,
 } from '@/app/components/ui/tabs';
 import { Separator } from '@/app/components/ui/separator';
+import { useTrackedOpportunities } from '@/app/hooks/useTrackedOpportunities';
 
 // Helper function to get a consistent color for a category (from original code)
 const getCategoryColor = (categoryName) => {
@@ -97,6 +98,9 @@ export default function OpportunityDetailPage() {
 	const [opportunity, setOpportunity] = useState(null);
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState(null);
+
+	// Use our custom hook for tracking opportunities
+	const { isTracked, toggleTracked } = useTrackedOpportunities();
 
 	useEffect(() => {
 		async function fetchOpportunityDetails() {
@@ -1240,8 +1244,21 @@ export default function OpportunityDetailPage() {
 								</CardTitle>
 							</CardHeader>
 							<CardContent className='space-y-4 pt-4'>
-								<Button className='w-full bg-blue-600 hover:bg-blue-700 text-white shadow-sm transition-all duration-200'>
-									Track This Opportunity
+								<Button
+									className={`w-full flex items-center justify-center ${
+										isTracked(opportunity.id)
+											? 'bg-amber-500 hover:bg-amber-600 text-white'
+											: 'bg-blue-600 hover:bg-blue-700 text-white'
+									} shadow-sm transition-all duration-200`}
+									onClick={() => toggleTracked(opportunity.id)}>
+									<Star
+										className={`h-4 w-4 mr-2 ${
+											isTracked(opportunity.id) ? 'fill-white' : ''
+										}`}
+									/>
+									{isTracked(opportunity.id)
+										? 'Untrack Opportunity'
+										: 'Track This Opportunity'}
 								</Button>
 								{/* Comment out Export PDF button
 								<Button

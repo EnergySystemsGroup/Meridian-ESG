@@ -31,13 +31,19 @@ export async function GET(request) {
 			filters.states = states.split(',');
 		}
 
+		// Handle tracked IDs array
+		const trackedIds = searchParams.get('trackedIds');
+		if (trackedIds) {
+			filters.trackedIds = trackedIds.split(',');
+		}
+
 		// Add search filtering if present
 		const search = searchParams.get('search');
 		if (search) {
 			filters.search = search;
 		}
 
-		// Fetch opportunities with filters - Remove try/catch fallback again
+		// Fetch opportunities with filters
 		const result = await fundingApi.getOpportunities(filters);
 		const opportunities = result.data;
 		const totalCount = result.count;

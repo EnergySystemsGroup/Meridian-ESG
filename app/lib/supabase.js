@@ -117,6 +117,10 @@ export const fundingApi = {
 				p_sort_direction: filters.sort_direction || 'desc',
 				p_page: filters.page || 1,
 				p_page_size: filters.page_size || 9, // Match function default
+				p_tracked_ids:
+					filters.trackedIds && filters.trackedIds.length > 0
+						? filters.trackedIds
+						: null,
 			};
 
 			// Call the database function to get paginated and sorted data
@@ -144,10 +148,6 @@ export const fundingApi = {
 			}
 			if (params.p_categories) {
 				// Assuming OVERLAPS logic was used in function, check if categories array overlaps
-				// Note: Supabase JS client might not directly support OVERLAPS (&&).
-				// Using contains as an approximation, or adjust if needed.
-				// For exact match with function (&&), might need another RPC or adjust function.
-				// Let's use contains for now, it's often sufficient.
 				countQuery = countQuery.overlaps('categories', params.p_categories);
 			}
 			if (params.p_states) {
@@ -157,6 +157,10 @@ export const fundingApi = {
 						','
 					)}}`
 				);
+			}
+			// Add filter for tracked IDs if present
+			if (params.p_tracked_ids) {
+				countQuery = countQuery.in('id', params.p_tracked_ids);
 			}
 			if (params.p_search) {
 				const searchTerm = `%${params.p_search}%`;

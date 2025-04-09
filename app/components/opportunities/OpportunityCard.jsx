@@ -6,8 +6,9 @@ import {
 	CardTitle,
 } from '@/app/components/ui/card';
 import { Button } from '@/app/components/ui/button';
-import { DollarSign, Calendar, Map } from 'lucide-react';
+import { DollarSign, Calendar, Map, Star } from 'lucide-react';
 import { calculateDaysLeft, determineStatus } from '@/app/lib/supabase';
+import { useTrackedOpportunities } from '@/app/hooks/useTrackedOpportunities';
 
 // Status indicators with colors for badges
 const statusIndicator = {
@@ -140,6 +141,12 @@ const newBadgeColors = {
 };
 
 const OpportunityCard = ({ opportunity }) => {
+	// Use our custom hook for tracking opportunities
+	const { isTracked, toggleTracked } = useTrackedOpportunities();
+
+	// Check if this opportunity is being tracked
+	const opportunityIsTracked = isTracked(opportunity.id);
+
 	// Format the data from our database to match the UI expectations
 	const title = opportunity.title;
 
@@ -295,7 +302,7 @@ const OpportunityCard = ({ opportunity }) => {
 					</div>
 				</div>
 
-				{/* Footer section with relevance score and button - fixed at bottom */}
+				{/* Footer section with relevance score and buttons - fixed at bottom */}
 				<div className='pt-4 mt-auto'>
 					{/* Relevance score if available */}
 					{relevanceScore !== null && relevanceScore !== undefined && (
@@ -319,11 +326,39 @@ const OpportunityCard = ({ opportunity }) => {
 						</div>
 					)}
 
-					<Button className='w-full' asChild>
-						<a href={`/funding/opportunities/${opportunity.id}`}>
-							View Details
-						</a>
-					</Button>
+					{/* Button row with View Details and Track buttons */}
+					<div className='flex gap-2'>
+						<Button className='flex-1' asChild>
+							<a href={`/funding/opportunities/${opportunity.id}`}>
+								View Details
+							</a>
+						</Button>
+
+						<Button
+							variant={opportunityIsTracked ? 'default' : 'outline'}
+							className={
+								opportunityIsTracked
+									? 'bg-amber-500 hover:bg-amber-600 border-amber-500'
+									: 'border-amber-300 text-amber-700 hover:bg-amber-50'
+							}
+							onClick={(e) => {
+								e.preventDefault(); // Prevent link navigation
+								toggleTracked(opportunity.id);
+							}}
+							title={
+								opportunityIsTracked
+									? 'Remove from tracked opportunities'
+									: 'Add to tracked opportunities'
+							}>
+							<Star
+								className={`h-4 w-4 ${
+									opportunityIsTracked
+										? 'fill-white text-white'
+										: 'fill-amber-500 text-amber-500'
+								}`}
+							/>
+						</Button>
+					</div>
 				</div>
 			</CardContent>
 		</Card>
