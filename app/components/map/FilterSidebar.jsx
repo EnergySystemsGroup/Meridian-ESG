@@ -51,7 +51,7 @@ export default function FilterSidebar({
 
 	// If horizontal is true, don't render the card container
 	const filterContent = (
-		<div className={`${horizontal ? 'flex items-center gap-3' : 'space-y-4'}`}>
+		<div className={`${horizontal ? 'flex items-center gap-6' : 'space-y-6'}`}>
 			{/* Status filter - Smaller trigger, no label */}
 			{horizontal ? null : (
 				<label className='text-sm font-medium mb-1 block'>Status</label>
@@ -77,7 +77,11 @@ export default function FilterSidebar({
 			<Select
 				value={filters.category || 'all'}
 				onValueChange={(value) => onFilterChange('category', value)}>
-				<SelectTrigger className={horizontal ? 'h-8 w-36 text-xs' : ''}>
+				<SelectTrigger
+					className={cn(
+						'h-8 text-xs',
+						horizontal ? 'w-[200px] flex-shrink-0' : ''
+					)}>
 					<SelectValue placeholder='Category' />
 				</SelectTrigger>
 				<SelectContent>
@@ -97,7 +101,8 @@ export default function FilterSidebar({
 			<Select
 				value={filters.sourceType}
 				onValueChange={(value) => onFilterChange('sourceType', value)}>
-				<SelectTrigger className={horizontal ? 'h-8 w-32 text-xs' : ''}>
+				<SelectTrigger
+					className={cn('h-8 text-xs', horizontal ? 'w-40 flex-shrink-0' : '')}>
 					<SelectValue placeholder='Source Type' />
 				</SelectTrigger>
 				<SelectContent>
@@ -110,12 +115,14 @@ export default function FilterSidebar({
 			</Select>
 
 			{/* Funding amount slider - Smaller label, takes remaining space */}
-			<div className={horizontal ? 'flex-1 min-w-[150px]' : ''}>
+			<div className={horizontal ? 'min-w-[200px] pl-2' : ''}>
 				<div
 					className={`flex items-center ${
-						horizontal ? 'justify-end' : 'justify-between'
+						horizontal ? 'justify-between' : 'justify-between'
 					} mb-1`}>
-					{horizontal ? null : (
+					{horizontal ? (
+						<label className='text-xs font-medium mr-2'>Max Amount:</label>
+					) : (
 						<label className='text-sm font-medium'>Max Amount</label>
 					)}
 					<span className='text-xs text-muted-foreground'>
@@ -131,8 +138,8 @@ export default function FilterSidebar({
 				/>
 			</div>
 
-			{/* Include National - Compact form */}
-			<div
+			{/* Include National - Commented out */}
+			{/* <div
 				className={
 					horizontal
 						? 'flex items-center gap-1.5'
@@ -154,7 +161,7 @@ export default function FilterSidebar({
 					checked={filters.showNational}
 					onCheckedChange={(checked) => onFilterChange('showNational', checked)}
 				/>
-			</div>
+			</div> */}
 		</div>
 	);
 
@@ -166,13 +173,13 @@ export default function FilterSidebar({
 	// Otherwise wrap in a Card
 	return (
 		<Card>
-			<CardHeader>
+			<CardHeader className='pb-2'>
 				<CardTitle className='flex items-center'>
 					<Filter className='h-5 w-5 mr-2' />
 					Filters
 				</CardTitle>
 			</CardHeader>
-			<CardContent>{filterContent}</CardContent>
+			<CardContent className='p-4 pt-2'>{filterContent}</CardContent>
 			<div className='px-6 pb-4'>
 				<Button variant='outline' onClick={onResetFilters} className='w-full'>
 					Reset All Filters
