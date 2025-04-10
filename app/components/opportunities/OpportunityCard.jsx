@@ -335,11 +335,11 @@ const OpportunityCard = ({ opportunity }) => {
 						</Button>
 
 						<Button
-							variant={opportunityIsTracked ? 'default' : 'outline'}
+							variant={opportunityIsTracked ? 'outline' : 'outline'}
 							className={
 								opportunityIsTracked
-									? 'bg-amber-500 hover:bg-amber-600 border-amber-500'
-									: 'border-amber-300 text-amber-700 hover:bg-amber-50'
+									? 'border-slate-200 text-amber-700 hover:bg-amber-50 flex-1'
+									: 'border-slate-200 text-slate-700 hover:bg-slate-50 flex-1'
 							}
 							onClick={(e) => {
 								e.preventDefault(); // Prevent link navigation
@@ -351,12 +351,13 @@ const OpportunityCard = ({ opportunity }) => {
 									: 'Add to tracked opportunities'
 							}>
 							<Star
-								className={`h-4 w-4 ${
+								className={`h-4 w-4 mr-2 ${
 									opportunityIsTracked
-										? 'fill-white text-white'
-										: 'fill-amber-500 text-amber-500'
+										? 'fill-amber-500 text-amber-500'
+										: 'fill-none text-slate-500'
 								}`}
 							/>
+							{opportunityIsTracked ? 'Untrack' : 'Track'}
 						</Button>
 					</div>
 				</div>
