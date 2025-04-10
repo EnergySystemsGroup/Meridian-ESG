@@ -537,8 +537,7 @@ export default function OpportunitiesPage() {
 			<div className='relative'>
 				<Button
 					variant={filters.tracked ? 'default' : 'outline'}
-					size='sm'
-					className={`flex items-center ${
+					className={`flex items-center px-4 py-2 text-sm ${
 						filters.tracked
 							? 'bg-amber-500 text-white hover:bg-amber-600 border-amber-500'
 							: 'border-amber-300 text-amber-700 hover:bg-amber-50'
