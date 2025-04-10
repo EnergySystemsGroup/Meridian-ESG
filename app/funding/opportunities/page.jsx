@@ -35,7 +35,7 @@ import TAXONOMIES from '@/app/lib/constants/taxonomies';
 import OpportunityCard from '@/app/components/opportunities/OpportunityCard';
 import { classNames } from '@/app/lib/utils';
 import { useTrackedOpportunities } from '@/app/hooks/useTrackedOpportunities';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 
 // Helper function to get a consistent color for a category
 const getCategoryColor = (categoryName) => {
@@ -181,6 +181,8 @@ export default function OpportunitiesPage() {
 	} = useTrackedOpportunities();
 
 	const searchParams = useSearchParams();
+	const router = useRouter();
+	const pathname = usePathname();
 
 	// Initialize filters from URL params on first load
 	useEffect(() => {
@@ -449,6 +451,9 @@ export default function OpportunitiesPage() {
 		setSearchQuery('');
 		setCategorySearchInput('');
 		setStateSearchInput('');
+
+		// Clear URL parameters
+		router.replace(pathname, { scroll: false });
 	};
 
 	// Filter categories for search
@@ -507,11 +512,30 @@ export default function OpportunitiesPage() {
 
 	// Toggle tracked opportunities filter
 	const toggleTrackedFilter = () => {
+		// Get the current tracked state
+		const currentlyTracked = filters.tracked;
+
 		setFilters((prevFilters) => ({
 			...prevFilters,
-			tracked: !prevFilters.tracked,
+			tracked: !currentlyTracked,
 			page: 1, // Reset to first page when toggling filter
 		}));
+
+		// Update URL when toggling the filter
+		const params = new URLSearchParams(searchParams.toString());
+		if (currentlyTracked) {
+			// If currently tracked, remove the tracked parameter
+			params.delete('tracked');
+		} else {
+			// If not currently tracked, add the tracked parameter
+			params.set('tracked', 'true');
+		}
+
+		// Use Next.js router to update URL without reloading the page
+		const newUrl = params.toString()
+			? `${pathname}?${params.toString()}`
+			: pathname;
+		router.replace(newUrl, { scroll: false });
 	};
 
 	// Render tracked opportunities filter button
@@ -962,6 +986,16 @@ export default function OpportunitiesPage() {
 									tracked: false,
 									page: 1,
 								});
+
+								// Update URL by removing the tracked parameter
+								const params = new URLSearchParams(searchParams.toString());
+								params.delete('tracked');
+
+								// Use Next.js router to update URL without reloading the page
+								const newUrl = params.toString()
+									? `${pathname}?${params.toString()}`
+									: pathname;
+								router.replace(newUrl, { scroll: false });
 							}}
 						/>
 					</span>

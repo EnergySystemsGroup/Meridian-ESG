@@ -236,35 +236,8 @@ const OpportunityCard = ({ opportunity }) => {
 
 			// Toggle the tracked status
 			toggleTracked(opportunity.id);
-
-			// If this was the first opportunity being tracked, and we're on the main opportunities page
-			// automatically filter to "My Opportunities"
-			if (
-				!wasTracked &&
-				trackedCount === 0 &&
-				pathname === '/funding/opportunities'
-			) {
-				// Small delay to ensure state has updated
-				setTimeout(() => {
-					// Create new URL params
-					const params = new URLSearchParams(searchParams);
-					params.set('tracked', 'true');
-
-					// Navigate to the same page but with tracked=true parameter
-					// This will trigger a page refresh with the tracked filter applied
-					router.push(`${pathname}?${params.toString()}`);
-				}, 200); // Small delay to ensure state has settled
-			}
 		},
-		[
-			isTracked,
-			toggleTracked,
-			opportunity.id,
-			trackedCount,
-			router,
-			pathname,
-			searchParams,
-		]
+		[isTracked, toggleTracked, opportunity.id]
 	);
 
 	return (
