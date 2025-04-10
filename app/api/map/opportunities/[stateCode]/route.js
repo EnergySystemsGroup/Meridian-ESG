@@ -25,9 +25,89 @@ export async function GET(request, context) {
 			min_amount: searchParams.get('min_amount'),
 			max_amount: searchParams.get('max_amount'),
 			include_national: searchParams.get('include_national') !== 'false', // Default to true
+			deadline_start: searchParams.get('deadline_start'),
+			deadline_end: searchParams.get('deadline_end'),
+			// Pagination parameters
+			page: parseInt(searchParams.get('page') || '1', 10),
+			pageSize: parseInt(searchParams.get('pageSize') || '10', 10),
 		};
 
-		// Fetch opportunities for the specified state
+		// Ensure page and pageSize are valid
+		if (isNaN(filters.page) || filters.page < 1) filters.page = 1;
+		if (
+			isNaN(filters.pageSize) ||
+			filters.pageSize < 1 ||
+			filters.pageSize > 50
+		)
+			filters.pageSize = 10;
+
+		// Calculate pagination values
+		const from = (filters.page - 1) * filters.pageSize;
+		const to = from + filters.pageSize - 1;
+
+		// Log the filters for debugging
+		console.log(
+			`Map API opportunities for ${stateCode} with filters:`,
+			filters
+		);
+
+		// Fetch opportunities for the specified state - first get count for pagination
+		let countQuery = supabase
+			.from('funding_opportunities_with_geography')
+			.select('id', { count: 'exact', head: true });
+
+		// Apply filters
+		// State filter
+		countQuery = countQuery.or(
+			`is_national.eq.true,eligible_states.cs.{${stateCode}}`
+		);
+
+		// Additional filters
+		if (filters.status && filters.status !== 'all') {
+			countQuery = countQuery.eq('status', filters.status);
+		}
+
+		if (filters.source_type && filters.source_type !== 'all') {
+			countQuery = countQuery.eq('source_type', filters.source_type);
+		}
+
+		if (filters.min_amount) {
+			countQuery = countQuery.gte('minimum_award', filters.min_amount);
+		}
+
+		if (filters.max_amount) {
+			countQuery = countQuery.lte('maximum_award', filters.max_amount);
+		}
+
+		// Apply deadline range filters if provided
+		if (filters.deadline_start) {
+			countQuery = countQuery.gte('close_date', filters.deadline_start);
+		}
+
+		if (filters.deadline_end) {
+			countQuery = countQuery.lte('close_date', filters.deadline_end);
+		}
+
+		// Exclude national opportunities if specified
+		if (!filters.include_national) {
+			countQuery = countQuery.eq('is_national', false);
+		}
+
+		// Execute count query
+		const { count, error: countError } = await countQuery;
+
+		if (countError) {
+			console.error(
+				`Error counting opportunities for state ${stateCode}:`,
+				countError
+			);
+			return NextResponse.json(
+				{ success: false, error: countError.message },
+				{ status: 500 }
+			);
+		}
+
+		// Now fetch the actual opportunities with pagination
 		let query = supabase
 			.from('funding_opportunities_with_geography')
 			.select('*');
@@ -52,6 +132,15 @@ export async function GET(request, context) {
 			query = query.lte('maximum_award', filters.max_amount);
 		}
 
+		// Apply deadline range filters if provided
+		if (filters.deadline_start) {
+			query = query.gte('close_date', filters.deadline_start);
+		}
+
+		if (filters.deadline_end) {
+			query = query.lte('close_date', filters.deadline_end);
+		}
+
 		// Exclude national opportunities if specified
 		if (!filters.include_national) {
 			query = query.eq('is_national', false);
@@ -60,6 +149,9 @@ export async function GET(request, context) {
 		// Order by close date
 		query = query.order('close_date', { ascending: true });
 
+		// Apply pagination
+		query = query.range(from, to);
+
 		const { data, error } = await query;
 
 		if (error) {
@@ -67,16 +159,27 @@ export async function GET(request, context) {
 				`Error fetching opportunities for state ${stateCode}:`,
 				error
 			);
-			// Fallback to mock data if there's an error
-			return NextResponse.json({
-				success: true,
-				data: generateMockOpportunitiesForState(stateCode),
-			});
+			return NextResponse.json(
+				{ success: false, error: error.message },
+				{ status: 500 }
+			);
+		}
+
+		if (!data || data.length === 0) {
+			console.log(
+				`No opportunities found for state ${stateCode} with the given filters`
+			);
 		}
 
 		return NextResponse.json({
 			success: true,
-			data: data || [],
+			data: {
+				opportunities: data || [],
+				total: count || 0,
+				page: filters.page,
+				pageSize: filters.pageSize,
+				totalPages: count ? Math.ceil(count / filters.pageSize) : 0,
+			},
 		});
 	} catch (error) {
 		console.error('API Error:', error);

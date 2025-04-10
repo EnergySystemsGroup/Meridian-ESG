@@ -384,15 +384,6 @@ export default function OpportunitiesPage() {
 					'Total Count =',
 					result.total_count || 0
 				);
-
-				// Show a message if tracked is enabled but no tracked opportunities exist
-				if (filters.tracked && trackedOpportunityIds.length === 0) {
-					console.log(
-						'[Debug Tracking] Tracked filter ON, but getTrackedIds() is empty. Setting results to empty.'
-					);
-					setOpportunities([]);
-					setTotalCount(0);
-				}
 			} catch (err) {
 				console.error('Error fetching opportunities:', err);
 				console.error('[Debug Tracking] Error in fetchOpportunities:', err);
