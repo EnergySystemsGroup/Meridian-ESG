@@ -151,9 +151,8 @@ export default function OpportunitiesPage() {
 	const [filters, setFilters] = useState(initialFilters);
 
 	const [availableTags, setAvailableTags] = useState([]);
-	const [availableCategories, setAvailableCategories] = useState(
-		TAXONOMIES.CATEGORIES
-	);
+	const [availableCategories, setAvailableCategories] = useState([]);
+	const [isCategoriesLoading, setIsCategoriesLoading] = useState(true);
 	const [availableStates, setAvailableStates] = useState(
 		TAXONOMIES.ELIGIBLE_LOCATIONS.filter(
 			(location) =>
@@ -233,31 +232,29 @@ export default function OpportunitiesPage() {
 		};
 	}, [openFilterSection, sortMenuOpen]);
 
-	// Extract unique categories from opportunities and combine with taxonomy
+	// Add a new effect to fetch all categories on component mount
 	useEffect(() => {
-		if (opportunities.length > 0) {
-			// Extract all unique categories from opportunities
-			const dynamicCategories = [
-				...new Set(
-					opportunities.flatMap((opportunity) =>
-						opportunity.categories ? opportunity.categories : []
-					)
-				),
-			];
+		async function fetchAllCategories() {
+			try {
+				setIsCategoriesLoading(true);
+				const response = await fetch('/api/categories');
+				const result = await response.json();
 
-			// Combine with taxonomy categories (avoiding duplicates)
-			const taxonomyCategories = TAXONOMIES.CATEGORIES;
-			const allCategories = [
-				...new Set([...taxonomyCategories, ...dynamicCategories]),
-			];
-
-			// Sort alphabetically for better usability
-			allCategories.sort();
-
-			// Update state with combined list
-			setAvailableCategories(allCategories);
+				if (result.success) {
+					setAvailableCategories(result.data);
+					console.log('Loaded all available categories:', result.data.length);
+				} else {
+					console.error('Error fetching categories:', result.error);
+				}
+			} catch (err) {
+				console.error('Failed to fetch categories:', err);
+			} finally {
+				setIsCategoriesLoading(false);
+			}
 		}
-	}, [opportunities]);
+
+		fetchAllCategories();
+	}, []); // Empty dependency array - only run once on mount
 
 	// Debounce search query
 	useEffect(() => {
@@ -763,40 +760,50 @@ export default function OpportunitiesPage() {
 								</div>
 							</div>
 
+							{/* Loading indicator for categories */}
+							{isCategoriesLoading && (
+								<div className='py-3 text-center text-sm text-gray-500'>
+									<div className='inline-block animate-spin rounded-full h-4 w-4 border-b-2 border-gray-500 mr-2'></div>
+									Loading categories...
+								</div>
+							)}
+
 							{/* All categories */}
-							<div className='max-h-60 overflow-y-auto'>
-								{filteredCategories.map((category) => {
-									const isSelected = filters.categories.includes(category);
-									const categoryColor = getCategoryColor(category);
-									return (
-										<div
-											key={category}
-											className='flex items-center py-1 cursor-pointer hover:bg-gray-50'
-											onClick={() =>
-												handleFilterSelect('categories', category)
-											}>
-											<div className='flex items-center'>
-												<input
-													type='checkbox'
-													className='mr-2'
-													checked={isSelected}
-													readOnly
-												/>
-												<span
-													className='w-3 h-3 rounded-full mr-2'
-													style={{ backgroundColor: categoryColor.color }}
-												/>
-												<span className='text-sm'>
-													{formatCategoryForDisplay(category)}
-												</span>
+							{!isCategoriesLoading && (
+								<div className='max-h-60 overflow-y-auto'>
+									{filteredCategories.map((category) => {
+										const isSelected = filters.categories.includes(category);
+										const categoryColor = getCategoryColor(category);
+										return (
+											<div
+												key={category}
+												className='flex items-center py-1 cursor-pointer hover:bg-gray-50'
+												onClick={() =>
+													handleFilterSelect('categories', category)
+												}>
+												<div className='flex items-center'>
+													<input
+														type='checkbox'
+														className='mr-2'
+														checked={isSelected}
+														readOnly
+													/>
+													<span
+														className='w-3 h-3 rounded-full mr-2'
+														style={{ backgroundColor: categoryColor.color }}
+													/>
+													<span className='text-sm'>
+														{formatCategoryForDisplay(category)}
+													</span>
+												</div>
 											</div>
-										</div>
-									);
-								})}
-							</div>
+										);
+									})}
+								</div>
+							)}
 
 							{/* No results */}
-							{filteredCategories.length === 0 && (
+							{!isCategoriesLoading && filteredCategories.length === 0 && (
 								<div className='py-3 text-center text-sm text-gray-500'>
 									No categories found
 								</div>
