@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useCallback } from 'react';
 import {
 	Card,
 	CardHeader,
@@ -9,6 +9,7 @@ import { Button } from '@/app/components/ui/button';
 import { DollarSign, Calendar, Map, Star } from 'lucide-react';
 import { calculateDaysLeft, determineStatus } from '@/app/lib/supabase';
 import { useTrackedOpportunities } from '@/app/hooks/useTrackedOpportunities';
+import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 
 // Status indicators with colors for badges
 const statusIndicator = {
@@ -141,8 +142,13 @@ const newBadgeColors = {
 };
 
 const OpportunityCard = ({ opportunity }) => {
+	// Use Next.js router and search params
+	const router = useRouter();
+	const pathname = usePathname();
+	const searchParams = useSearchParams();
+
 	// Use our custom hook for tracking opportunities
-	const { isTracked, toggleTracked } = useTrackedOpportunities();
+	const { isTracked, toggleTracked, trackedCount } = useTrackedOpportunities();
 
 	// Check if this opportunity is being tracked
 	const opportunityIsTracked = isTracked(opportunity.id);
@@ -219,6 +225,47 @@ const OpportunityCard = ({ opportunity }) => {
 	// Extract categories - for now, we'll use tags as categories if categories aren't available
 	const categories =
 		opportunity.categories || (tags.length > 0 ? [tags[0]] : ['Other']);
+
+	// Function to handle tracking and redirect to My Opportunities if it's their first track
+	const handleTrackToggle = useCallback(
+		(e) => {
+			e.preventDefault(); // Prevent link navigation
+
+			// Get current tracked status before toggle
+			const wasTracked = isTracked(opportunity.id);
+
+			// Toggle the tracked status
+			toggleTracked(opportunity.id);
+
+			// If this was the first opportunity being tracked, and we're on the main opportunities page
+			// automatically filter to "My Opportunities"
+			if (
+				!wasTracked &&
+				trackedCount === 0 &&
+				pathname === '/funding/opportunities'
+			) {
+				// Small delay to ensure state has updated
+				setTimeout(() => {
+					// Create new URL params
+					const params = new URLSearchParams(searchParams);
+					params.set('tracked', 'true');
+
+					// Navigate to the same page but with tracked=true parameter
+					// This will trigger a page refresh with the tracked filter applied
+					router.push(`${pathname}?${params.toString()}`);
+				}, 200); // Small delay to ensure state has settled
+			}
+		},
+		[
+			isTracked,
+			toggleTracked,
+			opportunity.id,
+			trackedCount,
+			router,
+			pathname,
+			searchParams,
+		]
+	);
 
 	return (
 		<Card className='overflow-hidden hover:shadow-md transition-shadow duration-200 flex flex-col h-full'>
@@ -341,10 +388,7 @@ const OpportunityCard = ({ opportunity }) => {
 									? 'border-slate-200 text-amber-700 hover:bg-amber-50 flex-1'
 									: 'border-slate-200 text-slate-700 hover:bg-slate-50 flex-1'
 							}
-							onClick={(e) => {
-								e.preventDefault(); // Prevent link navigation
-								toggleTracked(opportunity.id);
-							}}
+							onClick={handleTrackToggle}
 							title={
 								opportunityIsTracked
 									? 'Remove from tracked opportunities'

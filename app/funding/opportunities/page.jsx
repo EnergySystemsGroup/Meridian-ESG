@@ -35,6 +35,7 @@ import TAXONOMIES from '@/app/lib/constants/taxonomies';
 import OpportunityCard from '@/app/components/opportunities/OpportunityCard';
 import { classNames } from '@/app/lib/utils';
 import { useTrackedOpportunities } from '@/app/hooks/useTrackedOpportunities';
+import { useSearchParams } from 'next/navigation';
 
 // Helper function to get a consistent color for a category
 const getCategoryColor = (categoryName) => {
@@ -171,8 +172,27 @@ export default function OpportunitiesPage() {
 	const sortDropdownRef = useRef(null);
 
 	// Use our custom hook for tracking opportunities
-	const { getTrackedIds, trackedCount, isInitialized } =
-		useTrackedOpportunities();
+	const {
+		trackedOpportunityIds,
+		trackedCount,
+		isInitialized,
+		isTracked,
+		toggleTracked,
+	} = useTrackedOpportunities();
+
+	const searchParams = useSearchParams();
+
+	// Initialize filters from URL params on first load
+	useEffect(() => {
+		if (searchParams) {
+			const tracked = searchParams.get('tracked') === 'true';
+
+			// Only update if needed to avoid unnecessary re-renders
+			if (tracked && !filters.tracked) {
+				setFilters((prev) => ({ ...prev, tracked }));
+			}
+		}
+	}, [searchParams]); // eslint-disable-line react-hooks/exhaustive-deps
 
 	// Add click outside listener to close dropdown
 	useEffect(() => {
@@ -257,10 +277,24 @@ export default function OpportunitiesPage() {
 		};
 	}, [searchQuery]); // Only re-run the effect if searchQuery changes
 
+	// Log whenever filters change
+	useEffect(() => {
+		console.log('[Debug Tracking] Filters state changed:', filters);
+	}, [filters]);
+
+	// Log when isInitialized changes
+	useEffect(() => {
+		console.log('[Debug Tracking] isInitialized state changed:', isInitialized);
+	}, [isInitialized]);
+
 	useEffect(() => {
 		async function fetchOpportunities() {
 			try {
 				setLoading(true);
+
+				console.log('[Debug Tracking] Fetching opportunities...');
+				console.log('[Debug Tracking] isInitialized:', isInitialized);
+				console.log('[Debug Tracking] Current filters:', filters);
 
 				// Build query string from filters
 				const queryParams = new URLSearchParams();
@@ -304,15 +338,26 @@ export default function OpportunitiesPage() {
 
 				// Add tracked IDs filter if tracked filter is on
 				if (filters.tracked && isInitialized) {
-					const trackedIds = getTrackedIds();
-					if (trackedIds.length > 0) {
-						queryParams.append('trackedIds', trackedIds.join(','));
+					console.log(
+						'[Debug Tracking] Tracked filter ON. isInitialized:',
+						isInitialized,
+						'Tracked IDs:',
+						trackedOpportunityIds
+					);
+					console.log(
+						'[Debug Tracking] Appending trackedIds to queryParams:',
+						trackedOpportunityIds.join(',')
+					);
+					if (trackedOpportunityIds.length > 0) {
+						queryParams.append('trackedIds', trackedOpportunityIds.join(','));
 					}
 				}
 
-				// Debug: Log the API URL and filters
-				console.log('Current filters:', filters);
-				console.log('API URL:', `/api/funding?${queryParams.toString()}`);
+				// console.log('Current filters:', filters); // Replaced by more specific logs
+				console.log(
+					'[Debug Tracking] Final API URL:',
+					`/api/funding?${queryParams.toString()}`
+				);
 
 				// Fetch data from our API
 				const response = await fetch(`/api/funding?${queryParams.toString()}`);
@@ -323,20 +368,30 @@ export default function OpportunitiesPage() {
 				}
 
 				// Log API response for debugging
-				console.log('API response:', result);
+				console.log('[Debug Tracking] API Response:', result);
 
 				// If trackedIds is used but no opportunities match (empty array),
 				// we handle this edge case by showing no results
 				setOpportunities(result.data);
 				setTotalCount(result.total_count || 0);
+				console.log(
+					'[Debug Tracking] State after API call: Opportunities Count =',
+					result.data?.length,
+					'Total Count =',
+					result.total_count || 0
+				);
 
 				// Show a message if tracked is enabled but no tracked opportunities exist
-				if (filters.tracked && getTrackedIds().length === 0) {
+				if (filters.tracked && trackedOpportunityIds.length === 0) {
+					console.log(
+						'[Debug Tracking] Tracked filter ON, but getTrackedIds() is empty. Setting results to empty.'
+					);
 					setOpportunities([]);
 					setTotalCount(0);
 				}
 			} catch (err) {
 				console.error('Error fetching opportunities:', err);
+				console.error('[Debug Tracking] Error in fetchOpportunities:', err);
 				setError(err.message);
 			} finally {
 				setLoading(false);
@@ -350,7 +405,7 @@ export default function OpportunitiesPage() {
 		sortDirection,
 		debouncedSearchQuery,
 		isInitialized,
-		getTrackedIds,
+		trackedOpportunityIds,
 	]);
 
 	// Toggle filter section
