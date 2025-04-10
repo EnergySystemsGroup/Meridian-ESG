@@ -18,10 +18,10 @@ export async function GET(request, context) {
 		// Get URL parameters
 		const { searchParams } = new URL(request.url);
 
-		// Build filters from query parameters
+		// Build filters from query parameters with extra safeguards
 		const filters = {
-			status: searchParams.get('status'),
-			source_type: searchParams.get('source_type'),
+			status: searchParams.get('status') || 'all',
+			source_type: searchParams.get('source_type') || 'all',
 			min_amount: searchParams.get('min_amount'),
 			max_amount: searchParams.get('max_amount'),
 			include_national: searchParams.get('include_national') !== 'false', // Default to true
@@ -45,146 +45,178 @@ export async function GET(request, context) {
 		const from = (filters.page - 1) * filters.pageSize;
 		const to = from + filters.pageSize - 1;
 
-		// Log the filters for debugging
+		// Enhanced logging for debugging
 		console.log(
 			`Map API opportunities for ${stateCode} with filters:`,
-			filters
+			JSON.stringify(filters, null, 2)
 		);
 
-		// Fetch opportunities for the specified state - first get count for pagination
-		let countQuery = supabase
-			.from('funding_opportunities_with_geography')
-			.select('id', { count: 'exact', head: true });
+		try {
+			// --- Step 1: Fetch ALL matching IDs to get the total count ---
+			let idQuery = supabase
+				.from('funding_opportunities_with_geography')
+				.select('id'); // Select only ID
 
-		// Apply filters
-		// State filter
-		countQuery = countQuery.or(
-			`is_national.eq.true,eligible_states.cs.{${stateCode}}`
-		);
-
-		// Additional filters
-		if (filters.status && filters.status !== 'all') {
-			countQuery = countQuery.eq('status', filters.status);
-		}
-
-		if (filters.source_type && filters.source_type !== 'all') {
-			countQuery = countQuery.eq('source_type', filters.source_type);
-		}
-
-		if (filters.min_amount) {
-			countQuery = countQuery.gte('minimum_award', filters.min_amount);
-		}
-
-		if (filters.max_amount) {
-			countQuery = countQuery.lte('maximum_award', filters.max_amount);
-		}
-
-		// Apply deadline range filters if provided
-		if (filters.deadline_start) {
-			countQuery = countQuery.gte('close_date', filters.deadline_start);
-		}
-
-		if (filters.deadline_end) {
-			countQuery = countQuery.lte('close_date', filters.deadline_end);
-		}
-
-		// Exclude national opportunities if specified
-		if (!filters.include_national) {
-			countQuery = countQuery.eq('is_national', false);
-		}
-
-		// Execute count query
-		const { count, error: countError } = await countQuery;
-
-		if (countError) {
-			console.error(
-				`Error counting opportunities for state ${stateCode}:`,
-				countError
+			// Apply state filter
+			idQuery = idQuery.or(
+				`is_national.eq.true,eligible_states.cs.{${stateCode}}`
 			);
-			return NextResponse.json(
-				{ success: false, error: countError.message },
-				{ status: 500 }
-			);
-		}
 
-		// Now fetch the actual opportunities with pagination
-		let query = supabase
-			.from('funding_opportunities_with_geography')
-			.select('*');
+			// Apply additional filters (same as before, but with safer handling)
+			if (filters.status && filters.status !== 'all') {
+				idQuery = idQuery.eq('status', filters.status);
+			}
 
-		// Apply state filter
-		query = query.or(`is_national.eq.true,eligible_states.cs.{${stateCode}}`);
+			// Add extra safeguards around source_type filtering
+			if (filters.source_type && filters.source_type !== 'all') {
+				console.log(`Applying source_type filter: ${filters.source_type}`);
+				// Try with ilike for case-insensitive matching which could be more forgiving
+				idQuery = idQuery.ilike('source_type_display', filters.source_type);
+			}
 
-		// Apply additional filters
-		if (filters.status && filters.status !== 'all') {
-			query = query.eq('status', filters.status);
-		}
+			if (filters.min_amount) {
+				idQuery = idQuery.gte('minimum_award', filters.min_amount);
+			}
 
-		if (filters.source_type && filters.source_type !== 'all') {
-			query = query.eq('source_type', filters.source_type);
-		}
+			if (filters.max_amount) {
+				idQuery = idQuery.lte('maximum_award', filters.max_amount);
+			}
 
-		if (filters.min_amount) {
-			query = query.gte('minimum_award', filters.min_amount);
-		}
+			if (filters.deadline_start) {
+				idQuery = idQuery.gte('close_date', filters.deadline_start);
+			}
 
-		if (filters.max_amount) {
-			query = query.lte('maximum_award', filters.max_amount);
-		}
+			if (filters.deadline_end) {
+				idQuery = idQuery.lte('close_date', filters.deadline_end);
+			}
 
-		// Apply deadline range filters if provided
-		if (filters.deadline_start) {
-			query = query.gte('close_date', filters.deadline_start);
-		}
+			if (!filters.include_national) {
+				idQuery = idQuery.eq('is_national', false);
+			}
 
-		if (filters.deadline_end) {
-			query = query.lte('close_date', filters.deadline_end);
-		}
+			// Execute ID query
+			const { data: idData, error: idError } = await idQuery;
 
-		// Exclude national opportunities if specified
-		if (!filters.include_national) {
-			query = query.eq('is_national', false);
-		}
+			if (idError) {
+				console.error(
+					`Error fetching opportunity IDs for count, state ${stateCode}:`,
+					idError
+				);
+				// Return specific error for count failure
+				return NextResponse.json(
+					{
+						success: false,
+						error: `Failed to count opportunities: ${idError.message}`,
+						details: { filters },
+					},
+					{ status: 500 }
+				);
+			}
 
-		// Order by close date
-		query = query.order('close_date', { ascending: true });
-
-		// Apply pagination
-		query = query.range(from, to);
-
-		const { data, error } = await query;
-
-		if (error) {
-			console.error(
-				`Error fetching opportunities for state ${stateCode}:`,
-				error
-			);
-			return NextResponse.json(
-				{ success: false, error: error.message },
-				{ status: 500 }
-			);
-		}
-
-		if (!data || data.length === 0) {
+			const totalCount = idData ? idData.length : 0;
 			console.log(
-				`No opportunities found for state ${stateCode} with the given filters`
+				`Found ${totalCount} matching opportunities for the given filters`
+			);
+
+			// --- Step 2: Fetch the paginated data ---
+			let dataQuery = supabase
+				.from('funding_opportunities_with_geography')
+				.select('*'); // Select all columns for the actual data
+
+			// Apply state filter
+			dataQuery = dataQuery.or(
+				`is_national.eq.true,eligible_states.cs.{${stateCode}}`
+			);
+
+			// Apply additional filters (same as for idQuery, with safe handling)
+			if (filters.status && filters.status !== 'all') {
+				dataQuery = dataQuery.eq('status', filters.status);
+			}
+
+			// Add extra safeguards around source_type filtering
+			if (filters.source_type && filters.source_type !== 'all') {
+				console.log(
+					`Applying source_type filter to data query: ${filters.source_type}`
+				);
+				// Try with ilike for case-insensitive matching
+				dataQuery = dataQuery.ilike('source_type_display', filters.source_type);
+			}
+
+			if (filters.min_amount) {
+				dataQuery = dataQuery.gte('minimum_award', filters.min_amount);
+			}
+
+			if (filters.max_amount) {
+				dataQuery = dataQuery.lte('maximum_award', filters.max_amount);
+			}
+
+			if (filters.deadline_start) {
+				dataQuery = dataQuery.gte('close_date', filters.deadline_start);
+			}
+
+			if (filters.deadline_end) {
+				dataQuery = dataQuery.lte('close_date', filters.deadline_end);
+			}
+
+			if (!filters.include_national) {
+				dataQuery = dataQuery.eq('is_national', false);
+			}
+
+			// Order by close date
+			dataQuery = dataQuery.order('close_date', { ascending: true });
+
+			// Apply pagination
+			dataQuery = dataQuery.range(from, to);
+
+			// Execute data query
+			const { data, error } = await dataQuery;
+
+			if (error) {
+				console.error(
+					`Error fetching opportunities data for state ${stateCode}:`,
+					error
+				);
+				return NextResponse.json(
+					{
+						success: false,
+						error: error.message,
+						details: { filters },
+					},
+					{ status: 500 }
+				);
+			}
+
+			if (!data || data.length === 0) {
+				console.log(
+					`No opportunities found for state ${stateCode} with the given filters`
+				);
+			}
+
+			return NextResponse.json({
+				success: true,
+				data: {
+					opportunities: data || [],
+					total: totalCount, // Use the count derived from idData.length
+					page: filters.page,
+					pageSize: filters.pageSize,
+					totalPages: totalCount ? Math.ceil(totalCount / filters.pageSize) : 0,
+				},
+			});
+		} catch (innerError) {
+			console.error('Error in query execution:', innerError);
+			return NextResponse.json(
+				{
+					success: false,
+					error: `Query execution error: ${innerError.message}`,
+					details: { stateCode, filters },
+				},
+				{ status: 500 }
 			);
 		}
-
-		return NextResponse.json({
-			success: true,
-			data: {
-				opportunities: data || [],
-				total: count || 0,
-				page: filters.page,
-				pageSize: filters.pageSize,
-				totalPages: count ? Math.ceil(count / filters.pageSize) : 0,
-			},
-		});
-	} catch (error) {
-		console.error('API Error:', error);
+	} catch (outerError) {
+		console.error('API Error:', outerError);
 		return NextResponse.json(
-			{ success: false, error: error.message },
+			{ success: false, error: `API processing error: ${outerError.message}` },
 			{ status: 500 }
 		);
 	}
