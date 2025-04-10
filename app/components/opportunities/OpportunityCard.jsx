@@ -1,4 +1,4 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useRef, useLayoutEffect, useEffect } from 'react';
 import {
 	Card,
 	CardHeader,
@@ -226,22 +226,21 @@ const OpportunityCard = ({ opportunity }) => {
 	const categories =
 		opportunity.categories || (tags.length > 0 ? [tags[0]] : ['Other']);
 
-	// Function to handle tracking and redirect to My Opportunities if it's their first track
+	// Function to handle tracking
 	const handleTrackToggle = useCallback(
 		(e) => {
 			e.preventDefault(); // Prevent link navigation
-
-			// Get current tracked status before toggle
-			const wasTracked = isTracked(opportunity.id);
+			e.stopPropagation(); // Prevent event bubbling up to parent elements
+			e.nativeEvent.stopImmediatePropagation(); // Stop all other event handlers
 
 			// Toggle the tracked status
 			toggleTracked(opportunity.id);
 		},
-		[isTracked, toggleTracked, opportunity.id]
+		[toggleTracked, opportunity.id]
 	);
 
 	return (
-		<Card className='overflow-hidden hover:shadow-md transition-shadow duration-200 flex flex-col h-full'>
+		<Card className='overflow-hidden hover:shadow-md transition-shadow duration-200 flex flex-col h-full relative'>
 			{/* Thin blue bar at the top */}
 			<div className='h-1.5 w-full bg-blue-600 rounded-t-lg' />
 
@@ -362,6 +361,9 @@ const OpportunityCard = ({ opportunity }) => {
 									: 'border-slate-200 text-slate-700 hover:bg-slate-50 flex-1'
 							}
 							onClick={handleTrackToggle}
+							onMouseDown={(e) => e.stopPropagation()}
+							onTouchStart={(e) => e.stopPropagation()}
+							data-track-button='true'
 							title={
 								opportunityIsTracked
 									? 'Remove from tracked opportunities'

@@ -401,14 +401,7 @@ export default function OpportunitiesPage() {
 		}
 
 		fetchOpportunities();
-	}, [
-		filters,
-		sortOption,
-		sortDirection,
-		debouncedSearchQuery,
-		isInitialized,
-		trackedOpportunityIds,
-	]);
+	}, [filters, sortOption, sortDirection, debouncedSearchQuery, isInitialized]);
 
 	// Toggle filter section
 	const toggleFilterSection = (section) => {
