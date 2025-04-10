@@ -126,20 +126,30 @@ const formatCategoryForDisplay = (category) => {
 
 export default function OpportunitiesPage() {
 	const [opportunities, setOpportunities] = useState([]);
-	const [loading, setLoading] = useState(true);
+	const [loading, setLoading] = useState(false); // Internal fetch loading state
+	const [isPageLoading, setIsPageLoading] = useState(true); // Overall page load state
 	const [error, setError] = useState(null);
 	const [totalCount, setTotalCount] = useState(0);
 	const [searchQuery, setSearchQuery] = useState('');
 	const [debouncedSearchQuery, setDebouncedSearchQuery] = useState(searchQuery);
 	const [openFilterSection, setOpenFilterSection] = useState(null);
-	const [filters, setFilters] = useState({
+	const searchParams = useSearchParams();
+	const router = useRouter();
+	const pathname = usePathname();
+
+	// Initialize filter state directly from URL params
+	// This avoids a useEffect and potential extra render
+	const initialFilters = {
 		status: null,
 		categories: [],
 		states: [],
 		page: 1,
 		page_size: 9,
-		tracked: false,
-	});
+		tracked: searchParams.get('tracked') === 'true',
+	};
+
+	const [filters, setFilters] = useState(initialFilters);
+
 	const [availableTags, setAvailableTags] = useState([]);
 	const [availableCategories, setAvailableCategories] = useState(
 		TAXONOMIES.CATEGORIES
@@ -179,22 +189,6 @@ export default function OpportunitiesPage() {
 		isTracked,
 		toggleTracked,
 	} = useTrackedOpportunities();
-
-	const searchParams = useSearchParams();
-	const router = useRouter();
-	const pathname = usePathname();
-
-	// Initialize filters from URL params on first load
-	useEffect(() => {
-		if (searchParams) {
-			const tracked = searchParams.get('tracked') === 'true';
-
-			// Only update if needed to avoid unnecessary re-renders
-			if (tracked && !filters.tracked) {
-				setFilters((prev) => ({ ...prev, tracked }));
-			}
-		}
-	}, [searchParams]); // eslint-disable-line react-hooks/exhaustive-deps
 
 	// Add click outside listener to close dropdown
 	useEffect(() => {
@@ -291,8 +285,16 @@ export default function OpportunitiesPage() {
 
 	useEffect(() => {
 		async function fetchOpportunities() {
+			// Wait until context is initialized before fetching
+			if (!isInitialized) {
+				console.log('[Debug Init] Fetch skipped: Context not initialized.');
+				// Don't set isPageLoading false yet, wait for initialization
+				return;
+			}
+
 			try {
-				setLoading(true);
+				setLoading(true); // Indicate internal fetch is running
+				// Don't set isPageLoading here - it's already true initially
 
 				console.log('[Debug Tracking] Fetching opportunities...');
 				console.log('[Debug Tracking] isInitialized:', isInitialized);
@@ -396,7 +398,8 @@ export default function OpportunitiesPage() {
 				console.error('[Debug Tracking] Error in fetchOpportunities:', err);
 				setError(err.message);
 			} finally {
-				setLoading(false);
+				setLoading(false); // Internal fetch finished
+				setIsPageLoading(false); // *Now* the overall page load is complete
 			}
 		}
 
@@ -1256,7 +1259,7 @@ export default function OpportunitiesPage() {
 				</div>
 
 				{/* Loading, error, and no results states */}
-				{loading ? (
+				{isPageLoading ? (
 					<div className='flex justify-center items-center py-12'>
 						<div className='animate-spin rounded-full h-12 w-12 border-b-2 border-blue-700' />
 					</div>
