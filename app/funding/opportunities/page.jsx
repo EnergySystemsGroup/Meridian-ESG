@@ -151,6 +151,7 @@ export default function OpportunitiesPage() {
 	const [filters, setFilters] = useState(initialFilters);
 
 	const [availableTags, setAvailableTags] = useState([]);
+	const [categoriesApiResponse, setCategoriesApiResponse] = useState(null);
 	const [availableCategories, setAvailableCategories] = useState([]);
 	const [isCategoriesLoading, setIsCategoriesLoading] = useState(true);
 	const [availableStates, setAvailableStates] = useState(
@@ -188,6 +189,9 @@ export default function OpportunitiesPage() {
 		isTracked,
 		toggleTracked,
 	} = useTrackedOpportunities();
+
+	// Add new state for raw-to-normalized mapping
+	const [categoryMapping, setCategoryMapping] = useState({});
 
 	// Add click outside listener to close dropdown
 	useEffect(() => {
@@ -232,7 +236,7 @@ export default function OpportunitiesPage() {
 		};
 	}, [openFilterSection, sortMenuOpen]);
 
-	// Add a new effect to fetch all categories on component mount
+	// Update the categories loading effect to handle normalized data
 	useEffect(() => {
 		async function fetchAllCategories() {
 			try {
@@ -241,8 +245,14 @@ export default function OpportunitiesPage() {
 				const result = await response.json();
 
 				if (result.success) {
-					setAvailableCategories(result.data);
-					console.log('Loaded all available categories:', result.data.length);
+					setCategoriesApiResponse(result);
+					setAvailableCategories(result.categories);
+					setCategoryMapping(result.rawToNormalizedMap);
+					console.log(
+						'Loaded normalized categories:',
+						result.categories.length
+					);
+					console.log('Category groups:', result.categoryGroups);
 				} else {
 					console.error('Error fetching categories:', result.error);
 				}
@@ -305,7 +315,28 @@ export default function OpportunitiesPage() {
 				}
 
 				if (filters.categories.length > 0) {
-					queryParams.append('categories', filters.categories.join(','));
+					// Get all raw categories that map to any of the selected normalized categories
+					const rawCategoriesToQuery = Object.entries(categoryMapping)
+						.filter(([raw, normalized]) =>
+							filters.categories.includes(normalized)
+						)
+						.map(([raw]) => raw);
+
+					// Add these to the query
+					if (rawCategoriesToQuery.length > 0) {
+						console.log(
+							'Using raw categories for query:',
+							rawCategoriesToQuery
+						);
+						queryParams.append('categories', rawCategoriesToQuery.join(','));
+					} else {
+						// Fallback to just using the selected categories directly
+						console.log(
+							'Using normalized categories directly:',
+							filters.categories
+						);
+						queryParams.append('categories', filters.categories.join(','));
+					}
 				}
 
 				if (filters.states.length > 0) {
@@ -392,7 +423,14 @@ export default function OpportunitiesPage() {
 		}
 
 		fetchOpportunities();
-	}, [filters, sortOption, sortDirection, debouncedSearchQuery, isInitialized]);
+	}, [
+		filters,
+		sortOption,
+		sortDirection,
+		debouncedSearchQuery,
+		isInitialized,
+		categoryMapping,
+	]);
 
 	// Toggle filter section
 	const toggleFilterSection = (section) => {
@@ -693,6 +731,9 @@ export default function OpportunitiesPage() {
 
 	// Render the category filter dropdown
 	const renderCategoryFilter = () => {
+		// Get category data from API response
+		const categoryGroups = categoriesApiResponse?.categoryGroups || {};
+
 		// Filter visible categories based on search input
 		const filteredCategories = (availableCategories || []).filter((category) =>
 			category.toLowerCase().includes(categorySearchInput.toLowerCase())
@@ -732,7 +773,7 @@ export default function OpportunitiesPage() {
 
 				{openFilterSection === 'categories' && (
 					<div
-						className='absolute left-0 z-20 mt-2 origin-top-left bg-white rounded-md shadow-lg w-64 ring-1 ring-black ring-opacity-5 focus:outline-none'
+						className='absolute left-0 z-20 mt-2 origin-top-left bg-white rounded-md shadow-lg w-72 ring-1 ring-black ring-opacity-5 focus:outline-none'
 						tabIndex={-1}
 						ref={categoryDropdownRef}>
 						<div className='p-4'>
@@ -774,10 +815,13 @@ export default function OpportunitiesPage() {
 									{filteredCategories.map((category) => {
 										const isSelected = filters.categories.includes(category);
 										const categoryColor = getCategoryColor(category);
+										const count =
+											categoriesApiResponse?.categoryGroups?.[category]
+												?.count || 0;
 										return (
 											<div
 												key={category}
-												className='flex items-center py-1 cursor-pointer hover:bg-gray-50'
+												className='flex items-center justify-between py-1 cursor-pointer hover:bg-gray-50'
 												onClick={() =>
 													handleFilterSelect('categories', category)
 												}>
@@ -796,6 +840,9 @@ export default function OpportunitiesPage() {
 														{formatCategoryForDisplay(category)}
 													</span>
 												</div>
+												<span className='text-xs text-gray-500 ml-1'>
+													{count}
+												</span>
 											</div>
 										);
 									})}
