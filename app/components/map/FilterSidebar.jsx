@@ -342,19 +342,19 @@ export default function FilterSidebar({
 				</SelectContent>
 			</Select>
 
-			{/* Funding amount slider - Smaller label, takes remaining space */}
+			{/* Funding amount slider - Updated label and display format */}
 			<div className={horizontal ? 'min-w-[200px] pl-2' : ''}>
 				<div
 					className={`flex items-center ${
 						horizontal ? 'justify-between' : 'justify-between'
 					} mb-1`}>
 					{horizontal ? (
-						<label className='text-xs font-medium mr-2'>Max Amount:</label>
+						<label className='text-xs font-medium mr-2'>Award Amount:</label>
 					) : (
-						<label className='text-sm font-medium'>Max Amount</label>
+						<label className='text-sm font-medium'>Award Amount</label>
 					)}
 					<span className='text-xs text-muted-foreground'>
-						${(filters.maxAmount / 1000000).toFixed(1)}M
+						${(filters.maxAmount / 1000000).toFixed(1)}M+
 					</span>
 				</div>
 				<Slider

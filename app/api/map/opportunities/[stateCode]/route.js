@@ -91,7 +91,11 @@ export async function GET(request, context) {
 			}
 
 			if (filters.max_amount) {
-				idQuery = idQuery.lte('maximum_award', filters.max_amount);
+				// Changed to filter for opportunities with at least this minimum funding
+				// Use or() to include opportunities with null/undefined maximum_award
+				idQuery = idQuery.or(
+					`minimum_award.gte.${filters.max_amount},maximum_award.gte.${filters.max_amount},maximum_award.is.null`
+				);
 			}
 
 			if (filters.deadline_start) {
@@ -165,7 +169,11 @@ export async function GET(request, context) {
 			}
 
 			if (filters.max_amount) {
-				dataQuery = dataQuery.lte('maximum_award', filters.max_amount);
+				// Changed to filter for opportunities with at least this minimum funding
+				// Use or() to include opportunities with null/undefined maximum_award
+				dataQuery = dataQuery.or(
+					`minimum_award.gte.${filters.max_amount},maximum_award.gte.${filters.max_amount},maximum_award.is.null`
+				);
 			}
 
 			if (filters.deadline_start) {
