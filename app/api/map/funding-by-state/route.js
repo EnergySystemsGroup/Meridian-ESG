@@ -15,6 +15,12 @@ export async function GET(request) {
 			p_max_amount: searchParams.get('max_amount'),
 		};
 
+		// Handle categories as array
+		const categories = searchParams.get('categories');
+		if (categories) {
+			filters.p_categories = categories.split(',');
+		}
+
 		// Fetch aggregated funding data by state
 		const { data, error } = await supabase.rpc('get_funding_by_state', filters);
 

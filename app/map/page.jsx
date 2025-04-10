@@ -146,7 +146,7 @@ export default function Page() {
 		maxAmount: 10000000,
 		status: 'all', // all, Open, Upcoming, Closed
 		sourceType: 'all', // all, Federal, State, Local, Private
-		category: 'all', // all, Energy, Infrastructure, etc.
+		categories: [], // Now an array for multiple selection
 		showNational: true,
 		deadlineRange: {
 			start: null,
@@ -167,8 +167,8 @@ export default function Page() {
 				if (filters.sourceType !== 'all') {
 					queryParams.append('source_type', filters.sourceType);
 				}
-				if (filters.category !== 'all') {
-					queryParams.append('category', filters.category);
+				if (filters.categories?.length > 0) {
+					queryParams.append('categories', filters.categories.join(','));
 				}
 				if (filters.minAmount > 0) {
 					queryParams.append('min_amount', filters.minAmount);
@@ -245,8 +245,8 @@ export default function Page() {
 				if (filters.sourceType !== 'all') {
 					queryParams.append('source_type', filters.sourceType);
 				}
-				if (filters.category !== 'all') {
-					queryParams.append('category', filters.category);
+				if (filters.categories?.length > 0) {
+					queryParams.append('categories', filters.categories.join(','));
 				}
 				if (filters.minAmount > 0) {
 					queryParams.append('min_amount', filters.minAmount);
@@ -368,7 +368,7 @@ export default function Page() {
 			maxAmount: 10000000,
 			status: 'all',
 			sourceType: 'all',
-			category: 'all',
+			categories: [],
 			showNational: true,
 			deadlineRange: {
 				start: null,

@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
 	Card,
 	CardContent,
@@ -8,7 +8,7 @@ import {
 	CardTitle,
 } from '@/app/components/ui/card';
 import { Button } from '@/app/components/ui/button';
-import { Filter, CalendarIcon } from 'lucide-react';
+import { Filter, CalendarIcon, ChevronDown, Search, X } from 'lucide-react';
 import {
 	Select,
 	SelectContent,
@@ -26,6 +26,69 @@ import {
 	PopoverTrigger,
 } from '@/app/components/ui/popover';
 import { Calendar as CalendarComponent } from '@/app/components/ui/calendar';
+import TAXONOMIES from '@/app/lib/constants/taxonomies';
+import { Input } from '@/app/components/ui/input';
+
+// Category color generation function (same as in opportunity explorer)
+const getCategoryColor = (categoryName) => {
+	// Define a color map for the standard categories from taxonomies
+	const categoryColors = {
+		// Energy categories with orange-yellow hues
+		'Energy Efficiency': { color: '#F57C00', bgColor: '#FFF3E0' },
+		'Renewable Energy': { color: '#FF9800', bgColor: '#FFF8E1' },
+
+		// Environmental/Water with blue-green hues
+		'Water Conservation': { color: '#0288D1', bgColor: '#E1F5FE' },
+		Environmental: { color: '#00796B', bgColor: '#E0F2F1' },
+		Sustainability: { color: '#43A047', bgColor: '#E8F5E9' },
+
+		// Infrastructure/Facilities with gray-blue hues
+		Infrastructure: { color: '#546E7A', bgColor: '#ECEFF1' },
+		Transportation: { color: '#455A64', bgColor: '#E0E6EA' },
+		'Facility Improvements': { color: '#607D8B', bgColor: '#F5F7F8' },
+
+		// Education/Development with purple hues
+		Education: { color: '#7B1FA2', bgColor: '#F3E5F5' },
+		'Research & Development': { color: '#9C27B0', bgColor: '#F5E9F7' },
+		'Economic Development': { color: '#6A1B9A', bgColor: '#EFE5F7' },
+
+		// Community/Health with red-pink hues
+		'Community Development': { color: '#C62828', bgColor: '#FFEBEE' },
+		'Health & Safety': { color: '#D32F2F', bgColor: '#FFEBEE' },
+		'Disaster Recovery': { color: '#E53935', bgColor: '#FFEBEE' },
+
+		// Planning with neutral hues
+		'Planning & Assessment': { color: '#5D4037', bgColor: '#EFEBE9' },
+	};
+
+	// Check if it's one of our standard categories
+	if (categoryColors[categoryName]) {
+		return categoryColors[categoryName];
+	}
+
+	// For non-standard categories, generate a color using the hash function
+	let hash = 0;
+	for (let i = 0; i < categoryName.length; i++) {
+		hash = categoryName.charCodeAt(i) + ((hash << 5) - hash);
+	}
+
+	// Multiply by a prime number to better distribute the hue values
+	const hue = (hash * 13) % 360;
+
+	return {
+		color: `hsl(${hue}, 65%, 45%)`,
+		bgColor: `hsl(${hue}, 65%, 95%)`,
+	};
+};
+
+// Format category for display - handles "Other: Description" format
+const formatCategoryForDisplay = (category) => {
+	// If the category starts with "Other: ", extract just the description part
+	if (category && category.startsWith('Other: ')) {
+		return category.substring(7); // Remove "Other: " prefix
+	}
+	return category;
+};
 
 export default function FilterSidebar({
 	filters,
@@ -33,21 +96,207 @@ export default function FilterSidebar({
 	onResetFilters,
 	horizontal = false,
 }) {
-	// Common funding categories
-	const categories = [
-		'Energy',
-		'Infrastructure',
-		'Climate',
-		'Transportation',
-		'Water',
-		'Housing',
-		'Healthcare',
-		'Education',
-		'Agriculture',
-		'Research',
-		'Economic Development',
-		'Disaster Relief',
-	];
+	// Common funding categories from TAXONOMIES
+	const categories = TAXONOMIES.CATEGORIES;
+
+	// State for category dropdown and search
+	const [categoryDropdownOpen, setCategoryDropdownOpen] = useState(false);
+	const [categorySearchInput, setCategorySearchInput] = useState('');
+	const categoryDropdownRef = useRef(null);
+
+	// Filtered categories based on search input
+	const filteredCategories = categorySearchInput
+		? categories.filter((category) =>
+				category.toLowerCase().includes(categorySearchInput.toLowerCase())
+		  )
+		: categories;
+
+	// Close dropdown when clicking outside
+	useEffect(() => {
+		function handleClickOutside(event) {
+			if (
+				categoryDropdownRef.current &&
+				!categoryDropdownRef.current.contains(event.target)
+			) {
+				setCategoryDropdownOpen(false);
+			}
+		}
+
+		document.addEventListener('mousedown', handleClickOutside);
+		return () => {
+			document.removeEventListener('mousedown', handleClickOutside);
+		};
+	}, []);
+
+	// Handle category selection
+	const handleCategorySelect = (category) => {
+		let newCategories = [...(filters.categories || [])];
+
+		if (newCategories.includes(category)) {
+			newCategories = newCategories.filter((c) => c !== category);
+		} else {
+			newCategories.push(category);
+		}
+
+		onFilterChange('categories', newCategories);
+	};
+
+	// Clear all selected categories
+	const clearCategories = () => {
+		onFilterChange('categories', []);
+	};
+
+	// Categories filter component
+	const renderCategoryFilter = () => {
+		// Count selected categories for display
+		const selectedCount = filters.categories?.length || 0;
+		const displayText =
+			selectedCount > 0 ? `Categories (${selectedCount})` : 'Categories';
+
+		return (
+			<div className='relative inline-block text-left'>
+				<div>
+					<Button
+						variant='outline'
+						onClick={() => setCategoryDropdownOpen(!categoryDropdownOpen)}
+						className={cn(
+							'flex items-center justify-between gap-1 px-4 py-2 text-sm',
+							horizontal ? 'h-8 text-xs' : '',
+							categoryDropdownOpen
+								? 'bg-blue-50 text-blue-800 border-blue-200'
+								: 'border-gray-300',
+							categoryDropdownOpen && selectedCount > 0 ? 'bg-blue-100' : ''
+						)}>
+						{displayText}
+						<ChevronDown
+							size={16}
+							className={cn(
+								'transition-transform',
+								categoryDropdownOpen ? 'rotate-180' : ''
+							)}
+						/>
+					</Button>
+				</div>
+
+				{categoryDropdownOpen && (
+					<div
+						className='absolute left-0 z-20 mt-2 origin-top-left bg-white rounded-md shadow-lg w-72 ring-1 ring-black ring-opacity-5 focus:outline-none'
+						tabIndex={-1}
+						ref={categoryDropdownRef}>
+						<div className='p-4'>
+							{/* Search input */}
+							<div className='mb-4'>
+								<div className='relative'>
+									<Search
+										className='absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400'
+										size={16}
+									/>
+									<input
+										type='text'
+										className='w-full pl-9 pr-4 py-2 border border-gray-300 rounded-md text-sm'
+										placeholder='Search categories...'
+										value={categorySearchInput}
+										onChange={(e) => setCategorySearchInput(e.target.value)}
+									/>
+									{categorySearchInput && (
+										<X
+											className='absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 cursor-pointer'
+											size={16}
+											onClick={() => setCategorySearchInput('')}
+										/>
+									)}
+								</div>
+							</div>
+
+							{/* Categories list */}
+							<div className='max-h-60 overflow-y-auto'>
+								{filteredCategories.map((category) => {
+									const isSelected = filters.categories?.includes(category);
+									const categoryColor = getCategoryColor(category);
+									return (
+										<div
+											key={category}
+											className='flex items-center justify-between py-1 cursor-pointer hover:bg-gray-50'
+											onClick={() => handleCategorySelect(category)}>
+											<div className='flex items-center'>
+												<input
+													type='checkbox'
+													className='mr-2'
+													checked={isSelected}
+													readOnly
+												/>
+												<span
+													className='w-3 h-3 rounded-full mr-2'
+													style={{ backgroundColor: categoryColor.color }}
+												/>
+												<span className='text-sm'>
+													{formatCategoryForDisplay(category)}
+												</span>
+											</div>
+										</div>
+									);
+								})}
+							</div>
+
+							{/* No results */}
+							{filteredCategories.length === 0 && (
+								<div className='py-3 text-center text-sm text-gray-500'>
+									No categories found
+								</div>
+							)}
+
+							{/* Clear selections button if any selected */}
+							{selectedCount > 0 && (
+								<div className='mt-4 pt-3 border-t border-gray-200 flex justify-end'>
+									<Button
+										variant='link'
+										size='sm'
+										className='text-blue-600 hover:text-blue-800'
+										onClick={clearCategories}>
+										Clear selections
+									</Button>
+								</div>
+							)}
+						</div>
+					</div>
+				)}
+			</div>
+		);
+	};
+
+	// Render selected category pills
+	const renderSelectedCategories = () => {
+		if (!filters.categories?.length) return null;
+
+		return (
+			<div className='flex flex-wrap gap-1 mt-2'>
+				{filters.categories.map((category) => {
+					const categoryColor = getCategoryColor(category);
+					return (
+						<span
+							key={category}
+							className='flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium'
+							style={{
+								backgroundColor: categoryColor.bgColor,
+								color: categoryColor.color,
+							}}>
+							{formatCategoryForDisplay(category)}
+							<X
+								size={14}
+								className='cursor-pointer'
+								onClick={() => {
+									const updatedCategories = filters.categories.filter(
+										(c) => c !== category
+									);
+									onFilterChange('categories', updatedCategories);
+								}}
+							/>
+						</span>
+					);
+				})}
+			</div>
+		);
+	};
 
 	// If horizontal is true, don't render the card container
 	const filterContent = (
@@ -70,29 +319,8 @@ export default function FilterSidebar({
 				</SelectContent>
 			</Select>
 
-			{/* Category Filter - Smaller trigger, no label */}
-			{horizontal ? null : (
-				<label className='text-sm font-medium mb-1 block'>Category</label>
-			)}
-			<Select
-				value={filters.category || 'all'}
-				onValueChange={(value) => onFilterChange('category', value)}>
-				<SelectTrigger
-					className={cn(
-						'h-8 text-xs',
-						horizontal ? 'w-[200px] flex-shrink-0' : ''
-					)}>
-					<SelectValue placeholder='Category' />
-				</SelectTrigger>
-				<SelectContent>
-					<SelectItem value='all'>All Categories</SelectItem>
-					{categories.map((category) => (
-						<SelectItem key={category} value={category}>
-							{category}
-						</SelectItem>
-					))}
-				</SelectContent>
-			</Select>
+			{/* Category Filter - Using the new component */}
+			{renderCategoryFilter()}
 
 			{/* Source Type filter - Smaller trigger, no label */}
 			{horizontal ? null : (
@@ -138,7 +366,7 @@ export default function FilterSidebar({
 				/>
 			</div>
 
-			{/* Include National - Commented out */}
+			{/* Include National - Commented out intentionally */}
 			{/* <div
 				className={
 					horizontal
@@ -165,7 +393,7 @@ export default function FilterSidebar({
 		</div>
 	);
 
-	// If horizontal, return just the content
+	// If horizontal, return just the content without the selected category pills
 	if (horizontal) {
 		return filterContent;
 	}
@@ -179,7 +407,11 @@ export default function FilterSidebar({
 					Filters
 				</CardTitle>
 			</CardHeader>
-			<CardContent className='p-4 pt-2'>{filterContent}</CardContent>
+			<CardContent className='p-4 pt-2'>
+				{filterContent}
+				{/* Still include the category pills in the non-horizontal (sidebar) view */}
+				{renderSelectedCategories()}
+			</CardContent>
 			<div className='px-6 pb-4'>
 				<Button variant='outline' onClick={onResetFilters} className='w-full'>
 					Reset All Filters

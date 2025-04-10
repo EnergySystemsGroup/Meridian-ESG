@@ -32,6 +32,12 @@ export async function GET(request, context) {
 			pageSize: parseInt(searchParams.get('pageSize') || '10', 10),
 		};
 
+		// Handle categories as array
+		const categories = searchParams.get('categories');
+		if (categories) {
+			filters.categories = categories.split(',');
+		}
+
 		// Ensure page and pageSize are valid
 		if (isNaN(filters.page) || filters.page < 1) filters.page = 1;
 		if (
@@ -72,6 +78,12 @@ export async function GET(request, context) {
 				console.log(`Applying source_type filter: ${filters.source_type}`);
 				// Try with ilike for case-insensitive matching which could be more forgiving
 				idQuery = idQuery.ilike('source_type_display', filters.source_type);
+			}
+
+			// Apply categories filter if present
+			if (filters.categories && filters.categories.length > 0) {
+				// Filter opportunities where any of the selected categories is in the opportunity's categories array
+				idQuery = idQuery.overlaps('categories', filters.categories);
 			}
 
 			if (filters.min_amount) {
@@ -140,6 +152,12 @@ export async function GET(request, context) {
 				);
 				// Try with ilike for case-insensitive matching
 				dataQuery = dataQuery.ilike('source_type_display', filters.source_type);
+			}
+
+			// Apply categories filter if present
+			if (filters.categories && filters.categories.length > 0) {
+				// Filter opportunities where any of the selected categories is in the opportunity's categories array
+				dataQuery = dataQuery.overlaps('categories', filters.categories);
 			}
 
 			if (filters.min_amount) {
