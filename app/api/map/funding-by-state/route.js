@@ -31,58 +31,45 @@ export async function GET(request) {
 			filters.p_categories = categories.split(',');
 		}
 
-		// Validate California should show combined data (20 state-specific + 2 national = 22)
-		console.log(
-			'Sending filters to get_funding_by_state:',
-			JSON.stringify(filters)
+		// Fetch aggregated funding data by state using the v3 function that correctly calculates total funding
+		const { data, error } = await supabase.rpc(
+			'get_funding_by_state_v3',
+			filters
 		);
 
-		// Fetch aggregated funding data by state
-		const { data, error } = await supabase.rpc('get_funding_by_state', filters);
-
 		if (error) {
-			console.error('Error fetching funding by state:', error);
-			// Fallback to mock data if there's an error
+			console.error('Error fetching funding data:', error);
+			// Fallback to the original function if the new one fails
+			const fallbackResult = await supabase.rpc(
+				'get_funding_by_state',
+				filters
+			);
+
+			if (fallbackResult.error) {
+				console.error(
+					'Fallback also failed, using mock data:',
+					fallbackResult.error
+				);
+				// Use mock data as final fallback
+				return NextResponse.json({
+					success: true,
+					data: generateMockStateData(),
+					source: 'mock',
+				});
+			}
+
 			return NextResponse.json({
 				success: true,
-				data: generateMockStateData(),
+				data: fallbackResult.data,
+				source: 'v1',
 			});
 		}
 
-		// Verify the data returned matches our expectations
-		const californiaData = data.find((item) => item.state_code === 'CA');
-		console.log('Funding data returned from database:');
-		console.log('California data:', californiaData);
-
-		// Verify we have the right counts for California (should be 22 opportunities, $1.184B)
-		// If it's wrong, log a detailed error to help debug the database query
-		if (
-			californiaData &&
-			(californiaData.opportunities !== 22 ||
-				californiaData.value !== 1184000000)
-		) {
-			console.error('WARNING: California data mismatch!');
-			console.error(
-				`Expected 22 opportunities, got ${californiaData.opportunities}`
-			);
-			console.error(`Expected $1.184B value, got ${californiaData.value}`);
-			console.error(
-				'This suggests an issue with the get_funding_by_state database function'
-			);
-		}
-
-		console.log('Total records:', data.length);
-
-		// Check if California exists and has the right data
-		const californiaBefore = data.find((item) => item.state_code === 'CA');
-		console.log(
-			'Final California data being sent to client:',
-			californiaBefore
-		);
-
+		// Return the data
 		return NextResponse.json({
 			success: true,
-			data: data || [],
+			data: data,
+			source: 'v3',
 		});
 	} catch (error) {
 		console.error('API Error:', error);
