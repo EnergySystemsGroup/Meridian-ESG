@@ -87,11 +87,13 @@ const getCategoryColor = (categoryName) => {
 	};
 };
 
-// Get relevance color based on a 1-10 scale
+// Get relevance color based on the raw relevance score (0-10 scale)
 const getRelevanceColor = (score) => {
-	const percentScore = score * 10; // Convert 1-10 scale to percentage
-	if (percentScore >= 80) return '#4CAF50'; // High relevance - green
-	if (percentScore >= 60) return '#FF9800'; // Medium relevance - orange
+	// Normalize score to 0-10 range
+	const normalizedScore = Math.min(10, Math.max(0, score));
+
+	if (normalizedScore >= 8) return '#4CAF50'; // High relevance - green
+	if (normalizedScore >= 6) return '#FF9800'; // Medium relevance - orange
 	return '#9E9E9E'; // Low relevance - gray
 };
 
@@ -332,15 +334,15 @@ const OpportunityCard = ({ opportunity }) => {
 									style={{
 										width: `${Math.max(
 											0,
-											Math.min(100, relevanceScore * 10)
-										)}%`, // Convert 1-10 scale to percentage (0-100%)
+											Math.min(100, (Math.min(10, relevanceScore) / 10) * 100)
+										)}%`, // Ensure max is 100%
 										backgroundColor: getRelevanceColor(relevanceScore),
 									}}></div>
 							</div>
 							<span
 								className='text-xs font-medium whitespace-nowrap'
 								style={{ color: getRelevanceColor(relevanceScore) }}>
-								{Math.round(relevanceScore * 10)}% relevance
+								{Math.min(10, relevanceScore).toFixed(1)}/10
 							</span>
 						</div>
 					)}

@@ -769,25 +769,31 @@ export default function Page() {
 																				Relevance
 																			</p>
 																			<span className='text-xs'>
-																				{opportunity.relevance_score || 4}/5
+																				{Math.min(
+																					10,
+																					opportunity.relevance_score || 4
+																				).toFixed(1)}
+																				/10
 																			</span>
 																		</div>
 																		<div className='h-2 w-full bg-blue-800 rounded-full overflow-hidden'>
 																			<div
 																				className={`h-full ${
 																					(opportunity.relevance_score || 4) >=
-																					4
+																					8
 																						? 'bg-green-400'
 																						: (opportunity.relevance_score ||
-																								4) >= 3
+																								4) >= 6
 																						? 'bg-orange-400'
 																						: 'bg-gray-400'
 																				}`}
 																				style={{
 																					width: `${
-																						((opportunity.relevance_score ||
-																							4) /
-																							5) *
+																						(Math.min(
+																							10,
+																							opportunity.relevance_score || 4
+																						) /
+																							10) *
 																						100
 																					}%`,
 																				}}></div>

@@ -248,8 +248,8 @@ export async function GET(request, context) {
 					dataQuery = dataQuery.eq('is_national', false);
 				}
 
-				// Order by close date
-				dataQuery = dataQuery.order('close_date', { ascending: true });
+				// Order by relevance_score (descending) as the default sort
+				dataQuery = dataQuery.order('relevance_score', { ascending: false });
 
 				// Apply pagination
 				dataQuery = dataQuery.range(from, to);
@@ -363,8 +363,8 @@ export async function GET(request, context) {
 				dataQuery = dataQuery.eq('is_national', false);
 			}
 
-			// Order by close date
-			dataQuery = dataQuery.order('close_date', { ascending: true });
+			// Order by relevance_score (descending) as the default sort
+			dataQuery = dataQuery.order('relevance_score', { ascending: false });
 
 			// Apply pagination
 			dataQuery = dataQuery.range(from, to);

@@ -68,125 +68,129 @@ export default function FundingMapClient({
 				<ZoomableGroup>
 					<Geographies geography={geoUrl}>
 						{({ geographies }) =>
-							geographies.map((geo) => {
-								const stateName = geo.properties.name;
-								const stateData = fundingData.find(
-									(d) => d.state === stateName
-								);
-								const isSelected = selectedState === stateName;
-								const value = stateData
-									? colorBy === 'amount'
-										? stateData.value
-										: stateData.opportunities
-									: 0;
+							Array.isArray(geographies)
+								? geographies.map((geo) => {
+										const stateName = geo.properties.name;
+										const stateData = fundingData.find(
+											(d) => d.state === stateName
+										);
+										const isSelected = selectedState === stateName;
+										const value = stateData
+											? colorBy === 'amount'
+												? stateData.value
+												: stateData.opportunities
+											: 0;
 
-								return (
-									<Geography
-										key={geo.rsmKey}
-										geography={geo}
-										onClick={() => onStateClick(geo)}
-										onMouseEnter={(evt) => {
-											setTooltip({
-												show: true,
-												content: {
-													state: stateName,
-													opportunities: stateData?.opportunities || 0,
-													value: stateData?.value || 0,
-												},
-												position: {
-													x: evt.clientX,
-													y: evt.clientY,
-												},
-											});
-										}}
-										onMouseMove={(evt) => {
-											setTooltip((tooltip) => ({
-												...tooltip,
-												position: {
-													x: evt.clientX,
-													y: evt.clientY,
-												},
-											}));
-										}}
-										onMouseLeave={() => {
-											setTooltip({ ...tooltip, show: false });
-										}}
-										style={{
-											default: {
-												fill: stateData ? colorScale(value) : '#EEE',
-												stroke: '#FFF',
-												strokeWidth: isSelected ? 2 : 0.5,
-												outline: 'none',
-											},
-											hover: {
-												fill: '#1890ff',
-												stroke: '#FFF',
-												strokeWidth: 1,
-												outline: 'none',
-												cursor: 'pointer',
-											},
-											pressed: {
-												fill: '#003a8c',
-												stroke: '#FFF',
-												strokeWidth: 1,
-												outline: 'none',
-											},
-										}}
-									/>
-								);
-							})
+										return (
+											<Geography
+												key={geo.rsmKey}
+												geography={geo}
+												onClick={() => onStateClick(geo)}
+												onMouseEnter={(evt) => {
+													setTooltip({
+														show: true,
+														content: {
+															state: stateName,
+															opportunities: stateData?.opportunities || 0,
+															value: stateData?.value || 0,
+														},
+														position: {
+															x: evt.clientX,
+															y: evt.clientY,
+														},
+													});
+												}}
+												onMouseMove={(evt) => {
+													setTooltip((tooltip) => ({
+														...tooltip,
+														position: {
+															x: evt.clientX,
+															y: evt.clientY,
+														},
+													}));
+												}}
+												onMouseLeave={() => {
+													setTooltip({ ...tooltip, show: false });
+												}}
+												style={{
+													default: {
+														fill: stateData ? colorScale(value) : '#EEE',
+														stroke: '#FFF',
+														strokeWidth: isSelected ? 2 : 0.5,
+														outline: 'none',
+													},
+													hover: {
+														fill: '#1890ff',
+														stroke: '#FFF',
+														strokeWidth: 1,
+														outline: 'none',
+														cursor: 'pointer',
+													},
+													pressed: {
+														fill: '#003a8c',
+														stroke: '#FFF',
+														strokeWidth: 1,
+														outline: 'none',
+													},
+												}}
+											/>
+										);
+								  })
+								: null
 						}
 					</Geographies>
 
 					{/* Add state abbreviations and counts */}
 					<Geographies geography={geoUrl}>
 						{({ geographies }) =>
-							geographies.map((geo) => {
-								const centroid = geoCentroid(geo);
-								const stateName = geo.properties.name;
-								const stateAbbr = stateAbbreviations[stateName];
-								const stateData = fundingData.find(
-									(d) => d.state === stateName
-								);
+							Array.isArray(geographies)
+								? geographies.map((geo) => {
+										const centroid = geoCentroid(geo);
+										const stateName = geo.properties.name;
+										const stateAbbr = stateAbbreviations[stateName];
+										const stateData = fundingData.find(
+											(d) => d.state === stateName
+										);
 
-								return (
-									<g key={geo.rsmKey + '-name'}>
-										{stateAbbr && (
-											<>
-												<text
-													x={centroid[0]}
-													y={centroid[1]}
-													style={{
-														fontFamily: 'system-ui',
-														fontSize: '10px',
-														fontWeight: 'bold',
-														fill: '#333',
-														textAnchor: 'middle',
-														alignmentBaseline: 'middle',
-														pointerEvents: 'none',
-													}}>
-													{stateAbbr}
-												</text>
-												{stateData && stateData.opportunities > 0 && (
-													<text
-														x={centroid[0]}
-														y={centroid[1] + 12}
-														style={{
-															fontFamily: 'system-ui',
-															fontSize: '9px',
-															fill: '#666',
-															textAnchor: 'middle',
-															alignmentBaseline: 'middle',
-															pointerEvents: 'none',
-														}}>
-														{stateData.opportunities}
-													</text>
+										return (
+											<g key={geo.rsmKey + '-name'}>
+												{stateAbbr && (
+													<>
+														<text
+															x={centroid[0]}
+															y={centroid[1]}
+															style={{
+																fontFamily: 'system-ui',
+																fontSize: '10px',
+																fontWeight: 'bold',
+																fill: '#333',
+																textAnchor: 'middle',
+																alignmentBaseline: 'middle',
+																pointerEvents: 'none',
+															}}>
+															{stateAbbr}
+														</text>
+														{stateData && stateData.opportunities > 0 && (
+															<text
+																x={centroid[0]}
+																y={centroid[1] + 12}
+																style={{
+																	fontFamily: 'system-ui',
+																	fontSize: '9px',
+																	fill: '#666',
+																	textAnchor: 'middle',
+																	alignmentBaseline: 'middle',
+																	pointerEvents: 'none',
+																}}>
+																{stateData.opportunities}
+															</text>
+														)}
+													</>
 												)}
-											</>
-										)}
-									</g>
-								);
-							})
+											</g>
+										);
+								  })
+								: null
 						}
 					</Geographies>
 				</ZoomableGroup>
