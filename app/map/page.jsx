@@ -19,7 +19,14 @@ import {
 } from 'react-simple-maps';
 import { scaleQuantile } from 'd3-scale';
 import { geoCentroid } from 'd3-geo';
-import { MapPin, Filter, DollarSign, Calendar, Info } from 'lucide-react';
+import {
+	MapPin,
+	Filter,
+	DollarSign,
+	Calendar,
+	Info,
+	ChevronDown,
+} from 'lucide-react';
 import {
 	Select,
 	SelectContent,
@@ -173,9 +180,8 @@ export default function Page() {
 				if (filters.minAmount > 0) {
 					queryParams.append('min_amount', filters.minAmount);
 				}
-				if (filters.maxAmount < 10000000) {
-					queryParams.append('max_amount', filters.maxAmount);
-				}
+				// Always include max_amount parameter, even at maximum value
+				queryParams.append('max_amount', filters.maxAmount);
 				if (!filters.showNational) {
 					queryParams.append('include_national', 'false');
 				}
@@ -251,9 +257,8 @@ export default function Page() {
 				if (filters.minAmount > 0) {
 					queryParams.append('min_amount', filters.minAmount);
 				}
-				if (filters.maxAmount < 10000000) {
-					queryParams.append('max_amount', filters.maxAmount);
-				}
+				// Always include max_amount parameter, even at maximum value
+				queryParams.append('max_amount', filters.maxAmount);
 				if (!filters.showNational) {
 					queryParams.append('include_national', 'false');
 				}
@@ -420,28 +425,91 @@ export default function Page() {
 					</div>
 
 					{/* Filter Row - Above the map */}
-					<div className='border rounded-md shadow-sm mb-3'>
-						<div className='flex items-center justify-between px-3 py-2'>
-							<div className='flex items-center gap-1 text-xs font-medium text-muted-foreground'>
-								<Filter className='h-3 w-3' />
-								<span>Filters:</span>
-							</div>
-							<div className='flex-1 flex flex-wrap justify-center gap-x-4 gap-y-2 px-2'>
-								<FilterSidebar
-									filters={filters}
-									onFilterChange={handleFilterChange}
-									onResetFilters={handleResetFilters}
-									horizontal={true}
-								/>
-							</div>
-							<Button
-								variant='ghost'
-								size='sm'
-								onClick={handleResetFilters}
-								className='h-7 text-xs px-2'>
-								Reset
-							</Button>
+					<div className='border rounded-lg shadow-sm mb-6 flex flex-wrap items-center gap-x-6 gap-y-4 py-4 px-5'>
+						<div className='flex items-center gap-2 text-xs font-medium text-muted-foreground'>
+							<Filter className='h-4 w-4' />
+							<span>Filters:</span>
 						</div>
+
+						{/* Status Filter */}
+						<div className='relative'>
+							<Select
+								value={filters.status}
+								onValueChange={(value) => handleFilterChange('status', value)}>
+								<SelectTrigger
+									className='px-4 py-2 h-9 border rounded-lg flex justify-between items-center text-sm'
+									style={{ minWidth: '170px' }}>
+									<SelectValue placeholder='All Status' />
+								</SelectTrigger>
+								<SelectContent>
+									<SelectItem value='all'>All Status</SelectItem>
+									<SelectItem value='Open'>Open</SelectItem>
+									<SelectItem value='Upcoming'>Upcoming</SelectItem>
+									<SelectItem value='Closed'>Closed</SelectItem>
+								</SelectContent>
+							</Select>
+						</div>
+
+						{/* Categories Filter */}
+						<div className='relative' style={{ minWidth: '170px' }}>
+							<FilterSidebar
+								filters={filters}
+								onFilterChange={handleFilterChange}
+								onResetFilters={handleResetFilters}
+								horizontal={true}
+								categoriesOnly={true}
+							/>
+						</div>
+
+						{/* Source Type Filter */}
+						<div className='relative'>
+							<Select
+								value={filters.sourceType}
+								onValueChange={(value) =>
+									handleFilterChange('sourceType', value)
+								}>
+								<SelectTrigger
+									className='px-4 py-2 h-9 border rounded-lg flex justify-between items-center text-sm'
+									style={{ minWidth: '170px' }}>
+									<SelectValue placeholder='All Sources' />
+								</SelectTrigger>
+								<SelectContent>
+									<SelectItem value='all'>All Sources</SelectItem>
+									<SelectItem value='Federal'>Federal</SelectItem>
+									<SelectItem value='State'>State</SelectItem>
+									<SelectItem value='Local'>Local</SelectItem>
+									<SelectItem value='Private'>Private</SelectItem>
+								</SelectContent>
+							</Select>
+						</div>
+
+						{/* Award Amount Filter */}
+						<div className='flex-grow flex flex-col max-w-md ml-auto'>
+							<div className='flex justify-between mb-2'>
+								<label className='text-sm font-medium'>Award Amount:</label>
+								<span className='text-sm text-blue-600'>
+									${(filters.maxAmount / 1000000).toFixed(1)}M+
+								</span>
+							</div>
+							<Slider
+								value={[filters.maxAmount]}
+								max={10000000}
+								step={500000}
+								onValueChange={(values) =>
+									handleFilterChange('maxAmount', values[0])
+								}
+								className='w-full'
+							/>
+						</div>
+
+						{/* Reset Button */}
+						<Button
+							variant='outline'
+							size='sm'
+							onClick={handleResetFilters}
+							className='h-9 px-4'>
+							Reset
+						</Button>
 					</div>
 				</div>
 
@@ -580,10 +648,10 @@ export default function Page() {
 														</Badge>
 													</div>
 													<div className='flex justify-between text-xs text-muted-foreground mt-1'>
-														<div className='flex items-center'>
+														<div className='flex items-center flex-1 min-w-0 mr-2 truncate'>
 															{opportunity.amount}
 														</div>
-														<div className='flex items-center'>
+														<div className='flex items-center flex-shrink-0'>
 															<Calendar className='h-3 w-3 mr-1' />
 															{opportunity.closeDate}
 														</div>

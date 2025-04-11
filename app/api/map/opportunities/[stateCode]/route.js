@@ -91,26 +91,209 @@ export async function GET(request, context) {
 			}
 
 			if (filters.max_amount) {
-				// Changed to filter for opportunities with at least this minimum funding
-				// Use or() to include opportunities with null/undefined maximum_award
+				// Simpler approach with individual filters
+				const filterAmount = filters.max_amount;
+
+				// First add a filter for opportunities with sufficient minimum_award OR maximum_award
 				idQuery = idQuery.or(
-					`minimum_award.gte.${filters.max_amount},maximum_award.gte.${filters.max_amount},maximum_award.is.null`
+					`minimum_award.gte.${filterAmount},maximum_award.gte.${filterAmount}`
 				);
+
+				// Then add a filter to include opportunities with NULL awards
+				// We can't easily have a complex OR with nested conditions, so we'll do this in multiple steps
+				// Get all IDs with sufficient award amounts
+				const { data: idsWithAmounts, error: amountError } = await idQuery;
+
+				if (amountError) {
+					console.error(
+						'Error fetching opportunities with amount filters:',
+						amountError
+					);
+					return NextResponse.json(
+						{
+							success: false,
+							error: `Failed to filter by amount: ${amountError.message}`,
+							details: { filters },
+						},
+						{ status: 500 }
+					);
+				}
+
+				// Get all IDs with NULL award amounts but exclude those with insufficient total_funding
+				let nullAmountQuery = supabase
+					.from('funding_opportunities_with_geography')
+					.select('id')
+					.or(`is_national.eq.true,eligible_states.cs.{${stateCode}}`);
+
+				// Apply the same filters as the main query except for the amount
+				if (filters.status && filters.status !== 'all') {
+					nullAmountQuery = nullAmountQuery.eq('status', filters.status);
+				}
+
+				if (filters.source_type && filters.source_type !== 'all') {
+					nullAmountQuery = nullAmountQuery.ilike(
+						'source_type_display',
+						filters.source_type
+					);
+				}
+
+				if (filters.categories && filters.categories.length > 0) {
+					nullAmountQuery = nullAmountQuery.overlaps(
+						'categories',
+						filters.categories
+					);
+				}
+
+				if (filters.deadline_start) {
+					nullAmountQuery = nullAmountQuery.gte(
+						'close_date',
+						filters.deadline_start
+					);
+				}
+
+				if (filters.deadline_end) {
+					nullAmountQuery = nullAmountQuery.lte(
+						'close_date',
+						filters.deadline_end
+					);
+				}
+
+				if (!filters.include_national) {
+					nullAmountQuery = nullAmountQuery.eq('is_national', false);
+				}
+
+				// Find opportunities with null award amounts
+				nullAmountQuery = nullAmountQuery
+					.is('minimum_award', null)
+					.is('maximum_award', null);
+
+				// Exclude opportunities with insufficient total_funding
+				if (filterAmount > 0) {
+					nullAmountQuery = nullAmountQuery.or(
+						`total_funding_available.gte.${filterAmount},total_funding_available.is.null`
+					);
+				}
+
+				const { data: idsWithNullAmounts, error: nullError } =
+					await nullAmountQuery;
+
+				if (nullError) {
+					console.error(
+						'Error fetching opportunities with null amounts:',
+						nullError
+					);
+					return NextResponse.json(
+						{
+							success: false,
+							error: `Failed to filter null amounts: ${nullError.message}`,
+							details: { filters },
+						},
+						{ status: 500 }
+					);
+				}
+
+				// Combine results from both queries
+				const idData = [
+					...(idsWithAmounts || []),
+					...(idsWithNullAmounts || []),
+				];
+
+				const totalCount = idData.length;
+				console.log(
+					`Found ${totalCount} matching opportunities for the given filters`
+				);
+
+				// Now fetch the actual data with pagination
+				let dataQuery = supabase
+					.from('funding_opportunities_with_geography')
+					.select('*')
+					.or(`is_national.eq.true,eligible_states.cs.{${stateCode}}`);
+
+				// Apply the same filters from above
+				if (filters.status && filters.status !== 'all') {
+					dataQuery = dataQuery.eq('status', filters.status);
+				}
+
+				if (filters.source_type && filters.source_type !== 'all') {
+					dataQuery = dataQuery.ilike(
+						'source_type_display',
+						filters.source_type
+					);
+				}
+
+				if (filters.categories && filters.categories.length > 0) {
+					dataQuery = dataQuery.overlaps('categories', filters.categories);
+				}
+
+				if (filters.min_amount) {
+					dataQuery = dataQuery.gte('minimum_award', filters.min_amount);
+				}
+
+				// For the max_amount filter, use an in() filter with the IDs we found
+				// Only if we have IDs - otherwise, the list will be empty and return no results
+				if (idData.length > 0) {
+					const idList = idData.map((item) => item.id);
+					dataQuery = dataQuery.in('id', idList);
+				}
+
+				if (filters.deadline_start) {
+					dataQuery = dataQuery.gte('close_date', filters.deadline_start);
+				}
+
+				if (filters.deadline_end) {
+					dataQuery = dataQuery.lte('close_date', filters.deadline_end);
+				}
+
+				if (!filters.include_national) {
+					dataQuery = dataQuery.eq('is_national', false);
+				}
+
+				// Order by close date
+				dataQuery = dataQuery.order('close_date', { ascending: true });
+
+				// Apply pagination
+				dataQuery = dataQuery.range(from, to);
+
+				// Execute data query
+				const { data, error } = await dataQuery;
+
+				if (error) {
+					console.error(
+						`Error fetching opportunities data for state ${stateCode}:`,
+						error
+					);
+					return NextResponse.json(
+						{
+							success: false,
+							error: error.message,
+							details: { filters },
+						},
+						{ status: 500 }
+					);
+				}
+
+				if (!data || data.length === 0) {
+					console.log(
+						`No opportunities found for state ${stateCode} with the given filters`
+					);
+				}
+
+				return NextResponse.json({
+					success: true,
+					data: {
+						opportunities: data || [],
+						total: totalCount,
+						page: filters.page,
+						pageSize: filters.pageSize,
+						totalPages: totalCount
+							? Math.ceil(totalCount / filters.pageSize)
+							: 0,
+					},
+				});
 			}
 
-			if (filters.deadline_start) {
-				idQuery = idQuery.gte('close_date', filters.deadline_start);
-			}
-
-			if (filters.deadline_end) {
-				idQuery = idQuery.lte('close_date', filters.deadline_end);
-			}
-
-			if (!filters.include_national) {
-				idQuery = idQuery.eq('is_national', false);
-			}
-
-			// Execute ID query
+			// Normal flow for when there's no max_amount filter
+			// Execute ID query to get count
 			const { data: idData, error: idError } = await idQuery;
 
 			if (idError) {
@@ -166,14 +349,6 @@ export async function GET(request, context) {
 
 			if (filters.min_amount) {
 				dataQuery = dataQuery.gte('minimum_award', filters.min_amount);
-			}
-
-			if (filters.max_amount) {
-				// Changed to filter for opportunities with at least this minimum funding
-				// Use or() to include opportunities with null/undefined maximum_award
-				dataQuery = dataQuery.or(
-					`minimum_award.gte.${filters.max_amount},maximum_award.gte.${filters.max_amount},maximum_award.is.null`
-				);
 			}
 
 			if (filters.deadline_start) {

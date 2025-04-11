@@ -95,6 +95,7 @@ export default function FilterSidebar({
 	onFilterChange,
 	onResetFilters,
 	horizontal = false,
+	categoriesOnly = false,
 }) {
 	// Common funding categories from TAXONOMIES
 	const categories = TAXONOMIES.CATEGORIES;
@@ -160,12 +161,13 @@ export default function FilterSidebar({
 						variant='outline'
 						onClick={() => setCategoryDropdownOpen(!categoryDropdownOpen)}
 						className={cn(
-							'flex items-center justify-between gap-1 px-4 py-2 text-sm',
-							horizontal ? 'h-8 text-xs' : '',
+							'flex items-center justify-between gap-1 px-4 py-2 text-sm w-full',
+							horizontal ? 'h-9 text-sm' : '',
 							categoryDropdownOpen
 								? 'bg-blue-50 text-blue-800 border-blue-200'
 								: 'border-gray-300',
-							categoryDropdownOpen && selectedCount > 0 ? 'bg-blue-100' : ''
+							categoryDropdownOpen && selectedCount > 0 ? 'bg-blue-100' : '',
+							categoriesOnly ? 'rounded-lg' : ''
 						)}>
 						{displayText}
 						<ChevronDown
@@ -264,6 +266,11 @@ export default function FilterSidebar({
 		);
 	};
 
+	// If categoriesOnly prop is true, only render the category filter
+	if (categoriesOnly) {
+		return renderCategoryFilter();
+	}
+
 	// Render selected category pills
 	const renderSelectedCategories = () => {
 		if (!filters.categories?.length) return null;
@@ -343,17 +350,22 @@ export default function FilterSidebar({
 			</Select>
 
 			{/* Funding amount slider - Updated label and display format */}
-			<div className={horizontal ? 'min-w-[200px] pl-2' : ''}>
+			<div
+				className={
+					horizontal ? 'min-w-[200px] max-w-[280px] flex-shrink-0 pl-2' : ''
+				}>
 				<div
 					className={`flex items-center ${
 						horizontal ? 'justify-between' : 'justify-between'
 					} mb-1`}>
 					{horizontal ? (
-						<label className='text-xs font-medium mr-2'>Award Amount:</label>
+						<label className='text-xs font-medium mr-2 whitespace-nowrap'>
+							Award Amount:
+						</label>
 					) : (
 						<label className='text-sm font-medium'>Award Amount</label>
 					)}
-					<span className='text-xs text-muted-foreground'>
+					<span className='text-xs text-muted-foreground whitespace-nowrap'>
 						${(filters.maxAmount / 1000000).toFixed(1)}M+
 					</span>
 				</div>
