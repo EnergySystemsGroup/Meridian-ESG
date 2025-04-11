@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
 	ComposableMap,
 	Geographies,
@@ -33,18 +33,12 @@ export default function FundingMapClient({
 	const california = fundingData.find((d) => d.state === 'California');
 	console.log('FundingMapClient California data received:', california);
 
-	const [tooltip, setTooltip] = useState({
-		show: false,
-		content: {},
-		position: { x: 0, y: 0 },
-	});
-
-	// Log when tooltip changes
-	useEffect(() => {
-		if (tooltip.show && tooltip.content.state === 'California') {
-			console.log('Tooltip effect - California content:', tooltip.content);
-		}
-	}, [tooltip]);
+	// Tooltip state
+	const [tooltipVisible, setTooltipVisible] = useState(false);
+	const [tooltipState, setTooltipState] = useState('');
+	const [tooltipOpportunities, setTooltipOpportunities] = useState(0);
+	const [tooltipValue, setTooltipValue] = useState(0);
+	const [tooltipPosition, setTooltipPosition] = useState({ x: 0, y: 0 });
 
 	// Get the values for coloring
 	const values = fundingData.map((d) =>
@@ -90,6 +84,35 @@ export default function FundingMapClient({
 		);
 	}
 
+	// Handlers for tooltip
+	const handleMouseEnter = (evt, stateName, stateData) => {
+		// Log special debug info for California
+		if (stateName === 'California') {
+			console.log('California hover - state name matches');
+			console.log('California hover - stateData:', stateData);
+			console.log(
+				'California hover - direct lookup:',
+				fundingData.find((d) => d.state === 'California')
+			);
+		}
+
+		setTooltipState(stateName);
+		setTooltipOpportunities(stateData?.opportunities || 0);
+		setTooltipValue(stateData?.value || 0);
+		setTooltipPosition({ x: evt.clientX, y: evt.clientY });
+		setTooltipVisible(true);
+
+		console.log('Tooltip shown for:', stateName); // Debug
+	};
+
+	const handleMouseMove = (evt) => {
+		setTooltipPosition({ x: evt.clientX, y: evt.clientY });
+	};
+
+	const handleMouseLeave = () => {
+		setTooltipVisible(false);
+	};
+
 	return (
 		<div className='relative'>
 			<ComposableMap projection='geoAlbersUsa' className='w-full h-[500px]'>
@@ -115,49 +138,11 @@ export default function FundingMapClient({
 												key={geo.rsmKey}
 												geography={geo}
 												onClick={() => onStateClick(geo)}
-												onMouseEnter={(evt) => {
-													// Log special debug info for California
-													if (stateName === 'California') {
-														console.log(
-															'California hover - state name matches'
-														);
-														console.log(
-															'California hover - stateData:',
-															stateData
-														);
-														console.log(
-															'California hover - direct lookup:',
-															fundingData.find((d) => d.state === 'California')
-														);
-													}
-
-													const tooltipContent = {
-														state: stateName,
-														opportunities: stateData?.opportunities || 0,
-														value: stateData?.value || 0,
-													};
-
-													setTooltip({
-														show: true,
-														content: tooltipContent,
-														position: {
-															x: evt.clientX,
-															y: evt.clientY,
-														},
-													});
-												}}
-												onMouseMove={(evt) => {
-													setTooltip((tooltip) => ({
-														...tooltip,
-														position: {
-															x: evt.clientX,
-															y: evt.clientY,
-														},
-													}));
-												}}
-												onMouseLeave={() => {
-													setTooltip({ ...tooltip, show: false });
-												}}
+												onMouseEnter={(evt) =>
+													handleMouseEnter(evt, stateName, stateData)
+												}
+												onMouseMove={handleMouseMove}
+												onMouseLeave={handleMouseLeave}
 												style={{
 													default: {
 														fill: stateData ? colorScale(value) : '#EEE',
@@ -213,18 +198,19 @@ export default function FundingMapClient({
 				</div>
 			</div>
 
-			{/* Tooltip */}
-			{tooltip.show && (
+			{/* Tooltip using a fixed div at the bottom of the component, outside map boundaries */}
+			{tooltipVisible && (
 				<div
-					className='absolute bg-white p-2 rounded shadow-md text-xs z-10 pointer-events-none'
+					id='map-tooltip'
+					className='fixed bg-white p-2 border border-gray-200 rounded shadow-lg text-xs z-[9999]'
 					style={{
-						left: tooltip.position.x + 10,
-						top: tooltip.position.y - 40,
+						left: tooltipPosition.x + 20,
+						top: tooltipPosition.y - 10,
 					}}>
-					<div className='font-medium'>{tooltip.content.state}</div>
-					<div>Opportunities: {tooltip.content.opportunities}</div>
+					<div className='font-medium'>{tooltipState}</div>
+					<div>Opportunities: {tooltipOpportunities}</div>
 					<div>
-						Total Funding: ${formatFundingAmount(tooltip.content.value)}
+						Per-Applicant Funding: ${formatFundingAmount(tooltipValue)}+
 					</div>
 				</div>
 			)}
