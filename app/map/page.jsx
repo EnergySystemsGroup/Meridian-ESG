@@ -281,15 +281,11 @@ export default function Page() {
 						(opp) => ({
 							id: opp.id,
 							title: opp.title,
-							amount: `$${
-								opp.minimum_award
-									? (opp.minimum_award / 1000).toLocaleString()
-									: '0'
-							}K - $${
-								opp.maximum_award
-									? (opp.maximum_award / 1000).toLocaleString()
-									: '0'
-							}K`,
+							amount: formatAmount(
+								opp.minimum_award,
+								opp.maximum_award,
+								opp.total_funding_available
+							),
 							closeDate: new Date(opp.close_date).toLocaleDateString(),
 							source: opp.source_name,
 							sourceType: opp.source_type,
@@ -381,6 +377,38 @@ export default function Page() {
 
 	const handlePageChange = (newPage) => {
 		setStateOpportunitiesPage(newPage);
+	};
+
+	// Format amount with K/M suffix based on size
+	const formatAmount = (minimum, maximum, total) => {
+		// Helper to format a number with K/M suffix (without $ sign)
+		const formatWithSuffix = (num) => {
+			if (!num && num !== 0) return null;
+
+			if (num >= 1000000) {
+				return `${(num / 1000000).toLocaleString(undefined, {
+					maximumFractionDigits: 1,
+					minimumFractionDigits: 0,
+				})}M`;
+			} else {
+				return `${(num / 1000).toLocaleString(undefined, {
+					maximumFractionDigits: 0,
+				})}K`;
+			}
+		};
+
+		// Handle different cases based on available data
+		if (minimum && maximum) {
+			return `$${formatWithSuffix(minimum)} - ${formatWithSuffix(maximum)}`;
+		} else if (maximum) {
+			return `Up to $${formatWithSuffix(maximum)}`;
+		} else if (minimum) {
+			return `From $${formatWithSuffix(minimum)}`;
+		} else if (total) {
+			return `$${formatWithSuffix(total)} total`;
+		} else {
+			return 'Amount not specified';
+		}
 	};
 
 	return (
