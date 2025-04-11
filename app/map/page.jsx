@@ -426,14 +426,15 @@ export default function Page() {
 
 					{/* Filter Row - Above the map */}
 					<div className='border rounded-lg shadow-sm mb-6 p-4'>
-						<div className='flex items-center justify-between gap-4'>
-							{/* Left side with icon and filters */}
-							<div className='flex items-center gap-4 flex-1'>
-								<div className='flex items-center gap-2 text-sm font-medium text-muted-foreground'>
-									<Filter className='h-4 w-4' />
-									<span>Filters:</span>
-								</div>
+						<div className='flex items-center gap-6'>
+							{/* Filters label */}
+							<div className='flex items-center gap-2 text-sm font-medium text-muted-foreground whitespace-nowrap'>
+								<Filter className='h-4 w-4' />
+								<span>Filters:</span>
+							</div>
 
+							{/* Filter elements container with equal spacing */}
+							<div className='flex items-center gap-6 flex-1 justify-center'>
 								{/* Status Filter */}
 								<div className='w-[160px]'>
 									<Select
@@ -441,7 +442,7 @@ export default function Page() {
 										onValueChange={(value) =>
 											handleFilterChange('status', value)
 										}>
-										<SelectTrigger className='h-10 px-3'>
+										<SelectTrigger className='h-10'>
 											<SelectValue placeholder='All Status' />
 										</SelectTrigger>
 										<SelectContent>
@@ -471,7 +472,7 @@ export default function Page() {
 										onValueChange={(value) =>
 											handleFilterChange('sourceType', value)
 										}>
-										<SelectTrigger className='h-10 px-3'>
+										<SelectTrigger className='h-10'>
 											<SelectValue placeholder='All Sources' />
 										</SelectTrigger>
 										<SelectContent>
@@ -484,9 +485,9 @@ export default function Page() {
 									</Select>
 								</div>
 
-								{/* Award Amount Filter */}
-								<div className='flex-1 max-w-xs px-2'>
-									<div className='flex items-center justify-between mb-2'>
+								{/* Award Amount Filter with improved label spacing */}
+								<div className='w-[220px]'>
+									<div className='flex justify-between mb-1'>
 										<span className='text-sm font-medium'>Award Amount:</span>
 										<span className='text-sm text-blue-600'>
 											${(filters.maxAmount / 1000000).toFixed(1)}M+
@@ -499,7 +500,6 @@ export default function Page() {
 										onValueChange={(values) =>
 											handleFilterChange('maxAmount', values[0])
 										}
-										className='py-2'
 									/>
 								</div>
 							</div>
@@ -508,7 +508,7 @@ export default function Page() {
 							<Button
 								variant='outline'
 								onClick={handleResetFilters}
-								className='h-10 px-4'>
+								className='h-10 px-4 whitespace-nowrap'>
 								Reset
 							</Button>
 						</div>

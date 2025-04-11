@@ -161,19 +161,18 @@ export default function FilterSidebar({
 						variant='outline'
 						onClick={() => setCategoryDropdownOpen(!categoryDropdownOpen)}
 						className={cn(
-							'w-full h-10 px-3 flex items-center justify-between',
-							'text-sm border rounded-md',
+							'w-full h-10 flex items-center justify-between',
 							categoryDropdownOpen
 								? 'bg-blue-50 text-blue-800 border-blue-200'
-								: 'border-input',
+								: '',
 							categoryDropdownOpen && selectedCount > 0 ? 'bg-blue-100' : ''
 						)}>
 						<span className='truncate'>{displayText}</span>
 						<ChevronDown
 							size={16}
 							className={cn(
-								'flex-shrink-0 ml-2 transition-transform',
-								categoryDropdownOpen ? 'rotate-180' : ''
+								'ml-2 h-4 w-4 shrink-0 opacity-50',
+								categoryDropdownOpen ? 'rotate-180 transform' : ''
 							)}
 						/>
 					</Button>
