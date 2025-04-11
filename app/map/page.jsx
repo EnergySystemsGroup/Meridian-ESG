@@ -134,7 +134,7 @@ export default function Page() {
 	const [fundingData, setFundingData] = useState([]);
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState(null);
-	const [selectedState, setSelectedState] = useState(null);
+	const [selectedState, setSelectedState] = useState('California');
 	const [stateOpportunities, setStateOpportunities] = useState([]);
 	const [stateOpportunitiesPage, setStateOpportunitiesPage] = useState(1);
 	const [stateOpportunitiesTotalCount, setStateOpportunitiesTotalCount] =
@@ -150,7 +150,7 @@ export default function Page() {
 	const [activeLayer, setActiveLayer] = useState('federal'); // federal, state, all
 	const [filters, setFilters] = useState({
 		minAmount: 0,
-		maxAmount: 10000000,
+		maxAmount: 0,
 		status: 'all', // all, Open, Upcoming, Closed
 		sourceType: 'all', // all, Federal, State, Local, Private
 		categories: [], // Now an array for multiple selection
@@ -366,7 +366,7 @@ export default function Page() {
 	const handleResetFilters = () => {
 		setFilters({
 			minAmount: 0,
-			maxAmount: 10000000,
+			maxAmount: 0,
 			status: 'all',
 			sourceType: 'all',
 			categories: [],
