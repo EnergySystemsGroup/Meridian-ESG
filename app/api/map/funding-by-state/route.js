@@ -65,11 +65,26 @@ export async function GET(request) {
 			});
 		}
 
-		// Return the data
+		// Get the exact total funding available using our new function
+		const { data: totalFundingResult, error: totalFundingError } =
+			await supabase.rpc('get_total_funding_available', filters);
+
+		let totalFundingAvailable = 0;
+		if (!totalFundingError && totalFundingResult) {
+			totalFundingAvailable = totalFundingResult;
+		} else {
+			console.error(
+				'Error fetching total funding available:',
+				totalFundingError
+			);
+		}
+
+		// Return the data with the calculated total funding
 		return NextResponse.json({
 			success: true,
 			data: data,
 			source: 'v3',
+			totalFunding: totalFundingAvailable,
 		});
 	} catch (error) {
 		console.error('API Error:', error);
