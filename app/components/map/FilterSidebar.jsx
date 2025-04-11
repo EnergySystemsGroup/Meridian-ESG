@@ -155,25 +155,24 @@ export default function FilterSidebar({
 			selectedCount > 0 ? `Categories (${selectedCount})` : 'Categories';
 
 		return (
-			<div className='relative inline-block text-left'>
+			<div className='relative inline-block text-left w-full'>
 				<div>
 					<Button
 						variant='outline'
 						onClick={() => setCategoryDropdownOpen(!categoryDropdownOpen)}
 						className={cn(
-							'flex items-center justify-between gap-1 px-4 py-2 text-sm w-full',
-							horizontal ? 'h-9 text-sm' : '',
+							'w-full h-10 px-3 flex items-center justify-between',
+							'text-sm border rounded-md',
 							categoryDropdownOpen
 								? 'bg-blue-50 text-blue-800 border-blue-200'
-								: 'border-gray-300',
-							categoryDropdownOpen && selectedCount > 0 ? 'bg-blue-100' : '',
-							categoriesOnly ? 'rounded-lg' : ''
+								: 'border-input',
+							categoryDropdownOpen && selectedCount > 0 ? 'bg-blue-100' : ''
 						)}>
-						{displayText}
+						<span className='truncate'>{displayText}</span>
 						<ChevronDown
 							size={16}
 							className={cn(
-								'transition-transform',
+								'flex-shrink-0 ml-2 transition-transform',
 								categoryDropdownOpen ? 'rotate-180' : ''
 							)}
 						/>
@@ -182,20 +181,20 @@ export default function FilterSidebar({
 
 				{categoryDropdownOpen && (
 					<div
-						className='absolute left-0 z-20 mt-2 origin-top-left bg-white rounded-md shadow-lg w-72 ring-1 ring-black ring-opacity-5 focus:outline-none'
+						className='absolute left-0 z-20 mt-2 w-[280px] origin-top-left bg-white rounded-md shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none'
 						tabIndex={-1}
 						ref={categoryDropdownRef}>
-						<div className='p-4'>
+						<div className='p-3'>
 							{/* Search input */}
-							<div className='mb-4'>
+							<div className='mb-3'>
 								<div className='relative'>
 									<Search
 										className='absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400'
 										size={16}
 									/>
-									<input
+									<Input
 										type='text'
-										className='w-full pl-9 pr-4 py-2 border border-gray-300 rounded-md text-sm'
+										className='w-full pl-8 h-9 text-sm'
 										placeholder='Search categories...'
 										value={categorySearchInput}
 										onChange={(e) => setCategorySearchInput(e.target.value)}
@@ -211,24 +210,24 @@ export default function FilterSidebar({
 							</div>
 
 							{/* Categories list */}
-							<div className='max-h-60 overflow-y-auto'>
+							<div className='max-h-[240px] overflow-y-auto'>
 								{filteredCategories.map((category) => {
 									const isSelected = filters.categories?.includes(category);
 									const categoryColor = getCategoryColor(category);
 									return (
 										<div
 											key={category}
-											className='flex items-center justify-between py-1 cursor-pointer hover:bg-gray-50'
+											className='flex items-center justify-between py-1.5 px-1 cursor-pointer hover:bg-gray-50 rounded'
 											onClick={() => handleCategorySelect(category)}>
-											<div className='flex items-center'>
+											<div className='flex items-center gap-2'>
 												<input
 													type='checkbox'
-													className='mr-2'
+													className='rounded border-gray-300'
 													checked={isSelected}
 													readOnly
 												/>
 												<span
-													className='w-3 h-3 rounded-full mr-2'
+													className='w-2.5 h-2.5 rounded-full'
 													style={{ backgroundColor: categoryColor.color }}
 												/>
 												<span className='text-sm'>
@@ -249,11 +248,11 @@ export default function FilterSidebar({
 
 							{/* Clear selections button if any selected */}
 							{selectedCount > 0 && (
-								<div className='mt-4 pt-3 border-t border-gray-200 flex justify-end'>
+								<div className='mt-3 pt-3 border-t border-gray-200 flex justify-end'>
 									<Button
-										variant='link'
+										variant='ghost'
 										size='sm'
-										className='text-blue-600 hover:text-blue-800'
+										className='text-blue-600 hover:text-blue-800 hover:bg-blue-50'
 										onClick={clearCategories}>
 										Clear selections
 									</Button>

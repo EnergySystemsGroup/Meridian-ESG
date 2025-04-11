@@ -425,91 +425,93 @@ export default function Page() {
 					</div>
 
 					{/* Filter Row - Above the map */}
-					<div className='border rounded-lg shadow-sm mb-6 flex flex-wrap items-center gap-x-6 gap-y-4 py-4 px-5'>
-						<div className='flex items-center gap-2 text-xs font-medium text-muted-foreground'>
-							<Filter className='h-4 w-4' />
-							<span>Filters:</span>
-						</div>
+					<div className='border rounded-lg shadow-sm mb-6 p-4'>
+						<div className='flex items-center justify-between gap-4'>
+							{/* Left side with icon and filters */}
+							<div className='flex items-center gap-4 flex-1'>
+								<div className='flex items-center gap-2 text-sm font-medium text-muted-foreground'>
+									<Filter className='h-4 w-4' />
+									<span>Filters:</span>
+								</div>
 
-						{/* Status Filter */}
-						<div className='relative'>
-							<Select
-								value={filters.status}
-								onValueChange={(value) => handleFilterChange('status', value)}>
-								<SelectTrigger
-									className='px-4 py-2 h-9 border rounded-lg flex justify-between items-center text-sm'
-									style={{ minWidth: '170px' }}>
-									<SelectValue placeholder='All Status' />
-								</SelectTrigger>
-								<SelectContent>
-									<SelectItem value='all'>All Status</SelectItem>
-									<SelectItem value='Open'>Open</SelectItem>
-									<SelectItem value='Upcoming'>Upcoming</SelectItem>
-									<SelectItem value='Closed'>Closed</SelectItem>
-								</SelectContent>
-							</Select>
-						</div>
+								{/* Status Filter */}
+								<div className='w-[160px]'>
+									<Select
+										value={filters.status}
+										onValueChange={(value) =>
+											handleFilterChange('status', value)
+										}>
+										<SelectTrigger className='h-10 px-3'>
+											<SelectValue placeholder='All Status' />
+										</SelectTrigger>
+										<SelectContent>
+											<SelectItem value='all'>All Status</SelectItem>
+											<SelectItem value='Open'>Open</SelectItem>
+											<SelectItem value='Upcoming'>Upcoming</SelectItem>
+											<SelectItem value='Closed'>Closed</SelectItem>
+										</SelectContent>
+									</Select>
+								</div>
 
-						{/* Categories Filter */}
-						<div className='relative' style={{ minWidth: '170px' }}>
-							<FilterSidebar
-								filters={filters}
-								onFilterChange={handleFilterChange}
-								onResetFilters={handleResetFilters}
-								horizontal={true}
-								categoriesOnly={true}
-							/>
-						</div>
+								{/* Categories Filter */}
+								<div className='w-[160px]'>
+									<FilterSidebar
+										filters={filters}
+										onFilterChange={handleFilterChange}
+										onResetFilters={handleResetFilters}
+										horizontal={true}
+										categoriesOnly={true}
+									/>
+								</div>
 
-						{/* Source Type Filter */}
-						<div className='relative'>
-							<Select
-								value={filters.sourceType}
-								onValueChange={(value) =>
-									handleFilterChange('sourceType', value)
-								}>
-								<SelectTrigger
-									className='px-4 py-2 h-9 border rounded-lg flex justify-between items-center text-sm'
-									style={{ minWidth: '170px' }}>
-									<SelectValue placeholder='All Sources' />
-								</SelectTrigger>
-								<SelectContent>
-									<SelectItem value='all'>All Sources</SelectItem>
-									<SelectItem value='Federal'>Federal</SelectItem>
-									<SelectItem value='State'>State</SelectItem>
-									<SelectItem value='Local'>Local</SelectItem>
-									<SelectItem value='Private'>Private</SelectItem>
-								</SelectContent>
-							</Select>
-						</div>
+								{/* Source Type Filter */}
+								<div className='w-[160px]'>
+									<Select
+										value={filters.sourceType}
+										onValueChange={(value) =>
+											handleFilterChange('sourceType', value)
+										}>
+										<SelectTrigger className='h-10 px-3'>
+											<SelectValue placeholder='All Sources' />
+										</SelectTrigger>
+										<SelectContent>
+											<SelectItem value='all'>All Sources</SelectItem>
+											<SelectItem value='Federal'>Federal</SelectItem>
+											<SelectItem value='State'>State</SelectItem>
+											<SelectItem value='Local'>Local</SelectItem>
+											<SelectItem value='Private'>Private</SelectItem>
+										</SelectContent>
+									</Select>
+								</div>
 
-						{/* Award Amount Filter */}
-						<div className='flex-grow flex flex-col max-w-md ml-auto'>
-							<div className='flex justify-between mb-2'>
-								<label className='text-sm font-medium'>Award Amount:</label>
-								<span className='text-sm text-blue-600'>
-									${(filters.maxAmount / 1000000).toFixed(1)}M+
-								</span>
+								{/* Award Amount Filter */}
+								<div className='flex-1 max-w-xs px-2'>
+									<div className='flex items-center justify-between mb-2'>
+										<span className='text-sm font-medium'>Award Amount:</span>
+										<span className='text-sm text-blue-600'>
+											${(filters.maxAmount / 1000000).toFixed(1)}M+
+										</span>
+									</div>
+									<Slider
+										value={[filters.maxAmount]}
+										max={10000000}
+										step={500000}
+										onValueChange={(values) =>
+											handleFilterChange('maxAmount', values[0])
+										}
+										className='py-2'
+									/>
+								</div>
 							</div>
-							<Slider
-								value={[filters.maxAmount]}
-								max={10000000}
-								step={500000}
-								onValueChange={(values) =>
-									handleFilterChange('maxAmount', values[0])
-								}
-								className='w-full'
-							/>
-						</div>
 
-						{/* Reset Button */}
-						<Button
-							variant='outline'
-							size='sm'
-							onClick={handleResetFilters}
-							className='h-9 px-4'>
-							Reset
-						</Button>
+							{/* Reset Button */}
+							<Button
+								variant='outline'
+								onClick={handleResetFilters}
+								className='h-10 px-4'>
+								Reset
+							</Button>
+						</div>
 					</div>
 				</div>
 
