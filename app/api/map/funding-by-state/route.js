@@ -31,6 +31,12 @@ export async function GET(request) {
 			filters.p_categories = categories.split(',');
 		}
 
+		// Log the filters being sent to the database
+		console.log(
+			'API filters being sent to database:',
+			JSON.stringify(filters, null, 2)
+		);
+
 		// Fetch aggregated funding data by state using the v3 function that correctly calculates total funding
 		const { data, error } = await supabase.rpc(
 			'get_funding_by_state_v3',
@@ -65,13 +71,28 @@ export async function GET(request) {
 			});
 		}
 
-		// Get the exact total funding available using our new function
+		// Fetch all three metrics using the specialized functions
+		// 1. Total Funding Available
 		const { data: totalFundingResult, error: totalFundingError } =
 			await supabase.rpc('get_total_funding_available', filters);
 
+		// 2. Total Opportunities Count
+		const { data: totalOpportunitiesResult, error: totalOpportunitiesError } =
+			await supabase.rpc('get_total_opportunities_count', filters);
+
+		// 3. States with Funding Count
+		const { data: statesWithFundingResult, error: statesWithFundingError } =
+			await supabase.rpc('get_states_with_funding_count', filters);
+
+		// Initialize with defaults in case of errors
 		let totalFundingAvailable = 0;
-		if (!totalFundingError && totalFundingResult) {
+		let totalOpportunitiesCount = 0;
+		let statesWithFundingCount = 0;
+
+		// Update values if successful
+		if (!totalFundingError && totalFundingResult !== null) {
 			totalFundingAvailable = totalFundingResult;
+			console.log('Successfully fetched total funding:', totalFundingAvailable);
 		} else {
 			console.error(
 				'Error fetching total funding available:',
@@ -79,12 +100,47 @@ export async function GET(request) {
 			);
 		}
 
-		// Return the data with the calculated total funding
+		if (!totalOpportunitiesError && totalOpportunitiesResult !== null) {
+			totalOpportunitiesCount = totalOpportunitiesResult;
+			console.log(
+				'Successfully fetched total opportunities:',
+				totalOpportunitiesCount
+			);
+		} else {
+			console.error(
+				'Error fetching total opportunities count:',
+				totalOpportunitiesError
+			);
+		}
+
+		if (!statesWithFundingError && statesWithFundingResult !== null) {
+			statesWithFundingCount = statesWithFundingResult;
+			console.log(
+				'Successfully fetched states with funding count:',
+				statesWithFundingCount
+			);
+		} else {
+			console.error(
+				'Error fetching states with funding count:',
+				statesWithFundingError
+			);
+		}
+
+		// Log the metrics results
+		console.log('Metrics to be returned:', {
+			totalFunding: totalFundingAvailable,
+			totalOpportunities: totalOpportunitiesCount,
+			statesWithFunding: statesWithFundingCount,
+		});
+
+		// Return the data with all calculated metrics
 		return NextResponse.json({
 			success: true,
 			data: data,
 			source: 'v3',
 			totalFunding: totalFundingAvailable,
+			totalOpportunities: totalOpportunitiesCount,
+			statesWithFunding: statesWithFundingCount,
 		});
 	} catch (error) {
 		console.error('API Error:', error);

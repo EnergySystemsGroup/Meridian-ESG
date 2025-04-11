@@ -174,6 +174,8 @@ export default function Page() {
 	});
 	const [activeLayer, setActiveLayer] = useState('federal'); // federal, state, all
 	const [totalFundingAvailable, setTotalFundingAvailable] = useState(0);
+	const [totalOpportunities, setTotalOpportunities] = useState(0);
+	const [statesWithFunding, setStatesWithFunding] = useState(0);
 	const [filters, setFilters] = useState({
 		minAmount: 0,
 		maxAmount: 0,
@@ -248,10 +250,10 @@ export default function Page() {
 					// Set state with the data
 					setFundingData(result.data);
 
-					// Set the total funding available
-					if (result.totalFunding) {
-						setTotalFundingAvailable(result.totalFunding);
-					}
+					// Set the funding summary metrics from API response
+					setTotalFundingAvailable(result.totalFunding || 0);
+					setTotalOpportunities(result.totalOpportunities || 0);
+					setStatesWithFunding(result.statesWithFunding || 0);
 				} else {
 					console.error('Error in API response:', result.error);
 					setError(result.error);
@@ -636,52 +638,21 @@ export default function Page() {
 										<span className='text-muted-foreground'>
 											Total Opportunities:
 										</span>
-										<span className='font-medium'>
-											{(() => {
-												// If no data, return 0
-												if (fundingData.length === 0) return 0;
-
-												// Find a state with opportunities to get national count
-												const sampleState = fundingData.find(
-													(state) => state.opportunities > 0
-												);
-												if (!sampleState) return 0;
-
-												// Count state-specific opportunities for each state
-												const stateSpecificTotal = fundingData.reduce(
-													(sum, state) => {
-														// For our counting, assume California has the most accurate count as it's being checked
-														if (state.state === 'California') {
-															return sum + state.opportunities;
-														}
-														return sum;
-													},
-													0
-												);
-
-												return stateSpecificTotal;
-											})()}
-										</span>
+										<span className='font-medium'>{totalOpportunities}</span>
 									</div>
 									<div className='flex justify-between'>
 										<span className='text-muted-foreground'>
 											Total Funding:
 										</span>
 										<span className='font-medium'>
-											$
-											{formatFundingAmount(
-												// Use the total funding directly from the API
-												totalFundingAvailable
-											)}
+											${formatFundingAmount(totalFundingAvailable)}
 										</span>
 									</div>
 									<div className='flex justify-between'>
 										<span className='text-muted-foreground'>
 											States with Funding:
 										</span>
-										<span className='font-medium'>
-											{fundingData.filter((state) => state.value > 0).length}
-										</span>
+										<span className='font-medium'>{statesWithFunding}</span>
 									</div>
 								</div>
 							</CardContent>
