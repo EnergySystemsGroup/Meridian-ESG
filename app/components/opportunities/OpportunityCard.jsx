@@ -13,9 +13,9 @@ import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 
 // Status indicators with colors for badges
 const statusIndicator = {
-	open: { color: '#4CAF50', bgColor: '#E8F5E9', display: 'Open' },
-	upcoming: { color: '#2196F3', bgColor: '#E3F2FD', display: 'Upcoming' },
-	closed: { color: '#9E9E9E', bgColor: '#F5F5F5', display: 'Closed' },
+	open: { color: '#2563EB', bgColor: '#EFF6FF', display: 'Open' },
+	upcoming: { color: '#4CAF50', bgColor: '#E8F5E9', display: 'Upcoming' },
+	closed: { color: '#EF4444', bgColor: '#FEF2F2', display: 'Closed' },
 };
 
 // Helper to get status color regardless of case

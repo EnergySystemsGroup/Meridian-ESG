@@ -101,14 +101,14 @@ const formatStatusForDisplay = (status) => {
 	return statusIndicator[status] || status;
 };
 
-// Get appropriate color for status - updated to match OpportunityCard colors
+// Get appropriate color for status - updated to match map view colors
 const getStatusColor = (status) => {
 	if (!status) return '#9E9E9E';
 
 	const statusColors = {
-		open: '#4CAF50', // green - matches card
-		upcoming: '#2196F3', // blue - matches card
-		closed: '#9E9E9E', // gray - matches card
+		open: '#2563EB', // updated blue for open status to match badge primary color
+		upcoming: '#4CAF50', // green for upcoming status
+		closed: '#EF4444', // red for closed status
 	};
 
 	const statusKey = status.toLowerCase();
