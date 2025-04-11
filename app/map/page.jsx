@@ -381,31 +381,31 @@ export default function Page() {
 
 	// Format amount with K/M suffix based on size
 	const formatAmount = (minimum, maximum, total) => {
-		// Helper to format a number with K/M suffix (without $ sign)
+		// Helper to format a number with K/M suffix (including $ sign)
 		const formatWithSuffix = (num) => {
 			if (!num && num !== 0) return null;
 
 			if (num >= 1000000) {
-				return `${(num / 1000000).toLocaleString(undefined, {
+				return `$${(num / 1000000).toLocaleString(undefined, {
 					maximumFractionDigits: 1,
 					minimumFractionDigits: 0,
 				})}M`;
 			} else {
-				return `${(num / 1000).toLocaleString(undefined, {
+				return `$${(num / 1000).toLocaleString(undefined, {
 					maximumFractionDigits: 0,
 				})}K`;
 			}
 		};
 
-		// Handle different cases based on available data
+		// Handle different cases based on available data with proper $ formatting
 		if (minimum && maximum) {
-			return `$${formatWithSuffix(minimum)} - ${formatWithSuffix(maximum)}`;
+			return `${formatWithSuffix(minimum)} - ${formatWithSuffix(maximum)}`;
 		} else if (maximum) {
-			return `Up to $${formatWithSuffix(maximum)}`;
+			return `Up to ${formatWithSuffix(maximum)}`;
 		} else if (minimum) {
-			return `From $${formatWithSuffix(minimum)}`;
+			return `From ${formatWithSuffix(minimum)}`;
 		} else if (total) {
-			return `$${formatWithSuffix(total)} total`;
+			return `${formatWithSuffix(total)} total`;
 		} else {
 			return 'Amount not specified';
 		}
@@ -581,7 +581,6 @@ export default function Page() {
 													</div>
 													<div className='flex justify-between text-xs text-muted-foreground mt-1'>
 														<div className='flex items-center'>
-															<DollarSign className='h-3 w-3 mr-1' />
 															{opportunity.amount}
 														</div>
 														<div className='flex items-center'>
