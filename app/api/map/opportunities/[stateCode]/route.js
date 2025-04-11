@@ -22,8 +22,9 @@ export async function GET(request, context) {
 		const filters = {
 			status: searchParams.get('status') || 'all',
 			source_type: searchParams.get('source_type') || 'all',
-			min_amount: searchParams.get('min_amount'),
-			max_amount: searchParams.get('max_amount'),
+			min_amount: searchParams.get('min_amount')
+				? parseFloat(searchParams.get('min_amount'))
+				: null,
 			include_national: searchParams.get('include_national') !== 'false', // Default to true
 			deadline_start: searchParams.get('deadline_start'),
 			deadline_end: searchParams.get('deadline_end'),
@@ -31,6 +32,12 @@ export async function GET(request, context) {
 			page: parseInt(searchParams.get('page') || '1', 10),
 			pageSize: parseInt(searchParams.get('pageSize') || '10', 10),
 		};
+
+		// Only add max_amount if it's greater than 0
+		const maxAmount = searchParams.get('max_amount');
+		if (maxAmount && parseFloat(maxAmount) > 0) {
+			filters.max_amount = parseFloat(maxAmount);
+		}
 
 		// Handle categories as array
 		const categories = searchParams.get('categories');

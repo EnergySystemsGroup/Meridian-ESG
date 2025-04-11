@@ -132,6 +132,29 @@ const stateAbbreviations = {
 	'District of Columbia': 'DC',
 };
 
+// Helper function to format funding amounts appropriately
+function formatFundingAmount(value) {
+	if (!value) return '0';
+
+	// Format as billions if over 1 billion
+	if (value >= 1000000000) {
+		return `${(value / 1000000000).toFixed(2)}B`;
+	}
+
+	// Format as millions if over 1 million
+	if (value >= 1000000) {
+		return `${(value / 1000000).toFixed(1)}M`;
+	}
+
+	// Format as thousands if over 1 thousand
+	if (value >= 1000) {
+		return `${(value / 1000).toFixed(0)}K`;
+	}
+
+	// Otherwise just return the value
+	return value.toLocaleString();
+}
+
 export default function Page() {
 	const [fundingData, setFundingData] = useState([]);
 	const [loading, setLoading] = useState(true);
@@ -182,8 +205,10 @@ export default function Page() {
 				if (filters.minAmount > 0) {
 					queryParams.append('min_amount', filters.minAmount);
 				}
-				// Always include max_amount parameter, even at maximum value
-				queryParams.append('max_amount', filters.maxAmount);
+				// Only include max_amount parameter if it's greater than 0
+				if (filters.maxAmount > 0) {
+					queryParams.append('max_amount', filters.maxAmount);
+				}
 				if (!filters.showNational) {
 					queryParams.append('include_national', 'false');
 				}
@@ -200,12 +225,26 @@ export default function Page() {
 					);
 				}
 
+				// Add cache-busting timestamp
+				queryParams.append('_t', Date.now());
+
 				const response = await fetch(
 					`/api/map/funding-by-state?${queryParams}`
 				);
 				const result = await response.json();
 
 				if (result.success) {
+					// Check California in the API response
+					const californiaResponse = result.data.find(
+						(d) => d.state === 'California'
+					);
+					console.log('API response California:', californiaResponse);
+
+					// Log all state names to check for weird ones
+					const stateNames = result.data.map((d) => d.state);
+					console.log('All state names:', stateNames);
+
+					// Set state with the data
 					setFundingData(result.data);
 				} else {
 					console.error('Error in API response:', result.error);
@@ -259,8 +298,10 @@ export default function Page() {
 				if (filters.minAmount > 0) {
 					queryParams.append('min_amount', filters.minAmount);
 				}
-				// Always include max_amount parameter, even at maximum value
-				queryParams.append('max_amount', filters.maxAmount);
+				// Only include max_amount parameter if it's greater than 0
+				if (filters.maxAmount > 0) {
+					queryParams.append('max_amount', filters.maxAmount);
+				}
 				if (!filters.showNational) {
 					queryParams.append('include_national', 'false');
 				}
@@ -558,7 +599,17 @@ export default function Page() {
 									<FundingMapClient
 										loading={loading}
 										error={error}
-										fundingData={fundingData}
+										fundingData={(() => {
+											// Debug log right before passing data to FundingMapClient
+											const california = fundingData.find(
+												(d) => d.state === 'California'
+											);
+											console.log(
+												'Page right before passing fundingData - California:',
+												california
+											);
+											return fundingData;
+										})()}
 										colorBy={colorBy}
 										selectedState={selectedState}
 										onStateClick={handleStateClick}
@@ -592,13 +643,9 @@ export default function Page() {
 										</span>
 										<span className='font-medium'>
 											$
-											{(
-												fundingData.reduce(
-													(sum, state) => sum + state.value,
-													0
-												) / 1000000
-											).toFixed(1)}
-											M
+											{formatFundingAmount(
+												fundingData.reduce((sum, state) => sum + state.value, 0)
+											)}
 										</span>
 									</div>
 									<div className='flex justify-between'>

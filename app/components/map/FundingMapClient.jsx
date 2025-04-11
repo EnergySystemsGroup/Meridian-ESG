@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
 	ComposableMap,
 	Geographies,
@@ -23,13 +23,25 @@ export default function FundingMapClient({
 	onStateClick,
 	stateAbbreviations,
 }) {
+	// Check California data
+	const california = fundingData.find((d) => d.state === 'California');
+	console.log('FundingMapClient California data received:', california);
+
 	const [tooltip, setTooltip] = useState({
 		show: false,
 		content: {},
 		position: { x: 0, y: 0 },
 	});
 
+	// Log when tooltip changes
+	useEffect(() => {
+		if (tooltip.show && tooltip.content.state === 'California') {
+			console.log('Tooltip effect - California content:', tooltip.content);
+		}
+	}, [tooltip]);
+
 	// Generate color scale based on either funding amounts or opportunity count
+	// Use a logarithmic scale for better visualization of funding amounts with wide ranges
 	const colorScale = scaleQuantile()
 		.domain(
 			fundingData.map((d) => (colorBy === 'amount' ? d.value : d.opportunities))
@@ -71,6 +83,7 @@ export default function FundingMapClient({
 							Array.isArray(geographies)
 								? geographies.map((geo) => {
 										const stateName = geo.properties.name;
+										// Always lookup fresh data directly from props
 										const stateData = fundingData.find(
 											(d) => d.state === stateName
 										);
@@ -87,13 +100,30 @@ export default function FundingMapClient({
 												geography={geo}
 												onClick={() => onStateClick(geo)}
 												onMouseEnter={(evt) => {
+													// Log special debug info for California
+													if (stateName === 'California') {
+														console.log(
+															'California hover - state name matches'
+														);
+														console.log(
+															'California hover - stateData:',
+															stateData
+														);
+														console.log(
+															'California hover - direct lookup:',
+															fundingData.find((d) => d.state === 'California')
+														);
+													}
+
+													const tooltipContent = {
+														state: stateName,
+														opportunities: stateData?.opportunities || 0,
+														value: stateData?.value || 0,
+													};
+
 													setTooltip({
 														show: true,
-														content: {
-															state: stateName,
-															opportunities: stateData?.opportunities || 0,
-															value: stateData?.value || 0,
-														},
+														content: tooltipContent,
 														position: {
 															x: evt.clientX,
 															y: evt.clientY,
@@ -139,60 +169,6 @@ export default function FundingMapClient({
 								: null
 						}
 					</Geographies>
-
-					{/* Add state abbreviations and counts */}
-					<Geographies geography={geoUrl}>
-						{({ geographies }) =>
-							Array.isArray(geographies)
-								? geographies.map((geo) => {
-										const centroid = geoCentroid(geo);
-										const stateName = geo.properties.name;
-										const stateAbbr = stateAbbreviations[stateName];
-										const stateData = fundingData.find(
-											(d) => d.state === stateName
-										);
-
-										return (
-											<g key={geo.rsmKey + '-name'}>
-												{stateAbbr && (
-													<>
-														<text
-															x={centroid[0]}
-															y={centroid[1]}
-															style={{
-																fontFamily: 'system-ui',
-																fontSize: '10px',
-																fontWeight: 'bold',
-																fill: '#333',
-																textAnchor: 'middle',
-																alignmentBaseline: 'middle',
-																pointerEvents: 'none',
-															}}>
-															{stateAbbr}
-														</text>
-														{stateData && stateData.opportunities > 0 && (
-															<text
-																x={centroid[0]}
-																y={centroid[1] + 12}
-																style={{
-																	fontFamily: 'system-ui',
-																	fontSize: '9px',
-																	fill: '#666',
-																	textAnchor: 'middle',
-																	alignmentBaseline: 'middle',
-																	pointerEvents: 'none',
-																}}>
-																{stateData.opportunities}
-															</text>
-														)}
-													</>
-												)}
-											</g>
-										);
-								  })
-								: null
-						}
-					</Geographies>
 				</ZoomableGroup>
 			</ComposableMap>
 
@@ -228,10 +204,33 @@ export default function FundingMapClient({
 					<div className='font-medium'>{tooltip.content.state}</div>
 					<div>Opportunities: {tooltip.content.opportunities}</div>
 					<div>
-						Total Funding: ${(tooltip.content.value / 1000000).toFixed(1)}M
+						Total Funding: ${formatFundingAmount(tooltip.content.value)}
 					</div>
 				</div>
 			)}
 		</div>
 	);
+}
+
+// Helper function to format funding amounts appropriately
+function formatFundingAmount(value) {
+	if (!value) return '0';
+
+	// Format as billions if over 1 billion
+	if (value >= 1000000000) {
+		return `${(value / 1000000000).toFixed(2)}B`;
+	}
+
+	// Format as millions if over 1 million
+	if (value >= 1000000) {
+		return `${(value / 1000000).toFixed(1)}M`;
+	}
+
+	// Format as thousands if over 1 thousand
+	if (value >= 1000) {
+		return `${(value / 1000).toFixed(0)}K`;
+	}
+
+	// Otherwise just return the value
+	return value.toLocaleString();
 }

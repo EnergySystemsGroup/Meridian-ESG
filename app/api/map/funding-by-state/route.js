@@ -7,19 +7,35 @@ export async function GET(request) {
 		// Get URL parameters
 		const { searchParams } = new URL(request.url);
 
-		// Build filters from query parameters with correct parameter names
+		// Map API parameters to function parameters with correct names
 		const filters = {
 			p_status: searchParams.get('status'),
 			p_source_type: searchParams.get('source_type'),
-			p_min_amount: searchParams.get('min_amount'),
-			p_max_amount: searchParams.get('max_amount'),
+			p_min_amount: searchParams.get('min_amount')
+				? parseFloat(searchParams.get('min_amount'))
+				: null,
 		};
+
+		// Only add max_amount if it's greater than 0
+		const maxAmount = searchParams.get('max_amount');
+		if (maxAmount && parseFloat(maxAmount) > 0) {
+			filters.p_max_amount = parseFloat(maxAmount);
+		} else {
+			// Don't include max_amount if it's 0 or null
+			filters.p_max_amount = null;
+		}
 
 		// Handle categories as array
 		const categories = searchParams.get('categories');
 		if (categories) {
 			filters.p_categories = categories.split(',');
 		}
+
+		// Validate California should show combined data (20 state-specific + 2 national = 22)
+		console.log(
+			'Sending filters to get_funding_by_state:',
+			JSON.stringify(filters)
+		);
 
 		// Fetch aggregated funding data by state
 		const { data, error } = await supabase.rpc('get_funding_by_state', filters);
@@ -32,6 +48,37 @@ export async function GET(request) {
 				data: generateMockStateData(),
 			});
 		}
+
+		// Verify the data returned matches our expectations
+		const californiaData = data.find((item) => item.state_code === 'CA');
+		console.log('Funding data returned from database:');
+		console.log('California data:', californiaData);
+
+		// Verify we have the right counts for California (should be 22 opportunities, $1.184B)
+		// If it's wrong, log a detailed error to help debug the database query
+		if (
+			californiaData &&
+			(californiaData.opportunities !== 22 ||
+				californiaData.value !== 1184000000)
+		) {
+			console.error('WARNING: California data mismatch!');
+			console.error(
+				`Expected 22 opportunities, got ${californiaData.opportunities}`
+			);
+			console.error(`Expected $1.184B value, got ${californiaData.value}`);
+			console.error(
+				'This suggests an issue with the get_funding_by_state database function'
+			);
+		}
+
+		console.log('Total records:', data.length);
+
+		// Check if California exists and has the right data
+		const californiaBefore = data.find((item) => item.state_code === 'CA');
+		console.log(
+			'Final California data being sent to client:',
+			californiaBefore
+		);
 
 		return NextResponse.json({
 			success: true,
