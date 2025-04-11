@@ -101,15 +101,50 @@ export async function GET(request, context) {
 				// Simpler approach with individual filters
 				const filterAmount = filters.max_amount;
 
-				// First add a filter for opportunities with sufficient minimum_award OR maximum_award
-				idQuery = idQuery.or(
-					`minimum_award.gte.${filterAmount},maximum_award.gte.${filterAmount}`
-				);
+				// Apply filtering for opportunities with the right maximum_award or NULL award
+				// Two separate queries are needed due to how Supabase PostgREST filters work
 
-				// Then add a filter to include opportunities with NULL awards
-				// We can't easily have a complex OR with nested conditions, so we'll do this in multiple steps
-				// Get all IDs with sufficient award amounts
-				const { data: idsWithAmounts, error: amountError } = await idQuery;
+				// First, get opportunities with max_award >= filter amount
+				let amountQuery = supabase
+					.from('funding_opportunities_with_geography')
+					.select('id')
+					.or(`is_national.eq.true,eligible_states.cs.{${stateCode}}`)
+					.gte('maximum_award', filterAmount);
+
+				// Apply the same other filters to this query
+				if (filters.status && filters.status !== 'all') {
+					amountQuery = amountQuery.eq('status', filters.status);
+				}
+
+				if (filters.source_type && filters.source_type !== 'all') {
+					amountQuery = amountQuery.ilike(
+						'source_type_display',
+						filters.source_type
+					);
+				}
+
+				if (filters.categories && filters.categories.length > 0) {
+					amountQuery = amountQuery.overlaps('categories', filters.categories);
+				}
+
+				if (filters.min_amount) {
+					amountQuery = amountQuery.gte('minimum_award', filters.min_amount);
+				}
+
+				if (filters.deadline_start) {
+					amountQuery = amountQuery.gte('close_date', filters.deadline_start);
+				}
+
+				if (filters.deadline_end) {
+					amountQuery = amountQuery.lte('close_date', filters.deadline_end);
+				}
+
+				if (!filters.include_national) {
+					amountQuery = amountQuery.eq('is_national', false);
+				}
+
+				// Get opportunities with maximum_award >= filterAmount
+				const { data: idsWithAmounts, error: amountError } = await amountQuery;
 
 				if (amountError) {
 					console.error(
@@ -126,13 +161,14 @@ export async function GET(request, context) {
 					);
 				}
 
-				// Get all IDs with NULL award amounts but exclude those with insufficient total_funding
+				// Now get opportunities with NULL maximum_award
 				let nullAmountQuery = supabase
 					.from('funding_opportunities_with_geography')
 					.select('id')
-					.or(`is_national.eq.true,eligible_states.cs.{${stateCode}}`);
+					.or(`is_national.eq.true,eligible_states.cs.{${stateCode}}`)
+					.is('maximum_award', null); // Specifically look for NULL maximum_award values
 
-				// Apply the same filters as the main query except for the amount
+				// Apply the same other filters to this query
 				if (filters.status && filters.status !== 'all') {
 					nullAmountQuery = nullAmountQuery.eq('status', filters.status);
 				}
@@ -148,6 +184,13 @@ export async function GET(request, context) {
 					nullAmountQuery = nullAmountQuery.overlaps(
 						'categories',
 						filters.categories
+					);
+				}
+
+				if (filters.min_amount) {
+					nullAmountQuery = nullAmountQuery.gte(
+						'minimum_award',
+						filters.min_amount
 					);
 				}
 
@@ -169,18 +212,6 @@ export async function GET(request, context) {
 					nullAmountQuery = nullAmountQuery.eq('is_national', false);
 				}
 
-				// Find opportunities with null award amounts
-				nullAmountQuery = nullAmountQuery
-					.is('minimum_award', null)
-					.is('maximum_award', null);
-
-				// Exclude opportunities with insufficient total_funding
-				if (filterAmount > 0) {
-					nullAmountQuery = nullAmountQuery.or(
-						`total_funding_available.gte.${filterAmount},total_funding_available.is.null`
-					);
-				}
-
 				const { data: idsWithNullAmounts, error: nullError } =
 					await nullAmountQuery;
 
@@ -199,7 +230,7 @@ export async function GET(request, context) {
 					);
 				}
 
-				// Combine results from both queries
+				// Combine results from both queries (opportunities with max_award >= filter OR null max_award)
 				const idData = [
 					...(idsWithAmounts || []),
 					...(idsWithNullAmounts || []),
