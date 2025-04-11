@@ -291,7 +291,10 @@ export default function Page() {
 								opp.maximum_award,
 								opp.total_funding_available
 							),
-							closeDate: new Date(opp.close_date).toLocaleDateString(),
+							closeDate:
+								opp.close_date && new Date(opp.close_date).getFullYear() > 1970
+									? new Date(opp.close_date).toLocaleDateString()
+									: 'No deadline specified',
 							source: opp.source_name,
 							sourceType: opp.source_type,
 							status: opp.status,
@@ -623,7 +626,11 @@ export default function Page() {
 											  } opportunities`}
 									</CardDescription>
 								</CardHeader>
-								<CardContent className='space-y-4'>
+								{/* Horizontal divider */}
+								<div className='px-6'>
+									<div className='h-[1px] bg-[#E0E0E0] my-3'></div>
+								</div>
+								<CardContent className='space-y-4 pt-0'>
 									{stateOpportunitiesLoading ? (
 										<div className='flex justify-center py-8'>
 											<div className='animate-spin rounded-full h-8 w-8 border-b-2 border-primary'></div>
@@ -635,7 +642,7 @@ export default function Page() {
 													key={opportunity.id || index}
 													className='border-b pb-3 last:border-b-0 last:pb-0'>
 													<div className='flex justify-between'>
-														<h3 className='font-medium text-sm'>
+														<h3 className='font-medium text-sm mt-0.5'>
 															{opportunity.title}
 														</h3>
 														<Badge
@@ -645,7 +652,8 @@ export default function Page() {
 																	: opportunity.status === 'Upcoming'
 																	? 'outline'
 																	: 'secondary'
-															}>
+															}
+															className='h-7 px-3 flex items-center justify-center min-w-[70px] self-start'>
 															{opportunity.status}
 														</Badge>
 													</div>
