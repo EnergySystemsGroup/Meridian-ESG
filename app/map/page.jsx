@@ -655,139 +655,16 @@ export default function Page() {
 													key={opportunity.id || index}
 													className='border-b pb-3 last:border-b-0 last:pb-0'>
 													<div className='flex justify-between'>
-														<h3 className='font-medium text-sm mt-0.5 flex items-start'>
+														<h3 className='font-medium text-sm mt-0.5'>
 															{opportunity.title}
-															<TooltipProvider>
-																<Tooltip delayDuration={100}>
-																	<TooltipTrigger asChild>
-																		<button className='ml-1 text-blue-500 focus:outline-none rounded-full border border-blue-200 flex items-center justify-center w-4 h-4 hover:bg-blue-50'>
-																			<Info className='h-3 w-3' />
-																		</button>
-																	</TooltipTrigger>
-																	<TooltipContent
-																		side='right'
-																		align='start'
-																		className='w-80 p-4 space-y-3 shadow-md rounded-lg bg-blue-600 text-white'>
-																		{/* Actionable Summary */}
-																		<div>
-																			<p className='text-sm font-medium mb-2'>
-																				Actionable Summary
-																			</p>
-																			<p className='text-xs'>
-																				{opportunity.actionable_summary ||
-																					opportunity.description ||
-																					`${
-																						opportunity.title
-																					} funding is available for ${
-																						opportunity.sourceType
-																							? opportunity.sourceType.toLowerCase()
-																							: ''
-																					} projects. Apply by ${
-																						opportunity.closeDate
-																					}.`}
-																			</p>
-																		</div>
-
-																		{/* Tags */}
-																		<div>
-																			<p className='text-sm font-medium mb-2'>
-																				Tags
-																			</p>
-																			<div className='flex flex-wrap gap-1'>
-																				{opportunity.tags &&
-																				opportunity.tags.length > 0
-																					? opportunity.tags.map((tag, i) => (
-																							<span
-																								key={i}
-																								className='inline-flex px-2 py-0.5 rounded-full bg-white text-blue-700 text-xs'>
-																								{tag}
-																							</span>
-																					  ))
-																					: [
-																							opportunity.sourceType,
-																							opportunity.status,
-																							...(opportunity.categories &&
-																							opportunity.categories.length
-																								? [opportunity.categories[0]]
-																								: []),
-																							opportunity.isNational
-																								? 'National'
-																								: 'State-specific',
-																					  ].map((tag, i) => (
-																							<span
-																								key={i}
-																								className='inline-flex px-2 py-0.5 rounded-full bg-white text-blue-700 text-xs'>
-																								{tag}
-																							</span>
-																					  ))}
-																			</div>
-																		</div>
-
-																		{/* Eligible Applicants */}
-																		<div>
-																			<p className='text-sm font-medium mb-2'>
-																				Who Can Apply
-																			</p>
-																			<div className='text-xs'>
-																				{opportunity.eligible_applicants &&
-																				opportunity.eligible_applicants.length >
-																					0
-																					? opportunity.eligible_applicants.join(
-																							', '
-																					  )
-																					: 'Eligible organizations in this state'}
-																			</div>
-																		</div>
-
-																		{/* Relevance Meter */}
-																		<div>
-																			<div className='flex justify-between mb-1'>
-																				<p className='text-sm font-medium'>
-																					Relevance
-																				</p>
-																				<span className='text-xs'>
-																					{opportunity.relevance_score || 4}/5
-																				</span>
-																			</div>
-																			<div className='h-2 w-full bg-blue-800 rounded-full overflow-hidden'>
-																				<div
-																					className={`h-full ${
-																						(opportunity.relevance_score ||
-																							4) >= 4
-																							? 'bg-green-400'
-																							: (opportunity.relevance_score ||
-																									4) >= 3
-																							? 'bg-orange-400'
-																							: 'bg-gray-400'
-																					}`}
-																					style={{
-																						width: `${
-																							((opportunity.relevance_score ||
-																								4) /
-																								5) *
-																							100
-																						}%`,
-																					}}></div>
-																			</div>
-																		</div>
-
-																		{/* Action Button */}
-																		<a
-																			href={`/funding/opportunities/${opportunity.id}`}
-																			className='block w-full text-center text-xs font-medium bg-white hover:bg-gray-100 text-blue-700 py-2 rounded-md transition-colors'>
-																			View Full Opportunity
-																		</a>
-																	</TooltipContent>
-																</Tooltip>
-															</TooltipProvider>
 														</h3>
 														<Badge
 															variant={
 																opportunity.status === 'Open'
 																	? 'default'
 																	: opportunity.status === 'Upcoming'
-																	? 'outline'
-																	: 'secondary'
+																	? 'success'
+																	: 'destructive'
 															}
 															className='h-7 px-3 flex items-center justify-center min-w-[70px] self-start'>
 															{opportunity.status}
@@ -804,21 +681,128 @@ export default function Page() {
 													</div>
 													<div className='mt-1 text-xs text-muted-foreground flex items-center gap-1'>
 														<span>{opportunity.source}</span>
-														{opportunity.isNational && (
-															<TooltipProvider>
-																<Tooltip>
-																	<TooltipTrigger>
+														<TooltipProvider>
+															<Tooltip delayDuration={100}>
+																<TooltipTrigger asChild>
+																	<button className='text-blue-500 focus:outline-none'>
 																		<Info className='h-3 w-3' />
-																	</TooltipTrigger>
-																	<TooltipContent>
-																		<p>
-																			National opportunity (available in all
-																			states)
+																	</button>
+																</TooltipTrigger>
+																<TooltipContent
+																	side='top'
+																	align='start'
+																	className='w-80 p-4 space-y-3 shadow-md rounded-lg bg-blue-600 text-white'>
+																	{/* Actionable Summary */}
+																	<div>
+																		<p className='text-sm font-medium mb-2'>
+																			Actionable Summary
 																		</p>
-																	</TooltipContent>
-																</Tooltip>
-															</TooltipProvider>
-														)}
+																		<p className='text-xs'>
+																			{opportunity.actionable_summary ||
+																				opportunity.description ||
+																				`${
+																					opportunity.title
+																				} funding is available for ${
+																					opportunity.sourceType
+																						? opportunity.sourceType.toLowerCase()
+																						: ''
+																				} projects. Apply by ${
+																					opportunity.closeDate
+																				}.`}
+																		</p>
+																	</div>
+
+																	{/* Tags */}
+																	<div>
+																		<p className='text-sm font-medium mb-2'>
+																			Tags
+																		</p>
+																		<div className='flex flex-wrap gap-1'>
+																			{opportunity.tags &&
+																			opportunity.tags.length > 0
+																				? opportunity.tags.map((tag, i) => (
+																						<span
+																							key={i}
+																							className='inline-flex px-2 py-0.5 rounded-full bg-white text-blue-700 text-xs'>
+																							{tag}
+																						</span>
+																				  ))
+																				: [
+																						opportunity.sourceType,
+																						opportunity.status,
+																						...(opportunity.categories &&
+																						opportunity.categories.length
+																							? [opportunity.categories[0]]
+																							: []),
+																						opportunity.isNational
+																							? 'National'
+																							: 'State-specific',
+																				  ].map((tag, i) => (
+																						<span
+																							key={i}
+																							className='inline-flex px-2 py-0.5 rounded-full bg-white text-blue-700 text-xs'>
+																							{tag}
+																						</span>
+																				  ))}
+																		</div>
+																	</div>
+
+																	{/* Eligible Applicants */}
+																	<div>
+																		<p className='text-sm font-medium mb-2'>
+																			Who Can Apply
+																		</p>
+																		<div className='text-xs'>
+																			{opportunity.eligible_applicants &&
+																			opportunity.eligible_applicants.length > 0
+																				? opportunity.eligible_applicants.join(
+																						', '
+																				  )
+																				: 'Eligible organizations in this state'}
+																		</div>
+																	</div>
+
+																	{/* Relevance Meter */}
+																	<div>
+																		<div className='flex justify-between mb-1'>
+																			<p className='text-sm font-medium'>
+																				Relevance
+																			</p>
+																			<span className='text-xs'>
+																				{opportunity.relevance_score || 4}/5
+																			</span>
+																		</div>
+																		<div className='h-2 w-full bg-blue-800 rounded-full overflow-hidden'>
+																			<div
+																				className={`h-full ${
+																					(opportunity.relevance_score || 4) >=
+																					4
+																						? 'bg-green-400'
+																						: (opportunity.relevance_score ||
+																								4) >= 3
+																						? 'bg-orange-400'
+																						: 'bg-gray-400'
+																				}`}
+																				style={{
+																					width: `${
+																						((opportunity.relevance_score ||
+																							4) /
+																							5) *
+																						100
+																					}%`,
+																				}}></div>
+																		</div>
+																	</div>
+
+																	{/* Action Button */}
+																	<a
+																		href={`/funding/opportunities/${opportunity.id}`}
+																		className='block w-full text-center text-xs font-medium bg-white hover:bg-gray-100 text-blue-700 py-2 rounded-md transition-colors'>
+																		View Full Opportunity
+																	</a>
+																</TooltipContent>
+															</Tooltip>
+														</TooltipProvider>
 													</div>
 													<div className='mt-2'>
 														<Button
