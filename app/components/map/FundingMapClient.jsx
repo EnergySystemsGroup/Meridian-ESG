@@ -7,7 +7,13 @@ import {
 	Geography,
 	ZoomableGroup,
 } from 'react-simple-maps';
-import { scaleQuantile } from 'd3-scale';
+import {
+	scaleQuantile,
+	scaleLinear,
+	scaleThreshold,
+	extent,
+	max,
+} from 'd3-scale';
 import { geoCentroid } from 'd3-geo';
 import { Spinner } from '@/app/components/ui/spinner';
 
@@ -40,23 +46,33 @@ export default function FundingMapClient({
 		}
 	}, [tooltip]);
 
-	// Generate color scale based on either funding amounts or opportunity count
-	// Use a logarithmic scale for better visualization of funding amounts with wide ranges
-	const colorScale = scaleQuantile()
-		.domain(
-			fundingData.map((d) => (colorBy === 'amount' ? d.value : d.opportunities))
-		)
-		.range([
-			'#e6f7ff',
-			'#bae7ff',
-			'#91d5ff',
-			'#69c0ff',
-			'#40a9ff',
-			'#1890ff',
-			'#096dd9',
-			'#0050b3',
-			'#003a8c',
-		]);
+	// Get the values for coloring
+	const values = fundingData.map((d) =>
+		colorBy === 'amount' ? d.value : d.opportunities
+	);
+
+	// Find the maximum value and unique values
+	const maxValue = Math.max(...values);
+	const uniqueValues = [...new Set(values)].sort((a, b) => a - b);
+	console.log('Unique values for coloring:', uniqueValues);
+
+	// Choose the appropriate scale based on the data distribution
+	let colorScale;
+
+	if (uniqueValues.length <= 2) {
+		// If we only have 1-2 distinct values, use a threshold scale
+		colorScale = scaleThreshold()
+			.domain([
+				uniqueValues[0],
+				(uniqueValues[0] + uniqueValues[uniqueValues.length - 1]) / 2,
+			])
+			.range(['#e6f7ff', '#40a9ff', '#003a8c']);
+	} else {
+		// Otherwise use a linear scale that's better for showing the full range
+		colorScale = scaleLinear()
+			.domain([0, maxValue * 0.3, maxValue * 0.6, maxValue])
+			.range(['#e6f7ff', '#69c0ff', '#1890ff', '#003a8c']);
+	}
 
 	if (loading) {
 		return (
@@ -183,8 +199,12 @@ export default function FundingMapClient({
 						<span>Low</span>
 					</div>
 					<div className='flex items-center'>
+						<div className='w-3 h-3 bg-[#69c0ff] mr-1'></div>
+						<span>Medium-Low</span>
+					</div>
+					<div className='flex items-center'>
 						<div className='w-3 h-3 bg-[#1890ff] mr-1'></div>
-						<span>Medium</span>
+						<span>Medium-High</span>
 					</div>
 					<div className='flex items-center'>
 						<div className='w-3 h-3 bg-[#003a8c] mr-1'></div>
