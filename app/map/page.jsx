@@ -291,7 +291,7 @@ export default function Page() {
 
 				// Pagination
 				queryParams.append('page', stateOpportunitiesPage.toString());
-				queryParams.append('pageSize', '10'); // 10 items per page
+				queryParams.append('pageSize', '5'); // 5 items per page
 
 				// Filters
 				if (filters.status !== 'all') {
@@ -675,238 +675,275 @@ export default function Page() {
 											: `Showing ${
 													stateOpportunities.length
 														? `${
-																(stateOpportunitiesPage - 1) * 10 + 1
+																(stateOpportunitiesPage - 1) * 5 + 1
 														  }-${Math.min(
-																stateOpportunitiesPage * 10,
+																stateOpportunitiesPage * 5,
 																stateOpportunitiesTotalCount
 														  )} of ${stateOpportunitiesTotalCount}`
 														: '0'
 											  } opportunities`}
 									</CardDescription>
+									{/* Pagination controls after the state label */}
+									{stateOpportunities.length > 0 &&
+										stateOpportunitiesTotalCount > 5 && (
+											<div className='flex justify-between items-center mt-4 pt-2 border-t'>
+												<Button
+													variant='outline'
+													size='sm'
+													disabled={stateOpportunitiesPage === 1}
+													onClick={() =>
+														handlePageChange(stateOpportunitiesPage - 1)
+													}>
+													Previous
+												</Button>
+												<span className='text-sm text-muted-foreground'>
+													Page {stateOpportunitiesPage} of{' '}
+													{Math.ceil(stateOpportunitiesTotalCount / 5)}
+												</span>
+												<Button
+													variant='outline'
+													size='sm'
+													disabled={
+														stateOpportunitiesPage >=
+														Math.ceil(stateOpportunitiesTotalCount / 5)
+													}
+													onClick={() =>
+														handlePageChange(stateOpportunitiesPage + 1)
+													}>
+													Next
+												</Button>
+											</div>
+										)}
 								</CardHeader>
 								{/* Horizontal divider */}
 								<div className='px-6'>
 									<div className='h-[1px] bg-[#E0E0E0] my-3'></div>
 								</div>
-								<CardContent className='space-y-4 pt-0'>
-									{stateOpportunitiesLoading ? (
-										<div className='flex justify-center py-8'>
-											<div className='animate-spin rounded-full h-8 w-8 border-b-2 border-primary'></div>
-										</div>
-									) : stateOpportunities.length > 0 ? (
-										<>
-											{stateOpportunities.map((opportunity, index) => (
-												<div
-													key={opportunity.id || index}
-													className='border-b pb-3 last:border-b-0 last:pb-0'>
-													<div className='flex justify-between'>
-														<h3 className='font-medium text-sm mt-0.5'>
-															{opportunity.title}
-														</h3>
-														<Badge
-															variant={
-																opportunity.status === 'Open'
-																	? 'default'
-																	: opportunity.status === 'Upcoming'
-																	? 'success'
-																	: 'destructive'
-															}
-															className='h-7 px-3 flex items-center justify-center min-w-[70px] self-start'>
-															{opportunity.status}
-														</Badge>
-													</div>
-													<div className='flex justify-between text-xs text-muted-foreground mt-1'>
-														<div className='flex items-center flex-1 min-w-0 mr-2 truncate'>
-															{opportunity.amount}
-														</div>
-														<div className='flex items-center flex-shrink-0'>
-															<Calendar className='h-3 w-3 mr-1' />
-															{opportunity.closeDate}
-														</div>
-													</div>
-													<div className='mt-1 text-xs text-muted-foreground flex items-center gap-1'>
-														<span>{opportunity.source}</span>
-														<TooltipProvider>
-															<Tooltip delayDuration={100}>
-																<TooltipTrigger asChild>
-																	<button className='text-blue-500 focus:outline-none'>
-																		<Info className='h-3 w-3' />
-																	</button>
-																</TooltipTrigger>
-																<TooltipContent
-																	side='top'
-																	align='start'
-																	className='w-80 p-4 space-y-3 shadow-md rounded-lg bg-blue-600 text-white'>
-																	{/* Actionable Summary */}
-																	<div>
-																		<p className='text-sm font-medium mb-2'>
-																			Actionable Summary
-																		</p>
-																		<p className='text-xs'>
-																			{opportunity.actionable_summary ||
-																				opportunity.description ||
-																				`${
-																					opportunity.title
-																				} funding is available for ${
-																					opportunity.sourceType
-																						? opportunity.sourceType.toLowerCase()
-																						: ''
-																				} projects. Apply by ${
-																					opportunity.closeDate
-																				}.`}
-																		</p>
-																	</div>
+								<CardContent className='pt-0'>
+									<div className='space-y-4'>
+										{stateOpportunitiesLoading ? (
+											<div className='flex justify-center py-8'>
+												<div className='animate-spin rounded-full h-8 w-8 border-b-2 border-primary'></div>
+											</div>
+										) : stateOpportunities.length > 0 ? (
+											<>
+												<div className='space-y-4 animate-fadeIn'>
+													{stateOpportunities.map((opportunity, index) => (
+														<div
+															key={opportunity.id || index}
+															className='border-b pb-3 last:border-b-0 last:pb-0'>
+															<div className='flex justify-between'>
+																<h3 className='font-medium text-sm mt-0.5'>
+																	{opportunity.title}
+																</h3>
+																<Badge
+																	variant={
+																		opportunity.status === 'Open'
+																			? 'default'
+																			: opportunity.status === 'Upcoming'
+																			? 'success'
+																			: 'destructive'
+																	}
+																	className='h-7 px-3 flex items-center justify-center min-w-[70px] self-start'>
+																	{opportunity.status}
+																</Badge>
+															</div>
+															<div className='flex justify-between text-xs text-muted-foreground mt-1'>
+																<div className='flex items-center flex-1 min-w-0 mr-2 truncate'>
+																	{opportunity.amount}
+																</div>
+																<div className='flex items-center flex-shrink-0'>
+																	<Calendar className='h-3 w-3 mr-1' />
+																	{opportunity.closeDate}
+																</div>
+															</div>
+															<div className='mt-1 text-xs text-muted-foreground flex items-center gap-1'>
+																<span>{opportunity.source}</span>
+																<TooltipProvider>
+																	<Tooltip delayDuration={100}>
+																		<TooltipTrigger asChild>
+																			<button className='text-blue-500 focus:outline-none'>
+																				<Info className='h-3 w-3' />
+																			</button>
+																		</TooltipTrigger>
+																		<TooltipContent
+																			side='top'
+																			align='start'
+																			className='w-80 p-4 space-y-3 shadow-md rounded-lg bg-blue-600 text-white'>
+																			{/* Actionable Summary */}
+																			<div>
+																				<p className='text-sm font-medium mb-2'>
+																					Actionable Summary
+																				</p>
+																				<p className='text-xs'>
+																					{opportunity.actionable_summary ||
+																						opportunity.description ||
+																						`${
+																							opportunity.title
+																						} funding is available for ${
+																							opportunity.sourceType
+																								? opportunity.sourceType.toLowerCase()
+																								: ''
+																						} projects. Apply by ${
+																							opportunity.closeDate
+																						}.`}
+																				</p>
+																			</div>
 
-																	{/* Tags */}
-																	<div>
-																		<p className='text-sm font-medium mb-2'>
-																			Tags
-																		</p>
-																		<div className='flex flex-wrap gap-1'>
-																			{opportunity.tags &&
-																			opportunity.tags.length > 0
-																				? opportunity.tags.map((tag, i) => (
-																						<span
-																							key={i}
-																							className='inline-flex px-2 py-0.5 rounded-full bg-white text-blue-700 text-xs'>
-																							{tag}
-																						</span>
-																				  ))
-																				: [
-																						opportunity.sourceType,
-																						opportunity.status,
-																						...(opportunity.categories &&
-																						opportunity.categories.length
-																							? [opportunity.categories[0]]
-																							: []),
-																						opportunity.isNational
-																							? 'National'
-																							: 'State-specific',
-																				  ].map((tag, i) => (
-																						<span
-																							key={i}
-																							className='inline-flex px-2 py-0.5 rounded-full bg-white text-blue-700 text-xs'>
-																							{tag}
-																						</span>
-																				  ))}
-																		</div>
-																	</div>
+																			{/* Tags */}
+																			<div>
+																				<p className='text-sm font-medium mb-2'>
+																					Tags
+																				</p>
+																				<div className='flex flex-wrap gap-1'>
+																					{opportunity.tags &&
+																					opportunity.tags.length > 0
+																						? opportunity.tags.map((tag, i) => (
+																								<span
+																									key={i}
+																									className='inline-flex px-2 py-0.5 rounded-full bg-white text-blue-700 text-xs'>
+																									{tag}
+																								</span>
+																						  ))
+																						: [
+																								opportunity.sourceType,
+																								opportunity.status,
+																								...(opportunity.categories &&
+																								opportunity.categories.length
+																									? [opportunity.categories[0]]
+																									: []),
+																								opportunity.isNational
+																									? 'National'
+																									: 'State-specific',
+																						  ].map((tag, i) => (
+																								<span
+																									key={i}
+																									className='inline-flex px-2 py-0.5 rounded-full bg-white text-blue-700 text-xs'>
+																									{tag}
+																								</span>
+																						  ))}
+																				</div>
+																			</div>
 
-																	{/* Eligible Applicants */}
-																	<div>
-																		<p className='text-sm font-medium mb-2'>
-																			Who Can Apply
-																		</p>
-																		<div className='text-xs'>
-																			{opportunity.eligible_applicants &&
-																			opportunity.eligible_applicants.length > 0
-																				? opportunity.eligible_applicants.join(
-																						', '
-																				  )
-																				: 'Eligible organizations in this state'}
-																		</div>
-																	</div>
+																			{/* Eligible Applicants */}
+																			<div>
+																				<p className='text-sm font-medium mb-2'>
+																					Who Can Apply
+																				</p>
+																				<div className='text-xs'>
+																					{opportunity.eligible_applicants &&
+																					opportunity.eligible_applicants
+																						.length > 0
+																						? opportunity.eligible_applicants.join(
+																								', '
+																						  )
+																						: 'Eligible organizations in this state'}
+																				</div>
+																			</div>
 
-																	{/* Relevance Meter */}
-																	<div>
-																		<div className='flex justify-between mb-1'>
-																			<p className='text-sm font-medium'>
-																				Relevance
-																			</p>
-																			<span className='text-xs'>
-																				{Math.min(
-																					10,
-																					opportunity.relevance_score || 4
-																				).toFixed(1)}
-																				/10
-																			</span>
-																		</div>
-																		<div className='h-2 w-full bg-blue-800 rounded-full overflow-hidden'>
-																			<div
-																				className={`h-full ${
-																					(opportunity.relevance_score || 4) >=
-																					8
-																						? 'bg-green-400'
-																						: (opportunity.relevance_score ||
-																								4) >= 6
-																						? 'bg-orange-400'
-																						: 'bg-gray-400'
-																				}`}
-																				style={{
-																					width: `${
-																						(Math.min(
+																			{/* Relevance Meter */}
+																			<div>
+																				<div className='flex justify-between mb-1'>
+																					<p className='text-sm font-medium'>
+																						Relevance
+																					</p>
+																					<span className='text-xs'>
+																						{Math.min(
 																							10,
 																							opportunity.relevance_score || 4
-																						) /
-																							10) *
-																						100
-																					}%`,
-																				}}></div>
-																		</div>
-																	</div>
+																						).toFixed(1)}
+																						/10
+																					</span>
+																				</div>
+																				<div className='h-2 w-full bg-blue-800 rounded-full overflow-hidden'>
+																					<div
+																						className={`h-full ${
+																							(opportunity.relevance_score ||
+																								4) >= 8
+																								? 'bg-green-400'
+																								: (opportunity.relevance_score ||
+																										4) >= 6
+																								? 'bg-orange-400'
+																								: 'bg-gray-400'
+																						}`}
+																						style={{
+																							width: `${
+																								(Math.min(
+																									10,
+																									opportunity.relevance_score ||
+																										4
+																								) /
+																									10) *
+																								100
+																							}%`,
+																						}}></div>
+																				</div>
+																			</div>
 
-																	{/* Action Button */}
+																			{/* Action Button */}
+																			<a
+																				href={`/funding/opportunities/${opportunity.id}`}
+																				className='block w-full text-center text-xs font-medium bg-white hover:bg-gray-100 text-blue-700 py-2 rounded-md transition-colors'>
+																				View Full Opportunity
+																			</a>
+																		</TooltipContent>
+																	</Tooltip>
+																</TooltipProvider>
+															</div>
+															<div className='mt-2'>
+																<Button
+																	size='sm'
+																	variant='outline'
+																	className='w-full text-xs'
+																	asChild>
 																	<a
-																		href={`/funding/opportunities/${opportunity.id}`}
-																		className='block w-full text-center text-xs font-medium bg-white hover:bg-gray-100 text-blue-700 py-2 rounded-md transition-colors'>
-																		View Full Opportunity
+																		href={`/funding/opportunities/${opportunity.id}`}>
+																		View Details
 																	</a>
-																</TooltipContent>
-															</Tooltip>
-														</TooltipProvider>
-													</div>
-													<div className='mt-2'>
+																</Button>
+															</div>
+														</div>
+													))}
+												</div>
+
+												{/* Bottom pagination controls */}
+												{stateOpportunitiesTotalCount > 5 && (
+													<div className='flex justify-between items-center pt-4 mt-2 border-t'>
 														<Button
-															size='sm'
 															variant='outline'
-															className='w-full text-xs'
-															asChild>
-															<a
-																href={`/funding/opportunities/${opportunity.id}`}>
-																View Details
-															</a>
+															size='sm'
+															disabled={stateOpportunitiesPage === 1}
+															onClick={() =>
+																handlePageChange(stateOpportunitiesPage - 1)
+															}>
+															Previous
+														</Button>
+														<span className='text-sm text-muted-foreground'>
+															Page {stateOpportunitiesPage} of{' '}
+															{Math.ceil(stateOpportunitiesTotalCount / 5)}
+														</span>
+														<Button
+															variant='outline'
+															size='sm'
+															disabled={
+																stateOpportunitiesPage >=
+																Math.ceil(stateOpportunitiesTotalCount / 5)
+															}
+															onClick={() =>
+																handlePageChange(stateOpportunitiesPage + 1)
+															}>
+															Next
 														</Button>
 													</div>
-												</div>
-											))}
-
-											{/* Pagination controls */}
-											{stateOpportunitiesTotalCount > 10 && (
-												<div className='flex justify-between items-center pt-2'>
-													<Button
-														variant='outline'
-														size='sm'
-														disabled={stateOpportunitiesPage === 1}
-														onClick={() =>
-															handlePageChange(stateOpportunitiesPage - 1)
-														}>
-														Previous
-													</Button>
-													<span className='text-sm text-muted-foreground'>
-														Page {stateOpportunitiesPage} of{' '}
-														{Math.ceil(stateOpportunitiesTotalCount / 10)}
-													</span>
-													<Button
-														variant='outline'
-														size='sm'
-														disabled={
-															stateOpportunitiesPage >=
-															Math.ceil(stateOpportunitiesTotalCount / 10)
-														}
-														onClick={() =>
-															handlePageChange(stateOpportunitiesPage + 1)
-														}>
-														Next
-													</Button>
-												</div>
-											)}
-										</>
-									) : (
-										<p className='text-muted-foreground text-sm'>
-											No opportunities found for {selectedState} with the
-											current filters.
-										</p>
-									)}
+												)}
+											</>
+										) : (
+											<p className='text-muted-foreground text-sm'>
+												No opportunities found for {selectedState} with the
+												current filters.
+											</p>
+										)}
+									</div>
 								</CardContent>
 							</Card>
 						) : (
