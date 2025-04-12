@@ -10,6 +10,7 @@ import { DollarSign, Calendar, Map, Star } from 'lucide-react';
 import { calculateDaysLeft, determineStatus } from '@/app/lib/supabase';
 import { useTrackedOpportunities } from '@/app/hooks/useTrackedOpportunities';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
+import Link from 'next/link';
 
 // Status indicators with colors for badges
 const statusIndicator = {
@@ -350,9 +351,9 @@ const OpportunityCard = ({ opportunity }) => {
 					{/* Button row with View Details and Track buttons */}
 					<div className='flex gap-2'>
 						<Button className='flex-1' asChild>
-							<a href={`/funding/opportunities/${opportunity.id}`}>
+							<Link href={`/funding/opportunities/${opportunity.id}`}>
 								View Details
-							</a>
+							</Link>
 						</Button>
 
 						<Button
