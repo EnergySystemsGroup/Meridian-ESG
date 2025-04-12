@@ -16,6 +16,9 @@ export default function Home() {
 	const [upcomingDeadlines, setUpcomingDeadlines] = useState([]);
 	const [deadlinesLoading, setDeadlinesLoading] = useState(true);
 	const [deadlinesError, setDeadlinesError] = useState(null);
+	const [openOpportunitiesCount, setOpenOpportunitiesCount] = useState(0);
+	const [openOpportunitiesLoading, setOpenOpportunitiesLoading] =
+		useState(true);
 
 	useEffect(() => {
 		async function fetchDeadlines() {
@@ -39,7 +42,30 @@ export default function Home() {
 			}
 		}
 
+		async function fetchOpenOpportunitiesCount() {
+			try {
+				setOpenOpportunitiesLoading(true);
+				const response = await fetch('/api/counts?type=open_opportunities');
+				const result = await response.json();
+
+				if (!result.success) {
+					throw new Error(
+						result.error || 'Failed to fetch open opportunities count'
+					);
+				}
+
+				setOpenOpportunitiesCount(result.count);
+			} catch (err) {
+				console.error('Error fetching open opportunities count:', err);
+				// Fallback to a default value
+				setOpenOpportunitiesCount(24); // Use the previous hardcoded value as fallback
+			} finally {
+				setOpenOpportunitiesLoading(false);
+			}
+		}
+
 		fetchDeadlines();
+		fetchOpenOpportunitiesCount();
 	}, []);
 
 	return (
@@ -59,7 +85,11 @@ export default function Home() {
 				<div className='grid gap-6 md:grid-cols-2 lg:grid-cols-4 mb-8'>
 					<DashboardCard
 						title='Open Opportunities'
-						value='24'
+						value={
+							openOpportunitiesLoading
+								? '...'
+								: openOpportunitiesCount.toString()
+						}
 						description='Currently open funding opportunities'
 						href='/funding/opportunities'
 						linkText='View All'
