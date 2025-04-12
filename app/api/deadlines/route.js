@@ -35,7 +35,15 @@ export async function GET(request) {
 
 		const { data, error } = await supabase
 			.from('funding_opportunities')
-			.select('*')
+			.select(
+				`
+				*,
+				funding_sources:funding_source_id (
+					name,
+					type
+				)
+			`
+			)
 			.gte('close_date', today)
 			.order('close_date', { ascending: true })
 			.limit(limit);
@@ -50,6 +58,9 @@ export async function GET(request) {
 
 			return {
 				...deadline,
+				// Extract source name from the joined funding_sources object
+				source_name: deadline.funding_sources?.name || 'Unknown Source',
+				source_type: deadline.funding_sources?.type || null,
 				daysLeft,
 				urgency: daysLeft <= 7 ? 'high' : daysLeft <= 30 ? 'medium' : 'low',
 				formattedDate: new Date(deadline.close_date).toLocaleDateString(
