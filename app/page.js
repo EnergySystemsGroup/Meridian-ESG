@@ -32,6 +32,13 @@ export default function Home() {
 	const [openOpportunitiesLoading, setOpenOpportunitiesLoading] =
 		useState(true);
 
+	// Recent opportunities
+	const [recentOpportunities, setRecentOpportunities] = useState([]);
+	const [recentOpportunitiesLoading, setRecentOpportunitiesLoading] =
+		useState(true);
+	const [recentOpportunitiesError, setRecentOpportunitiesError] =
+		useState(null);
+
 	//======================================
 	// DATA FETCHING
 	//======================================
@@ -105,10 +112,38 @@ export default function Home() {
 			}
 		}
 
+		// Fetch recent opportunities
+		async function fetchRecentOpportunities() {
+			try {
+				setRecentOpportunitiesLoading(true);
+				// Sort by created_at, descending order, limit to 5 results
+				const response = await fetch(
+					'/api/funding?sort_by=created_at&sort_direction=desc&page=1&page_size=5'
+				);
+				const result = await response.json();
+
+				if (!result.success) {
+					throw new Error(
+						result.error || 'Failed to fetch recent opportunities'
+					);
+				}
+
+				setRecentOpportunities(result.data);
+			} catch (err) {
+				console.error('Error fetching recent opportunities:', err);
+				setRecentOpportunitiesError(err.message);
+				// Fall back to sample data if API fails
+				setRecentOpportunities(sampleRecentOpportunities);
+			} finally {
+				setRecentOpportunitiesLoading(false);
+			}
+		}
+
 		// Execute all data fetching functions
 		fetchDeadlines();
 		fetchThirtyDayCount();
 		fetchOpenOpportunitiesCount();
+		fetchRecentOpportunities();
 	}, []);
 
 	//======================================
@@ -180,32 +215,52 @@ export default function Home() {
 							</CardDescription>
 						</CardHeader>
 						<CardContent>
-							<ul className='space-y-4'>
-								{recentOpportunities.map((item) => (
-									<li
-										key={`opportunity-${item.title}`}
-										className='border-b pb-2 last:border-0'>
-										<div className='font-medium'>{item.title}</div>
-										<div className='text-sm text-muted-foreground'>
-											{item.source}
-										</div>
-										<div className='flex justify-between items-center mt-1'>
-											<span className='text-sm'>Closes: {item.closeDate}</span>
-											<span
-												className={`text-xs px-2 py-1 rounded-full ${
-													item.status === 'Open'
-														? 'bg-green-100 text-green-800'
-														: 'bg-yellow-100 text-yellow-800'
-												}`}>
-												{item.status}
-											</span>
-										</div>
-									</li>
-								))}
-							</ul>
+							{recentOpportunitiesLoading ? (
+								<div className='flex justify-center items-center h-40'>
+									<div className='animate-spin rounded-full h-8 w-8 border-b-2 border-primary'></div>
+								</div>
+							) : recentOpportunitiesError ? (
+								<div className='text-sm text-red-600 p-2'>
+									<p>Error loading opportunities. Using sample data.</p>
+								</div>
+							) : (
+								<ul className='space-y-4'>
+									{recentOpportunities.map((item) => (
+										<li
+											key={`opportunity-${item.id}`}
+											className='border-b pb-2 last:border-0'>
+											<div className='font-medium'>{item.title}</div>
+											<div className='text-sm text-muted-foreground'>
+												{item.source_name}
+											</div>
+											<div className='flex justify-between items-center mt-1'>
+												<span className='text-sm'>
+													Added:{' '}
+													{item.created_at
+														? new Date(item.created_at).toLocaleDateString(
+																'en-US',
+																{
+																	month: 'short',
+																	day: 'numeric',
+																	year: 'numeric',
+																}
+														  )
+														: 'Unknown'}
+												</span>
+												<span
+													className={`text-xs px-2 py-1 rounded-full bg-blue-100 text-blue-800`}>
+													{item.relevance_score
+														? `Score: ${item.relevance_score.toFixed(1)}`
+														: 'New'}
+												</span>
+											</div>
+										</li>
+									))}
+								</ul>
+							)}
 							<div className='mt-4'>
 								<Link
-									href='/funding/opportunities?status=Open'
+									href='/funding/opportunities?sort_by=created_at&sort_direction=desc'
 									className='inline-flex w-full justify-center items-center py-2 px-4 border border-neutral-200 dark:border-neutral-800 rounded-md text-sm font-medium text-neutral-900 dark:text-neutral-100 bg-white dark:bg-neutral-900 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors'>
 									View All Opportunities
 								</Link>
@@ -525,31 +580,35 @@ const activityItems = [
 	},
 ];
 
-// Sample data for recent opportunities section
-const recentOpportunities = [
+// Sample data for recent opportunities (fallback if API fails)
+const sampleRecentOpportunities = [
 	{
+		id: 1,
 		title: 'Building Energy Efficiency Grant',
-		source: 'Department of Energy',
-		closeDate: 'Apr 15, 2023',
-		status: 'Open',
+		source_name: 'Department of Energy',
+		created_at: '2023-04-05',
+		relevance_score: 0.85,
 	},
 	{
+		id: 2,
 		title: 'School Modernization Program',
-		source: 'Department of Education',
-		closeDate: 'May 1, 2023',
-		status: 'Open',
+		source_name: 'Department of Education',
+		created_at: '2023-04-08',
+		relevance_score: 0.78,
 	},
 	{
+		id: 3,
 		title: 'Clean Energy Innovation Fund',
-		source: 'California Energy Commission',
-		closeDate: 'Apr 30, 2023',
-		status: 'Open',
+		source_name: 'California Energy Commission',
+		created_at: '2023-04-10',
+		relevance_score: 0.92,
 	},
 	{
+		id: 4,
 		title: 'Community Climate Resilience Grant',
-		source: 'EPA',
-		closeDate: 'May 15, 2023',
-		status: 'Upcoming',
+		source_name: 'EPA',
+		created_at: '2023-04-12',
+		relevance_score: 0.67,
 	},
 ];
 
