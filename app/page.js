@@ -162,7 +162,7 @@ export default function Home() {
 					{/* Client Matches Summary Card */}
 					<DashboardCard
 						title='Client Matches'
-						value='36'
+						value='81'
 						description='New potential matches for clients'
 						href='/clients'
 						linkText='View Matches'
@@ -417,7 +417,7 @@ function DashboardCard({ title, value, description, href, linkText }) {
 	return (
 		<Card className='overflow-hidden relative'>
 			<div className='h-1 bg-blue-500'></div>
-			{title === 'Active Legislation' && (
+			{(title === 'Active Legislation' || title === 'Client Matches') && (
 				<div className='absolute top-2 right-2 px-1 py-0.5 bg-amber-50 border border-amber-300 rounded-md'>
 					<p className='text-[10px] text-amber-700 flex items-center'>
 						<AlertTriangle className='h-2 w-2 mr-0.5 text-amber-500' />
