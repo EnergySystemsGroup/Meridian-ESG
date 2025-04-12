@@ -91,7 +91,7 @@ export default function Home() {
 								: openOpportunitiesCount.toString()
 						}
 						description='Currently open funding opportunities'
-						href='/funding/opportunities'
+						href='/funding/opportunities?status=Open'
 						linkText='View All'
 					/>
 					<DashboardCard
@@ -149,7 +149,9 @@ export default function Home() {
 							</ul>
 							<div className='mt-4'>
 								<Button variant='outline' className='w-full' asChild>
-									<a href='/funding/opportunities'>View All Opportunities</a>
+									<a href='/funding/opportunities?status=Open'>
+										View All Opportunities
+									</a>
 								</Button>
 							</div>
 						</CardContent>

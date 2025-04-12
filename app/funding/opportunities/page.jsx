@@ -140,7 +140,7 @@ export default function OpportunitiesPage() {
 	// Initialize filter state directly from URL params
 	// This avoids a useEffect and potential extra render
 	const initialFilters = {
-		status: null,
+		status: searchParams.get('status') || null,
 		categories: [],
 		states: [],
 		page: 1,
