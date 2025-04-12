@@ -135,7 +135,7 @@ const bills = [
 		status: 'Committee',
 		lastAction: {
 			action: 'Referred to Subcommittee on Energy',
-			date: 'Mar 28, 2023',
+			date: 'Mar 28, 2025',
 		},
 		summary:
 			'Establishes new energy efficiency standards for commercial buildings and provides funding for retrofits and upgrades to meet these standards.',
@@ -149,7 +149,7 @@ const bills = [
 		status: 'Introduced',
 		lastAction: {
 			action: 'Introduced in Senate',
-			date: 'Mar 25, 2023',
+			date: 'Mar 15, 2025',
 		},
 		summary:
 			'Provides funding for K-12 schools to implement clean energy projects including solar installations, energy efficiency upgrades, and electric vehicle infrastructure.',
@@ -163,7 +163,7 @@ const bills = [
 		status: 'Passed',
 		lastAction: {
 			action: 'Signed by President',
-			date: 'Mar 22, 2023',
+			date: 'Apr 02, 2025',
 		},
 		summary:
 			'Comprehensive infrastructure bill that includes significant funding for energy efficiency improvements in public buildings and transportation electrification.',
@@ -178,7 +178,7 @@ const bills = [
 		lastAction: {
 			action:
 				'Hearing scheduled in Assembly Committee on Housing and Community Development',
-			date: 'Mar 20, 2023',
+			date: 'Mar 10, 2025',
 		},
 		summary:
 			'Updates building energy codes to require higher efficiency standards and electrification readiness in new construction and major renovations.',
@@ -192,7 +192,7 @@ const bills = [
 		status: 'Introduced',
 		lastAction: {
 			action: 'Introduced in Senate',
-			date: 'Mar 15, 2023',
+			date: 'Feb 05, 2025',
 		},
 		summary:
 			'Extends and expands tax credits for renewable energy installations including solar, wind, and geothermal systems for commercial and residential buildings.',
@@ -206,7 +206,7 @@ const bills = [
 		status: 'Committee',
 		lastAction: {
 			action: 'Hearing in House Education Committee',
-			date: 'Mar 10, 2023',
+			date: 'Mar 30, 2025',
 		},
 		summary:
 			'Authorizes funding for K-12 school facility improvements with emphasis on energy efficiency, indoor air quality, and modernization of learning environments.',
@@ -220,7 +220,7 @@ const bills = [
 		status: 'Passed',
 		lastAction: {
 			action: 'Signed by Governor',
-			date: 'Mar 5, 2023',
+			date: 'Mar 25, 2025',
 		},
 		summary:
 			'Establishes incentives and requirements for transportation electrification including EV charging infrastructure at public buildings and schools.',
@@ -234,7 +234,7 @@ const bills = [
 		status: 'Committee',
 		lastAction: {
 			action: 'Passed House Committee on Energy',
-			date: 'Mar 1, 2023',
+			date: 'Apr 01, 2025',
 		},
 		summary:
 			'Creates incentives for installation of energy storage systems paired with renewable energy generation at commercial and institutional facilities.',
@@ -248,7 +248,7 @@ const bills = [
 		status: 'Introduced',
 		lastAction: {
 			action: 'Introduced in Senate',
-			date: 'Feb 25, 2023',
+			date: 'Mar 08, 2025',
 		},
 		summary:
 			'Establishes timeline and requirements for new construction to achieve zero net carbon emissions through efficiency, electrification, and renewable energy.',

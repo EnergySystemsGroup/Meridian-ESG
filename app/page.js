@@ -153,7 +153,7 @@ export default function Home() {
 					{/* Active Legislation Summary Card */}
 					<DashboardCard
 						title='Active Legislation'
-						value='12'
+						value='9'
 						description='Bills and policies in progress'
 						href='/legislation/bills'
 						linkText='View Bills'
@@ -407,8 +407,16 @@ export default function Home() {
 // Reusable card component for dashboard summary metrics
 function DashboardCard({ title, value, description, href, linkText }) {
 	return (
-		<Card className='overflow-hidden'>
+		<Card className='overflow-hidden relative'>
 			<div className='h-1 bg-blue-500'></div>
+			{title === 'Active Legislation' && (
+				<div className='absolute top-2 right-2 px-1 py-0.5 bg-amber-50 border border-amber-300 rounded-md'>
+					<p className='text-[10px] text-amber-700 flex items-center'>
+						<AlertTriangle className='h-2 w-2 mr-0.5 text-amber-500' />
+						Demo Data
+					</p>
+				</div>
+			)}
 			<CardHeader className='pb-2'>
 				<CardTitle className='text-sm font-medium'>{title}</CardTitle>
 			</CardHeader>
@@ -544,25 +552,25 @@ const legislativeUpdates = [
 	{
 		title: 'H.R. 123: Building Efficiency Act',
 		jurisdiction: 'Federal',
-		date: 'Mar 28, 2023',
+		date: 'Mar 28, 2025',
 		status: 'Committee',
 	},
 	{
 		title: 'S.B. 456: Clean Energy Schools Initiative',
 		jurisdiction: 'California',
-		date: 'Mar 25, 2023',
+		date: 'Mar 15, 2025',
 		status: 'Introduced',
 	},
 	{
 		title: 'H.R. 789: Infrastructure Investment Act',
 		jurisdiction: 'Federal',
-		date: 'Mar 22, 2023',
+		date: 'Apr 02, 2025',
 		status: 'Passed',
 	},
 	{
 		title: 'A.B. 567: Building Standards Update',
 		jurisdiction: 'California',
-		date: 'Mar 20, 2023',
+		date: 'Mar 10, 2025',
 		status: 'Committee',
 	},
 ];
