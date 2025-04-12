@@ -306,7 +306,15 @@ export async function processOpportunitiesBatch(
 			const sanitized = {};
 			for (const [camelCaseKey, snakeCaseKey] of Object.entries(fieldMap)) {
 				if (opportunity[camelCaseKey] !== undefined) {
-					sanitized[snakeCaseKey] = opportunity[camelCaseKey];
+					// Ensure status is always lowercase
+					if (
+						camelCaseKey === 'status' &&
+						typeof opportunity[camelCaseKey] === 'string'
+					) {
+						sanitized[snakeCaseKey] = opportunity[camelCaseKey].toLowerCase();
+					} else {
+						sanitized[snakeCaseKey] = opportunity[camelCaseKey];
+					}
 				}
 			}
 
