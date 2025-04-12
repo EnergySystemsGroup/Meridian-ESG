@@ -11,6 +11,7 @@ import {
 } from '@/app/components/ui/card';
 import { Button } from '@/app/components/ui/button';
 import { AlertTriangle } from 'lucide-react';
+import Link from 'next/link';
 
 export default function Home() {
 	//======================================
@@ -180,8 +181,10 @@ export default function Home() {
 						</CardHeader>
 						<CardContent>
 							<ul className='space-y-4'>
-								{recentOpportunities.map((item, index) => (
-									<li key={index} className='border-b pb-2 last:border-0'>
+								{recentOpportunities.map((item) => (
+									<li
+										key={`opportunity-${item.title}`}
+										className='border-b pb-2 last:border-0'>
 										<div className='font-medium'>{item.title}</div>
 										<div className='text-sm text-muted-foreground'>
 											{item.source}
@@ -201,11 +204,11 @@ export default function Home() {
 								))}
 							</ul>
 							<div className='mt-4'>
-								<Button variant='outline' className='w-full' asChild>
-									<a href='/funding/opportunities?status=Open'>
-										View All Opportunities
-									</a>
-								</Button>
+								<Link
+									href='/funding/opportunities?status=Open'
+									className='inline-flex w-full justify-center items-center py-2 px-4 border border-neutral-200 dark:border-neutral-800 rounded-md text-sm font-medium text-neutral-900 dark:text-neutral-100 bg-white dark:bg-neutral-900 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors'>
+									View All Opportunities
+								</Link>
 							</div>
 						</CardContent>
 					</Card>
@@ -226,8 +229,10 @@ export default function Home() {
 								</p>
 							</div>
 							<ul className='space-y-4'>
-								{legislativeUpdates.map((item, index) => (
-									<li key={index} className='border-b pb-2 last:border-0'>
+								{legislativeUpdates.map((item) => (
+									<li
+										key={`legislative-${item.title}`}
+										className='border-b pb-2 last:border-0'>
 										<div className='font-medium'>{item.title}</div>
 										<div className='text-sm text-muted-foreground'>
 											{item.jurisdiction}
@@ -245,9 +250,11 @@ export default function Home() {
 								))}
 							</ul>
 							<div className='mt-4'>
-								<Button variant='outline' className='w-full' asChild>
-									<a href='/legislation/bills'>View All Legislation</a>
-								</Button>
+								<Link
+									href='/legislation/bills'
+									className='inline-flex w-full justify-center items-center py-2 px-4 border border-neutral-200 dark:border-neutral-800 rounded-md text-sm font-medium text-neutral-900 dark:text-neutral-100 bg-white dark:bg-neutral-900 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors'>
+									View All Legislation
+								</Link>
 							</div>
 						</CardContent>
 					</Card>
@@ -269,8 +276,10 @@ export default function Home() {
 								</div>
 							) : (
 								<ul className='space-y-4'>
-									{upcomingDeadlines.map((item, index) => (
-										<li key={index} className='border-b pb-2 last:border-0'>
+									{upcomingDeadlines.map((item) => (
+										<li
+											key={`deadline-${item.id}`}
+											className='border-b pb-2 last:border-0'>
 											<div className='font-medium'>{item.title}</div>
 											<div className='text-sm text-muted-foreground'>
 												{item.source_name || 'Unknown Source'}
@@ -291,9 +300,11 @@ export default function Home() {
 								</ul>
 							)}
 							<div className='mt-4'>
-								<Button variant='outline' className='w-full' asChild>
-									<a href='/timeline'>View Timeline</a>
-								</Button>
+								<Link
+									href='/timeline'
+									className='inline-flex w-full justify-center items-center py-2 px-4 border border-neutral-200 dark:border-neutral-800 rounded-md text-sm font-medium text-neutral-900 dark:text-neutral-100 bg-white dark:bg-neutral-900 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors'>
+									View Timeline
+								</Link>
 							</div>
 						</CardContent>
 					</Card>
@@ -326,36 +337,31 @@ export default function Home() {
 						</CardHeader>
 						<CardContent>
 							<div className='space-y-2'>
-								<Button
-									className='w-full justify-start'
-									variant='outline'
-									asChild>
-									<a href='/funding/opportunities'>Browse Opportunities</a>
-								</Button>
-								<Button
-									className='w-full justify-start'
-									variant='outline'
-									asChild>
-									<a href='/funding/map'>View Funding Map</a>
-								</Button>
-								<Button
-									className='w-full justify-start'
-									variant='outline'
-									asChild>
-									<a href='/legislation/bills'>Track Legislation</a>
-								</Button>
-								<Button
-									className='w-full justify-start'
-									variant='outline'
-									asChild>
-									<a href='/clients'>Match Clients</a>
-								</Button>
-								<Button
-									className='w-full justify-start'
-									variant='outline'
-									asChild>
-									<a href='/timeline'>View Timeline</a>
-								</Button>
+								<Link
+									href='/funding/opportunities'
+									className='inline-flex w-full justify-start items-center py-2 px-4 border border-neutral-200 dark:border-neutral-800 rounded-md text-sm font-medium text-neutral-900 dark:text-neutral-100 bg-white dark:bg-neutral-900 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors'>
+									Browse Opportunities
+								</Link>
+								<Link
+									href='/funding/map'
+									className='inline-flex w-full justify-start items-center py-2 px-4 border border-neutral-200 dark:border-neutral-800 rounded-md text-sm font-medium text-neutral-900 dark:text-neutral-100 bg-white dark:bg-neutral-900 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors'>
+									View Funding Map
+								</Link>
+								<Link
+									href='/legislation/bills'
+									className='inline-flex w-full justify-start items-center py-2 px-4 border border-neutral-200 dark:border-neutral-800 rounded-md text-sm font-medium text-neutral-900 dark:text-neutral-100 bg-white dark:bg-neutral-900 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors'>
+									Track Legislation
+								</Link>
+								<Link
+									href='/clients'
+									className='inline-flex w-full justify-start items-center py-2 px-4 border border-neutral-200 dark:border-neutral-800 rounded-md text-sm font-medium text-neutral-900 dark:text-neutral-100 bg-white dark:bg-neutral-900 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors'>
+									Match Clients
+								</Link>
+								<Link
+									href='/timeline'
+									className='inline-flex w-full justify-start items-center py-2 px-4 border border-neutral-200 dark:border-neutral-800 rounded-md text-sm font-medium text-neutral-900 dark:text-neutral-100 bg-white dark:bg-neutral-900 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors'>
+									View Timeline
+								</Link>
 							</div>
 						</CardContent>
 					</Card>
@@ -374,8 +380,10 @@ export default function Home() {
 							</div>
 						</div>
 						<div className='divide-y'>
-							{activityItems.map((item, index) => (
-								<div key={index} className='p-4 flex items-start gap-3'>
+							{activityItems.map((item) => (
+								<div
+									key={`activity-${item.title}-${item.date}`}
+									className='p-4 flex items-start gap-3'>
 									<div
 										className={`w-2 h-2 rounded-full mt-2 ${getStatusColor(
 											item.type
@@ -428,13 +436,11 @@ function DashboardCard({ title, value, description, href, linkText }) {
 					{description}
 				</p>
 				<div className='mt-4'>
-					<Button
-						variant='ghost'
-						size='sm'
-						className='px-0 text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300'
-						asChild>
-						<a href={href}>{linkText} →</a>
-					</Button>
+					<Link
+						href={href}
+						className='inline-flex items-center text-sm font-medium text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300'>
+						{linkText} →
+					</Link>
 				</div>
 			</CardContent>
 		</Card>

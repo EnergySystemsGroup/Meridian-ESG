@@ -33,8 +33,8 @@ export default function LegislationPage() {
 				</div>
 
 				<div className='grid gap-6 md:grid-cols-2 lg:grid-cols-3 mb-8'>
-					{bills.map((bill, index) => (
-						<BillCard key={index} bill={bill} />
+					{bills.map((bill) => (
+						<BillCard key={`${bill.jurisdiction}-${bill.number}`} bill={bill} />
 					))}
 				</div>
 			</div>
@@ -77,9 +77,9 @@ function BillCard({ bill }) {
 					</p>
 
 					<div className='flex flex-wrap gap-1'>
-						{tags.map((tag, index) => (
+						{tags.map((tag) => (
 							<span
-								key={index}
+								key={`${number}-${tag}`}
 								className='text-xs bg-secondary text-secondary-foreground px-2 py-1 rounded-full'>
 								{tag}
 							</span>

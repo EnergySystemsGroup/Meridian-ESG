@@ -18,19 +18,28 @@ const ClientSideActiveLink = ({ href, children, className, ...props }) => {
 	const [isActive, setIsActive] = React.useState(false);
 
 	React.useEffect(() => {
-		const pathname = window.location.pathname;
-		setIsActive(pathname === href || pathname.startsWith(href + '/'));
+		const updateActiveState = () => {
+			const pathname = window.location.pathname;
+			setIsActive(pathname === href || pathname.startsWith(href + '/'));
+		};
+
+		// Set initial state
+		updateActiveState();
+
+		// Update on navigation
+		window.addEventListener('popstate', updateActiveState);
+		return () => window.removeEventListener('popstate', updateActiveState);
 	}, [href]);
 
+	// Create the active class string outside the JSX
+	const activeClassName = isActive
+		? 'bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400 border-b-2 border-blue-600 dark:border-blue-400'
+		: '';
+
+	// Use a stable wrapper element instead of cloning
 	return (
-		<Link href={href} legacyBehavior passHref {...props}>
-			{React.cloneElement(children, {
-				className: cn(
-					className,
-					isActive &&
-						'bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400 border-b-2 border-blue-600 dark:border-blue-400'
-				),
-			})}
+		<Link href={href} {...props}>
+			<div className={cn(className, activeClassName)}>{children}</div>
 		</Link>
 	);
 };
@@ -101,16 +110,15 @@ const MainNav = () => {
 		<NavigationMenu>
 			<NavigationMenuList className='gap-2 md:gap-4'>
 				<NavigationMenuItem>
-					<ClientSideActiveLink href='/' passHref>
-						<NavigationMenuLink
-							className={cn(
-								'inline-flex h-9 md:h-10 items-center justify-center rounded-md px-3 md:px-4 py-2 text-sm font-medium transition-all duration-200',
-								'hover:bg-blue-50 hover:text-blue-600 dark:hover:bg-blue-900/20 dark:hover:text-blue-400',
-								'focus:bg-blue-50 focus:text-blue-600 dark:focus:bg-blue-900/20 dark:focus:text-blue-400 focus:outline-none',
-								'text-neutral-700 dark:text-neutral-200'
-							)}>
-							Dashboard
-						</NavigationMenuLink>
+					<ClientSideActiveLink
+						href='/'
+						className={cn(
+							'inline-flex h-9 md:h-10 items-center justify-center rounded-md px-3 md:px-4 py-2 text-sm font-medium transition-all duration-200',
+							'hover:bg-blue-50 hover:text-blue-600 dark:hover:bg-blue-900/20 dark:hover:text-blue-400',
+							'focus:bg-blue-50 focus:text-blue-600 dark:focus:bg-blue-900/20 dark:focus:text-blue-400 focus:outline-none',
+							'text-neutral-700 dark:text-neutral-200'
+						)}>
+						Dashboard
 					</ClientSideActiveLink>
 				</NavigationMenuItem>
 				<NavigationMenuItem>
@@ -162,29 +170,27 @@ const MainNav = () => {
 					</NavigationMenuContent>
 				</NavigationMenuItem>
 				<NavigationMenuItem>
-					<ClientSideActiveLink href='/clients' passHref>
-						<NavigationMenuLink
-							className={cn(
-								'inline-flex h-9 md:h-10 items-center justify-center rounded-md px-3 md:px-4 py-2 text-sm font-medium transition-all duration-200',
-								'hover:bg-blue-50 hover:text-blue-600 dark:hover:bg-blue-900/20 dark:hover:text-blue-400',
-								'focus:bg-blue-50 focus:text-blue-600 dark:focus:bg-blue-900/20 dark:focus:text-blue-400 focus:outline-none',
-								'text-neutral-700 dark:text-neutral-200'
-							)}>
-							Clients
-						</NavigationMenuLink>
+					<ClientSideActiveLink
+						href='/clients'
+						className={cn(
+							'inline-flex h-9 md:h-10 items-center justify-center rounded-md px-3 md:px-4 py-2 text-sm font-medium transition-all duration-200',
+							'hover:bg-blue-50 hover:text-blue-600 dark:hover:bg-blue-900/20 dark:hover:text-blue-400',
+							'focus:bg-blue-50 focus:text-blue-600 dark:focus:bg-blue-900/20 dark:focus:text-blue-400 focus:outline-none',
+							'text-neutral-700 dark:text-neutral-200'
+						)}>
+						Clients
 					</ClientSideActiveLink>
 				</NavigationMenuItem>
 				<NavigationMenuItem>
-					<ClientSideActiveLink href='/timeline' passHref>
-						<NavigationMenuLink
-							className={cn(
-								'inline-flex h-9 md:h-10 items-center justify-center rounded-md px-3 md:px-4 py-2 text-sm font-medium transition-all duration-200',
-								'hover:bg-blue-50 hover:text-blue-600 dark:hover:bg-blue-900/20 dark:hover:text-blue-400',
-								'focus:bg-blue-50 focus:text-blue-600 dark:focus:bg-blue-900/20 dark:focus:text-blue-400 focus:outline-none',
-								'text-neutral-700 dark:text-neutral-200'
-							)}>
-							Timeline
-						</NavigationMenuLink>
+					<ClientSideActiveLink
+						href='/timeline'
+						className={cn(
+							'inline-flex h-9 md:h-10 items-center justify-center rounded-md px-3 md:px-4 py-2 text-sm font-medium transition-all duration-200',
+							'hover:bg-blue-50 hover:text-blue-600 dark:hover:bg-blue-900/20 dark:hover:text-blue-400',
+							'focus:bg-blue-50 focus:text-blue-600 dark:focus:bg-blue-900/20 dark:focus:text-blue-400 focus:outline-none',
+							'text-neutral-700 dark:text-neutral-200'
+						)}>
+						Timeline
 					</ClientSideActiveLink>
 				</NavigationMenuItem>
 			</NavigationMenuList>
