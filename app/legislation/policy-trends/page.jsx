@@ -8,6 +8,7 @@ import {
 	CardTitle,
 } from '@/app/components/ui/card';
 import { Button } from '@/app/components/ui/button';
+import Link from 'next/link';
 
 export default function PolicyTrendsPage() {
 	return (
@@ -53,7 +54,7 @@ export default function PolicyTrendsPage() {
 								your organization.
 							</p>
 							<Button variant='outline' asChild>
-								<a href='/legislation/bills'>View Current Legislation</a>
+								<Link href='/legislation/bills'>View Current Legislation</Link>
 							</Button>
 						</div>
 					</CardContent>

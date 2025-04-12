@@ -8,6 +8,7 @@ import {
 	CardTitle,
 } from '@/app/components/ui/card';
 import { Button } from '@/app/components/ui/button';
+import Link from 'next/link';
 
 export default function ImpactAnalysisPage() {
 	return (
@@ -52,7 +53,7 @@ export default function ImpactAnalysisPage() {
 								help you understand potential outcomes and prepare accordingly.
 							</p>
 							<Button variant='outline' asChild>
-								<a href='/legislation/bills'>View Current Legislation</a>
+								<Link href='/legislation/bills'>View Current Legislation</Link>
 							</Button>
 						</div>
 					</CardContent>
