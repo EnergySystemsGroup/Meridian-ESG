@@ -76,7 +76,12 @@ const fundingOpportunitySchema = z.object({
 	categories: z
 		.array(z.string())
 		.describe('Relevant categories from our taxonomy'),
-	status: z.string().describe('Current status (open, upcoming, closed)'),
+	status: z
+		.string()
+		.optional()
+		.describe(
+			'Current status of the opportunity. Must be one of: "open" (currently accepting applications), "upcoming" (announced but not yet accepting applications), or "closed" (no longer accepting applications). IMPORTANT: Status values must be lowercase only.'
+		),
 	confidence: z
 		.number()
 		.min(0)
@@ -234,7 +239,7 @@ const apiResponseProcessingSchema = z.object({
 					.string()
 					.optional()
 					.describe(
-						'Current status of the opportunity. Must be one of: "open" (currently accepting applications), "upcoming" (announced but not yet accepting applications), or "closed" (no longer accepting applications)'
+						'Current status of the opportunity. Must be one of: "open" (currently accepting applications), "upcoming" (announced but not yet accepting applications), or "closed" (no longer accepting applications). IMPORTANT: Status values must be lowercase only.'
 					),
 				isNational: z
 					.boolean()

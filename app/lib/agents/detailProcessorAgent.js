@@ -142,7 +142,7 @@ const detailProcessingSchema = z.object({
 					.string()
 					.optional()
 					.describe(
-						'Current status of the opportunity. Must be one of: "open" (currently accepting applications), "upcoming" (announced but not yet accepting applications), or "closed" (no longer accepting applications)'
+						'Current status of the opportunity. Must be one of: "open" (currently accepting applications), "upcoming" (announced but not yet accepting applications), or "closed" (no longer accepting applications). IMPORTANT: Status values must be lowercase only.'
 					),
 				isNational: z
 					.boolean()
