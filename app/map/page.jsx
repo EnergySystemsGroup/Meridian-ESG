@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import dynamic from 'next/dynamic';
+import Link from 'next/link';
 import MainLayout from '@/app/components/layout/main-layout';
 import {
 	Card,
@@ -445,7 +446,9 @@ export default function Page() {
 		setStateOpportunitiesPage(1);
 	};
 
-	const handlePageChange = (newPage) => {
+	const handlePageChange = (newPage, e) => {
+		// Prevent any default behavior that might trigger a page reload
+		if (e) e.preventDefault();
 		setStateOpportunitiesPage(newPage);
 	};
 
@@ -691,8 +694,8 @@ export default function Page() {
 													variant='outline'
 													size='sm'
 													disabled={stateOpportunitiesPage === 1}
-													onClick={() =>
-														handlePageChange(stateOpportunitiesPage - 1)
+													onClick={(e) =>
+														handlePageChange(stateOpportunitiesPage - 1, e)
 													}>
 													Previous
 												</Button>
@@ -707,8 +710,8 @@ export default function Page() {
 														stateOpportunitiesPage >=
 														Math.ceil(stateOpportunitiesTotalCount / 5)
 													}
-													onClick={() =>
-														handlePageChange(stateOpportunitiesPage + 1)
+													onClick={(e) =>
+														handlePageChange(stateOpportunitiesPage + 1, e)
 													}>
 													Next
 												</Button>
@@ -881,11 +884,11 @@ export default function Page() {
 																			</div>
 
 																			{/* Action Button */}
-																			<a
+																			<Link
 																				href={`/funding/opportunities/${opportunity.id}`}
 																				className='block w-full text-center text-xs font-medium bg-white hover:bg-gray-100 text-blue-700 py-2 rounded-md transition-colors'>
 																				View Full Opportunity
-																			</a>
+																			</Link>
 																		</TooltipContent>
 																	</Tooltip>
 																</TooltipProvider>
@@ -896,10 +899,10 @@ export default function Page() {
 																	variant='outline'
 																	className='w-full text-xs'
 																	asChild>
-																	<a
+																	<Link
 																		href={`/funding/opportunities/${opportunity.id}`}>
 																		View Details
-																	</a>
+																	</Link>
 																</Button>
 															</div>
 														</div>
@@ -913,8 +916,8 @@ export default function Page() {
 															variant='outline'
 															size='sm'
 															disabled={stateOpportunitiesPage === 1}
-															onClick={() =>
-																handlePageChange(stateOpportunitiesPage - 1)
+															onClick={(e) =>
+																handlePageChange(stateOpportunitiesPage - 1, e)
 															}>
 															Previous
 														</Button>
@@ -929,8 +932,8 @@ export default function Page() {
 																stateOpportunitiesPage >=
 																Math.ceil(stateOpportunitiesTotalCount / 5)
 															}
-															onClick={() =>
-																handlePageChange(stateOpportunitiesPage + 1)
+															onClick={(e) =>
+																handlePageChange(stateOpportunitiesPage + 1, e)
 															}>
 															Next
 														</Button>
