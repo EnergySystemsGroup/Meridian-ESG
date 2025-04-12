@@ -13,18 +13,33 @@ import { Button } from '@/app/components/ui/button';
 import { AlertTriangle } from 'lucide-react';
 
 export default function Home() {
+	//======================================
+	// STATE MANAGEMENT
+	//======================================
+	// List of upcoming deadlines (for detail card)
 	const [upcomingDeadlines, setUpcomingDeadlines] = useState([]);
 	const [deadlinesLoading, setDeadlinesLoading] = useState(true);
 	const [deadlinesError, setDeadlinesError] = useState(null);
+
+	// Count of deadlines in the next 30 days (for summary card)
+	const [thirtyDayCount, setThirtyDayCount] = useState(0);
+	const [thirtyDayCountLoading, setThirtyDayCountLoading] = useState(true);
+	const [thirtyDayCountError, setThirtyDayCountError] = useState(null);
+
+	// Count of open funding opportunities
 	const [openOpportunitiesCount, setOpenOpportunitiesCount] = useState(0);
 	const [openOpportunitiesLoading, setOpenOpportunitiesLoading] =
 		useState(true);
 
+	//======================================
+	// DATA FETCHING
+	//======================================
 	useEffect(() => {
+		// Fetch the 5 closest upcoming deadlines for detail list
 		async function fetchDeadlines() {
 			try {
 				setDeadlinesLoading(true);
-				const response = await fetch('/api/deadlines?limit=5');
+				const response = await fetch('/api/deadlines?type=upcoming&limit=5');
 				const result = await response.json();
 
 				if (!result.success) {
@@ -42,6 +57,31 @@ export default function Home() {
 			}
 		}
 
+		// Fetch count of deadlines in the next 30 days for summary card
+		async function fetchThirtyDayCount() {
+			try {
+				setThirtyDayCountLoading(true);
+				const response = await fetch('/api/deadlines?type=thirty_day_count');
+				const result = await response.json();
+
+				if (!result.success) {
+					throw new Error(
+						result.error || 'Failed to fetch 30-day deadline count'
+					);
+				}
+
+				setThirtyDayCount(result.count);
+			} catch (err) {
+				console.error('Error fetching 30-day deadline count:', err);
+				setThirtyDayCountError(err.message);
+				// Fall back to a default value
+				setThirtyDayCount(8); // Use the previous hardcoded value as fallback
+			} finally {
+				setThirtyDayCountLoading(false);
+			}
+		}
+
+		// Fetch count of current open opportunities
 		async function fetchOpenOpportunitiesCount() {
 			try {
 				setOpenOpportunitiesLoading(true);
@@ -64,13 +104,19 @@ export default function Home() {
 			}
 		}
 
+		// Execute all data fetching functions
 		fetchDeadlines();
+		fetchThirtyDayCount();
 		fetchOpenOpportunitiesCount();
 	}, []);
 
+	//======================================
+	// MAIN COMPONENT RENDER
+	//======================================
 	return (
 		<MainLayout>
 			<div className='container py-10'>
+				{/* Dashboard Header */}
 				<div className='flex flex-col gap-2 mb-8'>
 					<h1 className='text-3xl font-bold text-neutral-900 dark:text-neutral-50'>
 						Welcome to Meridian
@@ -82,7 +128,9 @@ export default function Home() {
 					</p>
 				</div>
 
+				{/* Top Summary Cards Row */}
 				<div className='grid gap-6 md:grid-cols-2 lg:grid-cols-4 mb-8'>
+					{/* Open Opportunities Summary Card */}
 					<DashboardCard
 						title='Open Opportunities'
 						value={
@@ -94,13 +142,15 @@ export default function Home() {
 						href='/funding/opportunities?status=Open'
 						linkText='View All'
 					/>
+					{/* 30-Day Deadlines Summary Card */}
 					<DashboardCard
 						title='Upcoming Deadlines'
-						value={upcomingDeadlines.length || '8'}
+						value={thirtyDayCountLoading ? '...' : thirtyDayCount.toString()}
 						description='Applications due in the next 30 days'
 						href='/timeline'
 						linkText='View Timeline'
 					/>
+					{/* Active Legislation Summary Card */}
 					<DashboardCard
 						title='Active Legislation'
 						value='12'
@@ -108,6 +158,7 @@ export default function Home() {
 						href='/legislation/bills'
 						linkText='View Bills'
 					/>
+					{/* Client Matches Summary Card */}
 					<DashboardCard
 						title='Client Matches'
 						value='36'
@@ -117,7 +168,9 @@ export default function Home() {
 					/>
 				</div>
 
+				{/* Detail Cards Row */}
 				<div className='grid gap-6 md:grid-cols-2 lg:grid-cols-3 mb-8'>
+					{/* Recent Opportunities Card */}
 					<Card>
 						<CardHeader>
 							<CardTitle>Recent Opportunities</CardTitle>
@@ -157,6 +210,7 @@ export default function Home() {
 						</CardContent>
 					</Card>
 
+					{/* Legislative Updates Card */}
 					<Card>
 						<CardHeader>
 							<CardTitle>Legislative Updates</CardTitle>
@@ -198,6 +252,7 @@ export default function Home() {
 						</CardContent>
 					</Card>
 
+					{/* Upcoming Deadlines Detail Card */}
 					<Card>
 						<CardHeader>
 							<CardTitle>Upcoming Deadlines</CardTitle>
@@ -244,7 +299,9 @@ export default function Home() {
 					</Card>
 				</div>
 
+				{/* Bottom Row - Chart and Quick Actions */}
 				<div className='grid gap-6 md:grid-cols-3'>
+					{/* Chart Card */}
 					<Card className='md:col-span-2'>
 						<CardHeader>
 							<CardTitle>Funding by Category</CardTitle>
@@ -261,6 +318,7 @@ export default function Home() {
 						</CardContent>
 					</Card>
 
+					{/* Quick Actions Card */}
 					<Card>
 						<CardHeader>
 							<CardTitle>Quick Actions</CardTitle>
@@ -343,6 +401,10 @@ export default function Home() {
 	);
 }
 
+//======================================
+// HELPER COMPONENTS
+//======================================
+// Reusable card component for dashboard summary metrics
 function DashboardCard({ title, value, description, href, linkText }) {
 	return (
 		<Card className='overflow-hidden'>
@@ -371,6 +433,10 @@ function DashboardCard({ title, value, description, href, linkText }) {
 	);
 }
 
+//======================================
+// UTILITY FUNCTIONS
+//======================================
+// Get the appropriate color for various status types
 function getStatusColor(status) {
 	switch (status) {
 		case 'opportunity':
@@ -396,13 +462,17 @@ function getStatusColor(status) {
 	}
 }
 
+// Get color coding based on number of days left until deadline
 function getDaysColor(days) {
 	if (days <= 7) return 'bg-red-100 text-red-800';
 	if (days <= 14) return 'bg-yellow-100 text-yellow-800';
 	return 'bg-blue-100 text-blue-800';
 }
 
-// Sample data for the dashboard
+//======================================
+// SAMPLE DATA
+//======================================
+// Sample data for the activity feed
 const activityItems = [
 	{
 		title: 'New Funding Opportunity',
@@ -441,6 +511,7 @@ const activityItems = [
 	},
 ];
 
+// Sample data for recent opportunities section
 const recentOpportunities = [
 	{
 		title: 'Building Energy Efficiency Grant',
@@ -468,6 +539,7 @@ const recentOpportunities = [
 	},
 ];
 
+// Sample data for legislation updates section
 const legislativeUpdates = [
 	{
 		title: 'H.R. 123: Building Efficiency Act',

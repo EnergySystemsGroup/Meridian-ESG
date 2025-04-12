@@ -5,9 +5,32 @@ export async function GET(request) {
 	try {
 		// Get URL parameters
 		const { searchParams } = new URL(request.url);
+		const type = searchParams.get('type') || 'upcoming'; // 'upcoming' or 'thirty_day_count'
 		const limit = parseInt(searchParams.get('limit') || '5');
 
-		// Fetch upcoming deadlines
+		// For thirty-day count request type
+		if (type === 'thirty_day_count') {
+			const today = new Date();
+			const thirtyDaysFromNow = new Date();
+			thirtyDaysFromNow.setDate(today.getDate() + 30);
+
+			const { count, error } = await supabase
+				.from('funding_opportunities')
+				.select('id', { count: 'exact' })
+				.gte('close_date', today.toISOString())
+				.lt('close_date', thirtyDaysFromNow.toISOString());
+
+			if (error) {
+				throw error;
+			}
+
+			return NextResponse.json({
+				success: true,
+				count: count || 0,
+			});
+		}
+
+		// Original behavior for 'upcoming' type - return closest deadlines
 		const today = new Date().toISOString();
 
 		const { data, error } = await supabase
