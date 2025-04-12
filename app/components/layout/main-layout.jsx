@@ -1,7 +1,8 @@
 'use client';
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import {
 	NavigationMenu,
 	NavigationMenuContent,
@@ -15,31 +16,21 @@ import { HelpCircle, Moon, Settings, Sun } from 'lucide-react';
 import { useTheme } from '@/app/components/theme-provider';
 
 const ClientSideActiveLink = ({ href, children, className, ...props }) => {
-	const [isActive, setIsActive] = React.useState(false);
+	const pathname = usePathname();
+	const isActive = pathname === href || pathname.startsWith(href + '/');
 
-	React.useEffect(() => {
-		const updateActiveState = () => {
-			const pathname = window.location.pathname;
-			setIsActive(pathname === href || pathname.startsWith(href + '/'));
-		};
-
-		// Set initial state
-		updateActiveState();
-
-		// Update on navigation
-		window.addEventListener('popstate', updateActiveState);
-		return () => window.removeEventListener('popstate', updateActiveState);
-	}, [href]);
-
-	// Create the active class string outside the JSX
+	// Calculate the active class name once
 	const activeClassName = isActive
 		? 'bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400 border-b-2 border-blue-600 dark:border-blue-400'
 		: '';
 
-	// Use a stable wrapper element instead of cloning
+	const combinedClassName = useMemo(() => {
+		return cn(className, activeClassName);
+	}, [className, activeClassName]);
+
 	return (
-		<Link href={href} {...props}>
-			<div className={cn(className, activeClassName)}>{children}</div>
+		<Link href={href} className={combinedClassName} {...props}>
+			{children}
 		</Link>
 	);
 };
@@ -106,29 +97,24 @@ const MainLayout = ({ children }) => {
 };
 
 const MainNav = () => {
+	// Memoize common navigation class styles
+	const navLinkClasses = cn(
+		'inline-flex h-9 md:h-10 items-center justify-center rounded-md px-3 md:px-4 py-2 text-sm font-medium transition-all duration-200',
+		'hover:bg-blue-50 hover:text-blue-600 dark:hover:bg-blue-900/20 dark:hover:text-blue-400',
+		'focus:bg-blue-50 focus:text-blue-600 dark:focus:bg-blue-900/20 dark:focus:text-blue-400 focus:outline-none',
+		'text-neutral-700 dark:text-neutral-200'
+	);
+
 	return (
 		<NavigationMenu>
 			<NavigationMenuList className='gap-2 md:gap-4'>
 				<NavigationMenuItem>
-					<ClientSideActiveLink
-						href='/'
-						className={cn(
-							'inline-flex h-9 md:h-10 items-center justify-center rounded-md px-3 md:px-4 py-2 text-sm font-medium transition-all duration-200',
-							'hover:bg-blue-50 hover:text-blue-600 dark:hover:bg-blue-900/20 dark:hover:text-blue-400',
-							'focus:bg-blue-50 focus:text-blue-600 dark:focus:bg-blue-900/20 dark:focus:text-blue-400 focus:outline-none',
-							'text-neutral-700 dark:text-neutral-200'
-						)}>
+					<ClientSideActiveLink href='/' className={navLinkClasses}>
 						Dashboard
 					</ClientSideActiveLink>
 				</NavigationMenuItem>
 				<NavigationMenuItem>
-					<NavigationMenuTrigger
-						className={cn(
-							'inline-flex h-9 md:h-10 items-center justify-center rounded-md px-3 md:px-4 py-2 text-sm font-medium transition-all duration-200',
-							'hover:bg-blue-50 hover:text-blue-600 dark:hover:bg-blue-900/20 dark:hover:text-blue-400',
-							'focus:bg-blue-50 focus:text-blue-600 dark:focus:bg-blue-900/20 dark:focus:text-blue-400 focus:outline-none',
-							'text-neutral-700 dark:text-neutral-200 group'
-						)}>
+					<NavigationMenuTrigger className={cn(navLinkClasses, 'group')}>
 						Funding
 					</NavigationMenuTrigger>
 					<NavigationMenuContent>
@@ -146,13 +132,7 @@ const MainNav = () => {
 					</NavigationMenuContent>
 				</NavigationMenuItem>
 				<NavigationMenuItem>
-					<NavigationMenuTrigger
-						className={cn(
-							'inline-flex h-9 md:h-10 items-center justify-center rounded-md px-3 md:px-4 py-2 text-sm font-medium transition-all duration-200',
-							'hover:bg-blue-50 hover:text-blue-600 dark:hover:bg-blue-900/20 dark:hover:text-blue-400',
-							'focus:bg-blue-50 focus:text-blue-600 dark:focus:bg-blue-900/20 dark:focus:text-blue-400 focus:outline-none',
-							'text-neutral-700 dark:text-neutral-200 group'
-						)}>
+					<NavigationMenuTrigger className={cn(navLinkClasses, 'group')}>
 						Legislation
 					</NavigationMenuTrigger>
 					<NavigationMenuContent>
@@ -170,26 +150,12 @@ const MainNav = () => {
 					</NavigationMenuContent>
 				</NavigationMenuItem>
 				<NavigationMenuItem>
-					<ClientSideActiveLink
-						href='/clients'
-						className={cn(
-							'inline-flex h-9 md:h-10 items-center justify-center rounded-md px-3 md:px-4 py-2 text-sm font-medium transition-all duration-200',
-							'hover:bg-blue-50 hover:text-blue-600 dark:hover:bg-blue-900/20 dark:hover:text-blue-400',
-							'focus:bg-blue-50 focus:text-blue-600 dark:focus:bg-blue-900/20 dark:focus:text-blue-400 focus:outline-none',
-							'text-neutral-700 dark:text-neutral-200'
-						)}>
+					<ClientSideActiveLink href='/clients' className={navLinkClasses}>
 						Clients
 					</ClientSideActiveLink>
 				</NavigationMenuItem>
 				<NavigationMenuItem>
-					<ClientSideActiveLink
-						href='/timeline'
-						className={cn(
-							'inline-flex h-9 md:h-10 items-center justify-center rounded-md px-3 md:px-4 py-2 text-sm font-medium transition-all duration-200',
-							'hover:bg-blue-50 hover:text-blue-600 dark:hover:bg-blue-900/20 dark:hover:text-blue-400',
-							'focus:bg-blue-50 focus:text-blue-600 dark:focus:bg-blue-900/20 dark:focus:text-blue-400 focus:outline-none',
-							'text-neutral-700 dark:text-neutral-200'
-						)}>
+					<ClientSideActiveLink href='/timeline' className={navLinkClasses}>
 						Timeline
 					</ClientSideActiveLink>
 				</NavigationMenuItem>
@@ -212,30 +178,28 @@ const ListItem = React.forwardRef(
 	({ className, title, children, href, comingSoon, ...props }, ref) => {
 		return (
 			<li>
-				<NavigationMenuLink asChild>
-					<Link
-						ref={ref}
-						href={href}
-						className={cn(
-							'block select-none space-y-1 rounded-md p-4 leading-none no-underline outline-none transition-all duration-200',
-							'hover:bg-blue-50 hover:text-blue-600 dark:hover:bg-blue-900/20 dark:hover:text-blue-400',
-							'focus:bg-blue-50 focus:text-blue-600 dark:focus:bg-blue-900/20 dark:focus:text-blue-400',
-							className
+				<Link
+					ref={ref}
+					href={href}
+					className={cn(
+						'block select-none space-y-1 rounded-md p-4 leading-none no-underline outline-none transition-all duration-200',
+						'hover:bg-blue-50 hover:text-blue-600 dark:hover:bg-blue-900/20 dark:hover:text-blue-400',
+						'focus:bg-blue-50 focus:text-blue-600 dark:focus:bg-blue-900/20 dark:focus:text-blue-400',
+						className
+					)}
+					{...props}>
+					<div className='flex items-center justify-between'>
+						<div className='text-sm font-medium leading-none'>{title}</div>
+						{comingSoon && (
+							<span className='ml-2 text-xs px-1.5 py-0.5 bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400 rounded-full'>
+								Coming Soon
+							</span>
 						)}
-						{...props}>
-						<div className='flex items-center justify-between'>
-							<div className='text-sm font-medium leading-none'>{title}</div>
-							{comingSoon && (
-								<span className='ml-2 text-xs px-1.5 py-0.5 bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400 rounded-full'>
-									Coming Soon
-								</span>
-							)}
-						</div>
-						<p className='line-clamp-2 text-sm leading-snug text-neutral-500 dark:text-neutral-400 mt-2'>
-							{children}
-						</p>
-					</Link>
-				</NavigationMenuLink>
+					</div>
+					<p className='line-clamp-2 text-sm leading-snug text-neutral-500 dark:text-neutral-400 mt-2'>
+						{children}
+					</p>
+				</Link>
 			</li>
 		);
 	}
