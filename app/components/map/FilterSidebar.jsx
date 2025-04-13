@@ -40,20 +40,53 @@ export default function FilterSidebar({
 	horizontal = false,
 	categoriesOnly = false,
 }) {
-	// Common funding categories from TAXONOMIES
-	const categories = TAXONOMIES.CATEGORIES;
+	// State for categories from API
+	const [availableCategories, setAvailableCategories] = useState([]);
+	const [isCategoriesLoading, setIsCategoriesLoading] = useState(true);
+	const [categoryMapping, setCategoryMapping] = useState({});
+	const [categoriesApiResponse, setCategoriesApiResponse] = useState(null);
 
 	// State for category dropdown and search
 	const [categoryDropdownOpen, setCategoryDropdownOpen] = useState(false);
 	const [categorySearchInput, setCategorySearchInput] = useState('');
 	const categoryDropdownRef = useRef(null);
 
+	// Fetch categories from API
+	useEffect(() => {
+		async function fetchAllCategories() {
+			try {
+				setIsCategoriesLoading(true);
+				const response = await fetch('/api/categories');
+				const result = await response.json();
+
+				if (result.success) {
+					setCategoriesApiResponse(result);
+					setAvailableCategories(result.categories);
+					setCategoryMapping(result.rawToNormalizedMap);
+					console.log(
+						'Loaded normalized categories:',
+						result.categories.length
+					);
+					console.log('Category groups:', result.categoryGroups);
+				} else {
+					console.error('Error fetching categories:', result.error);
+				}
+			} catch (err) {
+				console.error('Failed to fetch categories:', err);
+			} finally {
+				setIsCategoriesLoading(false);
+			}
+		}
+
+		fetchAllCategories();
+	}, []);
+
 	// Filtered categories based on search input
 	const filteredCategories = categorySearchInput
-		? categories.filter((category) =>
+		? availableCategories.filter((category) =>
 				category.toLowerCase().includes(categorySearchInput.toLowerCase())
 		  )
-		: categories;
+		: availableCategories;
 
 	// Close dropdown when clicking outside
 	useEffect(() => {
@@ -151,38 +184,54 @@ export default function FilterSidebar({
 								</div>
 							</div>
 
+							{/* Loading indicator for categories */}
+							{isCategoriesLoading && (
+								<div className='py-3 text-center text-sm text-gray-500'>
+									<div className='inline-block animate-spin rounded-full h-4 w-4 border-b-2 border-gray-500 mr-2'></div>
+									Loading categories...
+								</div>
+							)}
+
 							{/* Categories list */}
-							<div className='max-h-[240px] overflow-y-auto'>
-								{filteredCategories.map((category) => {
-									const isSelected = filters.categories?.includes(category);
-									const categoryColor = getCategoryColor(category);
-									return (
-										<div
-											key={category}
-											className='flex items-center justify-between py-1.5 px-1 cursor-pointer hover:bg-gray-50 rounded'
-											onClick={() => handleCategorySelect(category)}>
-											<div className='flex items-center gap-2'>
-												<input
-													type='checkbox'
-													className='rounded border-gray-300'
-													checked={isSelected}
-													readOnly
-												/>
-												<span
-													className='w-2.5 h-2.5 rounded-full'
-													style={{ backgroundColor: categoryColor.color }}
-												/>
-												<span className='text-sm'>
-													{formatCategoryForDisplay(category)}
+							{!isCategoriesLoading && (
+								<div className='max-h-[240px] overflow-y-auto'>
+									{filteredCategories.map((category) => {
+										const isSelected = filters.categories?.includes(category);
+										const categoryColor = getCategoryColor(category);
+										const count =
+											categoriesApiResponse?.categoryGroups?.[category]
+												?.count || 0;
+										return (
+											<div
+												key={category}
+												className='flex items-center justify-between py-1.5 px-1 cursor-pointer hover:bg-gray-50 rounded'
+												onClick={() => handleCategorySelect(category)}>
+												<div className='flex items-center gap-2'>
+													<input
+														type='checkbox'
+														className='rounded border-gray-300'
+														checked={isSelected}
+														readOnly
+													/>
+													<span
+														className='w-2.5 h-2.5 rounded-full'
+														style={{ backgroundColor: categoryColor.color }}
+													/>
+													<span className='text-sm'>
+														{formatCategoryForDisplay(category)}
+													</span>
+												</div>
+												<span className='text-xs text-gray-500 ml-1'>
+													{count}
 												</span>
 											</div>
-										</div>
-									);
-								})}
-							</div>
+										);
+									})}
+								</div>
+							)}
 
 							{/* No results */}
-							{filteredCategories.length === 0 && (
+							{!isCategoriesLoading && filteredCategories.length === 0 && (
 								<div className='py-3 text-center text-sm text-gray-500'>
 									No categories found
 								</div>

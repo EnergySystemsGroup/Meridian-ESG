@@ -252,26 +252,14 @@ export async function GET(request, context) {
 					dataQuery = dataQuery.eq('status', filters.status);
 				}
 
-				if (filters.source_type && filters.source_type !== 'all') {
-					dataQuery = dataQuery.ilike(
-						'source_type_display',
-						filters.source_type
-					);
-				}
-
+				// Apply categories filter if present
 				if (filters.categories && filters.categories.length > 0) {
+					// Filter opportunities where any of the selected categories is in the opportunity's categories array
 					dataQuery = dataQuery.overlaps('categories', filters.categories);
 				}
 
 				if (filters.min_amount) {
 					dataQuery = dataQuery.gte('minimum_award', filters.min_amount);
-				}
-
-				// For the max_amount filter, use an in() filter with the IDs we found
-				// Only if we have IDs - otherwise, the list will be empty and return no results
-				if (idData.length > 0) {
-					const idList = idData.map((item) => item.id);
-					dataQuery = dataQuery.in('id', idList);
 				}
 
 				if (filters.deadline_start) {

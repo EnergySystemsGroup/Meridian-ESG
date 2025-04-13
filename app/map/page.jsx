@@ -177,6 +177,7 @@ export default function Page() {
 	const [totalFundingAvailable, setTotalFundingAvailable] = useState(0);
 	const [totalOpportunities, setTotalOpportunities] = useState(0);
 	const [statesWithFunding, setStatesWithFunding] = useState(0);
+	const [categoryMapping, setCategoryMapping] = useState({});
 	const [filters, setFilters] = useState({
 		minAmount: 0,
 		maxAmount: 0,
@@ -189,6 +190,31 @@ export default function Page() {
 			end: null,
 		},
 	});
+
+	// Fetch the category mapping on mount
+	useEffect(() => {
+		async function fetchCategoryMapping() {
+			try {
+				const response = await fetch('/api/categories');
+				const result = await response.json();
+
+				if (result.success) {
+					setCategoryMapping(result.rawToNormalizedMap);
+					console.log(
+						'Loaded category mapping with',
+						Object.keys(result.rawToNormalizedMap).length,
+						'entries'
+					);
+				} else {
+					console.error('Error fetching categories:', result.error);
+				}
+			} catch (err) {
+				console.error('Failed to fetch categories:', err);
+			}
+		}
+
+		fetchCategoryMapping();
+	}, []);
 
 	useEffect(() => {
 		async function fetchFundingData() {
@@ -203,9 +229,24 @@ export default function Page() {
 				if (filters.sourceType !== 'all') {
 					queryParams.append('source_type', filters.sourceType);
 				}
+
+				// Handle category filtering with normalization
 				if (filters.categories?.length > 0) {
-					queryParams.append('categories', filters.categories.join(','));
+					// Get all raw categories that map to our selected normalized categories
+					const rawCategories = Object.entries(categoryMapping)
+						.filter(([raw, normalized]) =>
+							filters.categories.includes(normalized)
+						)
+						.map(([raw]) => raw);
+
+					// If we have a mapping, use all raw categories that map to our selections
+					// Otherwise, just use the selected categories directly
+					const categoriesToSend =
+						rawCategories.length > 0 ? rawCategories : filters.categories;
+
+					queryParams.append('categories', categoriesToSend.join(','));
 				}
+
 				if (filters.minAmount > 0) {
 					queryParams.append('min_amount', filters.minAmount);
 				}
@@ -248,10 +289,7 @@ export default function Page() {
 					const stateNames = result.data.map((d) => d.state);
 					console.log('All state names:', stateNames);
 
-					// Set state with the data
 					setFundingData(result.data);
-
-					// Set the funding summary metrics from API response
 					setTotalFundingAvailable(result.totalFunding || 0);
 					setTotalOpportunities(result.totalOpportunities || 0);
 					setStatesWithFunding(result.statesWithFunding || 0);
@@ -268,7 +306,7 @@ export default function Page() {
 		}
 
 		fetchFundingData();
-	}, [filters]);
+	}, [filters, categoryMapping]);
 
 	// When a state is selected, fetch opportunities for that state
 	useEffect(() => {
@@ -281,38 +319,63 @@ export default function Page() {
 
 			try {
 				setStateOpportunitiesLoading(true);
-				const stateCode = stateAbbreviations[selectedState];
+
+				// Calculate paging
+				const pageSize = 5;
+				const from = (stateOpportunitiesPage - 1) * pageSize;
+				const to = from + pageSize - 1;
+
+				// Generate state code for API
+				let stateCode = '';
+				for (const [fullName, abbr] of Object.entries(stateAbbreviations)) {
+					if (fullName === selectedState) {
+						stateCode = abbr;
+						break;
+					}
+				}
+
 				if (!stateCode) {
-					console.error('No state code found for:', selectedState);
+					console.error(`Could not find state code for ${selectedState}`);
+					setStateOpportunitiesLoading(false);
 					return;
 				}
 
-				// Build query parameters
-				const queryParams = new URLSearchParams();
+				// Build query params
+				const queryParams = new URLSearchParams({
+					from: from.toString(),
+					to: to.toString(),
+				});
 
-				// Pagination
-				queryParams.append('page', stateOpportunitiesPage.toString());
-				queryParams.append('pageSize', '5'); // 5 items per page
-
-				// Filters
+				// Add filters
 				if (filters.status !== 'all') {
 					queryParams.append('status', filters.status);
 				}
 				if (filters.sourceType !== 'all') {
 					queryParams.append('source_type', filters.sourceType);
 				}
+
+				// Handle category filtering with normalization
 				if (filters.categories?.length > 0) {
-					queryParams.append('categories', filters.categories.join(','));
+					// Get all raw categories that map to our selected normalized categories
+					const rawCategories = Object.entries(categoryMapping)
+						.filter(([raw, normalized]) =>
+							filters.categories.includes(normalized)
+						)
+						.map(([raw]) => raw);
+
+					// If we have a mapping, use all raw categories that map to our selections
+					// Otherwise, just use the selected categories directly
+					const categoriesToSend =
+						rawCategories.length > 0 ? rawCategories : filters.categories;
+
+					queryParams.append('categories', categoriesToSend.join(','));
 				}
+
 				if (filters.minAmount > 0) {
 					queryParams.append('min_amount', filters.minAmount);
 				}
-				// Only include max_amount parameter if it's greater than 0
 				if (filters.maxAmount > 0) {
 					queryParams.append('max_amount', filters.maxAmount);
-				}
-				if (!filters.showNational) {
-					queryParams.append('include_national', 'false');
 				}
 				if (filters.deadlineRange.start) {
 					queryParams.append(
@@ -326,6 +389,14 @@ export default function Page() {
 						format(filters.deadlineRange.end, 'yyyy-MM-dd')
 					);
 				}
+				// Add national filter parameter
+				queryParams.append(
+					'include_national',
+					filters.showNational ? 'true' : 'false'
+				);
+
+				// Add cache-busting timestamp
+				queryParams.append('_t', Date.now());
 
 				const response = await fetch(
 					`/api/map/opportunities/${stateCode}?${queryParams}`
@@ -382,7 +453,7 @@ export default function Page() {
 		}
 
 		fetchStateOpportunities();
-	}, [selectedState, filters, stateOpportunitiesPage]);
+	}, [selectedState, filters, stateOpportunitiesPage, categoryMapping]);
 
 	// Generate color scale based on either funding amounts or opportunity count
 	const colorScale = scaleQuantile()

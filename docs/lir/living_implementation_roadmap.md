@@ -170,6 +170,12 @@ The Funding API Processing System is designed to retrieve, filter, and store fun
 - [x] Implement structured funding source object extraction and processing
 - [x] Update the description field in the Zod schema to improve comprehensiveness with 2-4 paragraph descriptions
 - [x] Implement title-based matching to prevent duplicate opportunities when IDs don't match
+- [x] Implement category normalization for funding opportunities:
+  - [x] Create standardized mapping for common category variations
+  - [x] Add case-insensitive matching for category names
+  - [ ] Handle abbreviations and alternate spellings
+  - [x] Normalize "Other: [description]" categories when possible
+  - [ ] Update category display in UI to use normalized values
 - [ ] Replace LLM-based decision making with rule-based processing for better efficiency
 - [ ] Implement versioning for opportunity updates
 - [ ] Add tagging system for categorization
