@@ -12,6 +12,7 @@ import {
 import { Button } from '@/app/components/ui/button';
 import { AlertTriangle } from 'lucide-react';
 import Link from 'next/link';
+import FundingCategoryChart from '@/app/components/dashboard/FundingCategoryChart';
 
 export default function Home() {
 	//======================================
@@ -376,11 +377,7 @@ export default function Home() {
 							</CardDescription>
 						</CardHeader>
 						<CardContent>
-							<div className='h-80 flex items-center justify-center border rounded-md bg-muted/20'>
-								<p className='text-muted-foreground'>
-									Chart visualization will be implemented here
-								</p>
-							</div>
+							<FundingCategoryChart />
 						</CardContent>
 					</Card>
 

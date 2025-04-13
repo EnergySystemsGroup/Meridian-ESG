@@ -217,6 +217,11 @@ const fundingNavItems = [
 		description: 'Visualize funding opportunities by geographic region.',
 	},
 	{
+		title: 'Funding by Category',
+		href: '/dashboard/funding/categories',
+		description: 'Analyze funding distribution across different categories.',
+	},
+	{
 		title: 'Funding Sources',
 		href: '/funding/sources',
 		description: 'Explore agencies and organizations that provide funding.',
