@@ -111,8 +111,13 @@ export default function OpportunitiesPage() {
 				].includes(location)
 		)
 	);
-	const [sortOption, setSortOption] = useState('relevance');
-	const [sortDirection, setSortDirection] = useState('desc');
+	// Initialize sort options from URL parameters
+	const [sortOption, setSortOption] = useState(
+		searchParams.get('sort') || 'relevance'
+	);
+	const [sortDirection, setSortDirection] = useState(
+		searchParams.get('sort_direction') || 'desc'
+	);
 	const [categorySearchInput, setCategorySearchInput] = useState('');
 	const [stateSearchInput, setStateSearchInput] = useState('');
 	const [sortMenuOpen, setSortMenuOpen] = useState(false);

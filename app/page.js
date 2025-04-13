@@ -261,7 +261,7 @@ export default function Home() {
 							)}
 							<div className='mt-4'>
 								<Link
-									href='/funding/opportunities?sort_by=created_at&sort_direction=desc'
+									href='/funding/opportunities?sort=recent&sort_direction=desc'
 									className='inline-flex w-full justify-center items-center py-2 px-4 border border-neutral-200 dark:border-neutral-800 rounded-md text-sm font-medium text-neutral-900 dark:text-neutral-100 bg-white dark:bg-neutral-900 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors'>
 									View All Opportunities
 								</Link>
