@@ -207,14 +207,14 @@ export default function Home() {
 				{/* Detail Cards Row */}
 				<div className='grid gap-6 md:grid-cols-2 lg:grid-cols-3 mb-8'>
 					{/* Recent Opportunities Card */}
-					<Card>
+					<Card className='flex flex-col h-full'>
 						<CardHeader>
 							<CardTitle>Recent Opportunities</CardTitle>
 							<CardDescription>
 								Latest funding opportunities added
 							</CardDescription>
 						</CardHeader>
-						<CardContent>
+						<CardContent className='flex flex-col flex-grow'>
 							{recentOpportunitiesLoading ? (
 								<div className='flex justify-center items-center h-40'>
 									<div className='animate-spin rounded-full h-8 w-8 border-b-2 border-primary'></div>
@@ -224,7 +224,7 @@ export default function Home() {
 									<p>Error loading opportunities. Using sample data.</p>
 								</div>
 							) : (
-								<ul className='space-y-4'>
+								<ul className='space-y-4 flex-grow'>
 									{recentOpportunities.map((item) => (
 										<li
 											key={`opportunity-${item.id}`}
@@ -269,21 +269,21 @@ export default function Home() {
 					</Card>
 
 					{/* Legislative Updates Card */}
-					<Card>
+					<Card className='flex flex-col h-full'>
 						<CardHeader>
 							<CardTitle>Legislative Updates</CardTitle>
 							<CardDescription>
 								Recent changes to tracked legislation
 							</CardDescription>
 						</CardHeader>
-						<CardContent>
+						<CardContent className='flex flex-col flex-grow'>
 							<div className='mb-3 px-2 py-1 bg-amber-50 border border-amber-300 rounded-md'>
 								<p className='text-xs text-amber-700 flex items-center'>
 									<AlertTriangle className='h-3 w-3 mr-1 text-amber-500' />
 									Demo data for illustration purposes only
 								</p>
 							</div>
-							<ul className='space-y-4'>
+							<ul className='space-y-4 flex-grow'>
 								{legislativeUpdates.map((item) => (
 									<li
 										key={`legislative-${item.title}`}
@@ -315,12 +315,12 @@ export default function Home() {
 					</Card>
 
 					{/* Upcoming Deadlines Detail Card */}
-					<Card>
+					<Card className='flex flex-col h-full'>
 						<CardHeader>
 							<CardTitle>Upcoming Deadlines</CardTitle>
 							<CardDescription>Applications due soon</CardDescription>
 						</CardHeader>
-						<CardContent>
+						<CardContent className='flex flex-col flex-grow'>
 							{deadlinesLoading ? (
 								<div className='flex justify-center items-center h-40'>
 									<div className='animate-spin rounded-full h-8 w-8 border-b-2 border-primary'></div>
@@ -330,7 +330,7 @@ export default function Home() {
 									<p>Error loading deadlines. Using sample data.</p>
 								</div>
 							) : (
-								<ul className='space-y-4'>
+								<ul className='space-y-4 flex-grow'>
 									{upcomingDeadlines.map((item) => (
 										<li
 											key={`deadline-${item.id}`}
