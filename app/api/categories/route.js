@@ -7,7 +7,7 @@ export async function GET() {
 		// Fetch all unique categories from opportunities table
 		const { data, error } = await supabase
 			.from('funding_opportunities_with_geography') // Using the view with geography
-			.select('categories')
+			.select('id, categories')
 			.not('categories', 'is', null);
 
 		if (error) {
@@ -36,6 +36,44 @@ export async function GET() {
 			standardCategories,
 			categoryCount
 		);
+
+		// Fix the category counts to reflect unique opportunities
+		// This is the only change needed to fix the counting issue
+		const opportunitiesByCategory = {};
+
+		// Count each opportunity exactly once per normalized category
+		data.forEach((opportunity) => {
+			if (!opportunity.categories || opportunity.categories.length === 0)
+				return;
+
+			// Track which normalized categories we've seen for this opportunity
+			const seenCategories = new Set();
+
+			opportunity.categories.forEach((rawCategory) => {
+				if (rawCategory && normalizedMapping[rawCategory]) {
+					const normalizedCategory = normalizedMapping[rawCategory];
+					// Only count each normalized category once per opportunity
+					if (!seenCategories.has(normalizedCategory)) {
+						seenCategories.add(normalizedCategory);
+
+						// Initialize if needed
+						if (!opportunitiesByCategory[normalizedCategory]) {
+							opportunitiesByCategory[normalizedCategory] = new Set();
+						}
+
+						// Add this opportunity to the set for this category
+						opportunitiesByCategory[normalizedCategory].add(opportunity.id);
+					}
+				}
+			});
+		});
+
+		// Update just the count property in categoryGroups with accurate counts
+		Object.keys(categoryGroups).forEach((category) => {
+			if (opportunitiesByCategory[category]) {
+				categoryGroups[category].count = opportunitiesByCategory[category].size;
+			}
+		});
 
 		// Get final normalized category list (sorted by count, then alphabetically)
 		const normalizedCategories = Object.keys(categoryGroups).sort((a, b) => {

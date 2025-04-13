@@ -72,6 +72,7 @@ export const TAXONOMIES = {
 		'Research & Development',
 		'Economic Development',
 		'Disaster Recovery',
+		'Climate',
 	],
 
 	ELIGIBLE_LOCATIONS: [
