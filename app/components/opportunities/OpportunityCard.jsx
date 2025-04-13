@@ -96,6 +96,12 @@ const newBadgeColors = {
 	bgColor: '#EFF6FF', // Light blue background
 };
 
+// Define colors for the UPDATED badge to match the pill style
+const updatedBadgeColors = {
+	color: '#0369a1', // Teal text color
+	bgColor: '#f0f9ff', // Light teal background
+};
+
 const OpportunityCard = ({ opportunity }) => {
 	// Use Next.js router and search params
 	const router = useRouter();
@@ -158,6 +164,14 @@ const OpportunityCard = ({ opportunity }) => {
 		(new Date() - new Date(opportunity.created_at)) / (1000 * 60 * 60 * 24) <=
 			6;
 
+	// Determine if opportunity was recently updated (within last 7 days, but not new)
+	const isNewlyUpdated =
+		!isNew &&
+		opportunity.updated_at &&
+		opportunity.created_at !== opportunity.updated_at &&
+		(new Date() - new Date(opportunity.updated_at)) / (1000 * 60 * 60 * 24) <=
+			7;
+
 	// Calculate days since creation if it's new
 	const addedDaysAgo =
 		isNew && opportunity.created_at
@@ -171,6 +185,22 @@ const OpportunityCard = ({ opportunity }) => {
 
 					// Calculate difference in days
 					return Math.round((today - createdDate) / (1000 * 60 * 60 * 24));
+			  })()
+			: null;
+
+	// Calculate days since update if it was newly updated
+	const updatedDaysAgo =
+		isNewlyUpdated && opportunity.updated_at
+			? (() => {
+					const today = new Date();
+					const updatedDate = new Date(opportunity.updated_at);
+
+					// Reset hours to compare calendar days only
+					today.setHours(0, 0, 0, 0);
+					updatedDate.setHours(0, 0, 0, 0);
+
+					// Calculate difference in days
+					return Math.round((today - updatedDate) / (1000 * 60 * 60 * 24));
 			  })()
 			: null;
 
@@ -229,6 +259,25 @@ const OpportunityCard = ({ opportunity }) => {
 								: addedDaysAgo === 1
 								? 'Yesterday'
 								: `${addedDaysAgo} days ago`}
+						</span>
+					</div>
+				)}
+
+				{/* NEWLY UPDATED badge if applicable */}
+				{isNewlyUpdated && (
+					<div className='mt-2'>
+						<span
+							className='text-xs font-medium px-2 py-1 rounded'
+							style={{
+								backgroundColor: updatedBadgeColors.bgColor,
+								color: updatedBadgeColors.color,
+							}}>
+							UPDATED •{' '}
+							{updatedDaysAgo === 0
+								? 'Today'
+								: updatedDaysAgo === 1
+								? 'Yesterday'
+								: `${updatedDaysAgo} days ago`}
 						</span>
 					</div>
 				)}
