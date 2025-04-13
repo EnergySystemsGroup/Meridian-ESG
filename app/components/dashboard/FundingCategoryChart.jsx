@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import {
 	BarChart,
 	Bar,
@@ -18,48 +18,56 @@ import {
 	CardHeader,
 	CardTitle,
 } from '@/app/components/ui/card';
+import { Skeleton } from '@/app/components/ui/skeleton';
+import { AlertCircle } from 'lucide-react';
+import { Alert, AlertDescription, AlertTitle } from '@/app/components/ui/alert';
 
-// Generate a consistent color based on index
-const getCategoryColor = (index) => {
-	const colors = [
-		'#2563eb', // blue-600
-		'#16a34a', // green-600
-		'#ea580c', // orange-600
-		'#8b5cf6', // violet-600
-		'#d946ef', // fuchsia-600
-		'#ec4899', // pink-600
-		'#0891b2', // cyan-600
-		'#84cc16', // lime-600
-		'#ca8a04', // yellow-600
-		'#e11d48', // rose-600
-		'#475569', // slate-600
-		'#6366f1', // indigo-600
-	];
-	return colors[index % colors.length];
-};
+// Define consistent colors for categories if needed, otherwise use generated
+const COLORS = [
+	'#0088FE',
+	'#00C49F',
+	'#FFBB28',
+	'#FF8042',
+	'#8884d8',
+	'#82ca9d',
+	'#ffc658',
+	'#a4de6c',
+	'#d0ed57',
+	'#ffc658',
+];
 
-// Format currency values
 const formatCurrency = (value) => {
+	if (value === null || value === undefined) return '$0';
 	if (value >= 1000000000) {
-		return `$${(value / 1000000000).toFixed(1)}B`;
+		return `$${(value / 1000000000).toFixed(0)}B`;
 	} else if (value >= 1000000) {
-		return `$${(value / 1000000).toFixed(1)}M`;
+		return `$${(value / 1000000).toFixed(0)}M`;
 	} else if (value >= 1000) {
-		return `$${(value / 1000).toFixed(1)}K`;
+		return `$${(value / 1000).toFixed(0)}K`;
 	}
-	return `$${value}`;
+	return new Intl.NumberFormat('en-US', {
+		style: 'currency',
+		currency: 'USD',
+		maximumFractionDigits: 0,
+	}).format(value);
 };
 
-// Custom tooltip
+const tooltipFormatter = (value) => {
+	return new Intl.NumberFormat('en-US', {
+		style: 'currency',
+		currency: 'USD',
+		maximumFractionDigits: 0,
+	}).format(value);
+};
+
 const CustomTooltip = ({ active, payload, label }) => {
 	if (active && payload && payload.length) {
+		const count = payload[0].payload.count;
 		return (
-			<div className='bg-white p-3 border shadow-md rounded-md'>
-				<p className='font-medium'>{`${label}`}</p>
-				<p className='text-sm'>{`Total: ${formatCurrency(
-					payload[0].value
-				)}`}</p>
-				<p className='text-xs text-gray-500'>{`${payload[0].payload.count} opportunities`}</p>
+			<div className='bg-background border p-2 shadow-lg rounded text-sm'>
+				<p className='font-semibold'>{`${label}`}</p>
+				<p>{`Per Applicant Funding: ${tooltipFormatter(payload[0].value)}`}</p>
+				<p className='text-xs text-muted-foreground'>{`${count} Opportunities`}</p>
 			</div>
 		);
 	}
@@ -67,106 +75,141 @@ const CustomTooltip = ({ active, payload, label }) => {
 };
 
 export default function FundingCategoryChart() {
-	const [chartData, setChartData] = useState([]);
-	const [isLoading, setIsLoading] = useState(true);
+	const [data, setData] = useState([]);
+	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState(null);
 
 	useEffect(() => {
-		async function fetchCategoryData() {
+		const fetchData = async () => {
+			setLoading(true);
+			setError(null);
 			try {
-				setIsLoading(true);
-				const response = await fetch('/api/categories');
+				const response = await fetch('/api/funding/category-summary');
 				if (!response.ok) {
-					throw new Error('Failed to fetch category data');
+					throw new Error(`HTTP error! status: ${response.status}`);
+				}
+				let result = await response.json();
+
+				if (!Array.isArray(result)) {
+					console.warn('API response was not an array:', result);
+					result = [];
 				}
 
-				const data = await response.json();
+				const chartData = result
+					.sort((a, b) => b.total_funding - a.total_funding)
+					.slice(0, 10)
+					.map((item) => ({
+						name: item.category,
+						value: item.total_funding,
+						count: item.opportunity_count,
+					}));
 
-				if (!data.success) {
-					throw new Error(data.error || 'Error fetching category data');
-				}
-
-				// Transform the data for the chart
-				// We'll use the categoryGroups which has count information
-				const chartReadyData = Object.entries(data.categoryGroups || {})
-					.map(([category, info]) => {
-						// Calculate the total funding amount for this category
-						// For demo purposes, we'll generate a random amount based on the count
-						// In production, you would use actual funding amount data
-						const avgFundingPerOpportunity = Math.random() * 2000000 + 500000; // Between $500K and $2.5M
-						const totalFunding = info.count * avgFundingPerOpportunity;
-
-						return {
-							name: category,
-							amount: totalFunding,
-							count: info.count,
-						};
-					})
-					.sort((a, b) => b.amount - a.amount) // Sort by amount descending
-					.slice(0, 10); // Take top 10 categories
-
-				setChartData(chartReadyData);
-			} catch (err) {
-				console.error('Error fetching category data:', err);
-				setError(err.message);
+				setData(chartData);
+			} catch (e) {
+				console.error('Failed to fetch funding category data:', e);
+				setError(e.message || 'Failed to load data');
 			} finally {
-				setIsLoading(false);
+				setLoading(false);
 			}
-		}
+		};
 
-		fetchCategoryData();
+		fetchData();
 	}, []);
 
-	if (isLoading) {
+	if (loading) {
 		return (
-			<Card className='w-full h-[400px] flex items-center justify-center'>
-				<div className='animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary'></div>
+			<Card>
+				<CardHeader>
+					<CardTitle>Top 10 Funding Categories</CardTitle>
+				</CardHeader>
+				<CardContent>
+					<Skeleton className='h-[400px] w-full' />
+				</CardContent>
 			</Card>
 		);
 	}
 
 	if (error) {
 		return (
-			<Card className='w-full h-[400px] flex items-center justify-center'>
-				<div className='text-red-500'>Error: {error}</div>
+			<Card>
+				<CardHeader>
+					<CardTitle>Top 10 Funding Categories</CardTitle>
+				</CardHeader>
+				<CardContent>
+					<Alert variant='destructive'>
+						<AlertCircle className='h-4 w-4' />
+						<AlertTitle>Error</AlertTitle>
+						<AlertDescription>
+							Could not load funding category data. {error}
+						</AlertDescription>
+					</Alert>
+				</CardContent>
+			</Card>
+		);
+	}
+
+	if (data.length === 0) {
+		return (
+			<Card>
+				<CardHeader>
+					<CardTitle>Top 10 Funding Categories</CardTitle>
+				</CardHeader>
+				<CardContent>
+					<div className='flex items-center justify-center h-[400px]'>
+						<p className='text-muted-foreground'>
+							No open funding data available by category.
+						</p>
+					</div>
+				</CardContent>
 			</Card>
 		);
 	}
 
 	return (
-		<div className='w-full'>
-			<ResponsiveContainer width='100%' height={400}>
-				<BarChart
-					data={chartData}
-					margin={{
-						top: 5,
-						right: 30,
-						left: 20,
-						bottom: 100,
-					}}
-					barSize={40}>
-					<CartesianGrid strokeDasharray='3 3' />
-					<XAxis
-						dataKey='name'
-						angle={-45}
-						textAnchor='end'
-						height={100}
-						tick={{ fontSize: 12 }}
-						interval={0}
-					/>
-					<YAxis tickFormatter={formatCurrency} tick={{ fontSize: 12 }} />
-					<Tooltip content={<CustomTooltip />} />
-					<Legend wrapperStyle={{ bottom: -10 }} />
-					<Bar dataKey='amount' name='Funding Amount' fill='#2563eb'>
-						{chartData.map((entry, index) => (
-							<Cell key={`cell-${index}`} fill={getCategoryColor(index)} />
-						))}
-					</Bar>
-				</BarChart>
-			</ResponsiveContainer>
-			<div className='mt-2 text-sm text-gray-500 text-center'>
-				<span className='bg-gray-100 py-1 px-2 rounded'>Demo Data</span>
-			</div>
-		</div>
+		<Card>
+			<CardHeader>
+				<CardTitle>Top 10 Funding Categories</CardTitle>
+			</CardHeader>
+			<CardContent>
+				<ResponsiveContainer width='100%' height={400}>
+					<BarChart
+						data={data}
+						margin={{
+							top: 5,
+							right: 30,
+							left: 20,
+							bottom: 100,
+						}}
+						barSize={30}>
+						<CartesianGrid strokeDasharray='3 3' />
+						<XAxis
+							dataKey='name'
+							angle={-45}
+							textAnchor='end'
+							height={110}
+							tick={{ fontSize: 12 }}
+							interval={0}
+						/>
+						<YAxis
+							tickFormatter={formatCurrency}
+							tick={{ fontSize: 12 }}
+							width={80}
+						/>
+						<Tooltip
+							content={<CustomTooltip />}
+							cursor={{ fill: 'transparent' }}
+						/>
+						<Bar dataKey='value' name='Total Funding'>
+							{data.map((entry, index) => (
+								<Cell
+									key={`cell-${index}`}
+									fill={COLORS[index % COLORS.length]}
+								/>
+							))}
+						</Bar>
+					</BarChart>
+				</ResponsiveContainer>
+			</CardContent>
+		</Card>
 	);
 }

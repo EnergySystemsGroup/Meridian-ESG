@@ -368,18 +368,10 @@ export default function Home() {
 
 				{/* Bottom Row - Chart and Quick Actions */}
 				<div className='grid gap-6 md:grid-cols-3'>
-					{/* Chart Card */}
-					<Card className='md:col-span-2'>
-						<CardHeader>
-							<CardTitle>Funding by Category</CardTitle>
-							<CardDescription>
-								Distribution of available funding by category
-							</CardDescription>
-						</CardHeader>
-						<CardContent>
-							<FundingCategoryChart />
-						</CardContent>
-					</Card>
+					{/* Funding Category Chart - Remove outer Card wrapper */}
+					<div className='md:col-span-2'>
+						<FundingCategoryChart />
+					</div>
 
 					{/* Quick Actions Card */}
 					<Card>
