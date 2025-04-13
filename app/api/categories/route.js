@@ -95,15 +95,21 @@ function getNormalizedCategories(
 			return;
 		}
 
+		// Remove "Other:" prefix for comparison purposes only
+		let comparisonCategory = rawCategory;
+		if (rawCategory.startsWith('Other: ')) {
+			comparisonCategory = rawCategory.substring(7);
+		}
+
 		// Find best matching standard category
 		let bestMatch = null;
 		let highestSimilarity = 0;
 
 		// Check against each standard category
 		for (const standardCategory of standardCategories) {
-			// Calculate similarity based on words
+			// Calculate similarity based on words - using the cleaned comparison category
 			const similarity = calculateCategorySimilarity(
-				rawCategory,
+				comparisonCategory,
 				standardCategory
 			);
 
