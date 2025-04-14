@@ -1,6 +1,11 @@
 -- Seed data for Policy & Funding Intelligence System
 -- This file populates the database with sample data for testing
 
+-- IMPORTANT: All sample data has been commented out for staging environment.
+-- This prevents test data from being loaded into the staging database.
+-- If you need test data in staging, please create staging-specific data.
+
+/*
 -- Sample Funding Sources
 INSERT INTO funding_sources (id, name, agency_type, description, website, contact_email, contact_phone)
 VALUES
@@ -250,6 +255,7 @@ INSERT INTO funding_opportunities (
   'Funding for innovative approaches to sustainability challenges.',
   TRUE
 );
+*/
 
 -- Insert state eligibility for the California grant
 INSERT INTO states (name, code, region)
@@ -257,11 +263,13 @@ VALUES
     ('California', 'CA', 'West')
 ON CONFLICT (code) DO NOTHING;
 
-INSERT INTO opportunity_state_eligibility (opportunity_id, state_id)
-SELECT 
-    '45678901-4567-4567-4567-456789012345'::uuid,
-    id 
-FROM 
-    states 
-WHERE 
-    code = 'CA'; 
+-- INSERT INTO opportunity_state_eligibility (opportunity_id, state_id)
+-- SELECT 
+--     '45678901-4567-4567-4567-456789012345'::uuid,
+--     id 
+-- FROM 
+--     states 
+-- WHERE 
+--     code = 'CA';
+
+-- You can add staging-specific data here if needed 
