@@ -28,6 +28,11 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- Optional: Perform an initial run immediately after creation
+-- IMPORTANT: This function contains live UPDATE statements that will modify data.
+-- When called, it will change opportunity statuses based on dates.
+-- The function is only defined here, not automatically executed.
+-- To run it manually: SELECT update_opportunity_statuses();
+
+-- Previous optional execution was commented out:
 -- SELECT update_opportunity_statuses();
 

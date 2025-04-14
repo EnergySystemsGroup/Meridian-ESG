@@ -1,3 +1,8 @@
+-- IMPORTANT: All sample data has been commented out for staging environment.
+-- This prevents test data from being loaded into the staging database.
+-- If you need test data in staging, please create staging-specific data.
+
+/*
 -- Clear existing data
 TRUNCATE funding_sources, funding_programs, funding_opportunities, opportunity_state_eligibility CASCADE;
 
@@ -176,3 +181,6 @@ VALUES
   ('ef012345-ef01-ef01-ef01-ef0123456789', 32); -- New York
 
 -- The sixth opportunity is national, so no state eligibility needed (is_national = true) 
+*/
+
+-- You can add staging-specific data here if needed 

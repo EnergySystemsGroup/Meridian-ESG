@@ -1,3 +1,8 @@
+-- IMPORTANT: All sample data has been commented out for staging environment.
+-- This prevents test data from being loaded into the staging database.
+-- If you need test data in staging, please create staging-specific data.
+
+/*
 -- Get a user ID from the profiles table
 DO $$
 DECLARE
@@ -29,3 +34,6 @@ BEGIN
       (current_user_id, 'Add Row Level Security', 'Implement RLS policies to secure data', false),
       (current_user_id, 'Test the application', 'Perform comprehensive testing of the application', false);
 END $$; 
+*/
+
+-- You can add staging-specific data here if needed 

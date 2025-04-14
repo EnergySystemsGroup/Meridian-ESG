@@ -2,14 +2,36 @@
 -- Uses conditional logic to work with any database state
 
 /*
-  First: Don't drop existing objects - they might not exist
-  on all environments in the same state. Instead, add
-  conditional logic to create or replace as needed.
+  First: We need to drop dependent functions before dropping the view
+  to avoid circular dependency issues. Adding DROP CASCADE to safely
+  remove both the view and any dependent objects.
 */
 
+-- Drop functions if they exist (using PL/pgSQL for safety)
 DO $$
 BEGIN
-  -- Conditionally recreate view if it exists but has issues
+  -- Drop functions with any signature
+  DROP FUNCTION IF EXISTS get_opportunities_by_state(TEXT);
+  DROP FUNCTION IF EXISTS get_funding_by_state(TEXT, TEXT, NUMERIC, NUMERIC);
+  DROP FUNCTION IF EXISTS get_funding_by_county(TEXT, TEXT, TEXT, NUMERIC, NUMERIC);
+
+  -- Also try with old parameter names just to be sure
+  BEGIN
+    DROP FUNCTION IF EXISTS get_funding_by_state(TEXT, TEXT, NUMERIC, NUMERIC);
+    EXCEPTION WHEN OTHERS THEN NULL;
+  END;
+
+  BEGIN
+    DROP FUNCTION IF EXISTS get_funding_by_county(TEXT, TEXT, TEXT, NUMERIC, NUMERIC);
+    EXCEPTION WHEN OTHERS THEN NULL;
+  END;
+END
+$$;
+
+-- Now it's safe to drop and recreate the view
+DO $$
+BEGIN
+  -- Conditionally recreate view if it exists
   IF EXISTS (
     SELECT FROM pg_catalog.pg_views
     WHERE schemaname = 'public' 
@@ -63,27 +85,6 @@ FROM
     funding_opportunities fo
 LEFT JOIN 
     funding_sources fs ON fo.funding_source_id = fs.id;
-
--- Drop functions if they exist (using PL/pgSQL for safety)
-DO $$
-BEGIN
-  -- Drop functions with any signature
-  DROP FUNCTION IF EXISTS get_opportunities_by_state(TEXT);
-  DROP FUNCTION IF EXISTS get_funding_by_state(TEXT, TEXT, NUMERIC, NUMERIC);
-  DROP FUNCTION IF EXISTS get_funding_by_county(TEXT, TEXT, TEXT, NUMERIC, NUMERIC);
-
-  -- Also try with old parameter names just to be sure
-  BEGIN
-    DROP FUNCTION IF EXISTS get_funding_by_state(TEXT, TEXT, NUMERIC, NUMERIC);
-    EXCEPTION WHEN OTHERS THEN NULL;
-  END;
-
-  BEGIN
-    DROP FUNCTION IF EXISTS get_funding_by_county(TEXT, TEXT, TEXT, NUMERIC, NUMERIC);
-    EXCEPTION WHEN OTHERS THEN NULL;
-  END;
-END
-$$;
 
 -- Recreate functions with new parameter names
 

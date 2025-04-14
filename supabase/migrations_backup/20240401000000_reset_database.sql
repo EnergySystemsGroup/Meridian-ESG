@@ -2,6 +2,7 @@
 -- This file populates the database with sample data for testing
 
 -- Sample Funding Sources
+/*
 INSERT INTO funding_sources (id, name, agency_type, jurisdiction, website, contact_info, description, tags)
 VALUES
   ('11111111-1111-1111-1111-111111111111', 'Department of Energy', 'Federal', 'United States', 'https://energy.gov', 
@@ -166,6 +167,7 @@ INSERT INTO funding_opportunities (
   70,
   'Funding for innovative approaches to sustainability challenges.'
 );
+*/
 
 -- Add a view to join funding opportunities with their source information
 CREATE OR REPLACE VIEW funding_opportunities_with_source AS
