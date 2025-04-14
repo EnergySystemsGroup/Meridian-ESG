@@ -190,6 +190,11 @@ const apiResponseProcessingSchema = z.object({
 					.optional()
 					.nullable()
 					.describe('Maximum award amount per applicant'),
+				notes: z
+					.string()
+					.optional()
+					.nullable()
+					.describe('Notes on how the funding values were determined'),
 				openDate: z
 					.string()
 					.optional()
@@ -1319,9 +1324,30 @@ async function performFirstStageFiltering(
 				error
 			);
 
-			// Add more detailed logging if needed
-			if (error.llmOutput) {
-				console.error('LLM Output that failed parsing:', error.llmOutput);
+			// Log detailed error information
+			console.error('Error Type:', error.constructor.name);
+			console.error('Error Message:', error.message);
+
+			// Try to save the problematic LLM output to help with debugging
+			try {
+				const errorTimestamp = new Date().toISOString().replace(/[:.]/g, '-');
+				const errorContent =
+					response?.content || 'No response content available';
+				console.error(`LLM Output Length: ${errorContent.length} characters`);
+				console.error(
+					`LLM Output Snippet: ${errorContent.substring(0, 500)}...`
+				);
+
+				// Save to memory for now - in production you might want to log this to a file
+				global._lastErrorOutput = {
+					timestamp: errorTimestamp,
+					error: error.message,
+					content: errorContent,
+				};
+
+				console.error('Full error content stored in global._lastErrorOutput');
+			} catch (loggingError) {
+				console.error('Error while saving error details:', loggingError);
 			}
 
 			return {
@@ -1329,7 +1355,7 @@ async function performFirstStageFiltering(
 				metrics: {
 					passedCount: 0,
 					rejectedCount: chunkSize,
-					rejectionReasons: ['Error processing chunk'],
+					rejectionReasons: ['Error processing chunk: ' + error.message],
 					averageScoreBeforeFiltering: 0,
 					averageScoreAfterFiltering: 0,
 					chunkMetrics: {

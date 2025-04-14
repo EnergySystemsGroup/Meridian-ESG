@@ -298,6 +298,7 @@ export async function processOpportunitiesBatch(
 				actionableSummary: 'actionable_summary',
 				relevanceScore: 'relevance_score',
 				relevanceReasoning: 'relevance_reasoning',
+				notes: 'notes',
 				id: 'opportunity_number', // Special case: map external ID to opportunity_number
 				// Agency is handled separately through funding_source_id
 			};
@@ -644,6 +645,7 @@ export async function processOpportunitiesBatch(
 						minimumAward: 'minimum_award',
 						maximumAward: 'maximum_award',
 						totalFundingAvailable: 'total_funding_available',
+						notes: 'notes',
 					};
 
 					const dbFieldName = fieldMap[key];
@@ -704,11 +706,12 @@ export async function processOpportunitiesBatch(
 
 						const fieldMap = {
 							status: 'status',
-							open_date: 'openDate',
-							close_date: 'closeDate',
-							minimum_award: 'minimumAward',
-							maximum_award: 'maximumAward',
-							total_funding_available: 'totalFundingAvailable',
+							openDate: 'open_date',
+							closeDate: 'close_date',
+							minimumAward: 'minimum_award',
+							maximumAward: 'maximum_award',
+							totalFundingAvailable: 'total_funding_available',
+							notes: 'notes',
 						};
 
 						const dbFieldName = fieldMap[key];
@@ -856,21 +859,46 @@ export async function processOpportunitiesBatch(
 						notes: 'notes',
 					};
 
-					// Only include critical fields that have changed
-					changedFields.forEach((change) => {
-						const field = change.field;
+					// If any critical field has changed, include ALL fields from criticalFieldsMap
+					// that exist in the opportunity object
+					if (hasChanges) {
+						Object.entries(criticalFieldsMap).forEach(
+							([dbField, opportunityKey]) => {
+								// Only include if the field exists in the opportunity
+								if (opportunity[opportunityKey] !== undefined) {
+									limitedUpdateData[dbField] = opportunity[opportunityKey];
 
-						// For each critical field that changed, add it to the update
-						if (field === 'funding_source_id') {
-							limitedUpdateData.funding_source_id = fundingSourceId;
-						} else if (field in criticalFieldsMap) {
-							const opportunityKey = criticalFieldsMap[field];
-							// For known critical fields, add them to the update if the value exists in the incoming opportunity
-							if (opportunity[opportunityKey] !== undefined) {
-								limitedUpdateData[field] = opportunity[opportunityKey];
+									// Add to changedFields for tracking if not already there
+									if (
+										!changedFields.some((change) => change.field === dbField)
+									) {
+										changedFields.push({
+											field: dbField,
+											oldValue: existingOpportunity[dbField],
+											newValue: opportunity[opportunityKey],
+											note: `Updated along with other critical fields`,
+										});
+									}
+								}
 							}
-						}
-					});
+						);
+					} else {
+						// Only include critical fields that have changed
+						changedFields.forEach((change) => {
+							const field = change.field;
+
+							// For each critical field that changed, add it to the update
+							if (field === 'funding_source_id') {
+								limitedUpdateData.funding_source_id = fundingSourceId;
+							} else if (field in criticalFieldsMap) {
+								const opportunityKey = criticalFieldsMap[field];
+								// For known critical fields, add them to the update if the value exists in the incoming opportunity
+								if (opportunity[opportunityKey] !== undefined) {
+									limitedUpdateData[field] = opportunity[opportunityKey];
+								}
+							}
+						});
+					}
 
 					// Update existing opportunity with ONLY the changed fields
 					const { data: updatedData, error: updateError } = await supabase

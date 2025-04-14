@@ -93,6 +93,11 @@ const detailProcessingSchema = z.object({
 					.optional()
 					.nullable()
 					.describe('Maximum award amount per applicant'),
+				notes: z
+					.string()
+					.optional()
+					.nullable()
+					.describe('Notes on how the funding values were determined'),
 				openDate: z
 					.string()
 					.optional()
@@ -111,7 +116,11 @@ const detailProcessingSchema = z.object({
 					.describe('List of eligible project types'),
 				eligibleLocations: z
 					.array(z.string())
-					.describe('List of eligible locations'),
+					.optional()
+					.nullable()
+					.describe(
+						'Array of state codes where this opportunity is available. This should be a list of two-letter state codes (e.g., ["CA", "OR", "WA"]). If opportunity is available nationwide, use the isNational flag instead.'
+					),
 				url: z
 					.string()
 					.optional()
