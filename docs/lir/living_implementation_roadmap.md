@@ -6,11 +6,22 @@ This document tracks the implementation status of all features in the Funding In
 
 This section highlights the highest priority tasks to be completed next:
 
-1. **Frontend - Opportunity Tracking/Bookmarking**: Implement save/bookmark functionality on the opportunity detail page, storing tracked items in local storage.
-2. **Frontend - Map Module/Visualization**: Implement filtering and map visualization based on geographic eligibility.
-3. **Frontend - Items Per Page Option**: Implement ability to adjust number of items per page with options for 10/25/50 funding opportunities.
-4. **Frontend - Advanced Filtering**: Add support for advanced filtering with multiple criteria, including date ranges, funding amounts, and eligible applicant types.
-5. **Frontend - Legislative Data Warning Labels**: Add warning labels to all legislative data views indicating that the data is for demonstration purposes only.
+1. **Database - Opportunity Notes Field**: Add notes field to the opportunities table, mainly for explanations about min, max and total funding amounts.
+2. **Backend - Amount Estimation**: Update the Zod schema for min and max amount to have the LLM estimate these values if they're not explicitly provided in the source data.
+3. **Backend - Agent Schema Documentation**: Add explanatory notes to the two agent Zod schemas to improve understanding and maintainability.
+4. **Backend - Opportunity Update Algorithm**: Investigate and refine the algorithm for opportunity updates to ensure funding updates can occur properly without reverting fields back to null.
+5. **Database - Source Contact Information**: Ensure full contact information is added to the opportunity source table.
+6. **Frontend - Contact Info Display**: Make sure source contact information appears on the opportunity details page.
+7. **Database - Duplicate Type Field**: Identify which of the two "type" fields in the sources table is being used and remove the duplicate.
+8. **Backend - Type Field Normalization**: Find all locations where the type field is used and normalize it so filtering by type works regardless of capitalization.
+9. **Frontend - Opportunity Tracking/Bookmarking**: Implement save/bookmark functionality on the opportunity detail page, storing tracked items in local storage.
+10. **Frontend - Map Module/Visualization**: Implement filtering and map visualization based on geographic eligibility.
+11. **Frontend - Items Per Page Option**: Implement ability to adjust number of items per page with options for 10/25/50 funding opportunities.
+12. **Frontend - Advanced Filtering**: Add support for advanced filtering with multiple criteria, including date ranges, funding amounts, and eligible applicant types.
+13. **Frontend - Legislative Data Warning Labels**: Add warning labels to all legislative data views indicating that the data is for demonstration purposes only.
+14. **Frontend - Map View List Size**: Fix the list in map view to show only 5 opportunities instead of 10 to improve UI balance.
+15. **Frontend - Navigation State Preservation**: When navigating back from detail page to main page, preserve the user's position, filter and sort selections to maintain context.
+16. **DevOps - Remote Deployment**: Migrate database to remote Supabase, connect to Vercel and deploy. Develop strategy to migrate the database structure and functions without transferring all production data.
 
 ## Recently Completed Tasks
 
