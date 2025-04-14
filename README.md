@@ -1,24 +1,100 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+# Meridian - Policy & Funding Intelligence Platform
+
+Meridian is a comprehensive platform designed to help organizations track funding opportunities, monitor legislation, and match clients to relevant funding sources. The application provides a centralized dashboard for policy and funding intelligence, making it easier to stay on top of deadlines and opportunities.
+
+## Features
+
+- **Funding Opportunity Tracking**: Browse, filter, and search for funding opportunities from various sources.
+- **Timeline View**: Visualize upcoming deadlines and events in a chronological timeline.
+- **Legislative Monitoring**: Track bills and policies that may impact funding opportunities.
+- **Client Matching**: Match clients to relevant funding opportunities based on their profiles.
+- **Dashboard**: Get a quick overview of open opportunities, upcoming deadlines, and recent activities.
+
+## Tech Stack
+
+- **Frontend**: Next.js, React, TailwindCSS, Shadcn UI components
+- **Backend**: Supabase (PostgreSQL database, authentication, and APIs)
+- **Deployment**: Vercel (or your preferred hosting platform)
 
 ## Getting Started
 
-First, run the development server:
+### Prerequisites
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+- Node.js 16.x or higher
+- npm or yarn
+- Supabase account
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### Installation
 
-You can start editing the page by modifying `app/page.js`. The page auto-updates as you edit the file.
+1. Clone the repository:
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+   ```bash
+   git clone https://github.com/yourusername/meridian.git
+   cd meridian
+   ```
+
+2. Install dependencies:
+
+   ```bash
+   npm install
+   # or
+   yarn install
+   ```
+
+3. Set up environment variables:
+   Create a `.env.local` file in the root directory with the following variables:
+
+   ```
+   NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
+   NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+   ```
+
+4. Run the development server:
+
+   ```bash
+   npm run dev
+   # or
+   yarn dev
+   ```
+
+5. Open [http://localhost:3000](http://localhost:3000) in your browser to see the application.
+
+### Database Setup
+
+1. Create a new project in Supabase.
+2. Use the SQL schema defined in `app/models/funding-schema.js` to set up your database tables.
+3. (Optional) Seed your database with sample data for testing.
+
+## Project Structure
+
+- `app/` - Next.js application code
+  - `api/` - API routes for data fetching
+  - `components/` - Reusable UI components
+  - `funding/` - Funding opportunities pages
+  - `legislation/` - Legislation tracking pages
+  - `clients/` - Client management pages
+  - `timeline/` - Timeline view
+  - `lib/` - Utility functions and Supabase client
+  - `models/` - Database schema definitions
+
+## Contributing
+
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add some amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
+## License
+
+This project is licensed under the MIT License - see the LICENSE file for details.
+
+## Acknowledgments
+
+- [Next.js](https://nextjs.org/)
+- [Supabase](https://supabase.io/)
+- [TailwindCSS](https://tailwindcss.com/)
+- [Shadcn UI](https://ui.shadcn.com/)
 
 ## Supabase Setup
 

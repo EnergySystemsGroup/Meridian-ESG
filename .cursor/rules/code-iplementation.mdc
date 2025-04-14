@@ -1,6 +1,7 @@
 ---
-description: 
+description: code implementation guidelines
 globs: 
+alwaysApply: false
 ---
 # Code Implementation Guidelines
 - Use early returns whenever possible to make the code more readable.

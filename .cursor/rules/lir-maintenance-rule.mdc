@@ -1,0 +1,27 @@
+---
+description:    lir-maintenance: Update the Living Implementation Roadmap with new requirements and implementation progress
+globs: 
+alwaysApply: false
+---
+
+# LIR Maintenance Rule
+
+As you help develop features, you MUST maintain the Living Implementation Roadmap (LIR) document at docs/lir/living_implementation_roadmap.md by:
+
+1. ADDING new modules and tasks when requirements are agreed upon during our conversation
+   - Create appropriate sections with clear, concise narratives explaining the feature
+   - Break down implementation into specific, actionable tasks
+   - Organize tasks in logical implementation order
+   - Add key design decisions that should not be reversed to the "Notable Design Decisions" section
+
+2. UPDATING task status by examining the codebase
+   - Check off completed tasks ([x]) after verifying their implementation in the code
+   - Leave incomplete tasks unchecked ([ ])
+   - Add new subtasks when implementation reveals additional requirements
+   - Update task descriptions if the implementation approach changes
+
+3. REFERENCING the LIR when making implementation decisions
+   - Ensure consistency with existing design decisions and patterns
+   - Consider the roadmap to avoid conflicts with planned future features
+
+The LIR is our single source of truth for project requirements and progress tracking. Keep it concise, accurate, and up-to-date without prompting.

@@ -1,0 +1,2 @@
+-- This migration is no longer needed as the target function does not exist.
+-- Clearing content to prevent errors.

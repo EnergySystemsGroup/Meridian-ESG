@@ -1,0 +1,2 @@
+-- This migration is intentionally empty to ensure correct order after previous fixes.
+-- The necessary CREATE OR REPLACE FUNCTION is in 20250407214210_fix_get_opportunities_asc_sort.sql 
