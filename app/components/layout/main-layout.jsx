@@ -1,12 +1,12 @@
 'use client';
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import {
 	NavigationMenu,
 	NavigationMenuContent,
 	NavigationMenuItem,
-	NavigationMenuLink,
 	NavigationMenuList,
 	NavigationMenuTrigger,
 } from '@/app/components/ui/navigation-menu';
@@ -15,22 +15,21 @@ import { HelpCircle, Moon, Settings, Sun } from 'lucide-react';
 import { useTheme } from '@/app/components/theme-provider';
 
 const ClientSideActiveLink = ({ href, children, className, ...props }) => {
-	const [isActive, setIsActive] = React.useState(false);
+	const pathname = usePathname();
+	const isActive = pathname === href || pathname.startsWith(href + '/');
 
-	React.useEffect(() => {
-		const pathname = window.location.pathname;
-		setIsActive(pathname === href || pathname.startsWith(href + '/'));
-	}, [href]);
+	// Calculate the active class name once
+	const activeClassName = isActive
+		? 'bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400 border-b-2 border-blue-600 dark:border-blue-400'
+		: '';
+
+	const combinedClassName = useMemo(() => {
+		return cn(className, activeClassName);
+	}, [className, activeClassName]);
 
 	return (
-		<Link href={href} legacyBehavior passHref {...props}>
-			{React.cloneElement(children, {
-				className: cn(
-					className,
-					isActive &&
-						'bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400 border-b-2 border-blue-600 dark:border-blue-400'
-				),
-			})}
+		<Link href={href} className={combinedClassName} {...props}>
+			{children}
 		</Link>
 	);
 };
@@ -97,36 +96,34 @@ const MainLayout = ({ children }) => {
 };
 
 const MainNav = () => {
+	// Memoize common navigation class styles
+	const navLinkClasses = cn(
+		'inline-flex h-9 md:h-10 items-center justify-center rounded-md px-3 md:px-4 py-2 text-sm font-medium transition-all duration-200',
+		'hover:bg-blue-50 hover:text-blue-600 dark:hover:bg-blue-900/20 dark:hover:text-blue-400',
+		'focus:bg-blue-50 focus:text-blue-600 dark:focus:bg-blue-900/20 dark:focus:text-blue-400 focus:outline-none',
+		'text-neutral-700 dark:text-neutral-200'
+	);
+
 	return (
 		<NavigationMenu>
 			<NavigationMenuList className='gap-2 md:gap-4'>
 				<NavigationMenuItem>
-					<ClientSideActiveLink href='/' passHref>
-						<NavigationMenuLink
-							className={cn(
-								'inline-flex h-9 md:h-10 items-center justify-center rounded-md px-3 md:px-4 py-2 text-sm font-medium transition-all duration-200',
-								'hover:bg-blue-50 hover:text-blue-600 dark:hover:bg-blue-900/20 dark:hover:text-blue-400',
-								'focus:bg-blue-50 focus:text-blue-600 dark:focus:bg-blue-900/20 dark:focus:text-blue-400 focus:outline-none',
-								'text-neutral-700 dark:text-neutral-200'
-							)}>
-							Dashboard
-						</NavigationMenuLink>
+					<ClientSideActiveLink href='/' className={navLinkClasses}>
+						Dashboard
 					</ClientSideActiveLink>
 				</NavigationMenuItem>
 				<NavigationMenuItem>
-					<NavigationMenuTrigger
-						className={cn(
-							'inline-flex h-9 md:h-10 items-center justify-center rounded-md px-3 md:px-4 py-2 text-sm font-medium transition-all duration-200',
-							'hover:bg-blue-50 hover:text-blue-600 dark:hover:bg-blue-900/20 dark:hover:text-blue-400',
-							'focus:bg-blue-50 focus:text-blue-600 dark:focus:bg-blue-900/20 dark:focus:text-blue-400 focus:outline-none',
-							'text-neutral-700 dark:text-neutral-200 group'
-						)}>
+					<NavigationMenuTrigger className={cn(navLinkClasses, 'group')}>
 						Funding
 					</NavigationMenuTrigger>
 					<NavigationMenuContent>
 						<ul className='grid w-[400px] gap-4 p-6 md:w-[500px] md:grid-cols-2 lg:w-[600px] animate-in fade-in-50 zoom-in-95 duration-200'>
 							{fundingNavItems.map((item) => (
-								<ListItem key={item.title} title={item.title} href={item.href}>
+								<ListItem
+									key={item.title}
+									title={item.title}
+									href={item.href}
+									comingSoon={item.comingSoon}>
 									{item.description}
 								</ListItem>
 							))}
@@ -134,19 +131,17 @@ const MainNav = () => {
 					</NavigationMenuContent>
 				</NavigationMenuItem>
 				<NavigationMenuItem>
-					<NavigationMenuTrigger
-						className={cn(
-							'inline-flex h-9 md:h-10 items-center justify-center rounded-md px-3 md:px-4 py-2 text-sm font-medium transition-all duration-200',
-							'hover:bg-blue-50 hover:text-blue-600 dark:hover:bg-blue-900/20 dark:hover:text-blue-400',
-							'focus:bg-blue-50 focus:text-blue-600 dark:focus:bg-blue-900/20 dark:focus:text-blue-400 focus:outline-none',
-							'text-neutral-700 dark:text-neutral-200 group'
-						)}>
+					<NavigationMenuTrigger className={cn(navLinkClasses, 'group')}>
 						Legislation
 					</NavigationMenuTrigger>
 					<NavigationMenuContent>
 						<ul className='grid w-[400px] gap-4 p-6 md:w-[500px] md:grid-cols-2 lg:w-[600px] animate-in fade-in-50 zoom-in-95 duration-200'>
 							{legislationNavItems.map((item) => (
-								<ListItem key={item.title} title={item.title} href={item.href}>
+								<ListItem
+									key={item.title}
+									title={item.title}
+									href={item.href}
+									comingSoon={item.comingSoon}>
 									{item.description}
 								</ListItem>
 							))}
@@ -154,29 +149,13 @@ const MainNav = () => {
 					</NavigationMenuContent>
 				</NavigationMenuItem>
 				<NavigationMenuItem>
-					<ClientSideActiveLink href='/clients' passHref>
-						<NavigationMenuLink
-							className={cn(
-								'inline-flex h-9 md:h-10 items-center justify-center rounded-md px-3 md:px-4 py-2 text-sm font-medium transition-all duration-200',
-								'hover:bg-blue-50 hover:text-blue-600 dark:hover:bg-blue-900/20 dark:hover:text-blue-400',
-								'focus:bg-blue-50 focus:text-blue-600 dark:focus:bg-blue-900/20 dark:focus:text-blue-400 focus:outline-none',
-								'text-neutral-700 dark:text-neutral-200'
-							)}>
-							Clients
-						</NavigationMenuLink>
+					<ClientSideActiveLink href='/clients' className={navLinkClasses}>
+						Clients
 					</ClientSideActiveLink>
 				</NavigationMenuItem>
 				<NavigationMenuItem>
-					<ClientSideActiveLink href='/timeline' passHref>
-						<NavigationMenuLink
-							className={cn(
-								'inline-flex h-9 md:h-10 items-center justify-center rounded-md px-3 md:px-4 py-2 text-sm font-medium transition-all duration-200',
-								'hover:bg-blue-50 hover:text-blue-600 dark:hover:bg-blue-900/20 dark:hover:text-blue-400',
-								'focus:bg-blue-50 focus:text-blue-600 dark:focus:bg-blue-900/20 dark:focus:text-blue-400 focus:outline-none',
-								'text-neutral-700 dark:text-neutral-200'
-							)}>
-							Timeline
-						</NavigationMenuLink>
+					<ClientSideActiveLink href='/timeline' className={navLinkClasses}>
+						Timeline
 					</ClientSideActiveLink>
 				</NavigationMenuItem>
 			</NavigationMenuList>
@@ -195,26 +174,31 @@ const MobileNav = () => {
 };
 
 const ListItem = React.forwardRef(
-	({ className, title, children, href, ...props }, ref) => {
+	({ className, title, children, href, comingSoon, ...props }, ref) => {
 		return (
 			<li>
-				<NavigationMenuLink asChild>
-					<Link
-						ref={ref}
-						href={href}
-						className={cn(
-							'block select-none space-y-1 rounded-md p-4 leading-none no-underline outline-none transition-all duration-200',
-							'hover:bg-blue-50 hover:text-blue-600 dark:hover:bg-blue-900/20 dark:hover:text-blue-400',
-							'focus:bg-blue-50 focus:text-blue-600 dark:focus:bg-blue-900/20 dark:focus:text-blue-400',
-							className
-						)}
-						{...props}>
+				<Link
+					ref={ref}
+					href={href}
+					className={cn(
+						'block select-none space-y-1 rounded-md p-4 leading-none no-underline outline-none transition-all duration-200',
+						'hover:bg-blue-50 hover:text-blue-600 dark:hover:bg-blue-900/20 dark:hover:text-blue-400',
+						'focus:bg-blue-50 focus:text-blue-600 dark:focus:bg-blue-900/20 dark:focus:text-blue-400',
+						className
+					)}
+					{...props}>
+					<div className='flex items-center justify-between'>
 						<div className='text-sm font-medium leading-none'>{title}</div>
-						<p className='line-clamp-2 text-sm leading-snug text-neutral-500 dark:text-neutral-400 mt-2'>
-							{children}
-						</p>
-					</Link>
-				</NavigationMenuLink>
+						{comingSoon && (
+							<span className='ml-2 text-xs px-1.5 py-0.5 bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400 rounded-full'>
+								Coming Soon
+							</span>
+						)}
+					</div>
+					<p className='line-clamp-2 text-sm leading-snug text-neutral-500 dark:text-neutral-400 mt-2'>
+						{children}
+					</p>
+				</Link>
 			</li>
 		);
 	}
@@ -249,21 +233,25 @@ const legislationNavItems = [
 		title: 'Bill Tracker',
 		href: '/legislation/bills',
 		description: 'Monitor relevant legislation and policy changes.',
+		comingSoon: true,
 	},
 	{
 		title: 'Status Board',
-		href: '/legislation/status',
+		href: '/legislation/status-board',
 		description: 'View legislation by stage in the approval process.',
+		comingSoon: true,
 	},
 	{
 		title: 'Impact Analysis',
-		href: '/legislation/impact',
+		href: '/legislation/impact-analysis',
 		description: 'Analyze how legislation affects funding opportunities.',
+		comingSoon: true,
 	},
 	{
 		title: 'Policy Trends',
-		href: '/legislation/trends',
+		href: '/legislation/policy-trends',
 		description: 'Identify emerging trends in policy and legislation.',
+		comingSoon: true,
 	},
 ];
 

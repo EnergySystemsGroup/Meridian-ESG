@@ -3,7 +3,7 @@ import { createSupabaseClient } from '@/app/lib/supabase';
 import { sourceManagerAgent } from '@/app/lib/agents/sourceManagerAgent';
 import { apiHandlerAgent } from '@/app/lib/agents/apiHandlerAgent';
 import { processDetailedInfo } from '@/app/lib/agents/detailProcessorAgent';
-import { processUnprocessedOpportunities } from '@/app/lib/agents/dataProcessorAgent';
+import { processOpportunitiesBatch } from '@/app/lib/agents/dataProcessorAgent';
 import { RunManager } from '@/app/lib/services/runManager';
 import { processApiSource } from '@/app/lib/services/processCoordinator';
 import { POST as processSourceRoute } from '@/app/api/admin/funding-sources/[id]/process/route';
@@ -258,12 +258,27 @@ export async function POST(request, { params }) {
 				if (!sourceId)
 					throw new Error('Source ID is required for data-processor test');
 
-				const { rawApiResponse, requestDetails } = body;
+				const { opportunities: dataProcessorOpportunities, rawResponseId } =
+					body;
 
-				result = await processUnprocessedOpportunities(
+				if (
+					!dataProcessorOpportunities ||
+					!Array.isArray(dataProcessorOpportunities) ||
+					dataProcessorOpportunities.length === 0
+				)
+					throw new Error(
+						'Opportunities are required for data-processor test and must be a non-empty array'
+					);
+
+				if (!rawResponseId)
+					throw new Error(
+						'Raw response ID is required for data-processor test'
+					);
+
+				result = await processOpportunitiesBatch(
+					dataProcessorOpportunities,
 					sourceId,
-					rawApiResponse,
-					requestDetails,
+					rawResponseId,
 					runManager
 				);
 				break;

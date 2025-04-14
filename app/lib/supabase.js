@@ -103,57 +103,84 @@ export const fundingApi = {
 	// Get all funding opportunities with optional filters
 	getOpportunities: async (filters = {}) => {
 		try {
-			let query = supabase
+			// Prepare parameters for the RPC call, matching the function definition
+			const params = {
+				p_status: filters.status || null,
+				p_categories:
+					filters.categories && filters.categories.length > 0
+						? filters.categories
+						: null,
+				p_states:
+					filters.states && filters.states.length > 0 ? filters.states : null,
+				p_search: filters.search || null,
+				p_sort_by: filters.sort_by || 'relevance',
+				p_sort_direction: filters.sort_direction || 'desc',
+				p_page: filters.page || 1,
+				p_page_size: filters.page_size || 9, // Match function default
+				p_tracked_ids:
+					filters.trackedIds && filters.trackedIds.length > 0
+						? filters.trackedIds
+						: null,
+			};
+
+			// Call the database function to get paginated and sorted data
+			const { data, error } = await supabase.rpc(
+				'get_funding_opportunities_dynamic_sort',
+				params
+			);
+
+			if (error) {
+				console.error(
+					'Error calling get_funding_opportunities_dynamic_sort RPC:',
+					error
+				);
+				throw error;
+			}
+
+			// Need a separate query to get the total count matching the *same* filters
+			let countQuery = supabase
 				.from('funding_opportunities_with_geography')
-				.select('*');
+				.select('*', { count: 'exact', head: true }); // head:true gets only count
 
-			// Apply filters
-			if (filters.status) {
-				query = query.eq('status', filters.status);
+			// Apply the SAME filters used inside the function
+			if (params.p_status) {
+				countQuery = countQuery.ilike('status', params.p_status.toLowerCase());
+			}
+			if (params.p_categories) {
+				// Assuming OVERLAPS logic was used in function, check if categories array overlaps
+				countQuery = countQuery.overlaps('categories', params.p_categories);
+			}
+			if (params.p_states) {
+				// Replicate the (is_national OR eligible_locations && states) logic
+				countQuery = countQuery.or(
+					`is_national.eq.true,eligible_locations.ov.{${params.p_states.join(
+						','
+					)}}`
+				);
+			}
+			// Add filter for tracked IDs if present
+			if (params.p_tracked_ids) {
+				countQuery = countQuery.in('id', params.p_tracked_ids);
+			}
+			if (params.p_search) {
+				const searchTerm = `%${params.p_search}%`;
+				countQuery = countQuery.or(
+					`title.ilike.${searchTerm},description.ilike.${searchTerm},actionable_summary.ilike.${searchTerm}`
+				);
 			}
 
-			if (filters.source_type) {
-				query = query.eq('source_type', filters.source_type);
+			const { count, error: countError } = await countQuery;
+
+			if (countError) {
+				console.error('Error fetching opportunity count:', countError);
+				// Decide how to handle count error - maybe return 0 or throw?
+				throw countError; // Or return { data, count: 0 };
 			}
 
-			if (filters.min_amount) {
-				query = query.gte('minimum_award', filters.min_amount);
-			}
-
-			if (filters.max_amount) {
-				query = query.lte('maximum_award', filters.max_amount);
-			}
-
-			if (filters.close_date_after) {
-				query = query.gte('close_date', filters.close_date_after);
-			}
-
-			if (filters.close_date_before) {
-				query = query.lte('close_date', filters.close_date_before);
-			}
-
-			// Apply sorting
-			if (filters.sort_by) {
-				const direction = filters.sort_direction === 'desc' ? true : false;
-				query = query.order(filters.sort_by, { ascending: !direction });
-			} else {
-				// Default sort by close_date
-				query = query.order('close_date', { ascending: true });
-			}
-
-			// Apply pagination
-			const page = filters.page || 1;
-			const pageSize = filters.page_size || 10;
-			const start = (page - 1) * pageSize;
-			const end = start + pageSize - 1;
-			query = query.range(start, end);
-
-			const { data, error } = await query;
-
-			if (error) throw error;
-			return data;
+			// Return both the data from RPC and the total count
+			return { data, count };
 		} catch (error) {
-			console.error('Error fetching opportunities:', error);
+			console.error('Error in getOpportunities:', error);
 			throw error;
 		}
 	},
@@ -163,12 +190,27 @@ export const fundingApi = {
 		try {
 			const { data, error } = await supabase
 				.from('funding_opportunities_with_geography')
-				.select('*')
+				.select(
+					`
+					*,
+					api_sources ( url ) 
+				`
+				)
 				.eq('id', id)
 				.single();
 
 			if (error) throw error;
-			return data;
+
+			// Flatten the result to include api_source_url directly
+			const opportunityData = { ...data };
+			if (data.api_sources) {
+				opportunityData.api_source_url = data.api_sources.url;
+				delete opportunityData.api_sources; // Clean up nested object
+			} else {
+				opportunityData.api_source_url = null; // Ensure the field exists
+			}
+
+			return opportunityData;
 		} catch (error) {
 			console.error('Error fetching opportunity by ID:', error);
 			throw error;

@@ -13,12 +13,23 @@ import {
 } from '../apiRequest';
 import { processNextSource } from './sourceManagerAgent';
 import { z } from 'zod';
+import {
+	TAXONOMIES,
+	generateTaxonomyInstruction,
+	generateLocationEligibilityInstruction,
+} from '../constants/taxonomies';
 import axios from 'axios';
+import crypto from 'crypto';
+import { processChunksInParallel } from '../utils/parallelProcessing';
 
 // Define the funding opportunity schema
 const fundingOpportunitySchema = z.object({
 	title: z.string().describe('The title of the funding opportunity'),
-	description: z.string().describe('A description of the funding opportunity'),
+	description: z
+		.string()
+		.describe(
+			'To the extent possible, a clear, detailed description of various aspects of the opportunity including key requirements, application process, evaluation criteria, and other important details that would help potential applicants understand the full scope of the opportunity.'
+		),
 	fundingType: z
 		.string()
 		.describe('The type of funding (grant, loan, incentive, etc.)'),
@@ -52,7 +63,11 @@ const fundingOpportunitySchema = z.object({
 		.describe('The date when applications close (ISO format if possible)'),
 	eligibility: z.array(z.string()).describe('List of eligible entity types'),
 	url: z.string().describe('URL for more information'),
-	matchingRequired: z.boolean().describe('Whether matching funds are required'),
+	matchingRequired: z
+		.boolean()
+		.optional()
+		.nullable()
+		.describe('Whether matching funds are required'),
 	matchingPercentage: z
 		.number()
 		.optional()
@@ -61,7 +76,12 @@ const fundingOpportunitySchema = z.object({
 	categories: z
 		.array(z.string())
 		.describe('Relevant categories from our taxonomy'),
-	status: z.string().describe('Current status (open, upcoming, closed)'),
+	status: z
+		.string()
+		.optional()
+		.describe(
+			'Current status of the opportunity. Must be one of: "open" (currently accepting applications), "upcoming" (announced but not yet accepting applications), or "closed" (no longer accepting applications). IMPORTANT: Status values must be lowercase only.'
+		),
 	confidence: z
 		.number()
 		.min(0)
@@ -71,6 +91,19 @@ const fundingOpportunitySchema = z.object({
 		.string()
 		.describe(
 			'A single concise paragraph (2-3 sentences) that clearly states: 1) the funding source, 2) the amount available, 3) who can apply, 4) specifically what the money is for, and 5) when applications are due. Example: "This is a $5M grant from the Department of Energy for schools to implement building performance standards. Applications are due August 2025."'
+		),
+	relevanceReasoning: z
+		.string()
+		.optional()
+		.describe(
+			'Detailed explanation of the relevance score. MUST INCLUDE: ' +
+				'1) Point-by-point scoring breakdown (Focus Areas: X/3, ' +
+				'Applicability: X/3, Funding Type Quality: X/1, Matching Requirements: X/1, Project Type: X/2), ' +
+				'2) Which specific data fields from the opportunity you examined, ' +
+				'3) Direct quotes or values from these fields that influenced your scoring, ' +
+				'4) The final total relevance score calculation showing the sum of all individual scores, and ' +
+				'5) An explicit calculation showing the math (e.g., "3.0 + 2.5 + 1.0 + 1.0 + 2.0 = 9.5 points"). The total MUST match this calculation exactly. ' +
+				'6) VERIFICATION STEP: Double-check your math. Add up each component score again to verify the total is correct.'
 		),
 });
 
@@ -87,34 +120,81 @@ const apiResponseProcessingSchema = z.object({
 				title: z.string().describe('Title of the funding opportunity'),
 				description: z
 					.string()
-					.optional()
-					.nullable()
-					.describe('Description of the opportunity'),
+					.describe(
+						'A clear, comprehensive 4 paragraph description of the funding opportunity, including its purpose, goals, eligibility criteria, application process, and other key details that would help potential applicants understand the full scope of the opportunity.'
+					),
 				fundingType: z
 					.string()
 					.optional()
 					.nullable()
 					.describe('Type of funding (grant, loan, etc.)'),
-				agency: z
+				funding_source: z
+					.object({
+						name: z
+							.string()
+							.describe(
+								'The precise name of the funding organization or agency'
+							),
+						type: z
+							.string()
+							.optional()
+							.describe(
+								'High-level type (federal, state, local, utility, foundation, other)'
+							),
+						website: z
+							.string()
+							.optional()
+							.nullable()
+							.describe('Website of the funding organization if available'),
+						contact_email: z
+							.string()
+							.optional()
+							.nullable()
+							.describe(
+								'Contact email for the funding organization if available'
+							),
+						contact_phone: z
+							.string()
+							.optional()
+							.nullable()
+							.describe(
+								'Contact phone number for the funding organization if available'
+							),
+						description: z
+							.string()
+							.optional()
+							.nullable()
+							.describe(
+								'Additional notes or description about the funding organization'
+							),
+					})
+					.describe(
+						'Information about the organization providing this funding opportunity'
+					)
+					.optional()
+					.nullable(),
+				totalFundingAvailable: z
+					.number()
+					.optional()
+					.nullable()
+					.describe(
+						'Total funding amount available for the entire program/opportunity'
+					),
+				minimumAward: z
+					.number()
+					.optional()
+					.nullable()
+					.describe('Minimum award amount per applicant'),
+				maximumAward: z
+					.number()
+					.optional()
+					.nullable()
+					.describe('Maximum award amount per applicant'),
+				notes: z
 					.string()
 					.optional()
 					.nullable()
-					.describe('Funding agency or organization'),
-				totalFunding: z
-					.number()
-					.optional()
-					.nullable()
-					.describe('Total funding amount available'),
-				minAward: z
-					.number()
-					.optional()
-					.nullable()
-					.describe('Minimum award amount'),
-				maxAward: z
-					.number()
-					.optional()
-					.nullable()
-					.describe('Maximum award amount'),
+					.describe('Notes on how the funding values were determined'),
 				openDate: z
 					.string()
 					.optional()
@@ -138,7 +218,7 @@ const apiResponseProcessingSchema = z.object({
 					.string()
 					.optional()
 					.nullable()
-					.describe('URL for more information'),
+					.describe('URL for the funding opportunity, if available'),
 				matchingRequired: z
 					.boolean()
 					.optional()
@@ -151,7 +231,9 @@ const apiResponseProcessingSchema = z.object({
 				categories: z
 					.array(z.string())
 					.optional()
-					.describe('Relevant categories from our taxonomy'),
+					.describe(
+						'Funding categories as listed by, or deduced from the source data'
+					),
 				tags: z
 					.array(z.string())
 					.optional()
@@ -161,7 +243,9 @@ const apiResponseProcessingSchema = z.object({
 				status: z
 					.string()
 					.optional()
-					.describe('Current status (open, upcoming, closed)'),
+					.describe(
+						'Current status of the opportunity. Must be one of: "open" (currently accepting applications), "upcoming" (announced but not yet accepting applications), or "closed" (no longer accepting applications). IMPORTANT: Status values must be lowercase only.'
+					),
 				isNational: z
 					.boolean()
 					.optional()
@@ -170,21 +254,26 @@ const apiResponseProcessingSchema = z.object({
 					.number()
 					.min(1)
 					.max(10)
-					.describe('Relevance score from 1-10'),
+					.describe(
+						'Relevance score from 1-10. This MUST be exactly equal to this sum calculated: [Focus Areas] + [Applicability] + [Funding Type] + [Matching Requirements] + [Project Type]. Do not assign a score that differs from this calculation.'
+					),
 				relevanceReasoning: z
 					.string()
 					.optional()
 					.describe(
 						'Detailed explanation of the relevance score. MUST INCLUDE: ' +
-							'1) Point-by-point scoring breakdown (Focus areas: X/5, ' +
-							'Applicability: X/3, Funding amount: X/2), ' +
-							'2) Which specific data fields from the API response you examined, and ' +
-							'3) Direct quotes or values from these fields that influenced your scoring.'
+							'1) Point-by-point scoring breakdown (Focus Areas: X/3, ' +
+							'Applicability: X/3, Funding Type Quality: X/1, Matching Requirements: X/1, Project Type: X/2), ' +
+							'2) Which specific data fields from the opportunity you examined, ' +
+							'3) Direct quotes or values from these fields that influenced your scoring, ' +
+							'4) The final total relevance score calculation showing the sum of all individual scores, and ' +
+							'5) An explicit calculation showing the math (e.g., "3.0 + 2.5 + 1.0 + 1.0 + 2.0 = 9.5 points"). The total MUST match this calculation exactly. ' +
+							'6) VERIFICATION STEP: Double-check your math. Add up each component score again to verify the total is correct.'
 					),
 				actionableSummary: z
 					.string()
 					.describe(
-						'A single concise paragraph (2-3 sentences) that clearly states: 1) the funding source, 2) the amount available, 3) who can apply, 4) specifically what the money is for, and 5) when applications are due. Example: "This is a $5M grant from the Department of Energy for schools to implement building performance standards. Applications are due August 2025."'
+						'A single concise paragraph (2-3 sentences) that clearly states: 1) the funding source, 2) the total funding available for the entire program and/or per award, 3) who can apply, 4) specifically what the money is for, and 5) when applications are due. Example: "This is a $5M grant from the Department of Energy for schools to implement building performance standards. School districts can receive up to $500K each, and applications are due August 2025."'
 					),
 			})
 		)
@@ -197,7 +286,9 @@ const apiResponseProcessingSchema = z.object({
 			rejectionReasons: z.array(z.string()).describe('Reasons for rejection'),
 			averageScoreBeforeFiltering: z
 				.number()
-				.describe('Average relevance score before filtering'),
+				.describe(
+					'Average relevance score of ALL opportunities before applying the minimum threshold filter. This should be the mean of all relevance scores you assigned, including both opportunities that pass and fail the filter.'
+				),
 			averageScoreAfterFiltering: z
 				.number()
 				.describe('Average relevance score after filtering'),
@@ -212,7 +303,7 @@ const apiResponseProcessingSchema = z.object({
 
 const promptTemplate = PromptTemplate.fromTemplate(
 	`You are an expert funding opportunity analyst for energy and infrastructure projects.
-Your task is to analyze a list of funding opportunities and identify those most relevant to our organization's focus areas.
+Your task is to perform a detailed analysis of funding opportunities to determine their relevance and value to our clients.
 
 SOURCE INFORMATION:
 {sourceInfo}
@@ -220,11 +311,11 @@ SOURCE INFORMATION:
 OPPORTUNITIES:
 {opportunities}
 
-Our organization helps the following types of entities secure funding:
+These are our client types:
 - K-12 schools
 - Community colleges and universities
 - Municipal, county, and state governments
-- Federal facilities
+- Federal agencies
 - Tribal governments
 - Nonprofit organizations
 - For-profit businesses
@@ -239,6 +330,7 @@ We focus on funding in these categories:
 - Community & Economic Development (e.g., revitalization, workforce development)
 - Infrastructure & Planning (e.g., sustainable infrastructure, master planning)
 
+
 For each opportunity, analyze:
 1. Eligibility requirements - Do they match our client types?
 2. Funding purpose - Does it align with our focus areas?
@@ -246,23 +338,93 @@ For each opportunity, analyze:
 4. Timeline - Is the opportunity currently active or upcoming?
 5. Match requirements - Are the cost-share requirements reasonable?
 
-For each opportunity in the provided list, assign a relevance score from 1-10 based on:
-1. Alignment with our focus areas (0-5 points):
-   - 0 points: No alignment with any focus area
-   - 1 point: Minimal alignment with one focus area
-   - 2 points: Moderate alignment with one focus area
-   - 3 points: Moderate alignment with multiple focus areas
-   - 4 points: Strong alignment with one or more focus areas
-   - 5 points: Perfect alignment with one or more focus areas
+Relevance Scoring System:
 
-2. Applicability to our client types (0-3 points):
-   - 0 points: Not applicable to any of our client types
-   - 3 points: Applicable to any of our client types
+For each funding opportunity, calculate a relevance score out of 10 points based on the following criteria:
 
-3. Funding amount and accessibility (0-2 points):
-   - 0 points: Insufficient funding or excessive match requirements
-   - 1 point: Moderate funding with reasonable match requirements
-   - 2 points: Substantial funding with minimal match requirements
+1. Alignment with Focus Areas (0-3 points)
+   - 3.0 points: Strong alignment with energy efficiency
+   - 2.5 points: Strong alignment with one or more of our focus areas
+   - 2.0 points: Moderate alignment with one or more focus areas
+   - 1.0 point: Minimal alignment with one or more focus areas
+   - 0.0 points: No alignment with any focus area
+
+2. Applicability to Client Types (0-3 points)
+   - 3.0 points: Applicable to K-12 schools
+   - 2.5 points: Applicable to one or more of our client types outside of k-12 schools (federal agencies, municipalities, universities, etc.)
+   - 0.0 points: Not applicable to any of our client types
+
+3. Funding Type Quality (0-1 point)
+   - 1.0 point: Pure grant
+   - 0.5 points: Any other funding type (rebate, loan, tax incentive, etc.)
+
+4. Matching Requirements (0-1 point)
+   - 1.0 point: No matching requirements
+   - 0.0 points: Any matching requirements
+
+5. Project Type (0-2 points)
+   - 2.0 points: Focuses on construction, renovations, HVAC systems, lighting, roofing, flooring, windows, or solar
+   - 1.0 point: Focuses on plumbing, water conservation, or electrical systems
+   - 0.0 points: Focuses on other areas or services only (research, planning, assessment only)
+
+### Relevance Score Calculation
+You MUST calculate the relevance score using simple addition:
+1. Focus Areas score: [X.X points]
+2. Client Types score: [X.X points]
+3. Funding Type score: [X.X points]
+4. Matching Requirements score: [X.X points]
+5. Project Type score: [X.X points]
+6. Relevance Score = [Focus Areas] + [Client Types] + [Funding Type] + [Matching Requirements] + [Project Type] = [X.X] points
+
+MISSING INFORMATION GUIDANCE:
+When information is missing for any scoring category, assume the most favorable condition:
+- No matching requirement data → Assume no match required (1/1)
+- No funding type specified → Assume pure grant (1/1)
+- No project type details → Assume focuses on high-value project types (2/2)
+
+For each scoring category, if data is not available, explicitly state "Data not available" in both the Reasoning and Evidence sections, then apply the favorable assumption as specified above.
+
+IMPORTANT FOR RELEVANCE REASONING:
+When explaining your relevance score, you MUST use this exact format:
+
+SCORING CALCULATION:
+[Focus Areas]
+Score: ___ /3.0 points
+Reasoning: (explain which focus areas aligned, or state "Data not available")
+Evidence: "quote from source" or "Data not available - assuming favorable condition"
+
+[Applicability]
+Score: ___ /3.0 points
+Reasoning: (specify which client types, or state "Data not available". if you give a score of 0.0, you must also specify all of our client types are excluded)
+Evidence: "quote from source" or "Data not available - assuming favorable condition"
+
+[Funding Type]
+Score: ___ /1.0 points
+Reasoning: (note what type of funding it is, or state "Data not available")
+Evidence: "quote from source" or "Data not available - assuming favorable condition"
+
+[Matching Requirements]
+Score: ___ /1.0 points
+Reasoning: (note any match requirements, or state "Data not available")
+Evidence: "quote from source" or "Data not available - assuming favorable condition"
+
+[Project Type]
+Score: ___ /2.0 points
+Reasoning: (specify which project types are covered and their point values, or state "Data not available")
+Evidence: "quote from source" or "Data not available - assuming favorable condition"
+
+[Total Relevance Score]
+score: ___ /10.0 points
+Reasoning: [focus areas] + [applicability] + [funding type] + [matching requirements] + [project type]
+----------------------------------------
+
+You MUST fill in each blank with the exact numerical score you've determined. The total MUST be the precise sum of the individual scores above.
+
+DATA FIELDS EXAMINED:
+- List each field from the API response you examined
+- Include the specific values found
+
+This structured format is required for every opportunity you analyze. The total score MUST match the sum of the individual components.
 
 Only include opportunities that score {minRelevanceScore} or higher in your final output. In the absence of information, make assumptions to lean on the side of inclusion.
 
@@ -275,16 +437,7 @@ For each selected opportunity, provide:
 6. Key benefits (2-3 bullet points)
 7. Any notable restrictions or requirements
 
-IMPORTANT FOR RELEVANCE REASONING:
-When explaining your relevance score, you MUST include:
-1. DETAILED SCORING BREAKDOWN - Show exactly how you calculated the score:
-   - Focus areas: X/5 points (explain which focus areas aligned)
-   - Applicability to client types: X/3 points (specify which client types)
-   - Funding amount and accessibility: X/2 points (note amount and any match requirements)
-2. DATA FIELDS EXAMINED - Explicitly identify which specific fields from the API response you examined (e.g., title, description, eligibility criteria)
-3. EVIDENCE - Include direct quotes or values from these fields that influenced your scoring
 
-This detailed breakdown helps us verify that you're analyzing the right data and understand your decision-making process.
 
 ACTIONABLE SUMMARY REQUIREMENT:
 For each opportunity, provide a concise "actionable summary" in a single paragraph (2-3 sentences) that includes:
@@ -303,6 +456,20 @@ Example with missing information: "This appears to be a grant from the Departmen
 Write this summary in plain language, focusing on clarity and specificity about what is known while being transparent about what is unknown.The goal is for someone to read this single paragraph and immediately understand if the opportunity is worth pursuing.
 
 IMPORTANT: Always preserve the original ID of each opportunity exactly as it appears in the API response. This ID is required for fetching detailed information in the next step.
+
+${generateTaxonomyInstruction(
+	'ELIGIBLE_PROJECT_TYPES',
+	'eligible project types'
+)}
+
+${generateTaxonomyInstruction('ELIGIBLE_APPLICANTS', 'eligible applicants')}
+
+${generateTaxonomyInstruction('CATEGORIES', 'funding categories')}
+
+${generateTaxonomyInstruction('FUNDING_TYPES', 'funding types')}
+
+
+${generateLocationEligibilityInstruction()}
 
 {formatInstructions}
 `
@@ -467,6 +634,27 @@ async function processPaginatedApi(source, processingDetails, runManager) {
 		apiEndpoint: processingDetails.apiEndpoint,
 		responseTime: 0,
 		apiCallTime: 0,
+		// Store API configuration for future reference
+		configuration: {
+			method: processingDetails.requestConfig?.method || 'GET',
+			pagination: paginationConfig?.enabled ? true : false,
+			paginationType: paginationConfig?.type || 'none',
+			queryParameters: processingDetails.queryParameters || {},
+			responseDataPath:
+				responseConfig?.responseDataPath ||
+				paginationConfig?.responseDataPath ||
+				'data',
+			totalCountPath:
+				responseConfig?.totalCountPath ||
+				paginationConfig?.totalCountPath ||
+				null,
+			hasRequestBody: processingDetails.requestBody ? true : false,
+			// Add more complete configuration details
+			requestConfig: processingDetails.requestConfig || {},
+			requestBody: processingDetails.requestBody || {},
+			paginationConfig: paginationConfig || { enabled: false },
+			responseConfig: responseConfig || {},
+		},
 	};
 
 	if (!paginationConfig || !paginationConfig.enabled) {
@@ -621,6 +809,40 @@ async function processPaginatedApi(source, processingDetails, runManager) {
 		initialApiMetrics.responseSamples = sampleMetadata;
 		initialApiMetrics.isDebugMetadataOnly = true;
 
+		// Store a few complete raw samples for debugging purposes
+		if (Array.isArray(items) && items.length > 0) {
+			const rawSampleSize = Math.min(3, items.length);
+			const rawSamples = [];
+
+			for (let i = 0; i < rawSampleSize; i++) {
+				const rawItem = items[i];
+				if (typeof rawItem !== 'object' || rawItem === null) continue;
+
+				// Clone the item to avoid reference issues
+				const rawSample = JSON.parse(JSON.stringify(rawItem));
+
+				// Add metadata to identify this as a raw sample
+				rawSample._rawSample = true;
+				rawSample._sampleIndex = i;
+
+				// Truncate any unusually large string fields to prevent DB size issues
+				Object.keys(rawSample).forEach((key) => {
+					if (
+						typeof rawSample[key] === 'string' &&
+						rawSample[key].length > 5000
+					) {
+						rawSample[key] =
+							rawSample[key].substring(0, 5000) + '... [truncated]';
+					}
+				});
+
+				rawSamples.push(rawSample);
+			}
+
+			// Add to metrics
+			initialApiMetrics.rawResponseSamples = rawSamples;
+		}
+
 		// Update run manager with initial API call metrics
 		if (runManager) {
 			await runManager.updateInitialApiCall(initialApiMetrics);
@@ -655,16 +877,38 @@ async function processPaginatedApi(source, processingDetails, runManager) {
 		// Determine where pagination parameters should go based on the request method and configuration
 		const paginationInBody =
 			processingDetails.requestConfig.method === 'POST' &&
-			paginationConfig.paginationInBody === true;
+			(paginationConfig.paginationInBody === true ||
+				paginationConfig.inBody === true);
+
+		// Debug pagination config and decision
+		console.log('[PAGINATION DEBUG] Configuration check:', {
+			method: processingDetails.requestConfig.method,
+			checkingParam1: paginationConfig.paginationInBody,
+			checkingParam2: paginationConfig.inBody,
+			paginationInBody: paginationInBody,
+			entireConfig: paginationConfig,
+		});
 
 		// Add pagination parameters to the appropriate location (query params or request body)
 		if (paginationConfig.type === 'offset') {
 			if (paginationInBody) {
 				requestBody[paginationConfig.limitParam] = pageSize;
 				requestBody[paginationConfig.offsetParam] = offset;
+				console.log('[PAGINATION DEBUG] Added offset params to REQUEST BODY:', {
+					[paginationConfig.limitParam]: pageSize,
+					[paginationConfig.offsetParam]: offset,
+					currentPage,
+					resultingBody: requestBody,
+				});
 			} else {
 				queryParams[paginationConfig.limitParam] = pageSize;
 				queryParams[paginationConfig.offsetParam] = offset;
+				console.log('[PAGINATION DEBUG] Added offset params to QUERY PARAMS:', {
+					[paginationConfig.limitParam]: pageSize,
+					[paginationConfig.offsetParam]: offset,
+					currentPage,
+					resultingQuery: queryParams,
+				});
 			}
 		} else if (paginationConfig.type === 'page') {
 			if (paginationInBody) {
@@ -698,17 +942,18 @@ async function processPaginatedApi(source, processingDetails, runManager) {
 		const apiCallStartTime = Date.now();
 		apiCallCounter++; // Increment API call counter
 
-		// console.log(`[Page ${currentPage}] Making API request with params:`, {
-		// 	method: processingDetails.requestConfig.method,
-		// 	url: processingDetails.apiEndpoint,
-		// 	queryParams,
-		// 	paginationParams:
-		// 		paginationConfig.type === 'offset'
-		// 			? { limit: pageSize, offset }
-		// 			: paginationConfig.type === 'page'
-		// 			? { limit: pageSize, page: currentPage + 1 }
-		// 			: { limit: pageSize, cursor },
-		// });
+		console.log(
+			`[PAGINATION DEBUG] Final request configuration for page ${currentPage}:`,
+			{
+				method: processingDetails.requestConfig.method,
+				url: processingDetails.apiEndpoint,
+				queryParams: JSON.stringify(queryParams),
+				requestBody: JSON.stringify(requestBody),
+				paginationInBody: paginationInBody,
+				offset: offset,
+				pageSize: pageSize,
+			}
+		);
 
 		const response = await makeConfiguredApiRequest({
 			method: processingDetails.requestConfig.method,
@@ -794,6 +1039,40 @@ async function processPaginatedApi(source, processingDetails, runManager) {
 				// Store samples as metadata, not as actual opportunities
 				initialApiMetrics.responseSamples = sampleMetadata;
 				initialApiMetrics.isDebugMetadataOnly = true;
+
+				// Store a few complete raw samples for debugging purposes
+				if (Array.isArray(data) && data.length > 0) {
+					const rawSampleSize = Math.min(3, data.length);
+					const rawSamples = [];
+
+					for (let i = 0; i < rawSampleSize; i++) {
+						const rawItem = data[i];
+						if (typeof rawItem !== 'object' || rawItem === null) continue;
+
+						// Clone the item to avoid reference issues
+						const rawSample = JSON.parse(JSON.stringify(rawItem));
+
+						// Add metadata to identify this as a raw sample
+						rawSample._rawSample = true;
+						rawSample._sampleIndex = i;
+
+						// Truncate any unusually large string fields to prevent DB size issues
+						Object.keys(rawSample).forEach((key) => {
+							if (
+								typeof rawSample[key] === 'string' &&
+								rawSample[key].length > 5000
+							) {
+								rawSample[key] =
+									rawSample[key].substring(0, 5000) + '... [truncated]';
+							}
+						});
+
+						rawSamples.push(rawSample);
+					}
+
+					// Add to metrics
+					initialApiMetrics.rawResponseSamples = rawSamples;
+				}
 			}
 		}
 
@@ -935,7 +1214,7 @@ async function performFirstStageFiltering(
 ) {
 	const startTime = Date.now();
 	const secondStageFiltering = processingDetails?.detailConfig?.enabled;
-	const minRelevanceScore = secondStageFiltering ? 5 : 7;
+	const minRelevanceScore = secondStageFiltering ? 3 : 6;
 
 	console.log('\n=== Starting First Stage Filtering ===');
 	console.log(
@@ -949,7 +1228,7 @@ async function performFirstStageFiltering(
 		filteredItems: [],
 		metrics: {
 			totalOpportunitiesAnalyzed: opportunities.length,
-			opportunitiesPassingFilter: 0,
+			passedCount: 0,
 			rejectedCount: 0,
 			rejectionReasons: [],
 			averageScoreBeforeFiltering: 0,
@@ -975,20 +1254,16 @@ async function performFirstStageFiltering(
 	});
 
 	let totalProcessed = 0;
-	let totalProcessingTime = 0;
 
-	// Process each chunk
-	for (const chunk of chunks) {
+	// Define the function to process a single chunk
+	const processChunk = async (chunk, chunkIndex) => {
 		const chunkStartTime = Date.now();
-		const chunkIndex = chunks.indexOf(chunk);
 		const chunkSize = chunk.length;
 
 		console.log(`\n=== Processing Chunk ${chunkIndex + 1}/${totalChunks} ===`);
 		console.log(`\nProcessing chunk ${chunkIndex + 1}/${totalChunks}:`, {
 			chunkSize: chunk.length,
-			totalProcessedSoFar: totalProcessed,
 			estimatedTokens: Math.round(JSON.stringify(chunk).length / 4),
-			percentComplete: Math.round((chunkIndex / totalChunks) * 100),
 		});
 
 		const parser = StructuredOutputParser.fromZodSchema(
@@ -1009,78 +1284,158 @@ async function performFirstStageFiltering(
 			anthropicApiKey: process.env.ANTHROPIC_API_KEY,
 		});
 
-		const response = await model.invoke(prompt);
-		const result = await parser.parse(response.content);
+		try {
+			const response = await model.invoke(prompt);
+			const result = await parser.parse(response.content);
+			const chunkProcessingTime = Date.now() - chunkStartTime;
 
+			// Build chunk metrics
+			const chunkMetrics = {
+				chunkIndex: chunkIndex + 1,
+				chunkSize,
+				processedOpportunities: chunkSize,
+				passedCount: result.processingMetrics.passedCount,
+				rejectedCount: result.processingMetrics.rejectedCount,
+				processingTime: chunkProcessingTime,
+				averageTimePerItem: Math.round(chunkProcessingTime / chunkSize),
+				estimatedTokens: Math.round(JSON.stringify(chunk).length / 4),
+			};
+
+			console.log(`Chunk ${chunkIndex + 1} complete:`, {
+				processedInChunk: chunkSize,
+				passedInChunk: result.processingMetrics.passedCount,
+				rejectedInChunk: result.processingMetrics.rejectedCount,
+				chunkProcessingTime: `${(chunkProcessingTime / 1000).toFixed(2)}s`,
+				averageTimePerItem: `${(chunkProcessingTime / chunkSize).toFixed(2)}ms`,
+			});
+
+			return {
+				filteredItems: result.opportunities,
+				metrics: {
+					...result.processingMetrics,
+					chunkMetrics,
+				},
+			};
+		} catch (error) {
+			console.error(
+				`Error parsing LLM output in performFirstStageFiltering (chunk ${
+					chunkIndex + 1
+				}/${totalChunks}):`,
+				error
+			);
+
+			// Log detailed error information
+			console.error('Error Type:', error.constructor.name);
+			console.error('Error Message:', error.message);
+
+			// Try to save the problematic LLM output to help with debugging
+			try {
+				const errorTimestamp = new Date().toISOString().replace(/[:.]/g, '-');
+				const errorContent =
+					response?.content || 'No response content available';
+				console.error(`LLM Output Length: ${errorContent.length} characters`);
+				console.error(
+					`LLM Output Snippet: ${errorContent.substring(0, 500)}...`
+				);
+
+				// Save to memory for now - in production you might want to log this to a file
+				global._lastErrorOutput = {
+					timestamp: errorTimestamp,
+					error: error.message,
+					content: errorContent,
+				};
+
+				console.error('Full error content stored in global._lastErrorOutput');
+			} catch (loggingError) {
+				console.error('Error while saving error details:', loggingError);
+			}
+
+			return {
+				filteredItems: [],
+				metrics: {
+					passedCount: 0,
+					rejectedCount: chunkSize,
+					rejectionReasons: ['Error processing chunk: ' + error.message],
+					averageScoreBeforeFiltering: 0,
+					averageScoreAfterFiltering: 0,
+					chunkMetrics: {
+						chunkIndex: chunkIndex + 1,
+						chunkSize,
+						processedOpportunities: 0,
+						passedCount: 0,
+						rejectedCount: chunkSize,
+						processingTime: Date.now() - chunkStartTime,
+						status: 'failed',
+					},
+					parsingError: error.message,
+				},
+			};
+		}
+	};
+
+	// Process all chunks in parallel with controlled concurrency
+	const chunkResults = await processChunksInParallel(chunks, processChunk, 5);
+
+	// Combine all results
+	for (const result of chunkResults) {
 		// Add filtered opportunities to combined results
-		combinedResults.filteredItems.push(...result.opportunities);
+		combinedResults.filteredItems.push(...result.filteredItems);
 
 		// Update metrics
+		combinedResults.metrics.passedCount += result.metrics.passedCount;
+		combinedResults.metrics.rejectedCount += result.metrics.rejectedCount;
 
-		totalProcessed += chunkSize;
-		const chunkProcessingTime = Date.now() - chunkStartTime;
-		totalProcessingTime += chunkProcessingTime;
-
-		// Store chunk metrics
-		combinedResults.metrics.chunkMetrics.push({
-			chunkIndex: chunkIndex + 1,
-			chunkSize,
-			processedOpportunities: chunkSize,
-			passedCount: result.processingMetrics.passedCount,
-			rejectedCount: result.processingMetrics.rejectedCount,
-			processingTime: chunkProcessingTime,
-			averageTimePerItem: Math.round(chunkProcessingTime / chunkSize),
-			estimatedTokens: Math.round(JSON.stringify(chunk).length / 4),
-		});
-
-		// Update counts and metrics as before...
-		combinedResults.metrics.opportunitiesPassingFilter +=
-			result.processingMetrics.passedCount;
-		combinedResults.metrics.rejectedCount +=
-			result.processingMetrics.rejectedCount;
-		combinedResults.metrics.rejectionReasons = [
-			...new Set([
-				...combinedResults.metrics.rejectionReasons,
-				...result.processingMetrics.rejectionReasons,
-			]),
-		];
-
-		// Update weighted averages for scores
-		combinedResults.metrics.averageScoreBeforeFiltering =
-			(combinedResults.metrics.averageScoreBeforeFiltering *
-				(totalProcessed - chunkSize) +
-				result.processingMetrics.averageScoreBeforeFiltering * chunkSize) /
-			totalProcessed;
-
-		combinedResults.metrics.averageScoreAfterFiltering =
-			(combinedResults.metrics.averageScoreAfterFiltering *
-				(totalProcessed - chunkSize) +
-				result.processingMetrics.averageScoreAfterFiltering * chunkSize) /
-			totalProcessed;
-
-		// Append filter reasoning
-		if (result.processingMetrics.filterReasoning) {
-			combinedResults.metrics.filterReasoning +=
-				(combinedResults.metrics.filterReasoning ? ' ' : '') +
-				result.processingMetrics.filterReasoning;
+		// Add unique rejection reasons
+		if (result.metrics.rejectionReasons) {
+			combinedResults.metrics.rejectionReasons = [
+				...new Set([
+					...combinedResults.metrics.rejectionReasons,
+					...result.metrics.rejectionReasons,
+				]),
+			];
 		}
 
-		console.log(`Chunk ${chunkIndex + 1} complete:`, {
-			processedInChunk: chunkSize,
-			totalProcessed,
-			passedInChunk: result.processingMetrics.passedCount,
-			rejectedInChunk: result.processingMetrics.rejectedCount,
-			chunkProcessingTime: `${(chunkProcessingTime / 1000).toFixed(2)}s`,
-			averageTimePerItem: `${(chunkProcessingTime / chunkSize).toFixed(2)}ms`,
-			overallProgress: `${Math.round(
-				(totalProcessed / opportunities.length) * 100
-			)}%`,
-		});
+		// Update filter reasoning
+		if (result.metrics.filterReasoning) {
+			if (!combinedResults.metrics.filterReasoning) {
+				combinedResults.metrics.filterReasoning =
+					result.metrics.filterReasoning;
+			} else {
+				combinedResults.metrics.filterReasoning +=
+					' ' + result.metrics.filterReasoning;
+			}
+		}
+
+		// Add chunk metrics
+		if (result.metrics.chunkMetrics) {
+			combinedResults.metrics.chunkMetrics.push(result.metrics.chunkMetrics);
+		}
+
+		// Update total processed count
+		totalProcessed += result.metrics.chunkMetrics?.processedOpportunities || 0;
 	}
+
+	// Calculate weighted average scores
+	const filteredItems = combinedResults.filteredItems;
+	if (filteredItems.length > 0) {
+		combinedResults.metrics.averageScoreAfterFiltering =
+			filteredItems.reduce((sum, item) => sum + (item.relevanceScore || 0), 0) /
+			filteredItems.length;
+	}
+
+	// For averageScoreBeforeFiltering, we'd need to aggregate from each chunk
+	// This is a simplification - you might need to adjust based on your exact needs
+	combinedResults.metrics.averageScoreBeforeFiltering =
+		chunkResults.reduce(
+			(sum, result) => sum + (result.metrics.averageScoreBeforeFiltering || 0),
+			0
+		) / chunkResults.length;
 
 	// Calculate final metrics
 	const totalTime = Date.now() - startTime;
 	combinedResults.metrics.filteringTime = totalTime;
+	// Add processingTime for UI compatibility
+	combinedResults.metrics.processingTime = totalTime;
 
 	// Log the final results
 	console.log('\n=== First Stage Filtering Complete ===');
@@ -1089,16 +1444,7 @@ async function performFirstStageFiltering(
 		totalChunks,
 		filteredCount: combinedResults.filteredItems.length,
 		totalProcessingTime: `${(totalTime / 1000).toFixed(2)}s`,
-		averageTimePerChunk: `${(totalProcessingTime / totalChunks / 1000).toFixed(
-			2
-		)}s`,
 		averageTimePerItem: `${(totalTime / opportunities.length).toFixed(2)}ms`,
-		chunkSummary: combinedResults.metrics.chunkMetrics.map((m) => ({
-			chunk: m.chunkIndex,
-			processed: m.processedOpportunities,
-			passed: m.passedCount,
-			timeSeconds: (m.processingTime / 1000).toFixed(2),
-		})),
 	});
 
 	// After filtering is complete, log a sample opportunity
@@ -1110,6 +1456,39 @@ async function performFirstStageFiltering(
 		console.log(`Relevance Score: ${sampleOpp.relevanceScore}`);
 		console.log(`Actionable Summary: ${sampleOpp.actionableSummary}`);
 		console.log('==========================================\n');
+
+		// Store raw filtered opportunities samples for debugging
+		const rawSampleSize = Math.min(3, combinedResults.filteredItems.length);
+		const rawFilteredSamples = [];
+
+		for (let i = 0; i < rawSampleSize; i++) {
+			const rawItem = combinedResults.filteredItems[i];
+			if (typeof rawItem !== 'object' || rawItem === null) continue;
+
+			// Clone the item to avoid reference issues
+			const rawSample = JSON.parse(JSON.stringify(rawItem));
+
+			// Add metadata to identify this as a raw sample
+			rawSample._rawSample = true;
+			rawSample._sampleIndex = i;
+			rawSample._filterStage = 'first';
+
+			// Truncate any unusually large string fields to prevent DB size issues
+			Object.keys(rawSample).forEach((key) => {
+				if (
+					typeof rawSample[key] === 'string' &&
+					rawSample[key].length > 5000
+				) {
+					rawSample[key] =
+						rawSample[key].substring(0, 5000) + '... [truncated]';
+				}
+			});
+
+			rawFilteredSamples.push(rawSample);
+		}
+
+		// Add raw samples to metrics
+		combinedResults.metrics.rawFilteredSamples = rawFilteredSamples;
 	}
 
 	// Update run manager with combined metrics
@@ -1145,6 +1524,20 @@ async function fetchDetailedInformation(
 		detailCallErrors: [],
 		averageDetailResponseTime: 0,
 		totalDetailCallTime: 0,
+		// Store configuration for future reference
+		configuration: detailConfig
+			? {
+					endpoint: detailConfig.endpoint,
+					method: detailConfig.method || 'GET',
+					idParam: detailConfig.idParam,
+					responseDataPath: detailConfig.responseDataPath || 'data',
+					enabled: detailConfig.enabled || false,
+					// Include the complete detail configuration
+					detailConfig: detailConfig || {},
+			  }
+			: {
+					enabled: false,
+			  },
 	};
 
 	// If detail config is not enabled or no filtered items, return early
@@ -1302,6 +1695,41 @@ async function fetchDetailedInformation(
 	// Log the metrics
 	console.log('Detail fetching metrics:', detailMetrics);
 
+	// Capture raw response samples for debugging
+	if (detailedItems.length > 0) {
+		const rawSampleSize = Math.min(3, detailedItems.length);
+		const rawResponseSamples = [];
+
+		for (let i = 0; i < rawSampleSize; i++) {
+			const rawItem = detailedItems[i];
+			if (typeof rawItem !== 'object' || rawItem === null) continue;
+
+			// Clone the item to avoid reference issues
+			const rawSample = JSON.parse(JSON.stringify(rawItem));
+
+			// Add metadata to identify this as a raw sample
+			rawSample._rawSample = true;
+			rawSample._sampleIndex = i;
+			rawSample._sampleType = 'detail_response';
+
+			// Truncate any unusually large string fields to prevent DB size issues
+			Object.keys(rawSample).forEach((key) => {
+				if (
+					typeof rawSample[key] === 'string' &&
+					rawSample[key].length > 5000
+				) {
+					rawSample[key] =
+						rawSample[key].substring(0, 5000) + '... [truncated]';
+				}
+			});
+
+			rawResponseSamples.push(rawSample);
+		}
+
+		// Add raw samples to metrics
+		detailMetrics.rawResponseSamples = rawResponseSamples;
+	}
+
 	// Update run manager with metrics
 	if (runManager) {
 		await runManager.updateDetailApiCalls(detailMetrics);
@@ -1405,23 +1833,19 @@ function formatPrompt(template, variables, options = {}) {
  */
 async function processApiHandler(source, processingDetails, runManager) {
 	// console.log('Starting API handler processing for source:', source.name);
-	// console.log('Processing details:', {
-	// 	requestConfig: {
-	// 		...processingDetails.requestConfig,
-	// 		headers: processingDetails.requestConfig.headers
-	// 			? 'Headers present'
-	// 			: 'No headers',
-	// 	},
-	// 	paginationConfig: processingDetails.paginationConfig
-	// 		? 'Pagination enabled'
-	// 		: 'No pagination',
-	// 	responseConfig: processingDetails.responseConfig
-	// 		? 'Response config present'
-	// 		: 'No response config',
-	// 	detailConfig: processingDetails.detailConfig?.enabled
-	// 		? 'Detail fetching enabled'
-	// 		: 'No detail fetching',
-	// });
+	const startTime = Date.now();
+	let initialApiMetrics = {
+		/* ... */
+	};
+	let firstStageMetrics = {
+		/* ... */
+	};
+	let detailApiMetrics = {
+		/* ... */
+	};
+	let filteredItems = [];
+	let detailedOpportunities = [];
+	let rawResponseId = null; // Initialize rawResponseId
 
 	try {
 		// Step 1: Process the paginated API
@@ -1431,6 +1855,8 @@ async function processApiHandler(source, processingDetails, runManager) {
 			processingDetails,
 			runManager
 		);
+		// Merge initial API metrics collected during pagination
+		initialApiMetrics = { ...initialApiMetrics, ...apiMetrics };
 
 		console.log('API processing complete:', {
 			resultsCount: results.length,
@@ -1447,34 +1873,63 @@ async function processApiHandler(source, processingDetails, runManager) {
 		for (const result of results) {
 			const items = extractDataByPath(result, responseDataPath);
 			if (Array.isArray(items)) {
-				console.log(`Extracted ${items.length} items from result`);
+				// console.log(`Extracted ${items.length} items from result`); // Less verbose log
 				allOpportunities.push(...items);
 			} else {
 				console.warn('Extracted data is not an array:', typeof items);
 			}
 		}
 
-		console.log(`Total opportunities extracted: ${allOpportunities.length}`);
+		console.log(
+			`Total opportunities extracted from API: ${allOpportunities.length}`
+		);
 
-		// Log sample opportunity structure
+		// --- BEGIN ADDED DUPLICATE CHECK LOGGING ---
 		if (allOpportunities.length > 0) {
-			const sampleOpp = allOpportunities[0];
-			console.log('Sample opportunity structure:', {
-				keys: Object.keys(sampleOpp),
-				hasId: !!sampleOpp.id,
-				idValue: sampleOpp.id,
-				sampleValues: Object.entries(sampleOpp)
-					.slice(0, 5)
-					.map(([key, value]) => ({
-						key,
-						type: typeof value,
-						preview:
-							typeof value === 'string'
-								? value.substring(0, 50) + (value.length > 50 ? '...' : '')
-								: value,
-					})),
-			});
+			const allIds = allOpportunities
+				.map((opp) => opp?.id) // Use optional chaining for safety
+				.filter((id) => id !== undefined && id !== null); // Filter out missing IDs
+
+			if (allIds.length !== allOpportunities.length) {
+				console.warn(
+					`[DUPLICATE CHECK] Some extracted opportunities (${
+						allOpportunities.length - allIds.length
+					}) are missing an 'id'.`
+				);
+			}
+
+			const uniqueIds = new Set(allIds);
+			console.log(
+				`[DUPLICATE CHECK] Extracted unique opportunity IDs: ${uniqueIds.size}`
+			);
+
+			if (uniqueIds.size < allIds.length) {
+				console.error(
+					`[DUPLICATE CHECK] !! DUPLICATES DETECTED in raw extracted data !!`
+				);
+				const idCounts = allIds.reduce((acc, id) => {
+					acc[id] = (acc[id] || 0) + 1;
+					return acc;
+				}, {});
+				const duplicates = Object.entries(idCounts)
+					.filter(([id, count]) => count > 1)
+					.map(([id, count]) => ({ id, count }));
+				console.error(
+					`[DUPLICATE CHECK] Duplicate IDs and counts:`,
+					duplicates
+				);
+			} else {
+				console.log(
+					`[DUPLICATE CHECK] No duplicates found in raw extracted data.`
+				);
+			}
+		} else {
+			console.log('[DUPLICATE CHECK] No opportunities extracted to check.');
 		}
+		// --- END ADDED DUPLICATE CHECK LOGGING ---
+
+		// Log sample opportunity structure (optional, can keep or remove)
+		// if (allOpportunities.length > 0) { ... }
 
 		// Step 2: Perform first stage filtering
 		console.log('Step 2: Performing first stage filtering');
@@ -1536,7 +1991,9 @@ async function processApiHandler(source, processingDetails, runManager) {
 				filter: filterMetrics,
 				detail: detailMetrics,
 			},
-			rawApiResponse: results,
+			// When detail config is enabled, include the detailed responses
+			rawApiResponse:
+				detailedItems && detailedItems.length > 0 ? detailedItems : results,
 			requestDetails: {
 				source: source,
 				processingDetails: processingDetails,
@@ -1545,6 +2002,85 @@ async function processApiHandler(source, processingDetails, runManager) {
 	} catch (error) {
 		console.error('Error in API handler processing:', error);
 		throw error;
+	}
+}
+
+/**
+ * Store a raw API response in the database
+ * @param {Object} sourceId - The source ID
+ * @param {Array} rawResponse - The raw API response
+ * @param {Object} requestDetails - Details about the request
+ * @returns {Promise<string>} - The ID of the stored raw response
+ */
+async function storeRawResponse(sourceId, rawResponse, requestDetails) {
+	const supabase = createSupabaseClient();
+
+	try {
+		// Generate a content hash to check for duplicates
+		let contentHash;
+		if (typeof rawResponse === 'object') {
+			// Sort keys to ensure consistent hashing regardless of key order
+			const normalizedContent = JSON.stringify(
+				rawResponse,
+				Object.keys(rawResponse).sort()
+			);
+			contentHash = crypto
+				.createHash('sha256')
+				.update(normalizedContent)
+				.digest('hex');
+		} else {
+			contentHash = crypto
+				.createHash('sha256')
+				.update(String(rawResponse))
+				.digest('hex');
+		}
+
+		// Check if this exact content hash already exists for this source
+		const { data: existingResponse } = await supabase
+			.from('api_raw_responses')
+			.select('id')
+			.eq('source_id', sourceId)
+			.eq('content_hash', contentHash)
+			.limit(1);
+
+		// If a duplicate exists, return its ID
+		if (existingResponse && existingResponse.length > 0) {
+			console.log(
+				'Duplicate raw response found, reusing existing ID:',
+				existingResponse[0].id
+			);
+			return existingResponse[0].id;
+		}
+
+		// No duplicate found, create new record
+		const rawResponseId = crypto.randomUUID
+			? crypto.randomUUID()
+			: 'test-' + Math.random().toString(36).substring(2, 15);
+
+		// Store the raw response in the database with the content hash
+		const { error } = await supabase.from('api_raw_responses').insert({
+			id: rawResponseId,
+			source_id: sourceId,
+			content: rawResponse,
+			content_hash: contentHash,
+			request_details: requestDetails,
+			timestamp: new Date().toISOString(),
+			created_at: new Date().toISOString(),
+		});
+
+		if (error) {
+			console.error('Error storing raw response:', error);
+			// Still return the ID even if there was an error, so processing can continue
+		}
+
+		return rawResponseId;
+	} catch (error) {
+		console.error('Error in storeRawResponse:', error);
+		// Generate and return an ID even if there was an error
+		const fallbackId = crypto.randomUUID
+			? crypto.randomUUID()
+			: 'test-' + Math.random().toString(36).substring(2, 15);
+		return fallbackId;
 	}
 }
 
@@ -1560,11 +2096,6 @@ export async function apiHandlerAgent(
 	processingDetails,
 	runManager = null
 ) {
-	// Log the start of the API Handler Agent
-	// console.log(
-	// 	`Starting API Handler Agent for source: ${source.name} (${source.id})`
-	// );
-
 	try {
 		// Process the API handler
 		const result = await processApiHandler(
@@ -1573,12 +2104,83 @@ export async function apiHandlerAgent(
 			runManager
 		);
 
+		// Initialize an array to store multiple raw response IDs (one per opportunity)
+		let rawResponseIds = [];
+		let singleRawResponseId = null;
+
+		// Handle the case where we have detailed responses (an array of items)
+		if (
+			processingDetails.detailConfig?.enabled &&
+			Array.isArray(result.rawApiResponse) &&
+			result.items &&
+			result.items.length > 0
+		) {
+			console.log(
+				`Debug - Processing ${result.rawApiResponse.length} detailed responses for ${result.items.length} items`
+			);
+
+			// For each detailed response, store it individually
+			for (let i = 0; i < result.rawApiResponse.length; i++) {
+				if (i < result.items.length) {
+					console.log(
+						`Debug - Storing raw response for item ${i} with ID ${result.items[i].id}`
+					);
+
+					const itemRawResponseId = await storeRawResponse(
+						source.id,
+						result.rawApiResponse[i],
+						result.requestDetails
+					);
+
+					console.log(
+						`Debug - Generated raw response ID: ${itemRawResponseId} for item ID: ${result.items[i].id}`
+					);
+
+					// Add the raw response ID to the array
+					rawResponseIds.push({
+						itemId: result.items[i].id,
+						rawResponseId: itemRawResponseId,
+					});
+				}
+			}
+
+			console.log(
+				`Debug - Created ${rawResponseIds.length} rawResponseIds mappings`
+			);
+		} else {
+			// For non-detailed responses, store the entire response once
+			console.log(`Debug - Storing single raw response for all items`);
+
+			singleRawResponseId = await storeRawResponse(
+				source.id,
+				result.rawApiResponse,
+				result.requestDetails
+			);
+
+			console.log(
+				`Debug - Generated single raw response ID: ${singleRawResponseId}`
+			);
+
+			// Use the single ID for all opportunities
+			if (result.items && result.items.length > 0) {
+				rawResponseIds = result.items.map((item) => ({
+					itemId: item.id,
+					rawResponseId: singleRawResponseId,
+				}));
+
+				console.log(
+					`Debug - Created ${rawResponseIds.length} mappings all using the same raw response ID`
+				);
+			}
+		}
+
 		// Format the result for the next stage
 		const formattedResult = {
 			firstStageMetrics: result.metrics.filter,
 			opportunities: result.items,
 			initialApiMetrics: result.metrics.api,
-
+			rawResponseIds: rawResponseIds, // Array of {itemId, rawResponseId} objects for each opportunity
+			singleRawResponseId: singleRawResponseId, // For backwards compatibility
 			detailApiMetrics: result.metrics.detail,
 			rawApiResponse: result.rawApiResponse,
 			requestDetails: result.requestDetails,
@@ -1586,11 +2188,11 @@ export async function apiHandlerAgent(
 
 		console.log('API Handler Agent completed successfully:', {
 			opportunitiesCount: formattedResult.opportunities.length,
+			rawResponseIdsCount: formattedResult.rawResponseIds.length,
 			hasInitialApiMetrics: !!formattedResult.initialApiMetrics,
 			hasFirstStageMetrics: !!formattedResult.firstStageMetrics,
 			hasDetailApiMetrics: !!formattedResult.detailApiMetrics,
-			rawApiResponseLength: formattedResult.rawApiResponse?.length,
-			hasRequestDetails: !!formattedResult.requestDetails,
+			singleRawResponseId: singleRawResponseId,
 		});
 
 		return formattedResult;

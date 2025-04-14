@@ -18,70 +18,432 @@ export async function GET(request, context) {
 		// Get URL parameters
 		const { searchParams } = new URL(request.url);
 
-		// Build filters from query parameters
+		// Build filters from query parameters with extra safeguards
 		const filters = {
-			status: searchParams.get('status'),
-			source_type: searchParams.get('source_type'),
-			min_amount: searchParams.get('min_amount'),
-			max_amount: searchParams.get('max_amount'),
+			status: searchParams.get('status') || 'all',
+			source_type: searchParams.get('source_type') || 'all',
+			min_amount: searchParams.get('min_amount')
+				? parseFloat(searchParams.get('min_amount'))
+				: null,
 			include_national: searchParams.get('include_national') !== 'false', // Default to true
+			deadline_start: searchParams.get('deadline_start'),
+			deadline_end: searchParams.get('deadline_end'),
+			// Pagination parameters
+			page: parseInt(searchParams.get('page') || '1', 10),
+			pageSize: parseInt(searchParams.get('pageSize') || '10', 10),
 		};
 
-		// Fetch opportunities for the specified state
-		let query = supabase
-			.from('funding_opportunities_with_geography')
-			.select('*');
-
-		// Apply state filter
-		query = query.or(`is_national.eq.true,eligible_states.cs.{${stateCode}}`);
-
-		// Apply additional filters
-		if (filters.status && filters.status !== 'all') {
-			query = query.eq('status', filters.status);
+		// Only add max_amount if it's greater than 0
+		const maxAmount = searchParams.get('max_amount');
+		if (maxAmount && parseFloat(maxAmount) > 0) {
+			filters.max_amount = parseFloat(maxAmount);
 		}
 
-		if (filters.source_type && filters.source_type !== 'all') {
-			query = query.eq('source_type', filters.source_type);
+		// Handle categories as array
+		const categories = searchParams.get('categories');
+		if (categories) {
+			filters.categories = categories.split(',');
 		}
 
-		if (filters.min_amount) {
-			query = query.gte('minimum_award', filters.min_amount);
-		}
+		// Ensure page and pageSize are valid
+		if (isNaN(filters.page) || filters.page < 1) filters.page = 1;
+		if (
+			isNaN(filters.pageSize) ||
+			filters.pageSize < 1 ||
+			filters.pageSize > 50
+		)
+			filters.pageSize = 10;
 
-		if (filters.max_amount) {
-			query = query.lte('maximum_award', filters.max_amount);
-		}
+		// Calculate pagination values
+		const from = (filters.page - 1) * filters.pageSize;
+		const to = from + filters.pageSize - 1;
 
-		// Exclude national opportunities if specified
-		if (!filters.include_national) {
-			query = query.eq('is_national', false);
-		}
+		// Enhanced logging for debugging
+		console.log(
+			`Map API opportunities for ${stateCode} with filters:`,
+			JSON.stringify(filters, null, 2)
+		);
 
-		// Order by close date
-		query = query.order('close_date', { ascending: true });
+		try {
+			// --- Step 1: Fetch ALL matching IDs to get the total count ---
+			let idQuery = supabase
+				.from('funding_opportunities_with_geography')
+				.select('id'); // Select only ID
 
-		const { data, error } = await query;
-
-		if (error) {
-			console.error(
-				`Error fetching opportunities for state ${stateCode}:`,
-				error
+			// Apply state filter
+			idQuery = idQuery.or(
+				`is_national.eq.true,eligible_states.cs.{${stateCode}}`
 			);
-			// Fallback to mock data if there's an error
+
+			// Apply additional filters (same as before, but with safer handling)
+			if (filters.status && filters.status !== 'all') {
+				idQuery = idQuery.eq('status', filters.status);
+			}
+
+			// Add extra safeguards around source_type filtering
+			if (filters.source_type && filters.source_type !== 'all') {
+				console.log(`Applying source_type filter: ${filters.source_type}`);
+				// Try with ilike for case-insensitive matching which could be more forgiving
+				idQuery = idQuery.ilike('source_type_display', filters.source_type);
+			}
+
+			// Apply categories filter if present
+			if (filters.categories && filters.categories.length > 0) {
+				// Filter opportunities where any of the selected categories is in the opportunity's categories array
+				idQuery = idQuery.overlaps('categories', filters.categories);
+			}
+
+			if (filters.min_amount) {
+				idQuery = idQuery.gte('minimum_award', filters.min_amount);
+			}
+
+			if (filters.max_amount) {
+				// Simpler approach with individual filters
+				const filterAmount = filters.max_amount;
+
+				// Apply filtering for opportunities with the right maximum_award or NULL award
+				// Two separate queries are needed due to how Supabase PostgREST filters work
+
+				// First, get opportunities with max_award >= filter amount
+				let amountQuery = supabase
+					.from('funding_opportunities_with_geography')
+					.select('id')
+					.or(`is_national.eq.true,eligible_states.cs.{${stateCode}}`)
+					.gte('maximum_award', filterAmount);
+
+				// Apply the same other filters to this query
+				if (filters.status && filters.status !== 'all') {
+					amountQuery = amountQuery.eq('status', filters.status);
+				}
+
+				if (filters.source_type && filters.source_type !== 'all') {
+					amountQuery = amountQuery.ilike(
+						'source_type_display',
+						filters.source_type
+					);
+				}
+
+				if (filters.categories && filters.categories.length > 0) {
+					amountQuery = amountQuery.overlaps('categories', filters.categories);
+				}
+
+				if (filters.min_amount) {
+					amountQuery = amountQuery.gte('minimum_award', filters.min_amount);
+				}
+
+				if (filters.deadline_start) {
+					amountQuery = amountQuery.gte('close_date', filters.deadline_start);
+				}
+
+				if (filters.deadline_end) {
+					amountQuery = amountQuery.lte('close_date', filters.deadline_end);
+				}
+
+				if (!filters.include_national) {
+					amountQuery = amountQuery.eq('is_national', false);
+				}
+
+				// Get opportunities with maximum_award >= filterAmount
+				const { data: idsWithAmounts, error: amountError } = await amountQuery;
+
+				if (amountError) {
+					console.error(
+						'Error fetching opportunities with amount filters:',
+						amountError
+					);
+					return NextResponse.json(
+						{
+							success: false,
+							error: `Failed to filter by amount: ${amountError.message}`,
+							details: { filters },
+						},
+						{ status: 500 }
+					);
+				}
+
+				// Now get opportunities with NULL maximum_award
+				let nullAmountQuery = supabase
+					.from('funding_opportunities_with_geography')
+					.select('id')
+					.or(`is_national.eq.true,eligible_states.cs.{${stateCode}}`)
+					.is('maximum_award', null); // Specifically look for NULL maximum_award values
+
+				// Apply the same other filters to this query
+				if (filters.status && filters.status !== 'all') {
+					nullAmountQuery = nullAmountQuery.eq('status', filters.status);
+				}
+
+				if (filters.source_type && filters.source_type !== 'all') {
+					nullAmountQuery = nullAmountQuery.ilike(
+						'source_type_display',
+						filters.source_type
+					);
+				}
+
+				if (filters.categories && filters.categories.length > 0) {
+					nullAmountQuery = nullAmountQuery.overlaps(
+						'categories',
+						filters.categories
+					);
+				}
+
+				if (filters.min_amount) {
+					nullAmountQuery = nullAmountQuery.gte(
+						'minimum_award',
+						filters.min_amount
+					);
+				}
+
+				if (filters.deadline_start) {
+					nullAmountQuery = nullAmountQuery.gte(
+						'close_date',
+						filters.deadline_start
+					);
+				}
+
+				if (filters.deadline_end) {
+					nullAmountQuery = nullAmountQuery.lte(
+						'close_date',
+						filters.deadline_end
+					);
+				}
+
+				if (!filters.include_national) {
+					nullAmountQuery = nullAmountQuery.eq('is_national', false);
+				}
+
+				const { data: idsWithNullAmounts, error: nullError } =
+					await nullAmountQuery;
+
+				if (nullError) {
+					console.error(
+						'Error fetching opportunities with null amounts:',
+						nullError
+					);
+					return NextResponse.json(
+						{
+							success: false,
+							error: `Failed to filter null amounts: ${nullError.message}`,
+							details: { filters },
+						},
+						{ status: 500 }
+					);
+				}
+
+				// Combine results from both queries (opportunities with max_award >= filter OR null max_award)
+				const idData = [
+					...(idsWithAmounts || []),
+					...(idsWithNullAmounts || []),
+				];
+
+				const totalCount = idData.length;
+				console.log(
+					`Found ${totalCount} matching opportunities for the given filters`
+				);
+
+				// Now fetch the actual data with pagination
+				let dataQuery = supabase
+					.from('funding_opportunities_with_geography')
+					.select('*')
+					.or(`is_national.eq.true,eligible_states.cs.{${stateCode}}`);
+
+				// Apply the same filters from above
+				if (filters.status && filters.status !== 'all') {
+					dataQuery = dataQuery.eq('status', filters.status);
+				}
+
+				// Apply categories filter if present
+				if (filters.categories && filters.categories.length > 0) {
+					// Filter opportunities where any of the selected categories is in the opportunity's categories array
+					dataQuery = dataQuery.overlaps('categories', filters.categories);
+				}
+
+				if (filters.min_amount) {
+					dataQuery = dataQuery.gte('minimum_award', filters.min_amount);
+				}
+
+				if (filters.deadline_start) {
+					dataQuery = dataQuery.gte('close_date', filters.deadline_start);
+				}
+
+				if (filters.deadline_end) {
+					dataQuery = dataQuery.lte('close_date', filters.deadline_end);
+				}
+
+				if (!filters.include_national) {
+					dataQuery = dataQuery.eq('is_national', false);
+				}
+
+				// Order by relevance_score (descending) as the default sort
+				dataQuery = dataQuery.order('relevance_score', { ascending: false });
+
+				// Apply pagination
+				dataQuery = dataQuery.range(from, to);
+
+				// Execute data query
+				const { data, error } = await dataQuery;
+
+				if (error) {
+					console.error(
+						`Error fetching opportunities data for state ${stateCode}:`,
+						error
+					);
+					return NextResponse.json(
+						{
+							success: false,
+							error: error.message,
+							details: { filters },
+						},
+						{ status: 500 }
+					);
+				}
+
+				if (!data || data.length === 0) {
+					console.log(
+						`No opportunities found for state ${stateCode} with the given filters`
+					);
+				}
+
+				return NextResponse.json({
+					success: true,
+					data: {
+						opportunities: data || [],
+						total: totalCount,
+						page: filters.page,
+						pageSize: filters.pageSize,
+						totalPages: totalCount
+							? Math.ceil(totalCount / filters.pageSize)
+							: 0,
+					},
+				});
+			}
+
+			// Normal flow for when there's no max_amount filter
+			// Execute ID query to get count
+			const { data: idData, error: idError } = await idQuery;
+
+			if (idError) {
+				console.error(
+					`Error fetching opportunity IDs for count, state ${stateCode}:`,
+					idError
+				);
+				// Return specific error for count failure
+				return NextResponse.json(
+					{
+						success: false,
+						error: `Failed to count opportunities: ${idError.message}`,
+						details: { filters },
+					},
+					{ status: 500 }
+				);
+			}
+
+			const totalCount = idData ? idData.length : 0;
+			console.log(
+				`Found ${totalCount} matching opportunities for the given filters`
+			);
+
+			// --- Step 2: Fetch the paginated data ---
+			let dataQuery = supabase
+				.from('funding_opportunities_with_geography')
+				.select('*'); // Select all columns for the actual data
+
+			// Apply state filter
+			dataQuery = dataQuery.or(
+				`is_national.eq.true,eligible_states.cs.{${stateCode}}`
+			);
+
+			// Apply additional filters (same as for idQuery, with safe handling)
+			if (filters.status && filters.status !== 'all') {
+				dataQuery = dataQuery.eq('status', filters.status);
+			}
+
+			// Add extra safeguards around source_type filtering
+			if (filters.source_type && filters.source_type !== 'all') {
+				console.log(
+					`Applying source_type filter to data query: ${filters.source_type}`
+				);
+				// Try with ilike for case-insensitive matching
+				dataQuery = dataQuery.ilike('source_type_display', filters.source_type);
+			}
+
+			// Apply categories filter if present
+			if (filters.categories && filters.categories.length > 0) {
+				// Filter opportunities where any of the selected categories is in the opportunity's categories array
+				dataQuery = dataQuery.overlaps('categories', filters.categories);
+			}
+
+			if (filters.min_amount) {
+				dataQuery = dataQuery.gte('minimum_award', filters.min_amount);
+			}
+
+			if (filters.deadline_start) {
+				dataQuery = dataQuery.gte('close_date', filters.deadline_start);
+			}
+
+			if (filters.deadline_end) {
+				dataQuery = dataQuery.lte('close_date', filters.deadline_end);
+			}
+
+			if (!filters.include_national) {
+				dataQuery = dataQuery.eq('is_national', false);
+			}
+
+			// Order by relevance_score (descending) as the default sort
+			dataQuery = dataQuery.order('relevance_score', { ascending: false });
+
+			// Apply pagination
+			dataQuery = dataQuery.range(from, to);
+
+			// Execute data query
+			const { data, error } = await dataQuery;
+
+			if (error) {
+				console.error(
+					`Error fetching opportunities data for state ${stateCode}:`,
+					error
+				);
+				return NextResponse.json(
+					{
+						success: false,
+						error: error.message,
+						details: { filters },
+					},
+					{ status: 500 }
+				);
+			}
+
+			if (!data || data.length === 0) {
+				console.log(
+					`No opportunities found for state ${stateCode} with the given filters`
+				);
+			}
+
 			return NextResponse.json({
 				success: true,
-				data: generateMockOpportunitiesForState(stateCode),
+				data: {
+					opportunities: data || [],
+					total: totalCount, // Use the count derived from idData.length
+					page: filters.page,
+					pageSize: filters.pageSize,
+					totalPages: totalCount ? Math.ceil(totalCount / filters.pageSize) : 0,
+				},
 			});
+		} catch (innerError) {
+			console.error('Error in query execution:', innerError);
+			return NextResponse.json(
+				{
+					success: false,
+					error: `Query execution error: ${innerError.message}`,
+					details: { stateCode, filters },
+				},
+				{ status: 500 }
+			);
 		}
-
-		return NextResponse.json({
-			success: true,
-			data: data || [],
-		});
-	} catch (error) {
-		console.error('API Error:', error);
+	} catch (outerError) {
+		console.error('API Error:', outerError);
 		return NextResponse.json(
-			{ success: false, error: error.message },
+			{ success: false, error: `API processing error: ${outerError.message}` },
 			{ status: 500 }
 		);
 	}

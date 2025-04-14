@@ -7,6 +7,12 @@ import {
 	logApiActivity,
 } from '../supabase';
 import { z } from 'zod';
+import {
+	TAXONOMIES,
+	generateTaxonomyInstruction,
+	generateLocationEligibilityInstruction,
+} from '../constants/taxonomies';
+import { processChunksInParallel } from '../utils/parallelProcessing';
 
 // Define the output schema for the agent
 const detailProcessingSchema = z.object({
@@ -17,34 +23,81 @@ const detailProcessingSchema = z.object({
 				title: z.string().describe('Title of the funding opportunity'),
 				description: z
 					.string()
-					.optional()
-					.nullable()
-					.describe('Description of the opportunity'),
+					.describe(
+						'A comprehensive, clear, 4 paragraph description of the funding opportunity, including its purpose, goals, eligibility criteria, application process, and other key details that would help potential applicants understand the full scope of the opportunity.'
+					),
 				fundingType: z
 					.string()
 					.optional()
 					.nullable()
 					.describe('Type of funding (grant, loan, etc.)'),
-				agency: z
+				funding_source: z
+					.object({
+						name: z
+							.string()
+							.describe(
+								'The precise name of the funding organization or agency'
+							),
+						type: z
+							.string()
+							.optional()
+							.describe(
+								'High-level type (federal, state, local, utility, foundation, other)'
+							),
+						website: z
+							.string()
+							.optional()
+							.nullable()
+							.describe('Website of the funding organization if available'),
+						contact_email: z
+							.string()
+							.optional()
+							.nullable()
+							.describe(
+								'Contact email for the funding organization if available'
+							),
+						contact_phone: z
+							.string()
+							.optional()
+							.nullable()
+							.describe(
+								'Contact phone number for the funding organization if available'
+							),
+						description: z
+							.string()
+							.optional()
+							.nullable()
+							.describe(
+								'Additional notes or description about the funding organization'
+							),
+					})
+					.describe(
+						'Information about the organization providing this funding opportunity'
+					)
+					.optional()
+					.nullable(),
+				totalFundingAvailable: z
+					.number()
+					.optional()
+					.nullable()
+					.describe(
+						'Total funding amount available for the entire program/opportunity'
+					),
+				minimumAward: z
+					.number()
+					.optional()
+					.nullable()
+					.describe('Minimum award amount per applicant'),
+				maximumAward: z
+					.number()
+					.optional()
+					.nullable()
+					.describe('Maximum award amount per applicant'),
+				notes: z
 					.string()
 					.optional()
 					.nullable()
-					.describe('Funding agency or organization'),
-				totalFunding: z
-					.number()
-					.optional()
-					.nullable()
-					.describe('Total funding amount available'),
-				minAward: z
-					.number()
-					.optional()
-					.nullable()
-					.describe('Minimum award amount'),
-				maxAward: z
-					.number()
-					.optional()
-					.nullable()
-					.describe('Maximum award amount'),
+					.describe('Notes on how the funding values were determined'),
 				openDate: z
 					.string()
 					.optional()
@@ -63,12 +116,16 @@ const detailProcessingSchema = z.object({
 					.describe('List of eligible project types'),
 				eligibleLocations: z
 					.array(z.string())
-					.describe('List of eligible locations'),
+					.optional()
+					.nullable()
+					.describe(
+						'Array of state codes where this opportunity is available. This should be a list of two-letter state codes (e.g., ["CA", "OR", "WA"]). If opportunity is available nationwide, use the isNational flag instead.'
+					),
 				url: z
 					.string()
 					.optional()
 					.nullable()
-					.describe('URL for more information'),
+					.describe('URL for the funding opportunity, if available'),
 				matchingRequired: z
 					.boolean()
 					.optional()
@@ -81,7 +138,9 @@ const detailProcessingSchema = z.object({
 				categories: z
 					.array(z.string())
 					.optional()
-					.describe('Relevant categories from our taxonomy'),
+					.describe(
+						'Funding categories as listed by, or deduced from the source data'
+					),
 				tags: z
 					.array(z.string())
 					.optional()
@@ -91,7 +150,9 @@ const detailProcessingSchema = z.object({
 				status: z
 					.string()
 					.optional()
-					.describe('Current status (open, upcoming, closed)'),
+					.describe(
+						'Current status of the opportunity. Must be one of: "open" (currently accepting applications), "upcoming" (announced but not yet accepting applications), or "closed" (no longer accepting applications). IMPORTANT: Status values must be lowercase only.'
+					),
 				isNational: z
 					.boolean()
 					.optional()
@@ -100,21 +161,26 @@ const detailProcessingSchema = z.object({
 					.number()
 					.min(1)
 					.max(10)
-					.describe('Relevance score from 1-10'),
+					.describe(
+						'Relevance score from 1-10. This MUST be exactly equal to this sum calculated: [Focus Areas] + [Applicability] + [Funding Type] + [Matching Requirements] + [Project Type]. Do not assign a score that differs from this calculation.'
+					),
 				relevanceReasoning: z
 					.string()
 					.optional()
 					.describe(
 						'Detailed explanation of the relevance score. MUST INCLUDE: ' +
-							'1) Point-by-point scoring breakdown (Focus areas: X/5, ' +
-							'Applicability: X/3, Funding amount: X/2), ' +
-							'2) Which specific data fields from the opportunity you examined, and ' +
-							'3) Direct quotes or values from these fields that influenced your scoring.'
+							'1) Point-by-point scoring breakdown (Focus Areas: X/3, ' +
+							'Applicability: X/3, Funding Type Quality: X/1, Matching Requirements: X/1, Project Type: X/2), ' +
+							'2) Which specific data fields from the opportunity you examined, ' +
+							'3) Direct quotes or values from these fields that influenced your scoring, ' +
+							'4) The final total relevance score calculation showing the sum of all individual scores, and ' +
+							'5) An explicit calculation showing the math (e.g., "3.0 + 2.5 + 1.0 + 1.0 + 2.0 = 9.5 points"). The total MUST match this calculation exactly. ' +
+							'6) VERIFICATION STEP: Double-check your math. Add up each component score again to verify the total is correct.'
 					),
 				actionableSummary: z
 					.string()
 					.describe(
-						'A single concise paragraph (2-3 sentences) that clearly states: 1) the funding source, 2) the amount available, 3) who can apply, 4) specifically what the money is for, and 5) when applications are due. Example: "This is a $5M grant from the Department of Energy for schools to implement building performance standards. Applications are due August 2025."'
+						'A single concise paragraph (2-3 sentences) that clearly states: 1) the funding source, 2) the total funding available for the entire program and/or per award, 3) who can apply, 4) specifically what the money is for, and 5) when applications are due. Example: "This is a $5M grant from the Department of Energy for schools to implement building performance standards. School districts can receive up to $500K each, and applications are due August 2025."'
 					),
 			})
 		)
@@ -132,7 +198,10 @@ const detailProcessingSchema = z.object({
 				),
 			averageScoreAfterFiltering: z
 				.number()
-				.describe('Average relevance score after filtering'),
+				.nullable()
+				.describe(
+					'Average relevance score after filtering (null if none passed)'
+				),
 			filterReasoning: z
 				.string()
 				.describe('Summary of why items were filtered'),
@@ -144,11 +213,11 @@ const detailProcessingSchema = z.object({
 const detailProcessorPromptTemplateString = `You are an expert funding opportunity analyst for energy and infrastructure projects.
 Your task is to perform a detailed analysis of funding opportunities to determine their relevance and value to our clients.
 
-Our organization helps the following types of entities secure funding:
+These are our client types:
 - K-12 schools
 - Community colleges and universities
 - Municipal, county, and state governments
-- Federal facilities
+- Federal agencies
 - Tribal governments
 - Nonprofit organizations
 - For-profit businesses
@@ -163,6 +232,8 @@ We focus on funding in these categories:
 - Community & Economic Development (e.g., revitalization, workforce development)
 - Infrastructure & Planning (e.g., sustainable infrastructure, master planning)
 
+
+
 For each opportunity, analyze:
 1. Eligibility requirements - Do they match our client types?
 2. Funding purpose - Does it align with our focus areas?
@@ -171,43 +242,105 @@ For each opportunity, analyze:
 5. Matching requirements - Are they reasonable for our clients?
 6. Application complexity - Is it worth the effort?
 
-For each opportunity in the provided list, assign a relevance score from 1-10 based on:
-1. Alignment with our focus areas (0-5 points):
-   - 0 points: No alignment with any focus area
-   - 1 point: Minimal alignment with one focus area
-   - 2 points: Moderate alignment with one focus area
-   - 3 points: Strong alignment with one focus area or moderate alignment with multiple areas
-   - 4 points: Strong alignment with multiple focus areas
-   - 5 points: Perfect alignment with multiple focus areas and strategic priorities
+## Relevance Scoring System
 
-2. Applicability to our client types (0-3 points):
-   - 0 points: Not applicable to any of our client types
-   - 3 points: Applicable to any of our client types
+For each funding opportunity, calculate a relevance score out of 10 points based on the following criteria:
 
-3. Funding amount and accessibility (0-2 points):
-   - 0 points: Insufficient funding or excessive match requirements
-   - 1 point: Moderate funding with reasonable match requirements
-   - 2 points: Substantial funding with minimal match requirements
+1. Alignment with Focus Areas (0-3 points)
+   - 3.0 points: Strong alignment with energy efficiency
+   - 2.5 points: Strong alignment with one or more of our focus areas
+   - 2.0 points: Moderate alignment with one or more focus areas
+   - 1.0 point: Minimal alignment with one or more focus areas
+   - 0.0 points: No alignment with any focus area
+
+2. Applicability to Client Types (0-3 points)
+   - 3.0 points: Applicable to K-12 schools
+   - 2.5 points: Applicable to one or more of our client types outside of k-12 schools (federal agencies, municipalities, universities, etc.)
+   - 0.0 points: Not applicable to any of our client types
+
+3. Funding Type Quality (0-1 point)
+   - 1.0 point: Pure grant
+   - 0.5 points: Any other funding type (rebate, loan, tax incentive, etc.)
+
+4. Matching Requirements (0-1 point)
+   - 1.0 point: No matching requirements
+   - 0.0 points: Any matching requirements
+
+5. Project Type (0-2 points)
+   - 2.0 points: Focuses on construction, renovations, HVAC systems, lighting, roofing, flooring, windows, or solar
+   - 1.0 point: Focuses on plumbing, water conservation, or electrical systems
+   - 0.0 points: Focuses on other areas or services only (research, planning, assessment only)
+
+### Relevance Score Calculation
+You MUST calculate the relevance score using simple addition:
+1. Focus Areas score: [X.X points]
+2. Client Types score: [X.X points]
+3. Funding Type score: [X.X points]
+4. Matching Requirements score: [X.X points]
+5. Project Type score: [X.X points]
+6. Relevance Score = [Focus Areas] + [Client Types] + [Funding Type] + [Matching Requirements] + [Project Type] = [X.X] points
+
+MISSING INFORMATION GUIDANCE:
+When information is missing for any scoring category, assume the most favorable condition:
+- No matching requirement data → Assume no match required (1/1)
+- No funding type specified → Assume pure grant (1/1)
+- No project type details → Assume focuses on high-value project types (2/2)
+
+For each scoring category, if data is not available, explicitly state "Data not available" in both the Reasoning and Evidence sections, then apply the favorable assumption as specified above.
+
+IMPORTANT FOR RELEVANCE REASONING:
+When explaining your relevance score, you MUST use this exact format:
+
+SCORING CALCULATION:
+[Focus Areas]
+Score: ___ /3.0 points
+Reasoning: (explain which focus areas aligned, or state "Data not available")
+Evidence: "quote from source" or "Data not available - assuming favorable condition"
+
+[Applicability]
+Score: ___ /3.0 points
+Reasoning: (specify which client types, or state "Data not available". If you give a score of 0.0, you must provide a list of all of our client types. if you don't know our client types, state "i don't know our client types, please provide a list of our client types")
+Evidence: "quote from source" or "Data not available - assuming favorable condition"
+
+[Funding Type]
+Score: ___ /1.0 points
+Reasoning: (note what type of funding it is, or state "Data not available")
+Evidence: "quote from source" or "Data not available - assuming favorable condition"
+
+[Matching Requirements]
+Score: ___ /1.0 points
+Reasoning: (note any match requirements, or state "Data not available")
+Evidence: "quote from source" or "Data not available - assuming favorable condition"
+
+[Project Type]
+Score: ___ /2.0 points
+Reasoning: (specify which project types are covered and their point values, or state "Data not available")
+Evidence: "quote from source" or "Data not available - assuming favorable condition"
+
+[Total Relevance Score]
+score: ___ /10.0 points
+Reasoning: [focus areas] + [applicability] + [funding type] + [matching requirements] + [project type]
+----------------------------------------
+
+
+You MUST fill in each blank with the exact numerical score you've determined. The total MUST be the precise sum of the individual scores above.
+
+DATA FIELDS EXAMINED:
+- List each field from the API response you examined
+- Include the specific values found
+
+This structured format is required for every opportunity you analyze. The total score MUST match the sum of the individual components.
+
+
 
 Only include opportunities with a {minRelevanceScore} or higher in your final output. In the absence of information, make assumptions to lean on the side of inclusion.
 
 IMPORTANT: Calculate and return the average relevance score for ALL opportunities BEFORE filtering. This should be the mean of all scores you assigned, both for opportunities that pass and fail the minimum threshold filter.
 
-IMPORTANT FOR RELEVANCE REASONING:
-When explaining your relevance score, you MUST include:
-1. DETAILED SCORING BREAKDOWN - Show exactly how you calculated the score:
-   - Focus areas: X/5 points (explain which focus areas aligned)
-   - Applicability to client types: X/3 points (specify which client types)
-   - Funding amount and accessibility: X/2 points (note amount and any match requirements)
-2. DATA FIELDS EXAMINED - Explicitly identify which specific fields you examined (e.g., title, description, eligibility criteria)
-3. EVIDENCE - Include direct quotes or values from these fields that influenced your scoring
-
-This detailed breakdown helps us verify that you're analyzing the right data and understand your decision-making process.
-
 ACTIONABLE SUMMARY REQUIREMENT:
 For each opportunity, provide a concise "actionable summary" in a single paragraph (2-3 sentences) that includes:
 1. The funding source (specific agency or organization)
-2. The amount available (total and/or per award)
+2. The total funding available for the entire program and/or per award
 3. Who can apply (specific eligible entities)
 4. SPECIFICALLY what the money is for (the exact activities or projects to be funded)
 5. When applications are due (specific deadline)
@@ -229,8 +362,24 @@ For each selected opportunity, provide:
 6. Any notable restrictions or requirements
 7. Brief reasoning for the relevance score and inclusion
 
+${generateTaxonomyInstruction(
+	'ELIGIBLE_PROJECT_TYPES',
+	'eligible project types'
+)}
+
+${generateTaxonomyInstruction('ELIGIBLE_APPLICANTS', 'eligible applicants')}
+
+${generateTaxonomyInstruction('CATEGORIES', 'funding categories')}
+
+${generateTaxonomyInstruction('FUNDING_TYPES', 'funding types')}
+
+
+${generateLocationEligibilityInstruction()}
+
 Source Information:
 {sourceInfo}
+
+
 
 Detailed Opportunities:
 {detailedOpportunities}
@@ -311,11 +460,12 @@ export async function detailProcessorAgent(
 
 	// Default configuration
 	const defaultConfig = {
-		minScoreThreshold: 7,
+		minScoreThreshold: 6,
 		tokenThreshold: 10000,
 		model: 'claude-3-5-haiku-20241022',
 		temperature: 0,
 		maxTokensPerRequest: 16000,
+		maxConcurrent: 5, // Control parallel processing concurrency
 	};
 
 	// Merge with provided config
@@ -348,6 +498,7 @@ export async function detailProcessorAgent(
 				chunkMetrics: [],
 				filterReasoning: '',
 			},
+			metrics: {}, // For backward compatibility
 		};
 
 		console.log('\n=== Starting Detail Processing ===');
@@ -362,12 +513,11 @@ export async function detailProcessorAgent(
 		);
 		console.log(`Split opportunities into ${chunks.length} chunks`);
 
-		// Process each chunk
-		for (let i = 0; i < chunks.length; i++) {
-			const chunk = chunks[i];
+		// Define the function to process a single chunk
+		const processChunk = async (chunk, chunkIndex) => {
 			const chunkStartTime = Date.now();
 			console.log(
-				`\nProcessing chunk ${i + 1}/${chunks.length} with ${
+				`\nProcessing chunk ${chunkIndex + 1}/${chunks.length} with ${
 					chunk.length
 				} opportunities...`
 			);
@@ -380,104 +530,150 @@ export async function detailProcessorAgent(
 				sourceInfo: JSON.stringify(source, null, 2),
 			});
 
-			// Get the LLM response
-			const response = await model.invoke(prompt);
+			try {
+				// Get the LLM response
+				const response = await model.invoke(prompt);
 
-			// Parse the response
-			const result = await parser.parse(response.content);
+				// Parse the response
+				const result = await parser.parse(response.content);
 
-			// Calculate chunk metrics
-			const chunkTime = Date.now() - chunkStartTime;
-			const chunkMetrics = {
-				chunkIndex: i + 1,
-				processedOpportunities: chunk.length,
-				passedCount: result.opportunities.length,
-				timeSeconds: (chunkTime / 1000).toFixed(1),
-			};
+				// Calculate chunk metrics
+				const chunkTime = Date.now() - chunkStartTime;
+				const chunkMetrics = {
+					chunkIndex: chunkIndex + 1,
+					processedOpportunities: chunk.length,
+					passedCount: result.opportunities.length,
+					timeSeconds: (chunkTime / 1000).toFixed(1),
+					status: 'success',
+				};
 
-			console.log(
-				`Chunk ${i + 1} completed: ${result.opportunities.length}/${
-					chunk.length
-				} opportunities passed filtering (${chunkMetrics.timeSeconds}s)`
-			);
+				console.log(
+					`Chunk ${chunkIndex + 1} completed successfully: ${
+						result.opportunities.length
+					}/${chunk.length} opportunities passed filtering (${
+						chunkMetrics.timeSeconds
+					}s)`
+				);
 
-			// Add chunk metrics to the results
-			allResults.processingMetrics.chunkMetrics.push(chunkMetrics);
+				return {
+					opportunities: result.opportunities,
+					processingMetrics: {
+						...result.processingMetrics,
+						chunkMetrics,
+					},
+				};
+			} catch (error) {
+				// Calculate chunk metrics for failed chunk
+				const chunkTime = Date.now() - chunkStartTime;
+				const chunkMetrics = {
+					chunkIndex: chunkIndex + 1,
+					processedOpportunities: chunk.length,
+					passedCount: 0,
+					timeSeconds: (chunkTime / 1000).toFixed(1),
+					status: 'failed',
+					error: error.message,
+				};
 
-			// Add the results to the combined results
-			allResults.opportunities = [
-				...allResults.opportunities,
-				...result.opportunities,
-			];
+				console.error(
+					`Error processing chunk ${chunkIndex + 1}/${chunks.length}: ${
+						error.message
+					}`
+				);
 
-			// Update the processing metrics from LLM response
-			if (result.processingMetrics) {
-				allResults.processingMetrics.passedCount +=
-					result.processingMetrics.passedCount;
-				allResults.processingMetrics.rejectedCount +=
-					result.processingMetrics.rejectedCount;
+				return {
+					opportunities: [],
+					processingMetrics: {
+						passedCount: 0,
+						rejectedCount: chunk.length,
+						rejectionReasons: ['Error processing chunk'],
+						chunkMetrics,
+						error: error.message,
+					},
+				};
+			}
+		};
 
-				// Collect unique rejection reasons
-				if (result.processingMetrics.rejectionReasons) {
-					allResults.processingMetrics.rejectionReasons = [
-						...new Set([
-							...allResults.processingMetrics.rejectionReasons,
-							...result.processingMetrics.rejectionReasons,
-						]),
-					];
-				}
+		// Process all chunks in parallel with controlled concurrency
+		const chunkResults = await processChunksInParallel(
+			chunks,
+			processChunk,
+			processingConfig.maxConcurrent
+		);
 
-				// Update filter reasoning
-				if (result.processingMetrics.filterReasoning) {
-					if (!allResults.processingMetrics.filterReasoning) {
-						allResults.processingMetrics.filterReasoning =
-							result.processingMetrics.filterReasoning;
-					} else if (
-						!allResults.processingMetrics.filterReasoning.includes(
-							result.processingMetrics.filterReasoning
-						)
-					) {
-						allResults.processingMetrics.filterReasoning +=
-							'; ' + result.processingMetrics.filterReasoning;
-					}
-				}
+		// Combine all results
+		for (const result of chunkResults) {
+			// Add filtered opportunities to combined results
+			allResults.opportunities.push(...result.opportunities);
 
-				// Track token usage if provided
-				if (result.processingMetrics.tokenUsage) {
-					allResults.processingMetrics.tokenUsage +=
-						result.processingMetrics.tokenUsage;
-				}
+			// Update metrics
+			allResults.processingMetrics.passedCount +=
+				result.processingMetrics.passedCount || 0;
+			allResults.processingMetrics.rejectedCount +=
+				result.processingMetrics.rejectedCount || 0;
 
-				// Update average score before filtering from LLM response
-				if (
-					result.processingMetrics.averageScoreBeforeFiltering !== undefined
+			// Add unique rejection reasons
+			if (result.processingMetrics.rejectionReasons) {
+				allResults.processingMetrics.rejectionReasons = [
+					...new Set([
+						...allResults.processingMetrics.rejectionReasons,
+						...result.processingMetrics.rejectionReasons,
+					]),
+				];
+			}
+
+			// Update filter reasoning
+			if (result.processingMetrics.filterReasoning) {
+				if (!allResults.processingMetrics.filterReasoning) {
+					allResults.processingMetrics.filterReasoning =
+						result.processingMetrics.filterReasoning;
+				} else if (
+					!allResults.processingMetrics.filterReasoning.includes(
+						result.processingMetrics.filterReasoning
+					)
 				) {
-					// If this is the first chunk with this metric, just use it
-					if (allResults.processingMetrics.averageScoreBeforeFiltering === 0) {
-						allResults.processingMetrics.averageScoreBeforeFiltering =
-							result.processingMetrics.averageScoreBeforeFiltering;
-					} else {
-						// For subsequent chunks, compute a weighted average based on chunk size
-						const currentTotal =
-							allResults.processingMetrics.averageScoreBeforeFiltering *
-							(allResults.processingMetrics.inputCount - chunk.length);
-
-						const newTotal =
-							result.processingMetrics.averageScoreBeforeFiltering *
-							chunk.length;
-
-						allResults.processingMetrics.averageScoreBeforeFiltering =
-							(currentTotal + newTotal) /
-							allResults.processingMetrics.inputCount;
-					}
-
-					console.log(
-						`Updated average score before filtering to: ${allResults.processingMetrics.averageScoreBeforeFiltering.toFixed(
-							2
-						)}`
-					);
+					allResults.processingMetrics.filterReasoning +=
+						'; ' + result.processingMetrics.filterReasoning;
 				}
 			}
+
+			// Track token usage
+			if (result.processingMetrics.tokenUsage) {
+				allResults.processingMetrics.tokenUsage +=
+					result.processingMetrics.tokenUsage;
+			}
+
+			// Add chunk metrics
+			if (result.processingMetrics.chunkMetrics) {
+				allResults.processingMetrics.chunkMetrics.push(
+					result.processingMetrics.chunkMetrics
+				);
+			}
+
+			// Update average score before filtering with weighted approach
+			if (result.processingMetrics.averageScoreBeforeFiltering !== undefined) {
+				// We'll collect all scores and calculate a weighted average after
+				result.processingMetrics._processedCount =
+					result.processingMetrics.passedCount +
+					result.processingMetrics.rejectedCount;
+				result.processingMetrics._weightedScore =
+					result.processingMetrics.averageScoreBeforeFiltering *
+					result.processingMetrics._processedCount;
+			}
+		}
+
+		// Calculate weighted average score before filtering
+		const totalProcessed = chunkResults.reduce(
+			(sum, result) => sum + (result.processingMetrics._processedCount || 0),
+			0
+		);
+		const totalWeightedScore = chunkResults.reduce(
+			(sum, result) => sum + (result.processingMetrics._weightedScore || 0),
+			0
+		);
+
+		if (totalProcessed > 0) {
+			allResults.processingMetrics.averageScoreBeforeFiltering =
+				totalWeightedScore / totalProcessed;
 		}
 
 		// Calculate final average scores from the processed opportunities
@@ -518,40 +714,46 @@ export async function detailProcessorAgent(
 			allResults.processingMetrics.tokenUsage
 		);
 
-		// Log a sample opportunity with actionable summary
+		// Capture raw filtered samples for debugging
 		if (allResults.opportunities.length > 0) {
-			console.log('\n=== Sample Opportunity With Actionable Summary ===');
-			const sampleOpp = allResults.opportunities[0];
-			console.log(`ID: ${sampleOpp.id}`);
-			console.log(`Title: ${sampleOpp.title}`);
-			console.log(`Relevance Score: ${sampleOpp.relevanceScore}`);
-			console.log(`Actionable Summary: ${sampleOpp.actionableSummary}`);
-			console.log('================================================\n');
+			const rawSampleSize = Math.min(3, allResults.opportunities.length);
+			const rawFilteredSamples = [];
+
+			for (let i = 0; i < rawSampleSize; i++) {
+				const rawItem = allResults.opportunities[i];
+				if (typeof rawItem !== 'object' || rawItem === null) continue;
+
+				// Clone the item to avoid reference issues
+				const rawSample = JSON.parse(JSON.stringify(rawItem));
+
+				// Add metadata to identify this as a raw sample
+				rawSample._rawSample = true;
+				rawSample._sampleIndex = i;
+				rawSample._filterStage = 'second';
+
+				// Truncate any unusually large string fields to prevent DB size issues
+				Object.keys(rawSample).forEach((key) => {
+					if (
+						typeof rawSample[key] === 'string' &&
+						rawSample[key].length > 5000
+					) {
+						rawSample[key] =
+							rawSample[key].substring(0, 5000) + '... [truncated]';
+					}
+				});
+
+				rawFilteredSamples.push(rawSample);
+			}
+
+			// Add raw samples to metrics
+			allResults.metrics.rawFilteredSamples = rawFilteredSamples;
+			// For backward compatibility
+			allResults.processingMetrics.rawFilteredSamples = rawFilteredSamples;
 		}
 
-		// Log the API activity
-		await logApiActivity(supabase, source.id, 'detail_processing', 'success', {
-			inputCount: detailedOpportunities.length,
-			outputCount: allResults.opportunities.length,
-			executionTime,
-		});
-
-		// Update run with second stage filter metrics if runManager is provided
+		// Update run manager with metrics
 		if (runManager) {
-			await runManager.updateSecondStageFilter({
-				inputCount: detailedOpportunities.length,
-				passedCount: allResults.opportunities.length,
-				rejectedCount: allResults.processingMetrics.rejectedCount,
-				rejectionReasons: allResults.processingMetrics.rejectionReasons,
-				averageScoreBeforeFiltering:
-					allResults.processingMetrics.averageScoreBeforeFiltering,
-				averageScoreAfterFiltering:
-					allResults.processingMetrics.averageScoreAfterFiltering,
-				processingTime: executionTime,
-				filterReasoning: allResults.processingMetrics.filterReasoning,
-				sampleOpportunities: allResults.opportunities.slice(0, 3),
-				chunkMetrics: allResults.processingMetrics.chunkMetrics,
-			});
+			await runManager.updateSecondStageFilter(allResults.processingMetrics);
 		}
 
 		return allResults;

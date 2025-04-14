@@ -7,11 +7,22 @@ import {
 	CardHeader,
 	CardTitle,
 } from '@/app/components/ui/card';
+import { Alert, AlertDescription, AlertTitle } from '@/app/components/ui/alert';
+import { AlertTriangle } from 'lucide-react';
 
 export default function ClientsPage() {
 	return (
 		<MainLayout>
 			<div className='container py-10'>
+				<Alert variant='warning' className='mb-6 bg-amber-50 border-amber-300'>
+					<AlertTriangle className='h-4 w-4 text-amber-500' />
+					<AlertTitle className='text-amber-600'>Demo Data</AlertTitle>
+					<AlertDescription className='text-amber-700'>
+						This section currently displays sample data for demonstration
+						purposes only. Live client matching data integration is coming soon.
+					</AlertDescription>
+				</Alert>
+
 				<div className='flex justify-between items-center mb-6'>
 					<h1 className='text-3xl font-bold'>Client Matching</h1>
 					<div className='flex gap-2'>
@@ -21,8 +32,8 @@ export default function ClientsPage() {
 				</div>
 
 				<div className='grid gap-6 md:grid-cols-2 lg:grid-cols-3 mb-8'>
-					{clients.map((client, index) => (
-						<ClientCard key={index} client={client} />
+					{clients.map((client) => (
+						<ClientCard key={`${client.type}-${client.name}`} client={client} />
 					))}
 				</div>
 			</div>
@@ -47,9 +58,9 @@ function ClientCard({ client }) {
 			<CardContent>
 				<div className='space-y-4'>
 					<div className='flex flex-wrap gap-1 mb-2'>
-						{tags.map((tag, index) => (
+						{tags.map((tag) => (
 							<span
-								key={index}
+								key={`${name}-${tag}`}
 								className='text-xs bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 px-2 py-1 rounded-full'>
 								{tag}
 							</span>
@@ -61,9 +72,9 @@ function ClientCard({ client }) {
 							Top Opportunity Matches ({matchCount})
 						</div>
 						<ul className='space-y-2'>
-							{topMatches.map((match, index) => (
+							{topMatches.map((match) => (
 								<li
-									key={index}
+									key={`${name}-${match.title}`}
 									className='text-sm border-l-2 border-blue-500 pl-3 py-1'>
 									<div className='font-medium'>{match.title}</div>
 									<div className='flex justify-between items-center'>

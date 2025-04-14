@@ -1,6 +1,7 @@
 ---
-description: context maintainance
+description: rules for maintaining context
 globs: 
+alwaysApply: false
 ---
 
 # Your rule content

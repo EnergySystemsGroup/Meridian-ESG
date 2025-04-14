@@ -2,7 +2,7 @@ import { RunManager } from './runManager';
 import { sourceManagerAgent } from '@/app/lib/agents/sourceManagerAgent';
 import { apiHandlerAgent } from '@/app/lib/agents/apiHandlerAgent';
 import { processDetailedInfo } from '@/app/lib/agents/detailProcessorAgent';
-import { processUnprocessedOpportunities } from '@/app/lib/agents/dataProcessorAgent';
+import { processOpportunitiesBatch } from '@/app/lib/agents/dataProcessorAgent';
 import { createSupabaseClient, logApiActivity } from '@/app/lib/supabase';
 
 /**
@@ -122,37 +122,127 @@ export async function processApiSource(sourceId = null, runId = null) {
 			`API Handler completed with ${handlerResult.opportunities.length} opportunities`
 		);
 
-		// Step 3: Process the opportunities with the Detail Processor Agent
-		console.log(
-			`Processing ${handlerResult.opportunities.length} opportunities with Detail Processor`
-		);
-		await runManager.updateStageStatus('detail_processor_status', 'processing');
-		console.time('processDetailedInfo');
-		const detailResult = await processDetailedInfo(
-			handlerResult.opportunities,
-			source,
-			runManager
-		);
-		console.timeEnd('processDetailedInfo');
-		console.log(
-			`Detail Processor completed with ${detailResult.opportunities.length} filtered opportunities`
-		);
+		// Check if detail processing is enabled for this source
+		const isDetailEnabled = processingDetails.detailConfig?.enabled;
+		let detailResult = {
+			opportunities: handlerResult.opportunities,
+			processingMetrics: null,
+		};
+
+		if (isDetailEnabled) {
+			// Step 3: Process the opportunities with the Detail Processor Agent
+			console.log(
+				`Processing ${handlerResult.opportunities.length} opportunities with Detail Processor`
+			);
+			await runManager.updateStageStatus(
+				'detail_processor_status',
+				'processing'
+			);
+			console.time('processDetailedInfo');
+			detailResult = await processDetailedInfo(
+				handlerResult.opportunities,
+				source,
+				runManager
+			);
+			console.timeEnd('processDetailedInfo');
+			console.log(
+				`Detail Processor completed with ${detailResult.opportunities.length} filtered opportunities`
+			);
+		} else {
+			console.log(
+				'Detail processing is disabled for this source, skipping detail processor'
+			);
+			await runManager.updateStageStatus('detail_processor_status', 'skipped');
+		}
 
 		// Step 4: Process the filtered opportunities with the Data Processor Agent
 		console.log(
 			`Processing ${detailResult.opportunities.length} filtered opportunities with Data Processor`
 		);
 		await runManager.updateStageStatus('data_processor_status', 'processing');
-		console.time('processUnprocessedOpportunities');
-		const storageResult = await processUnprocessedOpportunities(
+		console.time('processOpportunitiesBatch');
+
+		// Create a map of opportunity IDs to their raw response IDs
+		const rawResponseIdMap = new Map();
+
+		console.log(
+			'Debug - handlerResult.rawResponseIds:',
+			handlerResult.rawResponseIds
+		);
+		console.log(
+			'Debug - handlerResult.singleRawResponseId:',
+			handlerResult.singleRawResponseId
+		);
+
+		if (
+			handlerResult.rawResponseIds &&
+			handlerResult.rawResponseIds.length > 0
+		) {
+			// Use the new rawResponseIds array which maps each opportunity to its raw response
+			handlerResult.rawResponseIds.forEach((item) => {
+				if (item.itemId && item.rawResponseId) {
+					// Convert itemId to string to ensure consistent format
+					const itemIdString = String(item.itemId);
+					rawResponseIdMap.set(itemIdString, item.rawResponseId);
+					console.log(
+						`Debug - Mapping opportunity ID ${itemIdString} to raw response ID ${item.rawResponseId}`
+					);
+				}
+			});
+
+			console.log(
+				`Created raw response ID map for ${rawResponseIdMap.size} opportunities`
+			);
+		} else if (handlerResult.singleRawResponseId) {
+			// Fallback to the legacy single rawResponseId for all opportunities
+			console.log(
+				`Using single raw response ID for all opportunities: ${handlerResult.singleRawResponseId}`
+			);
+		}
+
+		// For each opportunity, find its corresponding raw response ID
+		const opportunitiesWithRawIds = detailResult.opportunities.map(
+			(opportunity) => {
+				// Ensure opportunity.id is converted to string for consistent matching
+				const opportunityIdString = opportunity.id
+					? String(opportunity.id)
+					: null;
+				const rawResponseId = opportunityIdString
+					? rawResponseIdMap.get(opportunityIdString) ||
+					  handlerResult.singleRawResponseId
+					: handlerResult.singleRawResponseId;
+
+				console.log(
+					`Debug - Opportunity ID ${opportunityIdString} mapped to raw response ID ${rawResponseId}`
+				);
+
+				return {
+					opportunity,
+					rawResponseId,
+				};
+			}
+		);
+
+		// Log the first few opportunities with their raw IDs
+		console.log(
+			'Debug - First 3 opportunitiesWithRawIds:',
+			opportunitiesWithRawIds.slice(0, 3).map((o) => ({
+				id: o.opportunity.id,
+				title: o.opportunity.title,
+				rawResponseId: o.rawResponseId,
+			}))
+		);
+
+		// Process the opportunities with their specific raw response IDs
+		const storageResult = await processOpportunitiesBatch(
+			opportunitiesWithRawIds,
 			source.id,
-			handlerResult.rawApiResponse,
-			handlerResult.requestDetails,
+			handlerResult.singleRawResponseId, // For backwards compatibility
 			runManager
 		);
-		console.timeEnd('processUnprocessedOpportunities');
+		console.timeEnd('processOpportunitiesBatch');
 		console.log(
-			`Data Processor completed with ${storageResult.metrics.storedCount} stored opportunities`
+			`Data Processor completed with ${storageResult.metrics.new} new opportunities and ${storageResult.metrics.updated} updated opportunities`
 		);
 
 		// Calculate total execution time
@@ -172,10 +262,12 @@ export async function processApiSource(sourceId = null, runId = null) {
 			{
 				initialCount: handlerResult.initialApiMetrics.totalHitCount,
 				firstStageCount: handlerResult.opportunities.length,
-				secondStageCount: detailResult.opportunities.length,
-				storedCount: storageResult.metrics.storedCount,
-				updatedCount: storageResult.metrics.updatedCount,
-				skippedCount: storageResult.metrics.skippedCount,
+				secondStageCount: isDetailEnabled
+					? detailResult.opportunities.length
+					: handlerResult.opportunities.length,
+				newCount: storageResult.metrics.new,
+				updatedCount: storageResult.metrics.updated,
+				ignoredCount: storageResult.metrics.ignored,
 				executionTime,
 			}
 		);
@@ -190,9 +282,19 @@ export async function processApiSource(sourceId = null, runId = null) {
 			metrics: {
 				initialApiMetrics: handlerResult.initialApiMetrics,
 				firstStageMetrics: handlerResult.firstStageMetrics,
-				detailApiMetrics: handlerResult.detailApiMetrics,
-				secondStageMetrics: detailResult.processingMetrics,
-				storageMetrics: storageResult.metrics,
+				detailApiMetrics: isDetailEnabled
+					? handlerResult.detailApiMetrics
+					: null,
+				secondStageMetrics: isDetailEnabled
+					? detailResult.processingMetrics
+					: null,
+				storageMetrics: {
+					new: storageResult.metrics.new,
+					updated: storageResult.metrics.updated,
+					ignored: storageResult.metrics.ignored,
+					total: storageResult.metrics.total,
+					processingTime: storageResult.metrics.processingTime,
+				},
 				totalExecutionTime: executionTime,
 			},
 			runId: runManager.runId,

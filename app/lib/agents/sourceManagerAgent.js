@@ -47,6 +47,8 @@ const sourceProcessingSchema = z.object({
 			cursorParam: z.string().optional(),
 			pageSize: z.number().optional(),
 			maxPages: z.number().optional(),
+			inBody: z.boolean().optional(),
+			paginationInBody: z.boolean().optional(),
 		})
 		.describe('Configuration for handling paginated responses'),
 	detailConfig: z
@@ -59,7 +61,8 @@ const sourceProcessingSchema = z.object({
 			idParam: z.string().optional(),
 			responseDataPath: z
 				.string()
-				.optional()
+				.nullable()
+				.default('data')
 				.describe(
 					'Path to extract data from the detail response (e.g., "data" or "results.data")'
 				),

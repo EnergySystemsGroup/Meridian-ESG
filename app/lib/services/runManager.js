@@ -227,7 +227,13 @@ export class RunManager {
 			'data_processor_status',
 		];
 
-		const validStatuses = ['pending', 'processing', 'completed', 'failed'];
+		const validStatuses = [
+			'pending',
+			'processing',
+			'completed',
+			'failed',
+			'skipped',
+		];
 
 		if (!validStages.includes(stage)) {
 			throw new Error(
@@ -265,7 +271,8 @@ export class RunManager {
 			if (
 				currentRun.source_manager_status === 'completed' &&
 				currentRun.api_handler_status === 'completed' &&
-				currentRun.detail_processor_status === 'completed'
+				(currentRun.detail_processor_status === 'completed' ||
+					currentRun.detail_processor_status === 'skipped')
 			) {
 				updateData.status = 'completed';
 				updateData.completed_at = new Date().toISOString();

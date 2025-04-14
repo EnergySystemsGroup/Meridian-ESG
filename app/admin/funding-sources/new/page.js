@@ -40,7 +40,7 @@ export default function NewSourcePage() {
 				offsetParam: 'offset',
 				pageSize: 100,
 				maxPages: 5,
-				paginationInBody: false,
+				inBody: false,
 			},
 			detail_config: {
 				enabled: false,
@@ -1049,10 +1049,8 @@ export default function NewSourcePage() {
 								<label className='inline-flex items-center'>
 									<input
 										type='checkbox'
-										name='paginationInBody'
-										checked={
-											formData.configurations.pagination_config.paginationInBody
-										}
+										name='inBody'
+										checked={formData.configurations.pagination_config.inBody}
 										onChange={handlePaginationConfigChange}
 										className='mr-2'
 									/>
