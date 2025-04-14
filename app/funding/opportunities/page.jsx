@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, Suspense } from 'react';
 import MainLayout from '@/app/components/layout/main-layout';
 import { Button } from '@/app/components/ui/button';
 import {
@@ -68,6 +68,23 @@ const getStatusColor = (status) => {
 };
 
 export default function OpportunitiesPage() {
+	return (
+		<Suspense
+			fallback={
+				<MainLayout>
+					<div className='container py-10'>
+						<div className='flex justify-center items-center py-12'>
+							<div className='animate-spin rounded-full h-12 w-12 border-b-2 border-blue-700' />
+						</div>
+					</div>
+				</MainLayout>
+			}>
+			<OpportunitiesContent />
+		</Suspense>
+	);
+}
+
+function OpportunitiesContent() {
 	const [opportunities, setOpportunities] = useState([]);
 	const [loading, setLoading] = useState(false); // Internal fetch loading state
 	const [isPageLoading, setIsPageLoading] = useState(true); // Overall page load state
