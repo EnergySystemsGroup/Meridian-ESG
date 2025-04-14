@@ -853,6 +853,7 @@ export async function processOpportunitiesBatch(
 						funding_source_id: 'funding_source_id',
 						relevance_score: 'relevanceScore',
 						relevance_reasoning: 'relevanceReasoning',
+						notes: 'notes',
 					};
 
 					// Only include critical fields that have changed
