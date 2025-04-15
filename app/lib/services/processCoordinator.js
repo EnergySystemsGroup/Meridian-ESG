@@ -32,6 +32,11 @@ export async function processApiSource(sourceId = null, runId = null) {
 				.eq('id', sourceId)
 				.single();
 
+			if (!source) {
+				console.error(`No source found with ID: ${sourceId}`);
+				throw new Error(`No source found with ID: ${sourceId}`);
+			}
+
 			if (error) {
 				console.error(`Error fetching source: ${error.message}`);
 				throw error;
