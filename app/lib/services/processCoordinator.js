@@ -32,6 +32,8 @@ export async function processApiSource(sourceId = null, runId = null) {
 				.eq('id', sourceId)
 				.single();
 
+			console.log('this is the source from processCoordinator', source);
+
 			if (!source) {
 				console.error(`No source found with ID: ${sourceId}`);
 				throw new Error(`No source found with ID: ${sourceId}`);
