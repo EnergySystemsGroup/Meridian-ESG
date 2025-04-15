@@ -16,6 +16,8 @@ export async function processApiSource(sourceId = null, runId = null) {
 	const supabase = createSupabaseClient();
 	let runManager = null;
 
+	console.log('this is supabase', supabase);
+
 	try {
 		console.log(
 			`Starting processApiSource with sourceId: ${sourceId}, runId: ${runId}`
