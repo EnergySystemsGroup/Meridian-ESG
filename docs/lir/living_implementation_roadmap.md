@@ -6,6 +6,49 @@ This document tracks the implementation status of all features in the Funding In
 
 This section highlights the highest priority tasks to be completed next:
 
+### PHASE 1: Agent Architecture V2 Refactoring (HIGHEST PRIORITY)
+
+**Critical Infrastructure (Must Complete First):**
+1. **🔥 ProcessCoordinatorV2** - Main orchestrator that coordinates all v2 agents
+2. **🔥 RunManagerV2** - Updated run tracking with new stage structure for v2 pipeline  
+3. **🔥 AnthropicClient** - Direct SDK implementation (no LangChain/Zod overhead)
+4. **🔥 Feature Flags System** - Traffic routing infrastructure between v1/v2 systems
+
+**Core Agent Development (Priority Order):**
+5. **SourceOrchestrator** - Replaces sourceManagerAgent with streamlined analysis
+6. **ApiCollector** - Replaces apiHandlerAgent, handles data fetching and immediate detail calls
+7. **ScoringAgent** - Combines relevance/eligibility/final scoring in focused micro-agents:
+   - **RelevanceFilter** - "Is this energy-related?" (HIGH/MEDIUM/LOW)
+   - **EligibilityFilter** - "Can our clients apply?" (YES/NO + reason)
+   - **FinalScoring** - "Recommend?" (true/false + summary + concerns)
+8. **DataProcessor** - Enhanced version for final storage
+
+**Supporting Infrastructure:**
+9. **RoutingService** - Traffic routing between v1/v2 systems during migration
+10. **Performance Monitoring** - Built-in tracking for tokens, timing, success rates
+11. **Error Handling** - Graceful fallbacks and retry logic
+
+**Testing & Validation:**
+12. **Unit Tests** - Individual agent testing with mocks
+13. **Integration Tests** - End-to-end pipeline testing  
+14. **Performance Benchmarks** - Validate 60-80% improvement targets
+15. **Migration Comparison Tools** - v1 vs v2 output validation
+
+**Database Updates:**
+16. **api_source_runs_v2 Table** - New run tracking structure
+17. **New Stage Columns** - Support for v2 pipeline stages
+18. **Migration Scripts** - Safe data structure updates
+
+**Success Criteria for Phase 1:**
+- [ ] All new agents pass unit tests
+- [ ] ProcessCoordinatorV2 orchestrates full pipeline with mock data
+- [ ] RunManagerV2 tracks all new pipeline stages correctly  
+- [ ] Integration tests successful with mock data
+- [ ] Performance benchmarks show 60-80% improvement
+- [ ] Zero impact on production system (v1 continues running)
+
+### EXISTING PRIORITY TASKS (AFTER PHASE 1):
+
 1. **Database - Opportunity Notes Field**: Add notes field to the opportunities table, mainly for explanations about min, max and total funding amounts.
 2. **Backend - Amount Estimation**: Update the Zod schema for min and max amount to have the LLM estimate these values if they're not explicitly provided in the source data.
 3. **Backend - Agent Schema Documentation**: Add explanatory notes to the two agent Zod schemas to improve understanding and maintainability.
