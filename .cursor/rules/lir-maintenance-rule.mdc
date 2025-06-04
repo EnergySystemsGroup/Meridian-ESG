@@ -1,7 +1,7 @@
 ---
-description:    lir-maintenance: Update the Living Implementation Roadmap with new requirements and implementation progress
+description: 
 globs: 
-alwaysApply: false
+alwaysApply: true
 ---
 
 # LIR Maintenance Rule

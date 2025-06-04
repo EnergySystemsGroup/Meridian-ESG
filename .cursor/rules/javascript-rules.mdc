@@ -1,7 +1,7 @@
 ---
-description: we use javascript for this project
+description: 
 globs: 
-alwaysApply: false
+alwaysApply: true
 ---
 
 # Your rule content

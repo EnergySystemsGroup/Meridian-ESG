@@ -1,6 +1,7 @@
 ---
-description: pause for major changes
+description: 
 globs: 
+alwaysApply: true
 ---
 
 # Your rule content
