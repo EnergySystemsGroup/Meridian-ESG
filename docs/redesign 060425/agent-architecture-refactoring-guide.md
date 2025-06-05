@@ -399,9 +399,7 @@ export const features = {
 ### High-Level Architecture
 
 ```
-Source Manager → API Collector → Filtering Pipeline → Data Processor
-                                      ↓
-                        [Relevance Filter → Eligibility Filter → Scoring Agent]
+Source Manager → DataProcessingAgent → AnalysisAgent → Filter Function → Data Processor
 ```
 
 ### Detailed Flow with Data Transformations
@@ -435,179 +433,152 @@ Source Manager → API Collector → Filtering Pipeline → Data Processor
 
 ---
 
-#### **Stage 2: API Collector**
-**Purpose**: Fetch raw data and standardize format
+#### **Stage 2: DataProcessingAgent**
+**Purpose**: Collect raw data + field mapping + taxonomy standardization
 
 **Input**: Source + Processing instructions (from Stage 1)
 
 **Process**: 
 1. Makes API calls (handles auth, pagination, rate limiting)
 2. For two-step APIs: Gets IDs first, then fetches details for each ID
-3. Standardizes data format (maps different API field names)
-4. **NO FILTERING** - just clean data preparation
+3. **Field Mapping**: Maps API field names to standard schema
+4. **Taxonomy Standardization**: Standardizes locations, applicant types, project types
+5. **NO SCORING OR CONTENT ENHANCEMENT** - just clean data preparation
 
-**Output**: Standardized opportunities (raw, unfiltered)
+**Output**: Standardized opportunities (raw, unscored)
 ```javascript
-[
-  {
-    id: "grant-123",
-    title: "Energy Efficiency Grants for Schools",
-    description: "Funding for K-12 schools to upgrade HVAC systems and lighting...",
-    totalFunding: 5000000,
-    minAward: 25000,
-    maxAward: 500000,
-    openDate: "2024-01-15",
-    closeDate: "2024-12-31",
-    eligibleApplicants: ["K-12 Schools", "Municipal Government", "State Agencies"],
-    eligibleProjectTypes: ["HVAC", "Solar", "Lighting", "Building Envelope"],
-    fundingType: "grant",
-    url: "https://energy.state.gov/grants/efficiency-schools",
-    matchingRequired: true,
-    matchingPercentage: 25,
-    status: "open",
-    sourceFields: { /* original API field names and values */ }
-  },
-  {
-    id: "grant-456",
-    title: "Clean Water Infrastructure Fund",
-    description: "Municipal water system improvements and conservation...",
-    totalFunding: 2000000,
-    eligibleApplicants: ["Municipal Government", "Water Districts"],
-    eligibleProjectTypes: ["Water Conservation", "Infrastructure"],
-    // ... more fields
+{
+  opportunities: [
+    {
+      id: "grant-123",
+      title: "Energy Efficiency Grants for Schools",
+      description: "Funding for K-12 schools to upgrade HVAC systems...", // Raw from API
+      totalFundingAvailable: 5000000,
+      minimumAward: 25000,
+      maximumAward: 500000,
+      openDate: "2024-01-15",
+      closeDate: "2024-12-31",
+      eligibleApplicants: ["School Districts", "Municipal Government"], // Standardized
+      eligibleProjectTypes: ["HVAC", "Energy Efficiency", "Building Envelope"], // Standardized
+      eligibleLocations: ["CA", "OR", "WA"], // Standardized to state codes
+      fundingType: "grant",
+      url: "https://energy.state.gov/grants/efficiency-schools",
+      matchingRequired: true,
+      matchingPercentage: 25,
+      status: "open",
+      isNational: false,
+      categories: ["Energy", "Infrastructure"], // Standardized
+      tags: ["HVAC", "schools", "efficiency"] // Extracted keywords
+    }
+  ],
+  extractionMetrics: {
+    totalFound: 25,
+    successfullyExtracted: 23,
+    taxonomyMappings: {
+      applicantTypesMapped: 15,
+      projectTypesMapped: 18,
+      locationsMapped: 12,
+      categoriesMapped: 8
+    }
   }
-  // ... more opportunities
-]
+}
 ```
 
 ---
 
-#### **Stage 3: Filtering Pipeline**
-**Purpose**: Evaluate opportunities through focused AI filters
+#### **Stage 3: AnalysisAgent**
+**Purpose**: Content enhancement + systematic scoring
 
-##### **3A. Relevance Filter**
-**Input**: Raw opportunities from API Collector
+**Input**: Standardized opportunities from DataProcessingAgent
 
-**Prompt Focus**: "Is this energy-related for our business?"
+**Process**:
+1. **Content Enhancement**: Generate comprehensive descriptions and summaries
+2. **Systematic Scoring**: Apply objective scoring criteria
+3. **Quality Assessment**: Note any concerns or red flags
+
+**Scoring Criteria**:
 ```javascript
-// Simple, focused prompt - reduces hallucination
-const prompt = `
-Assess this opportunity's relevance to energy services business:
-Title: ${opportunity.title}
-Description: ${opportunity.description?.substring(0, 500)}
-Project Types: ${opportunity.eligibleProjectTypes?.join(', ')}
-
-Rate as: HIGH, MEDIUM, or LOW relevance.
-`;
+const scoringFramework = {
+  projectTypeMatch: 3, // Energy/infrastructure taxonomy match
+  clientTypeMatch: 3,  // Our clients can apply  
+  categoryMatch: 2,    // Target category alignment
+  fundingThreshold: 1, // $1M+ per applicant available
+  fundingType: 1       // Grant vs loan preference
+  // Total possible: 10 points
+};
 ```
 
-**Output**: Opportunities + relevance scores
+**Output**: Enhanced opportunities with scores
 ```javascript
-[
-  {
-    ...opportunity, // all original data preserved
-    relevanceScore: "high",
-    relevanceReasoning: "Direct energy efficiency focus for schools - perfect fit"
-  },
-  {
-    ...opportunity,
-    relevanceScore: "low", 
-    relevanceReasoning: "Water infrastructure - not energy-related"
+{
+  opportunities: [
+    {
+      id: "grant-123",
+      enhancedDescription: "The State Energy Office Energy Efficiency Program provides comprehensive funding for K-12 educational institutions to implement building performance improvements. This multi-year initiative focuses on HVAC system upgrades, lighting retrofits, and building envelope enhancements that demonstrate measurable energy savings...", // AI-enhanced 4 paragraphs
+      actionableSummary: "State Energy Office offers $5M in grants for K-12 schools to upgrade HVAC and lighting systems. School districts can receive $25K-500K each with 25% match required, applications due December 31, 2024.",
+      scoring: {
+        projectTypeMatch: 3,    // Perfect energy efficiency match
+        clientTypeMatch: 3,     // Schools are core clients
+        categoryMatch: 2,       // Energy category alignment
+        fundingThreshold: 0,    // Max award $500K < $1M threshold
+        fundingType: 1,         // Grant funding preferred
+        overallScore: 9         // 3+3+2+0+1 = 9/10
+      },
+      scoringExplanation: "High relevance due to perfect project type match (HVAC/energy efficiency) and client alignment (school districts). Strong category fit for energy programs. Grant funding is preferred. Only limitation is max award of $500K below our $1M threshold.",
+      concerns: [],
+      fundingPerApplicant: 500000 // For filtering logic
+    }
+  ],
+  analysisMetrics: {
+    totalAnalyzed: 23,
+    averageScore: 6.2,
+    scoreDistribution: { high: 8, medium: 12, low: 3 },
+    meetsFundingThreshold: 5,
+    grantFunding: 21
   }
-]
-```
-
-##### **3B. Eligibility Filter** 
-**Input**: Opportunities + relevance scores
-
-**Prompt Focus**: "Can our typical clients apply?"
-```javascript
-const prompt = `
-Can our typical clients apply for this funding?
-Our clients: K-12 schools, municipal/county government, state facilities
-Eligible applicants: ${opportunity.eligibleApplicants?.join(', ')}
-
-Answer: YES or NO with brief reason.
-`;
-```
-
-**Output**: Opportunities + relevance + eligibility scores
-```javascript
-[
-  {
-    ...opportunity,
-    relevanceScore: "high",
-    relevanceReasoning: "Direct energy efficiency focus for schools - perfect fit",
-    clientMatch: "excellent",
-    clientReasoning: "K-12 schools explicitly listed as eligible"
-  },
-  {
-    ...opportunity,
-    relevanceScore: "low",
-    relevanceReasoning: "Water infrastructure - not energy-related", 
-    clientMatch: "good",
-    clientReasoning: "Municipal government eligible but wrong focus area"
-  }
-]
-```
-
-##### **3C. Scoring Agent**
-**Input**: Opportunities + relevance + eligibility scores
-
-**Prompt Focus**: "Should we recommend this? What's the summary?"
-```javascript
-const prompt = `
-Generate final score and actionable summary:
-Title: ${opportunity.title}
-Funding: $${opportunity.totalFunding || 'Unknown'}
-Deadline: ${opportunity.closeDate || 'Unknown'}
-Relevance: ${relevanceScore}
-Client Match: ${eligibilityScore}
-
-RED FLAGS TO CHECK:
-- Unusual requirements or restrictions
-- Suspicious funding amounts or terms  
-- Non-government sources claiming to be official
-
-Provide:
-1. RECOMMENDED (true/false)
-2. Brief summary for sales team
-3. Any concerns or red flags noted
-`;
-```
-
-**Output**: Final scored opportunities
-```javascript
-[
-  {
-    ...opportunity,
-    relevanceScore: "high",
-    clientMatch: "excellent", 
-    recommended: true,
-    finalScore: 9,
-    actionableSummary: "State Energy Office offers $5M in grants for K-12 schools to upgrade HVAC and lighting. $25K-500K awards, 25% match required. Due Dec 31, 2024.",
-    salesNotes: "Perfect fit - contact school districts immediately",
-    concerns: []
-  },
-  {
-    ...opportunity,
-    relevanceScore: "low",
-    clientMatch: "good",
-    recommended: false,
-    finalScore: 3,
-    actionableSummary: "Water infrastructure fund - not energy focused",
-    salesNotes: "Skip - outside our service area",
-    concerns: []
-  }
-]
+}
 ```
 
 ---
 
-#### **Stage 4: Data Processor**
+#### **Stage 4: Filter Function**
+**Purpose**: Apply simple threshold logic (no AI needed)
+
+**Input**: Analyzed opportunities with scores
+
+**Process**: Simple programmatic filtering
+```javascript
+function shouldIncludeOpportunity(opportunity) {
+  return opportunity.scoring.overallScore >= 2; // Only score-based filtering
+}
+```
+
+**Output**: Filtered opportunities meeting all criteria
+```javascript
+{
+  includedOpportunities: [   // All opportunities with score 2+
+    {
+      id: "grant-123",
+      score: 9,
+      fundingPerApplicant: 500000,
+      included: true
+    }
+  ],
+  excludedOpportunities: [],   // Only very low relevance opportunities excluded
+  filterMetrics: {
+    totalAnalyzed: 23,
+    included: 21,              // Most opportunities pass with score 2+ threshold
+    excludedByScore: 2         // Only scores 0-1 excluded
+  }
+}
+```
+
+---
+
+#### **Stage 5: Data Processor**
 **Purpose**: Store filtered opportunities in database
 
-**Input**: Final scored opportunities (only recommended ones)
+**Input**: Filtered opportunities meeting all criteria
 
 **Process**:
 1. Check for duplicates against existing opportunities
@@ -619,21 +590,12 @@ Provide:
 ```javascript
 {
   metrics: {
-    processed: 25,
-    new: 12,
-    updated: 3, 
-    duplicates: 10,
+    processed: 0, // None met $1M threshold in this example
+    new: 0,
+    updated: 0, 
+    duplicates: 0,
     ignored: 0
-  },
-  newOpportunities: [
-    {
-      id: "db-789",
-      external_id: "grant-123", 
-      title: "Energy Efficiency Grants for Schools",
-      // ... all standardized fields stored
-      created_at: "2024-01-10T10:30:00Z"
-    }
-  ]
+  }
 }
 ```
 
@@ -643,22 +605,25 @@ Provide:
 ```
 API Handler → Big AI Filter (long prompt) → Detail Processor → Another Big AI Filter
                      ↑                                              ↑
-              Prone to hallucination                    Redundant filtering
+              Prone to hallucination                    Redundant processing
+              High token usage                          Multiple data passes
 ```
 
 **New System Benefits:**
 ```
-API Collector → Small AI Filter 1 → Small AI Filter 2 → Small AI Filter 3
-                      ↓                    ↓                    ↓
-               Focused prompts      Single responsibility   Clear pipeline
+DataProcessingAgent → AnalysisAgent → Filter Function
+         ↓                 ↓              ↓
+    Pure extraction   Content + scoring   Simple logic
+    + standardization     (focused)      (no AI needed)
 ```
 
 **Advantages:**
-- **Focused Prompts**: Each agent has a specific, simple task (reduces hallucination)
-- **Single Responsibility**: Each filter does one thing well
-- **Clear Data Flow**: Easy to debug and modify individual stages
-- **No Redundancy**: No duplicate filtering steps
-- **Better Performance**: Smaller prompts = faster processing + lower token usage
+- **60-70% Fewer Tokens**: Only 2 AI calls vs 5-7 in original micro-agent design
+- **Clear Separation**: Technical work vs content work vs decision logic
+- **Objective Scoring**: Systematic criteria vs subjective "relevance"
+- **Simple Filtering**: Programmatic thresholds vs AI decision-making
+- **Better Debugging**: Each stage has clear inputs/outputs
+- **Efficient Flow**: No redundant data processing
 
 ### Error Handling in Pipeline
 

@@ -11,33 +11,38 @@ This section highlights the highest priority tasks to be completed next:
 **Critical Infrastructure (Must Complete First):**
 1. **🔥 ProcessCoordinatorV2** - Main orchestrator that coordinates all v2 agents
 2. **🔥 RunManagerV2** - Updated run tracking with new stage structure for v2 pipeline  
-3. **🔥 AnthropicClient** - Direct SDK implementation (no LangChain/Zod overhead)
+3. **✅ AnthropicClient** - Direct SDK implementation (no LangChain/Zod overhead) **COMPLETED** ✨
+   - ✅ Complete schema mapping from current Zod schemas
+   - ✅ sourceAnalysis schema (maps sourceProcessingSchema) 
+   - ✅ opportunityExtraction schema (maps apiResponseProcessingSchema)
+   - ✅ opportunityScoring schema (for micro-agents)
+   - ✅ dataProcessing schema (for deduplication)
+   - ✅ Performance tracking and error handling
+   - ✅ Comprehensive test coverage
 4. **🔥 Feature Flags System** - Traffic routing infrastructure between v1/v2 systems
 
 **Core Agent Development (Priority Order):**
 5. **SourceOrchestrator** - Replaces sourceManagerAgent with streamlined analysis
-6. **ApiCollector** - Replaces apiHandlerAgent, handles data fetching and immediate detail calls
-7. **ScoringAgent** - Combines relevance/eligibility/final scoring in focused micro-agents:
-   - **RelevanceFilter** - "Is this energy-related?" (HIGH/MEDIUM/LOW)
-   - **EligibilityFilter** - "Can our clients apply?" (YES/NO + reason)
-   - **FinalScoring** - "Recommend?" (true/false + summary + concerns)
-8. **DataProcessor** - Enhanced version for final storage
+6. **DataProcessingAgent** - Collection + field mapping + taxonomy standardization (replaces apiHandlerAgent)
+7. **AnalysisAgent** - Content enhancement + systematic scoring (replaces detailProcessorAgent) 
+8. **Filter Function** - Simple threshold logic (no AI needed, replaces FilteringAgent)
+9. **DataProcessor** - Enhanced storage with deduplication (final storage)
 
 **Supporting Infrastructure:**
-9. **RoutingService** - Traffic routing between v1/v2 systems during migration
-10. **Performance Monitoring** - Built-in tracking for tokens, timing, success rates
-11. **Error Handling** - Graceful fallbacks and retry logic
+10. **RoutingService** - Traffic routing between v1/v2 systems during migration
+11. **Performance Monitoring** - Built-in tracking for tokens, timing, success rates
+12. **Error Handling** - Graceful fallbacks and retry logic
 
 **Testing & Validation:**
-12. **Unit Tests** - Individual agent testing with mocks
-13. **Integration Tests** - End-to-end pipeline testing  
-14. **Performance Benchmarks** - Validate 60-80% improvement targets
-15. **Migration Comparison Tools** - v1 vs v2 output validation
+13. **Unit Tests** - Individual agent testing with mocks
+14. **Integration Tests** - End-to-end pipeline testing  
+15. **Performance Benchmarks** - Validate 60-80% improvement targets
+16. **Migration Comparison Tools** - v1 vs v2 output validation
 
 **Database Updates:**
-16. **api_source_runs_v2 Table** - New run tracking structure
-17. **New Stage Columns** - Support for v2 pipeline stages
-18. **Migration Scripts** - Safe data structure updates
+17. **api_source_runs_v2 Table** - New run tracking structure
+18. **New Stage Columns** - Support for v2 pipeline stages
+19. **Migration Scripts** - Safe data structure updates
 
 **Success Criteria for Phase 1:**
 - [ ] All new agents pass unit tests
