@@ -18,11 +18,12 @@ This section highlights the highest priority tasks to be completed next:
 - ✅ **Handles large datasets** (can process 1000+ opportunities without timeout)
 
 **Critical Infrastructure (Must Complete First):**
-1. **🔥 Supabase Edge Function Setup** - Core infrastructure for V2 processing
-   - [ ] Initialize `supabase/functions/process-source/` structure
-   - [ ] Configure import maps for dependencies (Anthropic SDK, Supabase client)
-   - [ ] Set up local development with `supabase functions serve`
-   - [ ] Configure environment variables and secrets
+1. **✅ Supabase Edge Function Setup** - Core infrastructure for V2 processing **COMPLETED** ✨
+   - ✅ Initialize `supabase/functions/process-source/` structure
+   - ✅ Configure import maps for dependencies (Anthropic SDK, Supabase client)
+   - ✅ Set up local development with `supabase functions serve`
+   - ✅ Configure environment variables and basic testing
+   - ✅ Verified Edge Function works with test requests
 2. **🔥 ProcessCoordinatorV2 (Edge Function)** - Port current coordinator to Edge Function
    - [ ] Migrate processApiSource logic to Edge Function format
    - [ ] Maintain exact same agent orchestration flow
@@ -54,9 +55,10 @@ This section highlights the highest priority tasks to be completed next:
 
 **Edge Function Integration:**
 10. **Vercel API Trigger** - Lightweight endpoint to trigger Edge Function processing
-    - [ ] Replace current `/api/process-source` with trigger-only version
-    - [ ] Return immediate response with job status tracking
-    - [ ] Preserve all existing API contracts for frontend compatibility
+    - [x] Create `/api/funding/process-source-v2/` endpoint (organized under funding namespace)
+    - [x] Return immediate response with job status tracking
+    - [x] Preserve all existing API contracts for frontend compatibility
+    - [x] Maintain consistency with existing `/api/funding/` organization pattern
 11. **Real-time Status Updates** - Live progress tracking during Edge Function execution
     - [ ] Supabase real-time subscriptions for run status
     - [ ] Progress indicators for each processing stage
