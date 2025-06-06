@@ -205,8 +205,10 @@ app/lib/
 ├── agents-v2/                 # 🆕 New architecture
 │   ├── core/
 │   │   ├── sourceOrchestrator.js
-│   │   ├── apiCollector.js
-│   │   └── dataProcessor.js
+│   │   ├── dataExtractionAgent.js
+│   │   └── analysisAgent.js
+│   ├── storage/
+│   │   └── storageAgent.js
 │   ├── filtering/
 │   │   ├── relevanceFilter.js
 │   │   ├── eligibilityFilter.js
@@ -264,9 +266,10 @@ export const features = {
 
 // Core agents built and tested
 agents-v2/core/sourceOrchestrator.js     ✅
-agents-v2/core/apiCollector.js           ✅
-agents-v2/filtering/relevanceFilter.js   ✅
-agents-v2/filtering/scoringAgent.js      ✅
+agents-v2/core/dataExtractionAgent.js    ✅
+agents-v2/core/analysisAgent.js          ✅
+agents-v2/filtering/filterFunction.js    ✅
+agents-v2/storage/storageAgent.js        ✅
 
 // Comprehensive test suites
 tests/agents-v2/unit/                    ✅
@@ -399,8 +402,17 @@ export const features = {
 ### High-Level Architecture
 
 ```
-Source Manager → DataProcessingAgent → AnalysisAgent → Filter Function → Data Processor
+SourceOrchestrator → DataExtractionAgent → AnalysisAgent → Filter Function → StorageAgent
 ```
+
+### Clear Agent Nomenclature
+
+**Old System (V1) ➜ New System (V2):**
+- `sourceManagerAgent` ➜ **`SourceOrchestrator`**
+- `apiHandlerAgent` ➜ **`DataExtractionAgent`** 
+- `detailProcessorAgent` ➜ **`AnalysisAgent`**
+- FilteringAgent ➜ **`Filter Function`** (simple logic, no AI)
+- `dataProcessorAgent` ➜ **`StorageAgent`** (modularized)
 
 ### Detailed Flow with Data Transformations
 
@@ -433,7 +445,7 @@ Source Manager → DataProcessingAgent → AnalysisAgent → Filter Function →
 
 ---
 
-#### **Stage 2: DataProcessingAgent**
+#### **Stage 2: DataExtractionAgent**
 **Purpose**: Collect raw data + field mapping + taxonomy standardization
 
 **Input**: Source + Processing instructions (from Stage 1)
@@ -489,7 +501,7 @@ Source Manager → DataProcessingAgent → AnalysisAgent → Filter Function →
 #### **Stage 3: AnalysisAgent**
 **Purpose**: Content enhancement + systematic scoring
 
-**Input**: Standardized opportunities from DataProcessingAgent
+**Input**: Standardized opportunities from DataExtractionAgent
 
 **Process**:
 1. **Content Enhancement**: Generate comprehensive descriptions and summaries
@@ -611,7 +623,7 @@ API Handler → Big AI Filter (long prompt) → Detail Processor → Another Big
 
 **New System Benefits:**
 ```
-DataProcessingAgent → AnalysisAgent → Filter Function
+DataExtractionAgent → AnalysisAgent → Filter Function
          ↓                 ↓              ↓
     Pure extraction   Content + scoring   Simple logic
     + standardization     (focused)      (no AI needed)

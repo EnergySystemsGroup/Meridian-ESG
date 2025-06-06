@@ -23,10 +23,10 @@ This section highlights the highest priority tasks to be completed next:
 
 **Core Agent Development (Priority Order):**
 5. **SourceOrchestrator** - Replaces sourceManagerAgent with streamlined analysis
-6. **DataProcessingAgent** - Collection + field mapping + taxonomy standardization (replaces apiHandlerAgent)
+6. **DataExtractionAgent** - Collection + field mapping + taxonomy standardization (replaces apiHandlerAgent)
 7. **AnalysisAgent** - Content enhancement + systematic scoring (replaces detailProcessorAgent) 
 8. **Filter Function** - Simple threshold logic (no AI needed, replaces FilteringAgent)
-9. **DataProcessor** - Enhanced storage with deduplication (final storage)
+9. **StorageAgent** - Enhanced storage with deduplication (replaces dataProcessorAgent)
 
 **Supporting Infrastructure:**
 10. **RoutingService** - Traffic routing between v1/v2 systems during migration
