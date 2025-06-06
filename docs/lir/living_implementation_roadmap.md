@@ -6,12 +6,33 @@ This document tracks the implementation status of all features in the Funding In
 
 This section highlights the highest priority tasks to be completed next:
 
-### PHASE 1: Agent Architecture V2 Refactoring (HIGHEST PRIORITY)
+### PHASE 1: Agent Architecture V2 Refactoring + Supabase Edge Functions (HIGHEST PRIORITY)
+
+**🚨 UPDATED DEPLOYMENT STRATEGY: Supabase Edge Functions**
+
+**Analysis Result:** Current ProcessCoordinator analysis confirms that Supabase Edge Functions is the optimal deployment strategy for V2 architecture due to:
+- ✅ **No timeout constraints** (15+ minute execution vs Vercel's 60s limit)
+- ✅ **Same ecosystem** (already using Supabase for database)
+- ✅ **Direct port feasible** (all current dependencies work in Edge Functions)
+- ✅ **Cost effective** (included in Supabase pricing)
+- ✅ **Handles large datasets** (can process 1000+ opportunities without timeout)
 
 **Critical Infrastructure (Must Complete First):**
-1. **🔥 ProcessCoordinatorV2** - Main orchestrator that coordinates all v2 agents
-2. **🔥 RunManagerV2** - Updated run tracking with new stage structure for v2 pipeline  
-3. **✅ AnthropicClient** - Direct SDK implementation (no LangChain/Zod overhead) **COMPLETED** ✨
+1. **🔥 Supabase Edge Function Setup** - Core infrastructure for V2 processing
+   - [ ] Initialize `supabase/functions/process-source/` structure
+   - [ ] Configure import maps for dependencies (Anthropic SDK, Supabase client)
+   - [ ] Set up local development with `supabase functions serve`
+   - [ ] Configure environment variables and secrets
+2. **🔥 ProcessCoordinatorV2 (Edge Function)** - Port current coordinator to Edge Function
+   - [ ] Migrate processApiSource logic to Edge Function format
+   - [ ] Maintain exact same agent orchestration flow
+   - [ ] Preserve all error handling and logging
+   - [ ] Add Edge Function-specific monitoring
+3. **🔥 RunManagerV2** - Updated run tracking compatible with Edge Functions
+   - [ ] Same tracking logic as V1, updated stage names for V2 pipeline
+   - [ ] Enhanced metrics collection for new agent performance
+   - [ ] Real-time status updates via Supabase subscriptions
+4. **✅ AnthropicClient** - Direct SDK implementation (no LangChain/Zod overhead) **COMPLETED** ✨
    - ✅ Complete schema mapping from current Zod schemas
    - ✅ sourceAnalysis schema (maps sourceProcessingSchema) 
    - ✅ opportunityExtraction schema (maps apiResponseProcessingSchema)
@@ -19,38 +40,51 @@ This section highlights the highest priority tasks to be completed next:
    - ✅ dataProcessing schema (for deduplication)
    - ✅ Performance tracking and error handling
    - ✅ Comprehensive test coverage
-4. **🔥 Feature Flags System** - Traffic routing infrastructure between v1/v2 systems
 
 **Core Agent Development (Priority Order):**
-5. **SourceOrchestrator** - Replaces sourceManagerAgent with streamlined analysis
+5. **✅ SourceOrchestrator** - Replaces sourceManagerAgent **COMPLETED** ✨
+   - ✅ Streamlined source analysis with improved performance
+   - ✅ Direct Anthropic SDK integration
+   - ✅ Comprehensive test coverage (all tests passing)
+   - ✅ Ready for Edge Function integration
 6. **DataExtractionAgent** - Collection + field mapping + taxonomy standardization (replaces apiHandlerAgent)
 7. **AnalysisAgent** - Content enhancement + systematic scoring (replaces detailProcessorAgent) 
 8. **Filter Function** - Simple threshold logic (no AI needed, replaces FilteringAgent)
 9. **StorageAgent** - Enhanced storage with deduplication (replaces dataProcessorAgent)
 
-**Supporting Infrastructure:**
-10. **RoutingService** - Traffic routing between v1/v2 systems during migration
-11. **Performance Monitoring** - Built-in tracking for tokens, timing, success rates
-12. **Error Handling** - Graceful fallbacks and retry logic
+**Edge Function Integration:**
+10. **Vercel API Trigger** - Lightweight endpoint to trigger Edge Function processing
+    - [ ] Replace current `/api/process-source` with trigger-only version
+    - [ ] Return immediate response with job status tracking
+    - [ ] Preserve all existing API contracts for frontend compatibility
+11. **Real-time Status Updates** - Live progress tracking during Edge Function execution
+    - [ ] Supabase real-time subscriptions for run status
+    - [ ] Progress indicators for each processing stage
+    - [ ] Error notifications and recovery handling
 
 **Testing & Validation:**
-13. **Unit Tests** - Individual agent testing with mocks
-14. **Integration Tests** - End-to-end pipeline testing  
-15. **Performance Benchmarks** - Validate 60-80% improvement targets
-16. **Migration Comparison Tools** - v1 vs v2 output validation
+12. **Edge Function Testing** - Comprehensive testing in Supabase environment
+    - [ ] Local Edge Function testing with `supabase functions serve`
+    - [ ] Integration tests with real API sources
+    - [ ] Performance validation with large datasets (100+ opportunities)
+    - [ ] Timeout stress testing (ensure no 15-minute limit issues)
+13. **Migration Comparison** - Validate V2 output matches V1 quality
+    - [ ] Side-by-side processing comparison
+    - [ ] Accuracy metrics and performance benchmarks
+    - [ ] Token usage and cost analysis
 
 **Database Updates:**
-17. **api_source_runs_v2 Table** - New run tracking structure
-18. **New Stage Columns** - Support for v2 pipeline stages
-19. **Migration Scripts** - Safe data structure updates
+14. **api_source_runs_v2 Table** - Enhanced run tracking for Edge Functions
+15. **New Stage Columns** - Support for V2 pipeline stages
+16. **Edge Function Monitoring** - Metrics collection for Edge Function performance
 
 **Success Criteria for Phase 1:**
-- [ ] All new agents pass unit tests
-- [ ] ProcessCoordinatorV2 orchestrates full pipeline with mock data
-- [ ] RunManagerV2 tracks all new pipeline stages correctly  
-- [ ] Integration tests successful with mock data
-- [ ] Performance benchmarks show 60-80% improvement
-- [ ] Zero impact on production system (v1 continues running)
+- [ ] Edge Function processes sources without timeout constraints
+- [ ] All V2 agents work seamlessly in Edge Function environment
+- [ ] Real-time status updates work correctly
+- [ ] Performance shows 60-80% improvement over V1
+- [ ] Can handle large datasets (200+ opportunities) successfully
+- [ ] Zero impact on production system (V1 continues running via Vercel)
 
 ### EXISTING PRIORITY TASKS (AFTER PHASE 1):
 
