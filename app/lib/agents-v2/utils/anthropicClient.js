@@ -690,61 +690,6 @@ export const schemas = {
       }
     },
     required: ["opportunities", "analysisMetrics"]
-  },
-
-  /**
-   * Data Processing Schema - For final database storage decisions
-   * Maps processing results and deduplication logic
-   */
-  dataProcessing: {
-    type: "object",
-    properties: {
-      processedOpportunities: {
-        type: "array",
-        items: {
-          type: "object",
-          properties: {
-            action: {
-              type: "string",
-              enum: ["insert", "update", "ignore"],
-              description: "Action to take for this opportunity"
-            },
-            opportunity: {
-              type: "object",
-              description: "The processed opportunity data"
-            },
-            matchedExisting: {
-              type: "object",
-              nullable: true,
-              description: "Existing opportunity that this matches (if any)"
-            },
-            confidence: {
-              type: "number",
-              minimum: 0,
-              maximum: 1,
-              description: "Confidence in the matching/deduplication decision"
-            },
-            reasoning: {
-              type: "string",
-              description: "Why this action was chosen"
-            }
-          },
-          required: ["action", "opportunity", "confidence", "reasoning"]
-        }
-      },
-      summary: {
-        type: "object",
-        properties: {
-          totalProcessed: { type: "number" },
-          newInserts: { type: "number" },
-          updates: { type: "number" },
-          ignored: { type: "number" },
-          averageConfidence: { type: "number" }
-        },
-        required: ["totalProcessed", "newInserts", "updates", "ignored"]
-      }
-    },
-    required: ["processedOpportunities", "summary"]
   }
 };
 

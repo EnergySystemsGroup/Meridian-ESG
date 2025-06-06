@@ -815,6 +815,292 @@ export class AnthropicClient {
 }
 ```
 
+### D) Data Processor Refactoring
+
+**Current Problem**: The existing `dataProcessorAgent.js` is a 1049-line monolith handling 5 distinct responsibilities:
+
+1. **Funding Source Management** - Creating/updating agency records
+2. **State Eligibility Processing** - Parsing locations and linking to states  
+3. **Duplicate Detection** - Finding existing opportunities by ID/title
+4. **Material Change Detection** - Identifying significant updates worth notifying users
+5. **Data Sanitization** - Converting data formats for database storage
+
+**Current Data Processor Responsibilities Analysis:**
+
+**Funding Source Management:**
+- Creates normalized `funding_sources` table records
+- Prevents duplicate agency information across opportunities
+- Maintains agency contact info, websites, classifications
+- Essential for user filtering ("show me all EPA grants")
+
+**State Eligibility Processing:**
+- Parses complex location strings ("CA, OR, Pacific Northwest")
+- Maps regions to individual states
+- Creates `opportunity_state_eligibility` records
+- Enables high-performance state-based searching
+
+**Material Change Detection:**
+- Only updates opportunities when **critical fields** change
+- Ignores trivial updates (description rewording)
+- Uses smart thresholds (>5% for amounts, exact for dates/status)
+- Prevents user notification spam about minor changes
+
+**Smart Duplicate Detection:**
+- Matches by opportunity ID first, falls back to title matching
+- Handles APIs that change IDs but keep consistent titles
+- Prevents database bloat from duplicate records
+
+**Data Sanitization:**
+- Maps camelCase API responses to snake_case database fields
+- Validates data types and handles null values
+- Ensures PostgreSQL schema compatibility
+
+**Proposed Modular Structure:**
+
+```
+app/lib/agents/dataProcessor/
+├── index.js                    # Main orchestrator (50 lines)
+├── fundingSourceManager.js     # Agency CRUD operations (120 lines)
+├── stateEligibilityProcessor.js # Location parsing & state linking (150 lines)  
+├── duplicateDetector.js        # Find existing opportunities (80 lines)
+├── changeDetector.js           # Material change detection (100 lines)
+├── dataSanitizer.js           # Clean data for DB storage (60 lines)
+└── utils/
+    ├── fieldMapping.js         # camelCase ↔ snake_case (30 lines)
+    └── locationParsing.js      # Parse location strings (40 lines)
+```
+
+**Modular Implementation Strategy:**
+
+**Main Orchestrator (`index.js`)** - 50 lines:
+```javascript
+import { fundingSourceManager } from './fundingSourceManager.js';
+import { duplicateDetector } from './duplicateDetector.js';
+import { changeDetector } from './changeDetector.js';
+import { stateEligibilityProcessor } from './stateEligibilityProcessor.js';
+import { dataSanitizer } from './dataSanitizer.js';
+
+export async function processOpportunitiesBatch(
+  opportunitiesWithRawIds,
+  sourceId,
+  legacyRawResponseId,
+  runManager = null
+) {
+  const results = {
+    newOpportunities: [],
+    updatedOpportunities: [],
+    ignoredOpportunities: [],
+    metrics: { total: 0, new: 0, updated: 0, ignored: 0 }
+  };
+
+  for (const { opportunity, rawResponseId } of opportunitiesWithRawIds) {
+    // Step 1: Get or create funding source
+    const fundingSourceId = await fundingSourceManager.getOrCreate(
+      opportunity.funding_source, 
+      sourceId
+    );
+    
+    // Step 2: Check for existing opportunity
+    const existing = await duplicateDetector.findExisting(opportunity, sourceId);
+    
+    if (existing) {
+      // Step 3: Check for material changes
+      const changeResult = changeDetector.detectMaterialChanges(existing, opportunity);
+      
+      if (changeResult.hasChanges) {
+        const sanitizedData = dataSanitizer.prepareForUpdate(opportunity, rawResponseId);
+        const updated = await updateOpportunity(existing.id, sanitizedData, fundingSourceId);
+        results.updatedOpportunities.push(updated);
+        results.metrics.updated++;
+        
+        // Step 4: Update state eligibility
+        await stateEligibilityProcessor.updateEligibility(
+          existing.id, 
+          opportunity.eligibleLocations, 
+          opportunity.isNational
+        );
+      } else {
+        results.ignoredOpportunities.push(existing);
+        results.metrics.ignored++;
+      }
+    } else {
+      // Step 5: Insert new opportunity
+      const sanitizedData = dataSanitizer.prepareForInsert(opportunity, rawResponseId);
+      const inserted = await insertOpportunity(sanitizedData, fundingSourceId);
+      results.newOpportunities.push(inserted);
+      results.metrics.new++;
+      
+      // Step 6: Process state eligibility for new opportunity
+      await stateEligibilityProcessor.processEligibility(
+        inserted.id, 
+        opportunity.eligibleLocations, 
+        opportunity.isNational
+      );
+    }
+  }
+
+  return results;
+}
+```
+
+**Funding Source Manager (`fundingSourceManager.js`)** - 120 lines:
+```javascript
+export const fundingSourceManager = {
+  async getOrCreate(fundingSource, apiSourceType) {
+    if (!fundingSource?.name) return null;
+    
+    const existing = await this.findByName(fundingSource.name);
+    if (existing) {
+      return await this.updateIfNeeded(existing, fundingSource);
+    }
+    
+    return await this.create(fundingSource, apiSourceType);
+  },
+
+  async findByName(name) {
+    // Search logic isolated here
+  },
+
+  async updateIfNeeded(existing, newData) {
+    // Update logic with change detection
+  },
+
+  async create(fundingSource, apiSourceType) {
+    // Creation logic with proper categorization
+  }
+};
+```
+
+**State Eligibility Processor (`stateEligibilityProcessor.js`)** - 150 lines:
+```javascript
+export const stateEligibilityProcessor = {
+  async processEligibility(opportunityId, eligibleLocations, isNational) {
+    if (isNational) return { stateCount: 0, isNational: true };
+    
+    const stateIds = await this.parseLocationsToStateIds(eligibleLocations);
+    return await this.createEligibilityRecords(opportunityId, stateIds);
+  },
+
+  async updateEligibility(opportunityId, eligibleLocations, isNational) {
+    await this.clearExistingEligibility(opportunityId);
+    return await this.processEligibility(opportunityId, eligibleLocations, isNational);
+  },
+
+  async parseLocationsToStateIds(eligibleLocations) {
+    // All the complex region mapping logic isolated here
+  }
+};
+```
+
+**Duplicate Detector (`duplicateDetector.js`)** - 80 lines:
+```javascript
+export const duplicateDetector = {
+  async findExisting(opportunity, sourceId) {
+    // Try by opportunity ID first
+    let existing = await this.findByOpportunityId(opportunity.id, sourceId);
+    if (existing) return existing;
+    
+    // Fall back to title matching
+    return await this.findByTitle(opportunity.title, sourceId);
+  },
+
+  async findByOpportunityId(opportunityId, sourceId) {
+    // ID-based matching logic
+  },
+
+  async findByTitle(title, sourceId) {
+    // Title-based matching logic
+  }
+};
+```
+
+**Change Detector (`changeDetector.js`)** - 100 lines:
+```javascript
+export const changeDetector = {
+  detectMaterialChanges(existing, opportunity) {
+    const criticalFields = ['openDate', 'closeDate', 'status', 'minimumAward', 'maximumAward', 'totalFundingAvailable'];
+    
+    const changes = [];
+    let hasChanges = false;
+
+    for (const field of criticalFields) {
+      const change = this.detectFieldChange(existing, opportunity, field);
+      if (change.hasChanged) {
+        changes.push(change);
+        hasChanges = true;
+      }
+    }
+
+    return { hasChanges, changes };
+  },
+
+  detectFieldChange(existing, opportunity, field) {
+    // Smart change detection with thresholds
+    if (['minimumAward', 'maximumAward', 'totalFundingAvailable'].includes(field)) {
+      return this.detectAmountChange(existing, opportunity, field);
+    }
+    
+    if (['openDate', 'closeDate'].includes(field)) {
+      return this.detectDateChange(existing, opportunity, field);
+    }
+    
+    return this.detectDirectChange(existing, opportunity, field);
+  }
+};
+```
+
+**Data Sanitizer (`dataSanitizer.js`)** - 60 lines:
+```javascript
+import { fieldMapping } from './utils/fieldMapping.js';
+
+export const dataSanitizer = {
+  prepareForInsert(opportunity, rawResponseId) {
+    const sanitized = this.sanitizeFields(opportunity);
+    sanitized.raw_response_id = rawResponseId;
+    sanitized.created_at = new Date().toISOString();
+    return sanitized;
+  },
+
+  prepareForUpdate(opportunity, rawResponseId) {
+    const sanitized = this.sanitizeFields(opportunity);
+    sanitized.raw_response_id = rawResponseId;
+    sanitized.updated_at = new Date().toISOString();
+    delete sanitized.created_at; // Never update creation timestamp
+    return sanitized;
+  },
+
+  sanitizeFields(opportunity) {
+    // Field mapping and validation logic
+  }
+};
+```
+
+**Identified Redundancies to Eliminate:**
+
+1. **Duplicate Field Mapping**: Consolidate camelCase ↔ snake_case mapping in `utils/fieldMapping.js`
+2. **Repeated Percentage Calculations**: Extract to shared utility function
+3. **Multiple State Lookup Maps**: Simplify to single lookup function
+4. **Scattered Error Handling**: Standardize error patterns across modules
+5. **Verbose Console Logging**: Centralize logging with appropriate levels
+
+**Benefits of Modular Approach:**
+
+✅ **Maintainability**: Each file has single, clear responsibility  
+✅ **Testability**: Easy to unit test individual components  
+✅ **Debuggability**: Issues isolated to specific modules  
+✅ **Reusability**: Components can be used independently  
+✅ **Readability**: No file exceeds 150 lines  
+
+**Migration Strategy for Data Processor:**
+
+**Phase 1**: Extract utilities first (`fieldMapping.js`, `locationParsing.js`)
+**Phase 2**: Split out independent modules (`fundingSourceManager.js`, `dataSanitizer.js`)
+**Phase 3**: Extract business logic (`duplicateDetector.js`, `changeDetector.js`, `stateEligibilityProcessor.js`)
+**Phase 4**: Create new orchestrator (`index.js`) and test end-to-end
+**Phase 5**: Replace old monolith with modular version
+
+This refactoring transforms a 1049-line monolith into 7 focused modules averaging 85 lines each, while maintaining all existing functionality and improving maintainability.
+
 ## Risk Mitigation
 
 ### Feature Flags for Safe Deployment
