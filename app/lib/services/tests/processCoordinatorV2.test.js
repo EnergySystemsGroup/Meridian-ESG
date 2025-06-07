@@ -6,7 +6,8 @@
  */
 
 import { describe, test, expect, beforeEach, vi } from 'vitest';
-import { processApiSourceV2, RunManagerV2 } from '../processCoordinatorV2.js';
+import { processApiSourceV2 } from '../processCoordinatorV2.js';
+import { RunManagerV2 } from '../runManagerV2.js';
 
 // Mock all the V2 agents
 vi.mock('../../agents-v2/core/sourceOrchestrator.js', () => ({

@@ -65,23 +65,22 @@ describe('RunManagerV2', () => {
       from: vi.fn(() => mockChain)
     };
     
-    // Setup default mock responses
+    // Setup default mock responses (using V1 database columns)
     mockRunData = {
       id: 'run-test-123',
       source_id: 'source-abc',
-      status: 'running',
+      status: 'processing',
       started_at: new Date().toISOString(),
-      source_orchestrator_status: 'pending',
-      data_extraction_status: 'pending',
-      analysis_status: 'pending',
-      filter_status: 'pending',
-      storage_status: 'pending'
+      source_manager_status: 'pending',
+      api_handler_status: 'pending',
+      detail_processor_status: 'pending',
+      data_processor_status: 'pending'
     };
     
     // Set up default chain mock to return proper responses
     // Note: eq() should return the chain, single() should return the promise
     
-    runManager = new RunManagerV2();
+    runManager = new RunManagerV2(null, mockSupabaseClient);
   });
 
   afterEach(() => {
@@ -90,14 +89,14 @@ describe('RunManagerV2', () => {
 
   describe('Initialization', () => {
     test('should create RunManagerV2 with no existing run ID', () => {
-      const rm = new RunManagerV2();
+      const rm = new RunManagerV2(null, mockSupabaseClient);
       expect(rm.runId).toBe(null);
       expect(rm.startTime).toBeGreaterThan(Date.now() - 1000);
     });
 
     test('should create RunManagerV2 with existing run ID', () => {
       const existingRunId = 'existing-run-456';
-      const rm = new RunManagerV2(existingRunId);
+      const rm = new RunManagerV2(existingRunId, mockSupabaseClient);
       expect(rm.runId).toBe(existingRunId);
     });
 
@@ -113,7 +112,7 @@ describe('RunManagerV2', () => {
       const sourceId = 'test-source-123';
       
       // Create a fresh runManager instance for this test to avoid the existing id
-      const testRunManager = new RunManagerV2();
+      const testRunManager = new RunManagerV2(null, mockSupabaseClient);
 
       const runId = await testRunManager.startRun(sourceId);
 
@@ -125,17 +124,12 @@ describe('RunManagerV2', () => {
       expect(mockChain.insert).toHaveBeenCalledWith(
         expect.objectContaining({
           source_id: sourceId,
-          status: 'running',
-          source_orchestrator_status: 'pending',
-          data_extraction_status: 'pending',
-          analysis_status: 'pending',
-          filter_status: 'pending',
-          storage_status: 'pending',
-          // Legacy V1 compatibility
-          source_manager_status: 'skipped',
-          api_handler_status: 'skipped',
-          detail_processor_status: 'skipped',
-          data_processor_status: 'skipped'
+          status: 'processing',
+          // V2 stages mapped to V1 database columns
+          source_manager_status: 'pending',
+          api_handler_status: 'pending',
+          detail_processor_status: 'pending',
+          data_processor_status: 'pending'
         })
       );
     });
@@ -164,10 +158,10 @@ describe('RunManagerV2', () => {
     });
 
     test('should update stage status with basic data', async () => {
-      await runManager.updateStageStatus('source_orchestrator_status', 'completed');
+      await runManager.updateStageStatus('source_manager_status', 'completed');
 
       expect(mockChain.update).toHaveBeenCalledWith({
-        source_orchestrator_status: 'completed',
+        source_manager_status: 'completed',
         updated_at: expect.any(String)
       });
       expect(mockChain.eq).toHaveBeenCalledWith('id', 'test-run-123');
@@ -176,11 +170,11 @@ describe('RunManagerV2', () => {
     test('should update stage status with result data', async () => {
       const resultData = { confidence: 85, workflow: 'two_step_api' };
       
-      await runManager.updateStageStatus('source_orchestrator_status', 'completed', resultData);
+      await runManager.updateStageStatus('source_manager_status', 'completed', resultData);
 
       expect(mockChain.update).toHaveBeenCalledWith({
-        source_orchestrator_status: 'completed',
-        source_orchestrator_data: resultData,
+        source_manager_status: 'completed',
+        source_manager_data: resultData,
         updated_at: expect.any(String)
       });
     });
@@ -188,11 +182,11 @@ describe('RunManagerV2', () => {
     test('should update stage status with metrics', async () => {
       const metrics = { executionTime: 1500, tokensUsed: 245 };
       
-      await runManager.updateStageStatus('analysis_status', 'completed', null, metrics);
+      await runManager.updateStageStatus('api_handler_status', 'completed', null, metrics);
 
       expect(mockChain.update).toHaveBeenCalledWith({
-        analysis_status: 'completed',
-        analysis_metrics: metrics,
+        api_handler_status: 'completed',
+        api_handler_metrics: metrics,
         updated_at: expect.any(String)
       });
     });
@@ -200,7 +194,7 @@ describe('RunManagerV2', () => {
     test('should handle missing run ID gracefully', async () => {
       runManager.runId = null;
       
-      await runManager.updateStageStatus('source_orchestrator_status', 'completed');
+      await runManager.updateStageStatus('source_manager_status', 'completed');
       
       expect(mockChain.update).not.toHaveBeenCalled();
     });
@@ -212,7 +206,7 @@ describe('RunManagerV2', () => {
 
       // Should not throw, just log error
       await expect(
-        runManager.updateStageStatus('source_orchestrator_status', 'completed')
+        runManager.updateStageStatus('source_manager_status', 'completed')
       ).resolves.toBeUndefined();
     });
   });
@@ -229,9 +223,9 @@ describe('RunManagerV2', () => {
       await runManager.updateSourceOrchestrator('completed', analysisResult, metrics);
 
       expect(mockChain.update).toHaveBeenCalledWith({
-        source_orchestrator_status: 'completed',
-        source_orchestrator_data: analysisResult,
-        source_orchestrator_metrics: metrics,
+        source_manager_status: 'completed',
+        source_manager_data: analysisResult,
+        source_manager_metrics: metrics,
         updated_at: expect.any(String)
       });
     });
@@ -242,8 +236,8 @@ describe('RunManagerV2', () => {
       await runManager.updateDataExtraction('processing', extractionResult);
 
       expect(mockChain.update).toHaveBeenCalledWith({
-        data_extraction_status: 'processing',
-        data_extraction_data: extractionResult,
+        api_handler_status: 'processing',
+        api_handler_data: extractionResult,
         updated_at: expect.any(String)
       });
     });
@@ -254,8 +248,8 @@ describe('RunManagerV2', () => {
       await runManager.updateAnalysis('completed', analysisResult);
 
       expect(mockChain.update).toHaveBeenCalledWith({
-        analysis_status: 'completed',
-        analysis_data: analysisResult,
+        api_handler_status: 'completed',
+        api_handler_data: analysisResult,
         updated_at: expect.any(String)
       });
     });
@@ -266,8 +260,8 @@ describe('RunManagerV2', () => {
       await runManager.updateFilter('completed', filterResult);
 
       expect(mockChain.update).toHaveBeenCalledWith({
-        filter_status: 'completed',
-        filter_data: filterResult,
+        detail_processor_status: 'completed',
+        detail_processor_data: filterResult,
         updated_at: expect.any(String)
       });
     });
@@ -278,8 +272,8 @@ describe('RunManagerV2', () => {
       await runManager.updateStorage('completed', storageResult);
 
       expect(mockChain.update).toHaveBeenCalledWith({
-        storage_status: 'completed',
-        storage_data: storageResult,
+        data_processor_status: 'completed',
+        data_processor_data: storageResult,
         updated_at: expect.any(String)
       });
     });
@@ -296,9 +290,13 @@ describe('RunManagerV2', () => {
 
       expect(mockChain.update).toHaveBeenCalledWith({
         status: 'completed',
-        ended_at: expect.any(String),
-        total_processing_time: expect.any(Number),
-        updated_at: expect.any(String)
+        completed_at: expect.any(String),
+        updated_at: expect.any(String),
+        source_manager_status: 'completed',
+        api_handler_status: 'completed',
+        detail_processor_status: 'completed',
+        data_processor_status: 'completed',
+        total_processing_time: expect.any(Number)
       });
 
       const updateCall = mockChain.update.mock.calls[0][0];
@@ -313,9 +311,13 @@ describe('RunManagerV2', () => {
 
       expect(mockChain.update).toHaveBeenCalledWith({
         status: 'completed',
-        ended_at: expect.any(String),
-        total_processing_time: providedTime,
-        updated_at: expect.any(String)
+        completed_at: expect.any(String),
+        updated_at: expect.any(String),
+        source_manager_status: 'completed',
+        api_handler_status: 'completed',
+        detail_processor_status: 'completed',
+        data_processor_status: 'completed',
+        total_processing_time: providedTime
       });
     });
 
@@ -330,10 +332,14 @@ describe('RunManagerV2', () => {
 
       expect(mockChain.update).toHaveBeenCalledWith({
         status: 'completed',
-        ended_at: expect.any(String),
+        completed_at: expect.any(String),
+        updated_at: expect.any(String),
+        source_manager_status: 'completed',
+        api_handler_status: 'completed',
+        detail_processor_status: 'completed',
+        data_processor_status: 'completed',
         total_processing_time: 8000,
-        final_results: finalResults,
-        updated_at: expect.any(String)
+        final_results: finalResults
       });
     });
 
@@ -427,13 +433,13 @@ describe('RunManagerV2', () => {
     });
 
     test('should get stage status', async () => {
-      const status = await runManager.getStageStatus('source_orchestrator_status');
+      const status = await runManager.getStageStatus('source_manager_status');
       expect(status).toBe('pending');
     });
 
     test('should handle missing run for stage status', async () => {
       runManager.runId = null;
-      const status = await runManager.getStageStatus('source_orchestrator_status');
+      const status = await runManager.getStageStatus('source_manager_status');
       expect(status).toBe(null);
     });
   });
@@ -462,11 +468,10 @@ describe('RunManagerV2', () => {
       mockChain.single.mockResolvedValue({ 
         data: { 
           ...mockRunData, 
-          source_orchestrator_status: 'completed',
-          data_extraction_status: 'failed',
-          analysis_status: 'pending',
-          filter_status: 'pending',
-          storage_status: 'pending'
+          source_manager_status: 'completed',
+          api_handler_status: 'failed',
+          detail_processor_status: 'pending',
+          data_processor_status: 'pending'
         }, 
         error: null 
       });
@@ -481,35 +486,32 @@ describe('Utility Functions', () => {
   describe('getNextStage', () => {
     test('should return first pending stage', () => {
       const run = {
-        source_orchestrator_status: 'completed',
-        data_extraction_status: 'pending',
-        analysis_status: 'pending',
-        filter_status: 'pending',
-        storage_status: 'pending'
+        source_manager_status: 'completed',
+        api_handler_status: 'pending',
+        detail_processor_status: 'pending',
+        data_processor_status: 'pending'
       };
 
-      expect(getNextStage(run)).toBe('data_extraction_status');
+      expect(getNextStage(run)).toBe('api_handler_status');
     });
 
     test('should return processing stage', () => {
       const run = {
-        source_orchestrator_status: 'completed',
-        data_extraction_status: 'processing',
-        analysis_status: 'pending',
-        filter_status: 'pending',
-        storage_status: 'pending'
+        source_manager_status: 'completed',
+        api_handler_status: 'processing',
+        detail_processor_status: 'pending',
+        data_processor_status: 'pending'
       };
 
-      expect(getNextStage(run)).toBe('data_extraction_status');
+      expect(getNextStage(run)).toBe('api_handler_status');
     });
 
     test('should return null when all stages completed', () => {
       const run = {
-        source_orchestrator_status: 'completed',
-        data_extraction_status: 'completed',
-        analysis_status: 'completed',
-        filter_status: 'completed',
-        storage_status: 'completed'
+        source_manager_status: 'completed',
+        api_handler_status: 'completed',
+        detail_processor_status: 'completed',
+        data_processor_status: 'completed'
       };
 
       expect(getNextStage(run)).toBe(null);
@@ -517,11 +519,10 @@ describe('Utility Functions', () => {
 
     test('should return null when a stage failed', () => {
       const run = {
-        source_orchestrator_status: 'completed',
-        data_extraction_status: 'failed',
-        analysis_status: 'pending',
-        filter_status: 'pending',
-        storage_status: 'pending'
+        source_manager_status: 'completed',
+        api_handler_status: 'failed',
+        detail_processor_status: 'pending',
+        data_processor_status: 'pending'
       };
 
       expect(getNextStage(run)).toBe(null);

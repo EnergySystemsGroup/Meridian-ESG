@@ -20,132 +20,9 @@ import { extractFromSource } from '../agents-v2/core/dataExtractionAgent.js';
 import { enhanceOpportunities } from '../agents-v2/core/analysisAgent.js';
 import { filterOpportunities } from '../agents-v2/core/filterFunction.js';
 import { storeOpportunities } from '../agents-v2/core/storageAgent/index.js';
+import { RunManagerV2 } from './runManagerV2.js';
 
-/**
- * Enhanced RunManager for V2 Pipeline
- */
-export class RunManagerV2 {
-  constructor(runId = null, supabase = null) {
-    this.runId = runId
-    this.startTime = Date.now()
-    this.supabase = supabase
-  }
-  
-  async startRun(sourceId) {
-    if (this.runId || !this.supabase) return this.runId
-    
-    const { data, error } = await this.supabase
-      .from('api_source_runs')
-      .insert({
-        source_id: sourceId,
-        status: 'processing',
-        started_at: new Date().toISOString(),
-        // Use existing V1 columns, map V2 stages to them
-        source_manager_status: 'pending',        // Maps to SourceOrchestrator
-        api_handler_status: 'pending',           // Maps to DataExtraction + Analysis  
-        detail_processor_status: 'pending',      // Maps to Filter Function
-        data_processor_status: 'pending'         // Maps to StorageAgent
-      })
-      .select()
-      .single()
-    
-    if (error) throw error
-    this.runId = data.id
-    console.log(`[RunManagerV2] ✅ Created V2 run: ${this.runId}`)
-    return this.runId
-  }
-  
-  // V2 Pipeline stage updaters (mapped to existing V1 columns)
-  async updateSourceOrchestrator(status, data = null, metrics = null) {
-    return this.updateStageStatus('source_manager_status', status, data, metrics)
-  }
-  
-  async updateDataExtraction(status, data = null, metrics = null) {
-    return this.updateStageStatus('api_handler_status', status, data, metrics)
-  }
-  
-  async updateAnalysis(status, data = null, metrics = null) {
-    // Analysis stage shares api_handler_status column with DataExtraction
-    // We'll track both stages using the same column for now
-    return this.updateStageStatus('api_handler_status', status, data, metrics)
-  }
-  
-  async updateFilter(status, data = null, metrics = null) {
-    return this.updateStageStatus('detail_processor_status', status, data, metrics)
-  }
-  
-  async updateStorage(status, data = null, metrics = null) {
-    return this.updateStageStatus('data_processor_status', status, data, metrics)
-  }
-  
-  // Legacy compatibility updaters (map to V2 equivalents)
-  async updateApiHandler(status, data = null, metrics = null) {
-    return this.updateStageStatus('api_handler_status', status, data, metrics)
-  }
-  
-  async updateDetailProcessor(status, data = null, metrics = null) {
-    return this.updateStageStatus('detail_processor_status', status, data, metrics)
-  }
-  
-  async updateDataProcessor(status, data = null, metrics = null) {
-    return this.updateStageStatus('data_processor_status', status, data, metrics)
-  }
-  
-  async updateStageStatus(stage, status, data = null, metrics = null) {
-    if (!this.runId || !this.supabase) return
-    
-    console.log(`[RunManagerV2] 📊 ${stage}: ${status}`)
-    
-    const updateData = { [stage]: status, updated_at: new Date().toISOString() }
-    if (data) updateData[`${stage.replace('_status', '')}_data`] = data
-    if (metrics) updateData[`${stage.replace('_status', '')}_metrics`] = metrics
-    
-    await this.supabase
-      .from('api_source_runs')
-      .update(updateData)
-      .eq('id', this.runId)
-  }
-  
-  async completeRun(executionTime = null, finalResults = null) {
-    if (!this.runId || !this.supabase) return
-    
-    const totalTime = executionTime || (Date.now() - this.startTime)
-    console.log(`[RunManagerV2] 🏁 Completing run ${this.runId} (${totalTime}ms)`)
-    
-    const updateData = {
-      status: 'completed',
-      ended_at: new Date().toISOString(),
-      total_processing_time: totalTime
-    }
-    if (finalResults) updateData.final_results = finalResults
-    
-    await this.supabase
-      .from('api_source_runs')
-      .update(updateData)
-      .eq('id', this.runId)
-  }
-  
-  async updateRunError(error, failedStage = null) {
-    if (!this.runId || !this.supabase) return
-    
-    const totalTime = Date.now() - this.startTime
-    console.log(`[RunManagerV2] ❌ Run ${this.runId} failed: ${error.message}`)
-    
-    const updateData = {
-      status: 'failed',
-      ended_at: new Date().toISOString(),
-      total_processing_time: totalTime,
-      error_message: error.message,
-      error_details: error.stack
-    }
-    if (failedStage) updateData.failed_stage = failedStage
-    
-    await this.supabase
-      .from('api_source_runs')
-      .update(updateData)
-      .eq('id', this.runId)
-  }
-}
+
 
 /**
  * ProcessCoordinatorV2 - Main Pipeline Orchestrator
@@ -189,7 +66,7 @@ export async function processApiSourceV2(sourceId, runId = null, supabase, anthr
     })
     source.configurations = configurations
     
-    // Step 2: Initialize RunManager V2
+    // Step 2: Initialize RunManager V2 with proper constructor arguments
     runManager = new RunManagerV2(runId, supabase)
     if (!runId) {
       await runManager.startRun(sourceId)
