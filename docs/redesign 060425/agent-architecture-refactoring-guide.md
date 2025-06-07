@@ -202,9 +202,9 @@ app/lib/
 │   ├── apiHandlerAgent.js
 │   ├── detailProcessorAgent.js
 │   └── dataProcessorAgent.js
-├── agents-v2/                 # 🆕 New architecture
+├── agents-v2/                 # 🆕 New architecture (MAIN LOCATION)
 │   ├── core/
-│   │   ├── sourceOrchestrator.js
+│   │   ├── sourceOrchestrator.js      # ⭐ PRIMARY agents location
 │   │   ├── dataExtractionAgent.js
 │   │   └── analysisAgent.js
 │   ├── storage/
@@ -217,10 +217,13 @@ app/lib/
 │   │   ├── anthropicClient.js
 │   │   ├── apiRequestHandler.js
 │   │   └── performanceMonitor.js
-│   └── schemas/
-│       ├── extractionSchemas.js
-│       ├── scoringSchemas.js
-│       └── validationSchemas.js
+│   ├── schemas/
+│   │   ├── extractionSchemas.js
+│   │   ├── scoringSchemas.js
+│   │   └── validationSchemas.js
+│   └── tests/                         # 🧪 Tests for V2 agents
+│       ├── unit/
+│       └── integration/
 ├── services/
 │   ├── processCoordinator.js     # ✅ Current coordinator (KEEP)
 │   ├── processCoordinatorV2.js   # 🆕 New coordinator
@@ -231,10 +234,41 @@ app/lib/
 │   └── agentConfig.js           # 🆕 Agent configurations
 └── tests/
     ├── agents/                   # ✅ Current agent tests (KEEP)
-    ├── agents-v2/               # 🆕 New agent tests
-    │   ├── unit/
-    │   └── integration/
-    └── migration/              # 🆕 Migration validation tests
+    ├── migration/              # 🆕 Migration validation tests
+    └── e2e/                    # 🆕 End-to-end tests
+
+supabase/functions/
+├── process-source/              # 🆕 Edge Function for V2 processing
+│   ├── index.js                # ⭐ Imports from app/lib/agents-v2/
+│   ├── deno.json
+│   └── .npmrc
+└── _shared/                    # 🚫 NO AGENTS HERE - just utilities
+    └── utils/                  # Only shared utilities, no agent logic
+        ├── supabaseClient.js
+        └── errorHandling.js
+```
+
+### **🎯 Clear Import Strategy:**
+
+**Edge Functions import agents from app/lib/agents-v2/:**
+```javascript
+// supabase/functions/process-source/index.js
+import { analyzeSource } from "../../../app/lib/agents-v2/core/sourceOrchestrator.js";
+import { extractFromSource } from "../../../app/lib/agents-v2/core/dataExtractionAgent.js";
+import { enhanceOpportunities } from "../../../app/lib/agents-v2/core/analysisAgent.js";
+import { storeOpportunities } from "../../../app/lib/agents-v2/storage/storageAgent.js";
+```
+
+**Tests import agents from app/lib/agents-v2/:**
+```javascript
+// app/lib/agents-v2/tests/sourceOrchestrator.test.js
+import { analyzeSource } from '../core/sourceOrchestrator.js';
+```
+
+**Vercel API routes import agents from app/lib/agents-v2/:**
+```javascript
+// pages/api/funding/process-source-v2.js
+import { analyzeSource } from '../../../app/lib/agents-v2/core/sourceOrchestrator.js';
 ```
 
 ### Benefits of This Structure

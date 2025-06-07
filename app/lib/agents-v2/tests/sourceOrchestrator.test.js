@@ -2,7 +2,7 @@ import dotenv from 'dotenv';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import { describe, test, expect, beforeEach, vi } from 'vitest';
-import { analyzeSource } from '../../../../supabase/functions/_shared/agents-v2/sourceOrchestrator.js';
+import { analyzeSource } from '../core/sourceOrchestrator.js';
 
 // Load environment variables
 const __filename = fileURLToPath(import.meta.url);

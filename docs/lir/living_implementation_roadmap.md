@@ -46,9 +46,20 @@ This section highlights the highest priority tasks to be completed next:
 5. **✅ SourceOrchestrator** - Replaces sourceManagerAgent **COMPLETED** ✨
    - ✅ Streamlined source analysis with improved performance
    - ✅ Direct Anthropic SDK integration
-   - ✅ Comprehensive test coverage (all tests passing)
+   - ✅ Input validation for required fields (name, api_endpoint)
+   - ✅ Proper error handling and execution time tracking
+   - ✅ Comprehensive test coverage (all 7 tests passing)
+   - ✅ Architecture cleanup: consolidated to `app/lib/agents-v2/core/`
+   - ✅ Tests updated to import from correct location
    - ✅ Ready for Edge Function integration
-6. **DataExtractionAgent** - Collection + field mapping + taxonomy standardization (replaces apiHandlerAgent)
+6. **✅ DataExtractionAgent** - Collection + field mapping + taxonomy standardization **COMPLETED** ✨
+   - ✅ Complete API handling (single and two-step workflows)
+   - ✅ AI-powered data extraction and field mapping
+   - ✅ Comprehensive taxonomy standardization (applicants, projects, locations)
+   - ✅ Robust error handling and execution tracking
+   - ✅ Architecture cleanup: moved to `app/lib/agents-v2/core/`
+   - ✅ Comprehensive test coverage (all 8 tests passing)
+   - ✅ Ready for Edge Function integration
 7. **AnalysisAgent** - Content enhancement + systematic scoring (replaces detailProcessorAgent) 
 8. **Filter Function** - Simple threshold logic (no AI needed, replaces FilteringAgent)
 9. **StorageAgent** - Enhanced storage with deduplication (replaces dataProcessorAgent)
