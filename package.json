@@ -7,6 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
+    "test": "vitest",
+    "test:run": "vitest run",
     "add-grants-gov-source": "node scripts/insert-grants-gov-source.js",
     "insert-grants-gov": "node scripts/insert-grants-gov-source.js",
     "test-config": "node scripts/test-configuration-system.js"
@@ -58,6 +60,7 @@
     "eslint": "^8.56.0",
     "eslint-config-next": "14.0.4",
     "postcss": "^8.4.33",
-    "tailwindcss": "^3.4.1"
+    "tailwindcss": "^3.4.1",
+    "vitest": "^3.2.2"
   }
 }

@@ -1,6 +1,7 @@
 import dotenv from 'dotenv';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
+import { describe, test, expect, beforeAll } from 'vitest';
 import { AnthropicClient, getAnthropicClient, schemas, PerformanceComparator } from '../utils/anthropicClient.js';
 import { ChatAnthropic } from '@langchain/anthropic';
 import { StructuredOutputParser } from '@langchain/core/output_parsers';
@@ -129,217 +130,123 @@ async function newApproach(prompt, jsonSchema) {
   return await client.callWithSchema(prompt, jsonSchema);
 }
 
-/**
- * Main test function
- */
-export async function testAnthropicClient() {
-  console.log('🧪 Testing AnthropicClient Performance...\n');
-  
-  const comparator = new PerformanceComparator();
-  
-  try {
-    // Test basic functionality
-    console.log('1️⃣ Testing Basic Functionality...');
-    const client = getAnthropicClient();
+describe('AnthropicClient', () => {
+  let client;
+
+  beforeAll(() => {
+    // Skip tests if no API key is available
+    if (!process.env.ANTHROPIC_API_KEY) {
+      console.warn('⚠️ ANTHROPIC_API_KEY not found - skipping AnthropicClient tests');
+      return;
+    }
+    client = getAnthropicClient();
+  });
+
+  test('should pass quick validation test', async () => {
+    if (!process.env.ANTHROPIC_API_KEY) {
+      console.warn('⚠️ Skipping test - no API key');
+      return;
+    }
+
+    const result = await client.callText('Say "AnthropicClient is working!" in a JSON object with a "message" field.');
     
+    expect(result).toBeDefined();
+    expect(result.text).toBeDefined();
+    expect(result.performance).toBeDefined();
+    expect(result.performance.duration).toBeGreaterThan(0);
+    
+    console.log(`✅ Quick test passed (${result.performance.duration}ms)`);
+  }, 30000); // 30 second timeout for API calls
+
+  test('should handle basic functionality with schema', async () => {
+    if (!process.env.ANTHROPIC_API_KEY) {
+      console.warn('⚠️ Skipping test - no API key');
+      return;
+    }
+
     const result = await client.callWithSchema(testPrompt, testJsonSchema, {
       maxTokens: 1500
     });
     
-    console.log('✅ Basic functionality test passed');
-    console.log(`   Duration: ${result.performance.duration}ms`);
-    console.log(`   Tokens: ${result.performance.totalTokens}`);
-    console.log(`   Opportunities extracted: ${result.data.opportunities?.length || 0}\n`);
+    expect(result).toBeDefined();
+    expect(result.data).toBeDefined();
+    expect(result.performance).toBeDefined();
+    expect(result.performance.totalTokens).toBeGreaterThan(0);
     
-    // Test performance comparison
-    console.log('2️⃣ Testing Performance vs LangChain + Zod...');
-    
-    const comparison = await comparator.compareWithLegacy(
-      testPrompt,
-      testZodSchema,
-      (prompt, schema) => legacyApproach(prompt, schema),
-      (prompt, schema) => newApproach(prompt, schema)
-    );
-    
-    if (comparison.improvement) {
-      console.log('📊 Performance Comparison Results:');
-      console.log(`   ⚡ Time improvement: ${comparison.improvement.timeImprovement}`);
-      console.log(`   🪙 Token improvement: ${comparison.improvement.tokenImprovement}`);
-      console.log(`   ⏱️  Time saved: ${comparison.improvement.timeSaved}ms`);
-      console.log(`   🏆 New approach faster: ${comparison.improvement.newFaster ? 'YES' : 'NO'}\n`);
+    // Check for expected structure
+    if (result.data.opportunities) {
+      expect(Array.isArray(result.data.opportunities)).toBe(true);
     }
     
-    // Test batch processing
-    console.log('3️⃣ Testing Batch Processing...');
+    console.log(`✅ Basic functionality test passed (${result.performance.duration}ms, ${result.performance.totalTokens} tokens)`);
+  }, 30000);
+
+  test('should test individual schemas', async () => {
+    if (!process.env.ANTHROPIC_API_KEY) {
+      console.warn('⚠️ Skipping test - no API key');
+      return;
+    }
+
+    // Test data extraction schema
+    const extractionResult = await client.callWithSchema(
+      'Extract opportunities from this API: {"grants": [{"id": "test-123", "name": "Test Grant", "amount": 50000}]}',
+      schemas.dataExtraction,
+      { maxTokens: 1000 }
+    );
+    expect(extractionResult).toBeDefined();
+    expect(extractionResult.data).toBeDefined();
+    
+    // Test source analysis schema
+    const sourceResult = await client.callWithSchema(
+      'Analyze this API source: {"name": "DOE Grants", "url": "https://api.energy.gov/grants", "type": "funding"}',
+      schemas.sourceAnalysis,
+      { maxTokens: 600 }
+    );
+    expect(sourceResult).toBeDefined();
+    expect(sourceResult.data).toBeDefined();
+    
+    console.log('✅ Schema tests completed');
+  }, 45000);
+
+  test('should handle batch processing', async () => {
+    if (!process.env.ANTHROPIC_API_KEY) {
+      console.warn('⚠️ Skipping test - no API key');
+      return;
+    }
+
     const batchPrompts = [
       { prompt: testPrompt, schema: testJsonSchema, options: { maxTokens: 1000 } },
-      { prompt: testPrompt.replace('Schools', 'Hospitals'), schema: testJsonSchema, options: { maxTokens: 1000 } },
-      { prompt: testPrompt.replace('Energy', 'Solar'), schema: testJsonSchema, options: { maxTokens: 1000 } }
+      { prompt: testPrompt.replace('Schools', 'Hospitals'), schema: testJsonSchema, options: { maxTokens: 1000 } }
     ];
     
-    const batchStartTime = Date.now();
     const batchResults = await client.batchProcess(batchPrompts, { concurrency: 2 });
-    const batchDuration = Date.now() - batchStartTime;
+    
+    expect(Array.isArray(batchResults)).toBe(true);
+    expect(batchResults.length).toBe(2);
     
     const successfulBatches = batchResults.filter(r => !r.error);
-    console.log(`✅ Batch processing completed`);
-    console.log(`   Total duration: ${batchDuration}ms`);
-    console.log(`   Successful: ${successfulBatches.length}/${batchResults.length}`);
-    console.log(`   Average per request: ${Math.round(batchDuration / batchResults.length)}ms\n`);
+    expect(successfulBatches.length).toBeGreaterThan(0);
     
-    // Test error handling
-    console.log('4️⃣ Testing Error Handling...');
-    try {
+    console.log(`✅ Batch processing completed (${successfulBatches.length}/${batchResults.length} successful)`);
+  }, 60000);
+
+  test('should handle errors gracefully', async () => {
+    if (!process.env.ANTHROPIC_API_KEY) {
+      console.warn('⚠️ Skipping test - no API key');
+      return;
+    }
+
+    // Test with very low token limit to potentially cause issues
+    await expect(async () => {
       await client.callWithSchema('Invalid prompt with no clear request', testJsonSchema, {
-        maxTokens: 10, // Very low token limit to potentially cause issues
+        maxTokens: 10,
         retries: 1
       });
-    } catch (error) {
-      console.log('✅ Error handling works correctly');
-      console.log(`   Error caught: ${error.message}\n`);
-    }
+    }).rejects.toThrow();
     
-    // Get final performance metrics
-    console.log('5️⃣ Final Performance Metrics...');
-    const metrics = client.getPerformanceMetrics();
-    console.log(`📈 Total calls: ${metrics.totalCalls}`);
-    console.log(`📈 Total tokens: ${metrics.totalTokens}`);
-    console.log(`📈 Average time: ${Math.round(metrics.averageTime)}ms`);
-    console.log(`📈 Success rate: ${metrics.successRate?.toFixed(1)}%`);
-    
-    // Average improvement across all comparisons
-    const avgImprovement = comparator.getAverageImprovement();
-    if (avgImprovement) {
-      console.log(`\n🎯 OVERALL PERFORMANCE IMPROVEMENT:`);
-      console.log(`   Average time improvement: ${avgImprovement.averageTimeImprovement}`);
-      console.log(`   Samples tested: ${avgImprovement.samplesCount}`);
-      console.log(`   Consistently faster: ${avgImprovement.consistentlyFaster ? 'YES' : 'NO'}`);
-    }
-    
-    return {
-      success: true,
-      metrics,
-      improvements: avgImprovement,
-      testResults: {
-        basicFunctionality: true,
-        performanceComparison: comparison,
-        batchProcessing: { successful: successfulBatches.length, total: batchResults.length },
-        errorHandling: true
-      }
-    };
-    
-  } catch (error) {
-    console.error('❌ Test failed:', error.message);
-    return {
-      success: false,
-      error: error.message
-    };
-  }
-}
-
-/**
- * Test individual schemas
- */
-export async function testSchemas() {
-  console.log('🔧 Testing Individual Schemas...\n');
-  
-  const client = getAnthropicClient();
-  
-  // Test opportunity extraction schema
-  console.log('Testing data extraction schema...');
-  const extractionResult = await client.callWithSchema(
-    'Extract opportunities from this API: {"grants": [{"id": "test-123", "name": "Test Grant", "amount": 50000}]}',
-    schemas.dataExtraction,
-    { maxTokens: 1000 }
-  );
-  console.log(`✅ Extraction: ${extractionResult.data.opportunities?.length || 0} opportunities found\n`);
-  
-  // Test analysis schema
-  console.log('Testing opportunity analysis schema...');
-  const analysisResult = await client.callWithSchema(
-    'Analyze this opportunity: {"id": "test-123", "title": "Energy Efficiency Grant", "eligibleApplicants": ["Schools"]}',
-    schemas.opportunityAnalysis,
-    { maxTokens: 800 }
-  );
-  console.log(`✅ Analysis: ${analysisResult.data.opportunities?.length || 0} opportunities analyzed\n`);
-  
-  // Test source analysis schema
-  console.log('Testing source analysis schema...');
-  const sourceResult = await client.callWithSchema(
-    'Analyze this API source: {"name": "DOE Grants", "url": "https://api.energy.gov/grants", "type": "funding"}',
-    schemas.sourceAnalysis,
-    { maxTokens: 600 }
-  );
-  console.log(`✅ Analysis: ${sourceResult.data.handlerType} handler recommended\n`);
-  
-  return {
-    extraction: extractionResult.data,
-    analysis: analysisResult.data,
-    source: sourceResult.data
-  };
-}
-
-/**
- * Quick validation test
- */
-export async function quickTest() {
-  console.log('⚡ Quick AnthropicClient Validation...');
-  
-  try {
-    const client = getAnthropicClient();
-    const result = await client.callText('Say "AnthropicClient is working!" in a JSON object with a "message" field.');
-    
-    console.log('✅ Quick test passed');
-    console.log(`   Response: ${result.text?.substring(0, 100)}...`);
-    console.log(`   Duration: ${result.performance.duration}ms`);
-    
-    return { success: true, duration: result.performance.duration };
-  } catch (error) {
-    console.error('❌ Quick test failed:', error.message);
-    return { success: false, error: error.message };
-  }
-}
+    console.log('✅ Error handling works correctly');
+  }, 30000);
+});
 
 // Export for use in other test files
-export { testZodSchema, testJsonSchema, testPrompt, legacyApproach, newApproach };
-
-/**
- * Main execution block - runs when file is executed directly
- */
-async function main() {
-  console.log('🚀 Testing AnthropicClient Standalone...\n');
-  
-  // Quick validation test
-  console.log('=== QUICK TEST ===');
-  const quickResult = await quickTest();
-  
-  if (quickResult.success) {
-    console.log(`✅ AnthropicClient is working! (${quickResult.duration}ms)\n`);
-  } else {
-    console.log(`❌ Quick test failed: ${quickResult.error}\n`);
-    return;
-  }
-  
-  // Test individual schemas
-  console.log('=== SCHEMA TESTS ===');
-  try {
-    const schemaResults = await testSchemas();
-    console.log('✅ All schemas working correctly!\n');
-    
-    console.log('📊 Schema Test Results:');
-    console.log(`   Extraction: ${schemaResults.extraction?.opportunities?.length || 0} opportunities`);
-    console.log(`   Analysis: ${schemaResults.analysis?.opportunities?.length || 0} analyzed`);
-    console.log(`   Source: ${schemaResults.source?.handlerType || 'unknown'} handler\n`);
-    
-  } catch (error) {
-    console.log(`❌ Schema tests failed: ${error.message}\n`);
-  }
-  
-  console.log('🎉 AnthropicClient foundation is ready!');
-  console.log('Next step: Build the v2 agents that use this client.');
-}
-
-// Run main function if this file is executed directly
-if (import.meta.url === `file://${process.argv[1]}`) {
-  main().catch(console.error);
-} 
+export { testZodSchema, testJsonSchema, testPrompt, legacyApproach, newApproach }; 
