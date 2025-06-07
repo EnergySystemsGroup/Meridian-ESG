@@ -42,7 +42,7 @@ This section highlights the highest priority tasks to be completed next:
    - ✅ Performance tracking and error handling
    - ✅ Comprehensive test coverage
 
-**🎯 CRITICAL MILESTONE: 4/5 Core Agents Complete! Final Sprint to V2 Pipeline Completion**
+**🎉 MILESTONE ACHIEVED: All 5 Core V2 Agents Complete! Ready for Edge Function Integration**
 
 **Core Agent Development (Priority Order):**
 5. **✅ SourceOrchestrator** - Replaces sourceManagerAgent **COMPLETED** ✨
@@ -80,43 +80,65 @@ This section highlights the highest priority tasks to be completed next:
    - ✅ Detailed exclusion reason tracking for debugging
    - ✅ Moved to `app/lib/agents-v2/core/` with other pipeline agents
    - ✅ Ready for Edge Function integration
-9. **🔥 StorageAgent** - Enhanced storage with deduplication (replaces dataProcessorAgent) **IN PROGRESS**
-   - ✅ Modular replacement of 1049-line dataProcessorAgent monolith
+9. **✅ StorageAgent** - Enhanced storage with deduplication (replaces dataProcessorAgent) **COMPLETED** ✨
+   - ✅ Modular replacement of 553-line monolith into 7 focused components (~1200 lines total)
    - ✅ Enhanced duplicate detection (ID-based + title fallback)
    - ✅ Funding source management with normalization
    - ✅ State eligibility processing and mapping
    - ✅ Material change detection to prevent spam updates
    - ✅ Batch processing with comprehensive metrics
-   - ✅ Moved to `app/lib/agents-v2/core/` with other pipeline agents
-   - [ ] Comprehensive test coverage
-   - [ ] Ready for Edge Function integration
+   - ✅ Moved to `app/lib/agents-v2/core/storageAgent/` with modular structure:
+     - ✅ index.js (185 lines) - main orchestrator
+     - ✅ fundingSourceManager.js (120 lines) - agency CRUD
+     - ✅ duplicateDetector.js (80 lines) - find existing opportunities
+     - ✅ changeDetector.js (150 lines) - material change detection
+     - ✅ dataSanitizer.js (200 lines) - data cleaning
+     - ✅ stateEligibilityProcessor.js (150 lines) - location parsing
+     - ✅ utils/fieldMapping.js (100 lines) - field conversion
+     - ✅ utils/locationParsing.js (200 lines) - location string parsing
+   - ✅ Comprehensive test coverage (all 13 tests passing)
+   - ✅ Ready for Edge Function integration
 
 **Edge Function Integration:**
-10. **Vercel API Trigger** - Lightweight endpoint to trigger Edge Function processing
+10. **✅ ProcessCoordinatorV2 (Service)** - Port current coordinator to services with Edge Function wrapper **COMPLETED** ✨
+    - ✅ Migrated processApiSource logic to `app/lib/services/processCoordinatorV2.js`
+    - ✅ Maintained exact same agent orchestration flow (all 5 V2 agents working together)
+    - ✅ Preserved all error handling and logging
+    - ✅ Added proper RunManagerV2 for V2 pipeline tracking
+    - ✅ Import agents from `app/lib/agents-v2/core/` structure
+    - ✅ Created thin Edge Function wrapper at `supabase/functions/process-source/index.js`
+    - ✅ Built comprehensive test suite at `app/lib/services/tests/processCoordinatorV2.test.js`
+11. **✅ RunManagerV2** - Updated run tracking compatible with Edge Functions **COMPLETED** ✨
+    - ✅ Same tracking logic as V1, updated stage names for V2 pipeline
+    - ✅ Enhanced metrics collection for new agent performance  
+    - ✅ Maps V2 stages to existing V1 database columns for compatibility
+    - ✅ Track modular StorageAgent component performance
+    - ✅ Integrated into ProcessCoordinatorV2 service
+12. **Vercel API Trigger** - Lightweight endpoint to trigger Edge Function processing
     - [x] Create `/api/funding/process-source-v2/` endpoint (organized under funding namespace)
     - [x] Return immediate response with job status tracking
     - [x] Preserve all existing API contracts for frontend compatibility
     - [x] Maintain consistency with existing `/api/funding/` organization pattern
-11. **Real-time Status Updates** - Live progress tracking during Edge Function execution
+13. **Real-time Status Updates** - Live progress tracking during Edge Function execution
     - [ ] Supabase real-time subscriptions for run status
     - [ ] Progress indicators for each processing stage
     - [ ] Error notifications and recovery handling
 
 **Testing & Validation:**
-12. **Edge Function Testing** - Comprehensive testing in Supabase environment
+14. **Edge Function Testing** - Comprehensive testing in Supabase environment
     - [ ] Local Edge Function testing with `supabase functions serve`
     - [ ] Integration tests with real API sources
     - [ ] Performance validation with large datasets (100+ opportunities)
     - [ ] Timeout stress testing (ensure no 15-minute limit issues)
-13. **Migration Comparison** - Validate V2 output matches V1 quality
+15. **Migration Comparison** - Validate V2 output matches V1 quality
     - [ ] Side-by-side processing comparison
     - [ ] Accuracy metrics and performance benchmarks
     - [ ] Token usage and cost analysis
 
 **Database Updates:**
-14. **api_source_runs_v2 Table** - Enhanced run tracking for Edge Functions
-15. **New Stage Columns** - Support for V2 pipeline stages
-16. **Edge Function Monitoring** - Metrics collection for Edge Function performance
+16. **api_source_runs_v2 Table** - Enhanced run tracking for Edge Functions
+17. **New Stage Columns** - Support for V2 pipeline stages
+18. **Edge Function Monitoring** - Metrics collection for Edge Function performance
 
 **Success Criteria for Phase 1:**
 - [ ] Edge Function processes sources without timeout constraints

@@ -222,9 +222,11 @@ app/lib/
 │       └── integration/
 ├── services/
 │   ├── processCoordinator.js     # ✅ Current coordinator (KEEP)
-│   ├── processCoordinatorV2.js   # 🆕 New coordinator
+│   ├── processCoordinatorV2.js   # ✅ New coordinator (COMPLETED)
 │   ├── routingService.js         # 🆕 Traffic routing logic
-│   └── migrationService.js       # 🆕 Migration utilities
+│   ├── migrationService.js       # 🆕 Migration utilities
+│   └── tests/
+│       └── processCoordinatorV2.test.js  # ✅ V2 service tests (COMPLETED)
 ├── config/
 │   ├── features.js               # 🆕 Feature flags
 │   └── agentConfig.js           # 🆕 Agent configurations
@@ -246,25 +248,25 @@ supabase/functions/
 
 ### **🎯 Clear Import Strategy:**
 
-**Edge Functions import agents from app/lib/agents-v2/:**
+**Edge Functions import ProcessCoordinatorV2 service:**
 ```javascript
 // supabase/functions/process-source/index.js
-import { analyzeSource } from "../../../app/lib/agents-v2/core/sourceOrchestrator.js";
-import { extractFromSource } from "../../../app/lib/agents-v2/core/dataExtractionAgent.js";
-import { enhanceOpportunities } from "../../../app/lib/agents-v2/core/analysisAgent.js";
-import { storeOpportunities } from "../../../app/lib/agents-v2/storage/storageAgent.js";
+import { processApiSourceV2 } from "../../../app/lib/services/processCoordinatorV2.js";
 ```
 
-**Tests import agents from app/lib/agents-v2/:**
+**Tests import agents directly:**
 ```javascript
 // app/lib/agents-v2/tests/sourceOrchestrator.test.js
 import { analyzeSource } from '../core/sourceOrchestrator.js';
+
+// app/lib/services/tests/processCoordinatorV2.test.js
+import { processApiSourceV2 } from '../processCoordinatorV2.js';
 ```
 
-**Vercel API routes import agents from app/lib/agents-v2/:**
+**Vercel API routes import ProcessCoordinatorV2 service:**
 ```javascript
 // pages/api/funding/process-source-v2.js
-import { analyzeSource } from '../../../app/lib/agents-v2/core/sourceOrchestrator.js';
+import { processApiSourceV2 } from '../../../app/lib/services/processCoordinatorV2.js';
 ```
 
 ### Benefits of This Structure
