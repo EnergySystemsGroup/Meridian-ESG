@@ -42,6 +42,8 @@ This section highlights the highest priority tasks to be completed next:
    - ✅ Performance tracking and error handling
    - ✅ Comprehensive test coverage
 
+**🎯 CRITICAL MILESTONE: 4/5 Core Agents Complete! Final Sprint to V2 Pipeline Completion**
+
 **Core Agent Development (Priority Order):**
 5. **✅ SourceOrchestrator** - Replaces sourceManagerAgent **COMPLETED** ✨
    - ✅ Streamlined source analysis with improved performance
@@ -76,8 +78,18 @@ This section highlights the highest priority tasks to be completed next:
    - ✅ Comprehensive test coverage (all 13 tests passing)
    - ✅ Configurable filtering with strict/lenient/custom modes
    - ✅ Detailed exclusion reason tracking for debugging
+   - ✅ Moved to `app/lib/agents-v2/core/` with other pipeline agents
    - ✅ Ready for Edge Function integration
-9. **StorageAgent** - Enhanced storage with deduplication (replaces dataProcessorAgent)
+9. **🔥 StorageAgent** - Enhanced storage with deduplication (replaces dataProcessorAgent) **IN PROGRESS**
+   - ✅ Modular replacement of 1049-line dataProcessorAgent monolith
+   - ✅ Enhanced duplicate detection (ID-based + title fallback)
+   - ✅ Funding source management with normalization
+   - ✅ State eligibility processing and mapping
+   - ✅ Material change detection to prevent spam updates
+   - ✅ Batch processing with comprehensive metrics
+   - ✅ Moved to `app/lib/agents-v2/core/` with other pipeline agents
+   - [ ] Comprehensive test coverage
+   - [ ] Ready for Edge Function integration
 
 **Edge Function Integration:**
 10. **Vercel API Trigger** - Lightweight endpoint to trigger Edge Function processing

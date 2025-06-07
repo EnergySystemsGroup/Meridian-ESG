@@ -203,16 +203,12 @@ app/lib/
 │   ├── detailProcessorAgent.js
 │   └── dataProcessorAgent.js
 ├── agents-v2/                 # 🆕 New architecture (MAIN LOCATION)
-│   ├── core/
-│   │   ├── sourceOrchestrator.js      # ⭐ PRIMARY agents location
-│   │   ├── dataExtractionAgent.js
-│   │   └── analysisAgent.js
-│   ├── storage/
-│   │   └── storageAgent.js
-│   ├── filtering/
-│   │   ├── relevanceFilter.js
-│   │   ├── eligibilityFilter.js
-│   │   └── scoringAgent.js
+│   ├── core/                          # ⭐ ALL 5 core pipeline agents
+│   │   ├── sourceOrchestrator.js      # 1. Source analysis and configuration
+│   │   ├── dataExtractionAgent.js     # 2. API data collection and standardization
+│   │   ├── analysisAgent.js           # 3. Content enhancement and scoring
+│   │   ├── filterFunction.js          # 4. Threshold-based filtering
+│   │   └── storageAgent.js            # 5. Enhanced storage with deduplication
 │   ├── utils/
 │   │   ├── anthropicClient.js
 │   │   ├── apiRequestHandler.js

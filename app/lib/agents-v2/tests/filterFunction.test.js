@@ -5,7 +5,7 @@ import {
   getDefaultFilterConfig,
   applyStrictFiltering,
   applyLenientFiltering
-} from '../filtering/filterFunction.js';
+} from '../core/filterFunction.js';
 
 /**
  * Test suite for Filter Function V2
