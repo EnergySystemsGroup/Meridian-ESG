@@ -21,9 +21,9 @@ export class AnthropicClient {
       model: "claude-3-5-haiku-20241022",
       maxTokens: 2000,
       temperature: 0,
-      retries: 3,
-      retryDelay: 1000,
-      timeout: 30000
+      retries: 4,
+      retryDelay: 2000,  // Increased from 1000ms
+      timeout: 60000     // Increased from 30000ms
     };
     
     this.performanceMetrics = {
@@ -44,6 +44,9 @@ export class AnthropicClient {
   async callWithSchema(prompt, schema, options = {}) {
     const config = { ...this.defaultConfig, ...options };
     const startTime = Date.now();
+    
+    // Add a small delay to avoid hitting rate limits (similar to LangChain behavior)
+    await this._delay(250);
     
     try {
       const message = await this._callWithRetry({
@@ -224,10 +227,14 @@ export class AnthropicClient {
       } catch (error) {
         lastError = error;
         
-        // Don't retry on certain error types
+        // Don't retry on certain error types (but DO retry on 429 and 529)
         if (error.status === 400 || error.status === 401 || error.status === 403) {
           throw error;
         }
+        
+        // For rate limiting errors (429, 529), use longer delays
+        const isRateLimit = error.status === 429 || error.status === 529;
+        const rateLimitMultiplier = isRateLimit ? 3 : 1;
         
         // If this was the last attempt, throw the error
         if (attempt === retries) {
@@ -235,8 +242,9 @@ export class AnthropicClient {
         }
         
         // Wait before retrying with exponential backoff
-        const delay = baseDelay * Math.pow(2, attempt);
-        console.warn(`Anthropic API call failed (attempt ${attempt + 1}/${retries + 1}), retrying in ${delay}ms:`, error.message);
+        const delay = baseDelay * Math.pow(2, attempt) * rateLimitMultiplier;
+        const errorType = isRateLimit ? 'Rate limit' : 'API error';
+        console.warn(`Anthropic API call failed (attempt ${attempt + 1}/${retries + 1}), retrying in ${delay}ms: ${error.status} ${error.message}`);
         await this._delay(delay);
       }
     }

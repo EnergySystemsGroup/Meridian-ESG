@@ -226,7 +226,7 @@ ${taxonomy.join(', ')}
 If a ${fieldName.replace(
 		/s$/,
 		''
-	)} doesn't fit these categories, you must use "Other: [specific detail]"`;
+	)} doesn't fit these categories, you must use "Other: [descriptive category]" where [descriptive category] is your best judgment of how to categorize it. For example, if the source mentions "paving roads", use "Other: Road Infrastructure".`;
 }
 
 /**
