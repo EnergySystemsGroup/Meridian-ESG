@@ -1,7 +1,7 @@
 /**
  * SourceOrchestrator V2 - Modular Agent
  * 
- * Replaces sourceManagerAgent with direct Anthropic SDK integration.
+ * Replaces sourceManagerAgent with direct configuration-based analysis.
  * Focuses solely on source analysis and processing configuration.
  * 
  * Exports: analyzeSource(source, anthropic)
@@ -10,7 +10,7 @@
 /**
  * Analyzes an API source and determines optimal processing approach
  * @param {Object} source - The source object with configurations
- * @param {Object} anthropic - Anthropic client instance
+ * @param {Object} anthropic - Anthropic client instance (not used, for compatibility)
  * @returns {Promise<Object>} - Analysis result with processing details
  */
 export async function analyzeSource(source, anthropic) {
@@ -37,68 +37,25 @@ export async function analyzeSource(source, anthropic) {
   const startTime = Date.now()
   
   try {
-    // Format configurations for analysis
-    const configTypes = [
-      'request_body',
-      'request_config', 
-      'pagination_config',
-      'detail_config',
-      'response_mapping'
-    ]
-    
-    const formattedConfigs = configTypes
-      .filter(type => source.configurations[type])
-      .map(type => `${type.toUpperCase()}: ${JSON.stringify(source.configurations[type], null, 2)}`)
-      .join('\n\n')
-    
-    const prompt = `Analyze this API source and determine the optimal processing approach:
-
-SOURCE INFORMATION:
-${JSON.stringify(source, null, 2)}
-
-CONFIGURATIONS:
-${formattedConfigs || 'No specific configurations found'}
-
-Provide a structured analysis with these exact fields:
-- workflow: "single_api" or "two_step_api"
-- apiEndpoint: The main API endpoint URL
-- requestConfig: HTTP request configuration object
-- queryParameters: Query parameters object
-- requestBody: Request body object (if POST/PUT)
-- paginationConfig: Pagination configuration object
-- authMethod: Authentication method
-- authDetails: Authentication details object
-- detailConfig: Detail fetching configuration object
-- estimatedComplexity: "simple", "moderate", or "complex"
-- confidence: Number between 0-100
-- processingNotes: Array of important notes for processing
-
-Be precise and ensure all URLs and configurations are valid.`
-
-    const response = await anthropic.messages.create({
-      model: "claude-3-5-sonnet-20241022",
-      max_tokens: 2000,
-      messages: [{ role: "user", content: prompt }]
-    })
-    
-    // Parse response (simplified for now - would use structured output in full implementation)
-    const analysisText = response.content[0].text
-    
     // Create analysis structure based on source configurations
     const analysis = {
       workflow: source.configurations.detail_config?.enabled ? "two_step_api" : "single_api",
       apiEndpoint: source.api_endpoint,
       requestConfig: source.configurations.request_config || { method: "GET" },
-      queryParameters: source.configurations.query_parameters || {},
+      queryParameters: source.configurations.query_params || {},
       requestBody: source.configurations.request_body || null,
+      responseConfig: source.configurations.response_config || { 
+        responseDataPath: "", 
+        totalCountPath: "" 
+      },
       paginationConfig: source.configurations.pagination_config || { enabled: false },
-      authMethod: source.configurations.auth_method || "none",
-      authDetails: source.configurations.auth_details || {},
       detailConfig: source.configurations.detail_config || { enabled: false },
-      estimatedComplexity: "moderate",
-      confidence: 85,
+      responseMapping: source.configurations.response_mapping || {},
+      authMethod: source.auth_type || "none",
+      authDetails: source.auth_details || {},
+      handlerType: source.handler_type || "standard",
+      apiNotes: source.notes || "",
       processingNotes: [`Analysis completed for ${source.name}`],
-      tokensUsed: response.usage?.total_tokens || 0
     }
     
     const executionTime = Math.max(1, Date.now() - startTime)

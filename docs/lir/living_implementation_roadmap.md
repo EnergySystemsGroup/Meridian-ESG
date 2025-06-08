@@ -128,16 +128,46 @@ This section highlights the highest priority tasks to be completed next:
     - [ ] Progress indicators for each processing stage
     - [ ] Error notifications and recovery handling
 
-**🔥 NEXT PRIORITY: Edge Function Testing & Validation**
+**🔥 CURRENT PRIORITY: Edge Function Testing & Issues Resolution**
 
 **Testing & Validation:**
-14. **🔥 Edge Function Testing** - Comprehensive testing in Supabase environment **HIGHEST PRIORITY**
-    - [ ] Local Edge Function testing with `supabase functions serve`
-    - [ ] Integration tests with real API sources
+14. **🚧 Edge Function Testing** - Comprehensive testing in Supabase environment **IN PROGRESS** 
+    - ✅ Local Edge Function testing with `supabase functions serve` - **COMPLETED**
+    - ✅ Basic connectivity and error handling validation - **COMPLETED**
+    - ✅ Authorization header configuration - **COMPLETED**
+    - 🚧 Real API source testing - **IN PROGRESS** (identified critical issues)
     - [ ] Performance validation with large datasets (100+ opportunities)
     - [ ] Timeout stress testing (ensure no 15-minute limit issues)
-15. **🔥 Migration Comparison** - Validate V2 output matches V1 quality **HIGH PRIORITY**
-    - [ ] Side-by-side processing comparison
+
+**🚨 CRITICAL ISSUES DISCOVERED:**
+
+**Database Schema Issues (RunManagerV2):**
+- ❌ Missing database columns: `source_manager_data`, `api_handler_data`, `ended_at`, `final_results`
+- ❌ UUID format errors: RunManagerV2 using string IDs instead of UUIDs
+- ❌ Schema cache issues: Columns not found in Supabase schema
+
+**API Data Issues:**
+- ❌ California Grants Portal: `409 Conflict` error (external API rate limiting)
+- ❌ Grants.gov: Returns empty array `[]` (no current opportunities or query issue)
+- ❌ AI JSON parsing failures: Non-JSON responses from Anthropic
+
+**Next Steps (Stage-by-Stage Testing):**
+15. **🔥 Individual Agent Testing with Real Data** - **HIGHEST PRIORITY**
+    - [ ] Create `scripts/test/` directory structure for systematic testing
+    - [ ] Test SourceOrchestrator with real California Grants Portal & Grants.gov sources
+    - [ ] Test DataExtractionAgent with mock API responses (avoid 409 errors)
+    - [ ] Test AnalysisAgent with extracted opportunities from previous stage
+    - [ ] Test FilterFunction with scored opportunities
+    - [ ] Test StorageAgent with filtered opportunities
+    - [ ] Chain outputs from each stage to next stage for validation
+
+16. **🔧 Database Schema Fixes** - **HIGH PRIORITY**
+    - [ ] Add missing V2 columns to `api_source_runs` table
+    - [ ] Fix RunManagerV2 UUID generation and validation
+    - [ ] Update Supabase schema cache for new columns
+
+17. **🔥 Migration Comparison** - Validate V2 output matches V1 quality **AFTER FIXES**
+    - [ ] Side-by-side processing comparison with working pipeline
     - [ ] Accuracy metrics and performance benchmarks
     - [ ] Token usage and cost analysis
 
@@ -175,9 +205,10 @@ This section highlights the highest priority tasks to be completed next:
 
 ## Recently Completed Tasks
 
-1. **✨ V2 Agent Architecture - ProcessCoordinatorV2 Service Migration**: Successfully extracted ProcessCoordinatorV2 from Edge Function to `app/lib/services/` with comprehensive test suite (7/7 tests passing). Implemented service-oriented architecture with proper separation of concerns, complete error handling, and V1-compatible metrics format.
-2. **✨ V2 Agent Architecture - Edge Function Simplification**: Converted `supabase/functions/process-source/index.js` to thin HTTP wrapper that delegates to ProcessCoordinatorV2 service, maintaining clean architecture and testability.
-3. **✨ V2 Agent Architecture - RunManagerV2 Integration**: Fully integrated RunManagerV2 with ProcessCoordinatorV2 service, providing V2 pipeline tracking with V1 database compatibility and comprehensive error handling.
+1. **✨ V2 Agent Architecture - Edge Function Basic Testing**: Successfully validated Edge Function connectivity, error handling, and authorization in local environment. Confirmed all V2 agents load correctly in Edge Function environment and ProcessCoordinatorV2 service integration works. Identified critical database schema and API data issues requiring resolution before full validation.
+2. **✨ V2 Agent Architecture - ProcessCoordinatorV2 Service Migration**: Successfully extracted ProcessCoordinatorV2 from Edge Function to `app/lib/services/` with comprehensive test suite (7/7 tests passing). Implemented service-oriented architecture with proper separation of concerns, complete error handling, and V1-compatible metrics format.
+3. **✨ V2 Agent Architecture - Edge Function Simplification**: Converted `supabase/functions/process-source/index.js` to thin HTTP wrapper that delegates to ProcessCoordinatorV2 service, maintaining clean architecture and testability.
+4. **✨ V2 Agent Architecture - RunManagerV2 Integration**: Fully integrated RunManagerV2 with ProcessCoordinatorV2 service, providing V2 pipeline tracking with V1 database compatibility and comprehensive error handling.
 4. **Frontend - Opportunity Detail Page UI/UX Enhancements**: Implemented numerous styling and layout improvements to the opportunity detail page, including refined card designs, tab navigation, content sections, and consistent status/category visuals.
 5. **Frontend - Application Resources Update**: Refined the Application Resources section on the detail page with improved icons and added a functional 'Data Source' link dynamically pulling the correct URL from the associated API Source.
 6. **Frontend - Funding Opportunities Filtering Enhancements**: Replaced tag filtering with robust category filtering system, added location-based filtering using the state eligibility data, improved status filtering with better visual indicators, and added comprehensive sorting options.
