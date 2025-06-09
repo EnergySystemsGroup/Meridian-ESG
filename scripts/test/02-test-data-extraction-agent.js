@@ -48,8 +48,8 @@ const STAGE_1_RESULTS = {
           "type": "offset",
           "inBody": false,
           "enabled": true,
-          "maxPages": 5,
-          "pageSize": 5,
+          "maxPages": 1,
+          "pageSize": 3,
           "limitParam": "limit",
           "offsetParam": "offset"
         },
@@ -167,9 +167,15 @@ function printRawDataComparison(rawApiData, opportunities, sourceKey) {
   // Get the raw opportunities data
   let rawOpportunities = [];
   if (sourceKey === 'california') {
-    rawOpportunities = rawApiData.result?.records || [];
-  } else if (sourceKey === 'grantsGov') {
+    // For California, the raw data is already an array of records
     rawOpportunities = Array.isArray(rawApiData) ? rawApiData : [];
+  } else if (sourceKey === 'grantsGov') {
+    // For Grants.gov, extract the data from each detailed response
+    if (Array.isArray(rawApiData)) {
+      rawOpportunities = rawApiData.map(item => item.data || item).filter(item => item);
+    } else {
+      rawOpportunities = [];
+    }
   }
   
   // Compare first 3 opportunities
@@ -276,20 +282,27 @@ async function testDataExtractionAgent(sourceKey, testData) {
     if (result.rawApiData) {
       console.log('\n🔍 DEBUG - RAW API RESPONSE STRUCTURE:');
       console.log('─'.repeat(60));
-      if (sourceKey === 'grantsGov') {
-        console.log('First few keys of raw response:', Object.keys(result.rawApiData).slice(0, 10));
-        if (result.rawApiData.data) {
-          console.log('Keys in data:', Object.keys(result.rawApiData.data).slice(0, 10));
-          if (result.rawApiData.data.oppHits) {
-            console.log('oppHits length:', result.rawApiData.data.oppHits.length);
-            console.log('First oppHit sample:', JSON.stringify(result.rawApiData.data.oppHits[0], null, 2).substring(0, 500));
-          } else {
-            console.log('No oppHits found in data');
+      
+      // Debug the actual structure for both sources
+      console.log(`Raw data type: ${typeof result.rawApiData}`);
+      console.log(`Is array: ${Array.isArray(result.rawApiData)}`);
+      
+      if (Array.isArray(result.rawApiData)) {
+        console.log(`Array length: ${result.rawApiData.length}`);
+        console.log('First few items keys:', result.rawApiData.slice(0, 3).map((item, i) => `Item ${i}: ${Object.keys(item).slice(0, 5).join(', ')}`));
+      } else if (typeof result.rawApiData === 'object') {
+        console.log('Object keys:', Object.keys(result.rawApiData).slice(0, 10));
+        if (result.rawApiData.result) {
+          console.log('result keys:', Object.keys(result.rawApiData.result || {}));
+          if (result.rawApiData.result.records) {
+            console.log('records length:', result.rawApiData.result.records?.length);
           }
-        } else {
-          console.log('No data property found in raw response');
+        }
+        if (result.rawApiData.data) {
+          console.log('data keys:', Object.keys(result.rawApiData.data || {}));
         }
       }
+      
       printRawDataComparison(result.rawApiData, result.opportunities, sourceKey);
     }
     
