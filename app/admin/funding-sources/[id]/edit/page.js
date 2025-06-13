@@ -55,6 +55,7 @@ export default function EditFundingSource() {
 				},
 				idField: '',
 				idParam: '',
+				detailResponseDataPath: '',
 			},
 			response_mapping: {
 				title: '',
@@ -1258,6 +1259,23 @@ export default function EditFundingSource() {
 									/>
 									<p className='text-xs text-gray-500 mt-1'>
 										Parameter name for the ID in the detail API call
+									</p>
+								</div>
+
+								<div className='col-span-2'>
+									<label className='block text-sm font-medium text-gray-700 mb-1'>
+										Detail Response Data Path
+									</label>
+									<input
+										type='text'
+										name='detailResponseDataPath'
+										value={formData.configurations.detail_config.detailResponseDataPath}
+										onChange={handleDetailConfigChange}
+										placeholder='e.g., data'
+										className='w-full px-3 py-2 border border-gray-300 rounded-md'
+									/>
+									<p className='text-xs text-gray-500 mt-1'>
+										Path to extract the opportunity data from each detail API response. Use dot notation for nested fields (e.g., "data.opportunity"). Leave empty if the response root contains the opportunity data directly.
 									</p>
 								</div>
 							</div>

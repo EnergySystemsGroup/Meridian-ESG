@@ -5,6 +5,8 @@
  * for each opportunity from the initial list
  */
 
+import { extractDataFromResponse } from '../utils/dataExtraction.js';
+
 /**
  * Make detail calls for each opportunity in the list
  */
@@ -97,10 +99,37 @@ async function fetchOpportunityDetail(opportunityId, detailConfig) {
     }
     
     const data = await response.json();
+    
+    // Extract data using detailResponseDataPath if configured
+    if (detailConfig.detailResponseDataPath) {
+      const extractedData = extractDataByPath(data, detailConfig.detailResponseDataPath);
+      return extractedData || data; // Fallback to original data if extraction fails
+    }
+    
     return data;
     
   } catch (error) {
     console.error(`[DataExtractionAgent] ❌ Error fetching detail for ${opportunityId}:`, error);
     throw error;
   }
+}
+
+/**
+ * Helper function to extract data by path
+ */
+function extractDataByPath(data, path) {
+  if (!path || !data) return data;
+  
+  const keys = path.split('.');
+  let result = data;
+  
+  for (const key of keys) {
+    if (result && typeof result === 'object' && key in result) {
+      result = result[key];
+    } else {
+      return null;
+    }
+  }
+  
+  return result;
 } 
