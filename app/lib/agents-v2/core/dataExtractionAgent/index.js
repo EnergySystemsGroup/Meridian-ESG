@@ -22,10 +22,10 @@ import { storeRawResponse } from './storage/index.js';
 
 /**
  * Extracts and standardizes data from an API source
- * @param {Object} source - The source object
- * @param {Object} processingInstructions - Instructions from SourceOrchestrator
+ * @param {Object} source - The source object with basic info (id, name, api_endpoint)
+ * @param {Object} processingInstructions - Processing configuration from SourceOrchestrator with keys: workflow, apiEndpoint, requestConfig, queryParameters, requestBody, responseConfig, paginationConfig, detailConfig, responseMapping, authMethod, authDetails
  * @param {Object} anthropic - Anthropic client instance (optional, will use centralized client)
- * @returns {Promise<Object>} - Extracted and standardized opportunities
+ * @returns {Promise<Object>} - Extracted and standardized opportunities with metrics and tracking data
  */
 export async function extractFromSource(source, processingInstructions, anthropic = null) {
   // Input validation first - before accessing properties

@@ -36,7 +36,7 @@ export async function extractOpportunitiesWithSchema(rawData, source, anthropic,
   console.log(`[DataExtractionAgent] 📦 Split into ${chunks.length} chunks`);
   
   // Process chunks with controlled concurrency
-  const processFunction = (chunk, index) => processExtractionChunk(chunk, source, anthropic, index, chunks.length);
+  const processFunction = (chunk, index) => processExtractionChunk(chunk, source, anthropic, index, chunks.length, processingInstructions);
   const chunkResults = await processChunksInParallel(chunks, processFunction, 1);
   
   // Combine results
@@ -68,7 +68,7 @@ export async function extractOpportunitiesWithSchema(rawData, source, anthropic,
 /**
  * Process a single chunk of opportunities for extraction
  */
-async function processExtractionChunk(chunk, source, anthropic, chunkIndex, totalChunks) {
+async function processExtractionChunk(chunk, source, anthropic, chunkIndex, totalChunks, processingInstructions) {
   console.log(`[DataExtractionAgent] 📄 Processing chunk ${chunkIndex + 1}/${totalChunks} (${chunk.length} opportunities)`);
   
   try {
@@ -76,7 +76,7 @@ async function processExtractionChunk(chunk, source, anthropic, chunkIndex, tota
     console.log(`[DataExtractionAgent] 🔍 DEBUG - Chunk size: ${chunkText.length} characters`);
     
     // Build the extraction prompt
-    const systemPrompt = buildExtractionPrompt(source);
+    const systemPrompt = buildExtractionPrompt(source, processingInstructions);
     console.log(`[DataExtractionAgent] 🔍 DEBUG - Prompt length: ${systemPrompt.length} characters`);
     
     const userPrompt = `Extract and standardize the following opportunities data:\n\n${chunkText}`;
@@ -123,37 +123,69 @@ async function processExtractionChunk(chunk, source, anthropic, chunkIndex, tota
 }
 
 /**
- * Build the extraction prompt with taxonomies
+ * Build the extraction prompt with taxonomies and response mapping
  */
-function buildExtractionPrompt(source) {
-  const taxonomyInstructions = generateTaxonomyInstruction();
+function buildExtractionPrompt(source, processingInstructions) {
+  // Generate taxonomy instructions for each field
+  const projectTypesInstruction = generateTaxonomyInstruction('ELIGIBLE_PROJECT_TYPES', 'eligible project types');
+  const applicantsInstruction = generateTaxonomyInstruction('ELIGIBLE_APPLICANTS', 'eligible applicants');
+  const categoriesInstruction = generateTaxonomyInstruction('CATEGORIES', 'funding categories');
+  const fundingTypesInstruction = generateTaxonomyInstruction('FUNDING_TYPES', 'funding types');
   const locationInstructions = generateLocationEligibilityInstruction();
+  
+  // Build response mapping guidance if available
+  let responseMappingGuidance = '';
+  if (processingInstructions?.responseMapping && Object.keys(processingInstructions.responseMapping).length > 0) {
+    const mappings = Object.entries(processingInstructions.responseMapping)
+      .filter(([key, value]) => value && value.trim())
+      .map(([key, value]) => `- ${key}: ${value}`)
+      .join('\n');
+    
+    if (mappings) {
+      responseMappingGuidance = `
+RESPONSE MAPPING GUIDANCE:
+The following field mappings have been configured for this source:
+${mappings}
+
+Use these mappings as guidance for where to find specific information in the API response data.`;
+    }
+  }
   
   return `You are an expert data extraction agent. Extract funding opportunities from API response data and standardize them according to our schema.
 
 KEY REQUIREMENTS:
 - Extract ALL opportunities from the provided data
-- Use ONLY the structured funding fields (EstAvailFunds, EstAwards, EstAmounts for California; EstimatedTotalProgramFunding, Award.Min, Award.Max for federal sources)  
-- DO NOT extract funding amounts from description text - only from dedicated funding fields
-- If funding fields contain "N/A", "none", or are empty, return null for those funding values
+- Use intelligent field extraction from ANY available fields including structured fields, descriptions, summaries, and narrative text
+- Extract funding amounts from wherever they appear - dedicated funding fields, descriptions, or program summaries
+- If funding amounts are mentioned in text, parse and extract them intelligently
 - Ensure all required fields are present and properly formatted
 - Apply proper taxonomies for consistent categorization
 
 SOURCE INFORMATION:
 - Source: ${source.name}
-- Type: ${source.type}
-- Organization: ${source.organization}
+- Type: ${source.type || 'Unknown'}
+- Organization: ${source.organization || 'Unknown'}
 
-${taxonomyInstructions}
+${responseMappingGuidance}
+
+FUNDING EXTRACTION APPROACH:
+1. Look for structured funding fields first (totalFunding, estimatedFunding, award amounts, etc.). Use the response mapping rules, if available.
+2. If structured fields are missing or contain "N/A"/"none", extract from description text
+3. Parse dollar amounts from any text that mentions funding levels, award ranges, or budget information
+4. Use context clues to determine minimum, maximum, and total funding amounts
+5. If no funding information is available anywhere, set funding amounts to null
+
+TAXONOMY GUIDELINES:
+
+${projectTypesInstruction}
+
+${applicantsInstruction}
+
+${categoriesInstruction}
+
+${fundingTypesInstruction}
 
 ${locationInstructions}
-
-CRITICAL FUNDING EXTRACTION RULES:
-1. For California sources: Only use EstAvailFunds, EstAwards, EstAmounts fields
-2. For Federal sources: Only use EstimatedTotalProgramFunding, Award.Min, Award.Max fields  
-3. If these structured fields contain "N/A", "none", or are missing, set funding amounts to null
-4. DO NOT extract dollar amounts from narrative descriptions or program summaries
-5. DO NOT infer funding amounts from context or historical data
 
 Return all extracted opportunities using the dataExtraction tool.`;
 } 

@@ -597,6 +597,7 @@ export const schemas = {
   /**
    * Opportunity Analysis Schema - For AnalysisAgent
    * Content enhancement + systematic scoring
+   * Returns COMPLETE opportunities (extracted data + analysis enhancements)
    */
   opportunityAnalysis: {
     type: "object",
@@ -606,10 +607,140 @@ export const schemas = {
         items: {
           type: "object",
           properties: {
+            // ===== EXTRACTED DATA (from DataExtractionAgent) =====
             id: {
               type: "string",
-              description: "Unique identifier matching the extracted opportunity"
+              description: "Unique identifier for the opportunity - REQUIRED for detail fetching"
             },
+            title: {
+              type: "string",
+              description: "Title of the funding opportunity"
+            },
+            description: {
+              type: "string",
+              description: "Raw description extracted from the API response"
+            },
+            fundingType: {
+              type: "string",
+              nullable: true,
+              description: "Type of funding (grant, loan, rebate, tax_credit, etc.)"
+            },
+            funding_source: {
+              type: "object",
+              nullable: true,
+              properties: {
+                name: {
+                  type: "string",
+                  description: "The precise name of the funding organization or agency"
+                },
+                type: {
+                  type: "string",
+                  description: "High-level type (federal, state, local, utility, foundation, other)"
+                },
+                website: {
+                  type: "string",
+                  nullable: true,
+                  description: "Website of the funding organization if available"
+                },
+                contact_email: {
+                  type: "string",
+                  nullable: true,
+                  description: "Contact email for the funding organization if available"
+                },
+                contact_phone: {
+                  type: "string",
+                  nullable: true,
+                  description: "Contact phone number for the funding organization if available"
+                },
+                description: {
+                  type: "string",
+                  nullable: true,
+                  description: "Additional notes or description about the funding organization"
+                }
+              },
+              required: ["name"],
+              description: "Information about the organization providing this funding opportunity"
+            },
+            totalFundingAvailable: {
+              type: "number",
+              nullable: true,
+              description: "Total funding amount available for the entire program/opportunity"
+            },
+            minimumAward: {
+              type: "number",
+              nullable: true,
+              description: "Minimum award amount per applicant"
+            },
+            maximumAward: {
+              type: "number",
+              nullable: true,
+              description: "Maximum award amount per applicant"
+            },
+            notes: {
+              type: "string",
+              nullable: true,
+              description: "Notes on how the funding values were determined"
+            },
+            openDate: {
+              type: "string",
+              nullable: true,
+              description: "Opening date for applications (YYYY-MM-DD format)"
+            },
+            closeDate: {
+              type: "string",
+              nullable: true,
+              description: "Closing date for applications (YYYY-MM-DD format)"
+            },
+            eligibleApplicants: {
+              type: "array",
+              items: { type: "string" },
+              description: "List of standardized eligible applicant types"
+            },
+            eligibleProjectTypes: {
+              type: "array",
+              items: { type: "string" },
+              description: "List of standardized eligible project types"
+            },
+            eligibleLocations: {
+              type: "array",
+              items: { type: "string" },
+              nullable: true,
+              description: "Array of standardized state codes where this opportunity is available"
+            },
+            url: {
+              type: "string",
+              nullable: true,
+              description: "URL for the funding opportunity, if available"
+            },
+            matchingRequired: {
+              type: "boolean",
+              description: "Whether matching funds are required"
+            },
+            matchingPercentage: {
+              type: "number",
+              nullable: true,
+              description: "Required matching percentage"
+            },
+            categories: {
+              type: "array",
+              items: { type: "string" },
+              description: "Standardized funding categories"
+            },
+            tags: {
+              type: "array",
+              items: { type: "string" },
+              description: "Short, relevant keywords extracted from the opportunity"
+            },
+            status: {
+              type: "string",
+              description: "Current status: 'open', 'upcoming', or 'closed' (lowercase only)"
+            },
+            isNational: {
+              type: "boolean",
+              description: "Whether this is a national opportunity"
+            },
+            
+            // ===== ANALYSIS ENHANCEMENTS (added by AnalysisAgent) =====
             enhancedDescription: {
               type: "string",
               description: "Comprehensive 3-4 paragraph description explaining the opportunity's purpose, goals, eligibility criteria, application process, and key details"
@@ -662,7 +793,7 @@ export const schemas = {
             },
             scoringExplanation: {
               type: "string",
-              description: "Brief explanation of scoring rationale with specific examples from the opportunity data. Note: Opportunities with scores 2+ will be considered for further filtering."
+              description: "Brief explanation of scoring rationale with specific examples from the opportunity data"
             },
             concerns: {
               type: "array",
@@ -675,7 +806,7 @@ export const schemas = {
               description: "Estimated funding amount per applicant (for filtering logic)"
             }
           },
-          required: ["id", "enhancedDescription", "actionableSummary", "scoring", "scoringExplanation"]
+          required: ["id", "title", "description", "eligibleApplicants", "eligibleProjectTypes", "enhancedDescription", "actionableSummary", "scoring", "scoringExplanation"]
         }
       },
       analysisMetrics: {
