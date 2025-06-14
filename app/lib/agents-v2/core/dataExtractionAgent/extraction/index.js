@@ -89,7 +89,6 @@ async function processExtractionChunk(chunk, source, anthropic, chunkIndex, tota
       `${systemPrompt}\n\n${userPrompt}`,
       schemas.dataExtraction,
       {
-        model: "claude-3-5-sonnet-20241022",
         maxTokens: 8000,
         temperature: 0.1
       }

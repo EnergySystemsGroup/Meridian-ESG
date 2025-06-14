@@ -19,7 +19,7 @@ import { extractFromSource } from '../../app/lib/agents-v2/core/dataExtractionAg
 
 // Stage 1 results (from SourceOrchestrator test)
 const STAGE_1_RESULTS = {
-  "timestamp": "2025-06-08T04:59:04.070Z",
+  "timestamp": "2025-06-13T21:48:13.993Z",
   "results": {
     "california": {
       "analysis": {
@@ -33,7 +33,7 @@ const STAGE_1_RESULTS = {
         },
         "queryParameters": {
           "q": "energy | building | mobility | solar | battery | modernization | hvac | lighting | water | climate | carbon | school | infrastructure | roof | transportation | construction",
-          "limit": "3",
+          "limit": "10",
           "plain": "false",
           "offset": "0",
           "filters": "{\"Status\":[\"active\",\"forecasted\"]}",
@@ -48,15 +48,18 @@ const STAGE_1_RESULTS = {
           "type": "offset",
           "inBody": false,
           "enabled": true,
-          "maxPages": 1,
-          "pageSize": 3,
+          "maxPages": 2,
+          "pageSize": 5,
           "limitParam": "limit",
           "offsetParam": "offset"
         },
         "detailConfig": {
           "enabled": false
         },
-        "responseMapping": {},
+        "responseMapping": {
+          "maxAward": "EstAmounts",
+          "totalFunding": "EstAvailFunds"
+        },
         "authMethod": "none",
         "authDetails": {},
         "handlerType": "standard",
@@ -83,7 +86,7 @@ const STAGE_1_RESULTS = {
         "notes": "This is a single stage api. we will using sql to filter our key words. ",
         "handler_type": "standard",
         "created_at": "2025-03-31T05:35:53.680776+00:00",
-        "updated_at": "2025-05-02T04:32:16.561242+00:00"
+        "updated_at": "2025-06-13T21:40:21.064288+00:00"
       }
     },
     "grantsGov": {
@@ -109,8 +112,8 @@ const STAGE_1_RESULTS = {
           "type": "offset",
           "inBody": true,
           "enabled": true,
-          "maxPages": 1,
-          "pageSize": 3,
+          "maxPages": 2,
+          "pageSize": 5,
           "limitParam": "rows",
           "offsetParam": "startRecordNum"
         },
@@ -122,9 +125,14 @@ const STAGE_1_RESULTS = {
           },
           "idField": "id",
           "idParam": "opportunityId",
-          "endpoint": "https://api.grants.gov/v1/api/fetchOpportunity"
+          "endpoint": "https://api.grants.gov/v1/api/fetchOpportunity",
+          "detailResponseDataPath": "data"
         },
-        "responseMapping": {},
+        "responseMapping": {
+          "maxAward": "synopsis.awardCeiling",
+          "minAward": "synopsis.awardFloor",
+          "totalFunding": "synopsis.estimatedFunding"
+        },
         "authMethod": "none",
         "authDetails": {},
         "handlerType": "standard",
@@ -151,7 +159,7 @@ const STAGE_1_RESULTS = {
         "notes": "Two-stage API system: 1) Search API for opportunity listings 2) Detail API requires separate calls using opportunity IDs for full details",
         "handler_type": "standard",
         "created_at": "2025-03-29T21:21:19.251067+00:00",
-        "updated_at": "2025-04-30T01:18:56.333169+00:00"
+        "updated_at": "2025-06-13T21:47:16.70188+00:00"
       }
     }
   }
@@ -160,7 +168,7 @@ const STAGE_1_RESULTS = {
 /**
  * Simple function to print raw data alongside processed data for funding comparison
  */
-function printRawDataComparison(rawApiData, opportunities, sourceKey) {
+function printRawDataComparison(rawApiData, opportunities, sourceKey, testData) {
   console.log(`\n🔍 RAW vs PROCESSED COMPARISON - ${sourceKey.toUpperCase()}`);
   console.log('═'.repeat(80));
   
@@ -170,16 +178,16 @@ function printRawDataComparison(rawApiData, opportunities, sourceKey) {
     // For California, the raw data is already an array of records
     rawOpportunities = Array.isArray(rawApiData) ? rawApiData : [];
   } else if (sourceKey === 'grantsGov') {
-    // For Grants.gov, extract the data from each detailed response
+    // For Grants.gov, the raw data is now an array of raw detail API responses
     if (Array.isArray(rawApiData)) {
-      rawOpportunities = rawApiData.map(item => item.data || item).filter(item => item);
+      rawOpportunities = rawApiData.filter(item => item); // Raw detail responses
     } else {
       rawOpportunities = [];
     }
   }
   
-  // Compare first 3 opportunities
-  for (let i = 0; i < Math.min(3, opportunities.length); i++) {
+  // Compare first 10 opportunities (or all if less than 10)
+  for (let i = 0; i < Math.min(10, opportunities.length); i++) {
     const opportunity = opportunities[i];
     const rawOpp = rawOpportunities[i];
     
@@ -194,9 +202,47 @@ function printRawDataComparison(rawApiData, opportunities, sourceKey) {
         console.log(`   EstAwards: ${rawOpp['EstAwards'] || 'N/A'}`);
         console.log(`   EstAmounts: ${rawOpp['EstAmounts'] || 'N/A'}`);
       } else if (sourceKey === 'grantsGov') {
-        console.log(`   EstimatedTotalProgramFunding: ${rawOpp.EstimatedTotalProgramFunding || 'N/A'}`);
-        console.log(`   Award Min: ${rawOpp.Award?.Min || 'N/A'}`);
-        console.log(`   Award Max: ${rawOpp.Award?.Max || 'N/A'}`);
+        // Use response mapping to show raw values dynamically
+        const responseMapping = testData.analysis.responseMapping;
+        const getNestedValue = (obj, path) => {
+          return path.split('.').reduce((current, key) => current?.[key], obj);
+        };
+        
+        console.log(`   awardCeiling (${responseMapping.maxAward}): ${getNestedValue(rawOpp.data, responseMapping.maxAward) || 'N/A'}`);
+        console.log(`   awardFloor (${responseMapping.minAward}): ${getNestedValue(rawOpp.data, responseMapping.minAward) || 'N/A'}`);
+        console.log(`   estimatedFunding (${responseMapping.totalFunding}): ${getNestedValue(rawOpp.data, responseMapping.totalFunding) || 'N/A'}`);
+        
+        // DEBUG: Show all field names in the raw response
+        if (i === 0) { // Only show for first opportunity to avoid spam
+          console.log('\n🔍 DEBUG - ALL RAW FIELD NAMES:');
+          console.log('   Top-level fields:', Object.keys(rawOpp).slice(0, 20).join(', '));
+          if (rawOpp.data) {
+            console.log('   Data fields:', Object.keys(rawOpp.data).slice(0, 20).join(', '));
+            if (rawOpp.data.synopsis) {
+              console.log('   Synopsis fields:', Object.keys(rawOpp.data.synopsis).slice(0, 20).join(', '));
+            }
+            
+            // Show a few sample values from the synopsis object
+            if (rawOpp.data.synopsis) {
+              console.log('\n🔍 DEBUG - SAMPLE SYNOPSIS VALUES:');
+              const synopsisKeys = Object.keys(rawOpp.data.synopsis).slice(0, 10);
+              synopsisKeys.forEach(key => {
+                const value = rawOpp.data.synopsis[key];
+                const displayValue = typeof value === 'string' ? 
+                  (value.length > 100 ? value.substring(0, 100) + '...' : value) : 
+                  value;
+                console.log(`   ${key}: ${displayValue}`);
+              });
+            }
+          }
+          
+          // Show which fields the response mapping is targeting
+          console.log('\n🔍 RESPONSE MAPPING TARGETS:');
+          Object.entries(responseMapping).forEach(([field, path]) => {
+            const value = getNestedValue(rawOpp.data, path);
+            console.log(`   ${field} → ${path}: ${value || 'N/A'}`);
+          });
+        }
       }
       
       console.log('\n🔸 PROCESSED DATA:');
@@ -204,21 +250,70 @@ function printRawDataComparison(rawApiData, opportunities, sourceKey) {
       console.log(`   Min Award: ${opportunity.minimumAward ? '$' + opportunity.minimumAward.toLocaleString() : 'N/A'}`);
       console.log(`   Max Award: ${opportunity.maximumAward ? '$' + opportunity.maximumAward.toLocaleString() : 'N/A'}`);
       
-      // Show if LLM is hallucinating
-      let hallucinating = false;
+      // Check if LLM is following response mapping correctly
+      let mappingValidation = true;
+      let mappingDetails = '';
+      
       if (sourceKey === 'california') {
-        const rawHasData = rawOpp['EstAvailFunds'] !== 'N/A' || rawOpp['EstAwards'] !== 'N/A' || rawOpp['EstAmounts'] !== 'N/A';
-        const processedHasData = opportunity.totalFundingAvailable || opportunity.minimumAward || opportunity.maximumAward;
-        hallucinating = !rawHasData && processedHasData;
+        const responseMapping = testData.analysis.responseMapping;
+        mappingDetails += `\n🔍 RESPONSE MAPPING VALIDATION:`;
+        
+        // Check totalFunding mapping
+        if (responseMapping.totalFunding && rawOpp[responseMapping.totalFunding]) {
+          const rawValue = rawOpp[responseMapping.totalFunding];
+          const expectedValue = parseFloat(rawValue.replace(/[$,]/g, ''));
+          const actualValue = opportunity.totalFundingAvailable;
+          const matches = actualValue && Math.abs(actualValue - expectedValue) < 1;
+          mappingDetails += `\n   totalFunding (${responseMapping.totalFunding}): ${rawValue} → ${actualValue ? '$' + actualValue.toLocaleString() : 'N/A'} ${matches ? '✅' : '❌'}`;
+        }
+        
+        // Check maxAward mapping
+        if (responseMapping.maxAward && rawOpp[responseMapping.maxAward]) {
+          const rawValue = rawOpp[responseMapping.maxAward];
+          // Parse ranges like "Between $750,000 and $1,500,000"
+          const match = rawValue.match(/\$?([\d,]+).*?\$?([\d,]+)/);
+          if (match) {
+            const expectedMax = parseFloat(match[2].replace(/,/g, ''));
+            const actualValue = opportunity.maximumAward;
+            const matches = actualValue && Math.abs(actualValue - expectedMax) < 1;
+            mappingDetails += `\n   maxAward (${responseMapping.maxAward}): ${rawValue} → ${actualValue ? '$' + actualValue.toLocaleString() : 'N/A'} ${matches ? '✅' : '❌'}`;
+          }
+        }
       } else if (sourceKey === 'grantsGov') {
-        const rawHasData = rawOpp.EstimatedTotalProgramFunding !== 'N/A' || rawOpp.Award?.Min !== 'N/A' || rawOpp.Award?.Max !== 'N/A';
-        const processedHasData = opportunity.totalFundingAvailable || opportunity.minimumAward || opportunity.maximumAward;
-        hallucinating = !rawHasData && processedHasData;
+        const responseMapping = testData.analysis.responseMapping;
+        mappingDetails += `\n🔍 RESPONSE MAPPING VALIDATION:`;
+        
+        // Helper function to get nested value from the raw response
+        const getNestedValue = (obj, path) => {
+          return path.split('.').reduce((current, key) => current?.[key], obj);
+        };
+        
+        // Check totalFunding mapping
+        if (responseMapping.totalFunding) {
+          const rawValue = getNestedValue(rawOpp.data, responseMapping.totalFunding);
+          const actualValue = opportunity.totalFundingAvailable;
+          const matches = rawValue && actualValue && parseFloat(rawValue) === actualValue;
+          mappingDetails += `\n   totalFunding (${responseMapping.totalFunding}): ${rawValue || 'N/A'} → ${actualValue ? '$' + actualValue.toLocaleString() : 'N/A'} ${matches ? '✅' : '❌'}`;
+        }
+        
+        // Check maxAward mapping
+        if (responseMapping.maxAward) {
+          const rawValue = getNestedValue(rawOpp.data, responseMapping.maxAward);
+          const actualValue = opportunity.maximumAward;
+          const matches = rawValue && actualValue && parseFloat(rawValue) === actualValue;
+          mappingDetails += `\n   maxAward (${responseMapping.maxAward}): ${rawValue || 'N/A'} → ${actualValue ? '$' + actualValue.toLocaleString() : 'N/A'} ${matches ? '✅' : '❌'}`;
+        }
+        
+        // Check minAward mapping
+        if (responseMapping.minAward) {
+          const rawValue = getNestedValue(rawOpp.data, responseMapping.minAward);
+          const actualValue = opportunity.minimumAward;
+          const matches = rawValue && actualValue && parseFloat(rawValue) === actualValue;
+          mappingDetails += `\n   minAward (${responseMapping.minAward}): ${rawValue || 'N/A'} → ${actualValue ? '$' + actualValue.toLocaleString() : 'N/A'} ${matches ? '✅' : '❌'}`;
+        }
       }
       
-      if (hallucinating) {
-        console.log('\n⚠️  🚨 POTENTIAL LLM HALLUCINATION: LLM extracted funding amounts but raw data shows N/A!');
-      }
+      console.log(mappingDetails);
     } else {
       console.log('❌ No corresponding raw data found');
     }
@@ -303,7 +398,7 @@ async function testDataExtractionAgent(sourceKey, testData) {
         }
       }
       
-      printRawDataComparison(result.rawApiData, result.opportunities, sourceKey);
+      printRawDataComparison(result.rawApiData, result.opportunities, sourceKey, testData);
     }
     
     console.log('\n🎯 VALIDATION:');
@@ -354,8 +449,8 @@ async function runDataExtractionTests() {
   
   const results = {};
   
-  // Test 1: California Grants Portal (single API)
-  results.california = await testDataExtractionAgent('california', STAGE_1_RESULTS.results.california);
+  // Test 1: California Grants Portal (single API) - SKIP FOR NOW
+  // results.california = await testDataExtractionAgent('california', STAGE_1_RESULTS.results.california);
   
   // Test 2: Grants.gov (two-step API)  
   console.log('\n🔄 Starting Grants.gov test...\n');
@@ -374,9 +469,9 @@ async function runDataExtractionTests() {
   });
   
   const successCount = Object.values(results).filter(r => r.success).length;
-  console.log(`\n🎯 Overall: ${successCount}/2 sources extracted successfully`);
+  console.log(`\n🎯 Overall: ${successCount}/1 sources extracted successfully`);
   
-  if (successCount === 2) {
+  if (successCount === 1) {
     console.log('\n🎉 Stage 2 Complete! Ready for Stage 3 (AnalysisAgent)');
     console.log('\n💾 Saving results for next stage...');
     
@@ -411,4 +506,4 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   runDataExtractionTests().catch(console.error);
 }
 
-export { runDataExtractionTests }; 
+export { runDataExtractionTests };

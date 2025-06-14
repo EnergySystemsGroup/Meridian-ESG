@@ -20,6 +20,7 @@ export async function makeTwoStepCalls(opportunities, processingInstructions) {
   console.log(`[DataExtractionAgent] 🔍 Fetching details for ${opportunities.length} opportunities`);
   
   const detailData = [];
+  const rawDetailResponses = []; // NEW: Store raw responses for debugging
   let detailCallsSuccessful = 0;
   let detailCallsFailed = 0;
   
@@ -33,8 +34,9 @@ export async function makeTwoStepCalls(opportunities, processingInstructions) {
         continue;
       }
       
-      const detail = await fetchOpportunityDetail(opportunityId, detailConfig);
-      detailData.push(detail);
+      const { extractedData, rawData } = await fetchOpportunityDetail(opportunityId, detailConfig);
+      detailData.push(extractedData);
+      rawDetailResponses.push(rawData); // Store raw response
       detailCallsSuccessful++;
       
       console.log(`[DataExtractionAgent] ✅ Detail fetched for: ${opportunityId}`);
@@ -49,6 +51,7 @@ export async function makeTwoStepCalls(opportunities, processingInstructions) {
   
   return {
     detailData,
+    rawDetailResponses, // NEW: Include raw responses
     metrics: {
       detailCallsSuccessful,
       detailCallsFailed
@@ -103,10 +106,16 @@ async function fetchOpportunityDetail(opportunityId, detailConfig) {
     // Extract data using detailResponseDataPath if configured
     if (detailConfig.detailResponseDataPath) {
       const extractedData = extractDataByPath(data, detailConfig.detailResponseDataPath);
-      return extractedData || data; // Fallback to original data if extraction fails
+      return {
+        extractedData: extractedData || data,
+        rawData: data
+      };
     }
     
-    return data;
+    return {
+      extractedData: data,
+      rawData: data
+    };
     
   } catch (error) {
     console.error(`[DataExtractionAgent] ❌ Error fetching detail for ${opportunityId}:`, error);

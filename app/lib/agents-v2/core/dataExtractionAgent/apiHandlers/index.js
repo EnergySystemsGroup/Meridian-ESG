@@ -109,7 +109,7 @@ export async function handleTwoStepApi(processingInstructions) {
   
   return {
     data: detailResult.detailData,
-    rawResponse: detailResult.detailData, // Use the detailed data as raw response
+    rawResponse: detailResult.rawDetailResponses, // Use raw detail responses for debugging
     totalFound: listResult.totalFound,
     detailMetrics: detailResult.metrics
   };
