@@ -137,9 +137,11 @@ This section highlights the highest priority tasks to be completed next:
     - ✅ Authorization header configuration - **COMPLETED**
     - ✅ Real API source testing with California Grants Portal and Grants.gov - **COMPLETED**
     - ✅ Single API workflow validation (California: 3 opportunities extracted) - **COMPLETED**
-    - ✅ Two-step API workflow validation (Grants.gov: 3 opportunities extracted) - **COMPLETED**
+    - ✅ Two-step API workflow validation (Grants.gov: 10 opportunities extracted) - **COMPLETED**
     - ✅ Raw data storage and comparison validation - **COMPLETED**
-    - ✅ LLM funding extraction accuracy validation (no hallucination detected) - **COMPLETED**
+    - ✅ LLM funding extraction accuracy validation with response mapping - **COMPLETED**
+    - ✅ Response mapping validation: LLM correctly follows JSON path guidance - **COMPLETED**
+    - ✅ Historical data confusion resolution: Improved prompts handle complex nested JSON - **COMPLETED**
     - ✅ Modular architecture functionality confirmed - **COMPLETED**
     - [ ] Performance validation with large datasets (100+ opportunities)
     - [ ] Timeout stress testing (ensure no 15-minute limit issues)
@@ -165,6 +167,15 @@ This section highlights the highest priority tasks to be completed next:
     - 🔥 Test FilterFunction with scored opportunities - **CURRENT PRIORITY**
     - [ ] Test StorageAgent with filtered opportunities
     - [ ] Chain outputs from each stage to next stage for validation
+
+**Agent Execution Tracking Enhancement:**
+15.5. **✅ V2 Agent Execution Tracking** - Add missing execution tracking to match V1 capabilities **COMPLETED** ✨
+    - ✅ Add `logAgentExecution` calls to DataExtractionAgent for token usage and execution metrics - **COMPLETED**
+    - ✅ Add `logAgentExecution` calls to AnalysisAgent for LLM performance tracking - **COMPLETED**
+    - ✅ Add `logAgentExecution` calls to StorageAgent for database operation metrics - **COMPLETED**
+    - [ ] Add token usage tracking to all V2 agents using Anthropic SDK
+    - [ ] Verify `agent_executions` table receives records from V2 pipeline
+    - [ ] Update V2 agents to match V1 tracking granularity for performance comparison
 
 16. **🔧 Database Schema Fixes** - **HIGH PRIORITY**
     - [ ] Add missing V2 columns to `api_source_runs` table

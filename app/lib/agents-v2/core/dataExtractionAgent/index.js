@@ -19,6 +19,7 @@ import { getAnthropicClient } from '../../utils/anthropicClient.js';
 import { handleSingleApi, handleTwoStepApi } from './apiHandlers/index.js';
 import { extractOpportunitiesWithSchema } from './extraction/index.js';
 import { storeRawResponse } from './storage/index.js';
+import { createSupabaseClient, logAgentExecution } from '../../../supabase.js';
 
 /**
  * Extracts and standardizes data from an API source
@@ -78,7 +79,7 @@ export async function extractFromSource(source, processingInstructions, anthropi
     const executionTime = Math.max(1, Date.now() - startTime);
     console.log(`[DataExtractionAgent] ✅ Extraction completed in ${executionTime}ms`);
     
-    return {
+    const result = {
       opportunities: trackedOpportunities,
       extractionMetrics: {
         totalFound: rawData.totalFound || extractionResult.totalExtracted,
@@ -93,8 +94,50 @@ export async function extractFromSource(source, processingInstructions, anthropi
       rawApiData: rawApiResponse // Add raw API data for testing/debugging
     };
     
+    // Log agent execution for tracking
+    try {
+      const supabase = createSupabaseClient();
+      await logAgentExecution(
+        supabase,
+        'data_extraction_v2',
+        { 
+          source: { id: source.id, name: source.name },
+          processingInstructions: { workflow: processingInstructions.workflow }
+        },
+        result,
+        executionTime,
+        extractionResult.tokenUsage || null
+      );
+    } catch (logError) {
+      console.error('[DataExtractionAgent] ❌ Failed to log execution:', logError);
+      // Don't throw - logging failure shouldn't break the pipeline
+    }
+    
+    return result;
+    
   } catch (error) {
     console.error(`[DataExtractionAgent] ❌ Error extracting from source:`, error);
+    
+    // Log failed execution
+    try {
+      const supabase = createSupabaseClient();
+      const executionTime = Math.max(1, Date.now() - startTime);
+      await logAgentExecution(
+        supabase,
+        'data_extraction_v2',
+        { 
+          source: { id: source.id, name: source.name },
+          processingInstructions: { workflow: processingInstructions.workflow }
+        },
+        null,
+        executionTime,
+        null,
+        error
+      );
+    } catch (logError) {
+      console.error('[DataExtractionAgent] ❌ Failed to log error execution:', logError);
+    }
+    
     throw error;
   }
 } 

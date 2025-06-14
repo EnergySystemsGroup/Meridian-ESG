@@ -13,6 +13,7 @@ import { changeDetector } from './changeDetector.js';
 import { stateEligibilityProcessor } from './stateEligibilityProcessor.js';
 import { dataSanitizer } from './dataSanitizer.js';
 import { createClient } from '@supabase/supabase-js';
+import { createSupabaseClient, logAgentExecution } from '../../../supabase.js';
 
 /**
  * Stores filtered opportunities with comprehensive deduplication and processing
@@ -58,10 +59,52 @@ export async function storeOpportunities(opportunities, source, supabase = null)
     console.log(`[StorageAgent] ✅ Storage completed in ${executionTime}ms`);
     console.log(`[StorageAgent] 📊 Results: ${metrics.newOpportunities} new, ${metrics.updatedOpportunities} updated, ${metrics.ignoredOpportunities} ignored`);
     
-    return { results, metrics, executionTime };
+    const result = { results, metrics, executionTime };
+    
+    // Log agent execution for tracking
+    try {
+      const supabaseClient = createSupabaseClient();
+      await logAgentExecution(
+        supabaseClient,
+        'storage_v2',
+        { 
+          source: { id: source.id, name: source.name },
+          opportunityCount: opportunities.length
+        },
+        result,
+        executionTime,
+        null // No token usage for storage operations
+      );
+    } catch (logError) {
+      console.error('[StorageAgent] ❌ Failed to log execution:', logError);
+      // Don't throw - logging failure shouldn't break the pipeline
+    }
+    
+    return result;
     
   } catch (error) {
     console.error(`[StorageAgent] ❌ Error storing opportunities:`, error);
+    
+    // Log failed execution
+    try {
+      const supabaseClient = createSupabaseClient();
+      const executionTime = Math.max(1, Date.now() - startTime);
+      await logAgentExecution(
+        supabaseClient,
+        'storage_v2',
+        { 
+          source: { id: source.id, name: source.name },
+          opportunityCount: opportunities.length
+        },
+        null,
+        executionTime,
+        null,
+        error
+      );
+    } catch (logError) {
+      console.error('[StorageAgent] ❌ Failed to log error execution:', logError);
+    }
+    
     throw error;
   }
 }
