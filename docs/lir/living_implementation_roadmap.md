@@ -173,9 +173,43 @@ This section highlights the highest priority tasks to be completed next:
     - ✅ Add `logAgentExecution` calls to DataExtractionAgent for token usage and execution metrics - **COMPLETED**
     - ✅ Add `logAgentExecution` calls to AnalysisAgent for LLM performance tracking - **COMPLETED**
     - ✅ Add `logAgentExecution` calls to StorageAgent for database operation metrics - **COMPLETED**
+    - ✅ Verify `agent_executions` table receives records from V2 pipeline - **COMPLETED**
     - [ ] Add token usage tracking to all V2 agents using Anthropic SDK
-    - [ ] Verify `agent_executions` table receives records from V2 pipeline
     - [ ] Update V2 agents to match V1 tracking granularity for performance comparison
+
+**V2 Logging Gaps Analysis & Implementation:**
+15.6. **🔧 V2 API Activity Logging** - Add missing API activity logging to match V1 capabilities
+    - [ ] **FINDING**: V1 agents log API activity via `logApiActivity()` but V2 agents do not
+    - [ ] **ANALYSIS**: V1 logs to `api_activity_logs` table for actions: 'api_check', 'processing', 'detail_processing'
+    - [ ] Add `logApiActivity` calls to DataExtractionAgent for API request tracking
+    - [ ] Add `logApiActivity` calls to SourceOrchestrator for source analysis tracking  
+    - [ ] Add `logApiActivity` calls to StorageAgent for database operation tracking
+    - [ ] Verify `api_activity_logs` table receives records from V2 pipeline
+    - [ ] Match V1 activity logging patterns: success/failure status, action types, details payload
+
+15.7. **🔧 V2 Raw Response Storage Verification** - Ensure raw API responses are properly stored
+    - [ ] **FINDING**: V2 has raw response storage implementation but test didn't create new records
+    - [ ] **ANALYSIS**: Recent raw responses in database are from California Grants Portal, not Grants.gov test
+    - [ ] Investigate why test didn't store raw responses (cached data vs storage failure)
+    - [ ] Verify raw response deduplication logic is working correctly
+    - [ ] Ensure raw responses are linked to correct source IDs
+    - [ ] Test raw response storage with fresh API calls (not cached data)
+
+15.8. **🔧 V1 vs V2 Logging Audit** - Comprehensive comparison of all logging mechanisms
+    - [ ] **AUDIT V1 LOGGING**: Document all logging mechanisms used in V1 agents
+      - [ ] Agent execution logging (`agent_executions` table)
+      - [ ] API activity logging (`api_activity_logs` table) 
+      - [ ] Raw response storage (`api_raw_responses` table)
+      - [ ] Run tracking (`api_source_runs` table)
+      - [ ] Any other logging mechanisms in V1 pipeline
+    - [ ] **AUDIT V2 LOGGING**: Document current V2 logging implementation
+      - [ ] Compare V2 logging coverage against V1 baseline
+      - [ ] Identify missing logging mechanisms in V2
+      - [ ] Document logging format/schema differences between V1 and V2
+    - [ ] **IMPLEMENT MISSING V2 LOGGING**: Add any missing logging to achieve V1 parity
+      - [ ] Ensure V2 logs same level of detail as V1 for performance comparison
+      - [ ] Maintain consistent logging schemas for dashboard compatibility
+      - [ ] Add any V1 logging mechanisms not yet implemented in V2
 
 16. **🔧 Database Schema Fixes** - **HIGH PRIORITY**
     - [ ] Add missing V2 columns to `api_source_runs` table

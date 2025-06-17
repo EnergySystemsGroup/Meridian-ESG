@@ -1,0 +1,12 @@
+---
+description: code implementation guidelines
+globs: 
+alwaysApply: false
+---
+# Code Implementation Guidelines
+- Use early returns whenever possible to make the code more readable.
+- Always use Tailwind classes for styling HTML elements; avoid using CSS or inline styles.
+- Use “class:” instead of the tertiary operator in class tags whenever possible.
+- Use descriptive variable and function/const names. Event functions should be prefixed with “handle”, like “handleClick” for onClick and “handleKeyDown” for onKeyDown.
+- Implement accessibility features on elements. For example, an <a> tag should have tabindex=“0”, aria-label, onClick, and onKeyDown attributes.
+- Use consts instead of functions, for example, “const toggle = () => { }”. Also, define a type if possible.
