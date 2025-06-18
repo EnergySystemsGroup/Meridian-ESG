@@ -6,24 +6,69 @@
  */
 
 export const TAXONOMIES = {
-	ELIGIBLE_PROJECT_TYPES: [
-		// From client-matching documentation
-		'Building Envelope',
+	// Target client types - our preferred/core clients
+	TARGET_CLIENT_TYPES: [
+		'K-12 School Districts',
+		'Municipal Government',
+		'City Government',
+		'County Government',
+		'Colleges & Universities'
+	],
+
+	// Target project types - our preferred/core project focus areas
+	TARGET_PROJECT_TYPES: [
 		'HVAC Systems',
-		'Lighting',
-		'Roofing',
-		'Flooring',
-		'Windows',
-		'Solar/Renewable Energy',
+		'Lighting Systems',
+		'Solar Installation',
+		'Building Envelope',
+		'Infrastructure Improvements',
+	],
+
+	// Preferred activities - activities that align with our expertise
+	PREFERRED_ACTIVITIES: [
+		'Energy Efficiency Improvements',
+		'HVAC System Installation',
+		'HVAC System Replacement',
+		'Lighting System Upgrades',
+		'Solar System Installation',
+		'Building Envelope Retrofits',
+		'Energy Management System Installation',
+		'Infrastructure Modernization',
+	],
+
+	ELIGIBLE_PROJECT_TYPES: [
+		'HVAC Systems',
+		'Lighting Systems',
+		'Solar Installation',
+		'Renewable Energy Systems',
+		'Building Envelope',
+		'Energy Efficiency',
+		'Building Automation',
 		'Energy Management Systems',
-		'Water Conservation',
+		'Roofing',
+		'Windows',
 		'Electrical Systems',
-		'Plumbing',
+		'Energy Audits',
+		'Commissioning',
+		'Performance Contracting',
+		'Water Conservation',
+		'Weatherization',
+		'Flooring',
+		'Plumbing Systems',
 		'Security Systems',
 		'ADA Compliance',
-		'Asbestos/Lead Abatement',
+		'Asbestos Abatement',
 		'Technology Infrastructure',
 		'Outdoor Facilities',
+		'Accessibility Improvements',
+		'Structural Improvements',
+		'Environmental Remediation',
+		'Fire Safety Systems',
+		'Energy Storage',
+		'Electric Vehicle Charging',
+		'Green Building',
+		'Facility Upgrades',
+		'Infrastructure Improvements',
 	],
 
 	FUNDING_TYPES: [
@@ -40,20 +85,36 @@ export const TAXONOMIES = {
 	],
 
 	ELIGIBLE_APPLICANTS: [
-		'K-12 Schools',
-		'Higher Education',
-		'State Agencies',
-		'Local Government',
+		'K-12 School Districts',
+		'Colleges & Universities', 
+		'City Government',
 		'County Government',
+		'State Agencies',
 		'Municipal Government',
+		'Special Districts',
 		'Tribal Nations',
 		'Nonprofit Organizations',
 		'For-profit Businesses',
 		'Small Businesses',
+		'Medium Businesses',
+		'Large Businesses',
 		'Housing Authorities',
 		'Healthcare Facilities',
 		'Public Utilities',
+		'Private Utilities',
+		'Religious Organizations',
+		'Community Organizations',
+		'Research Institutions',
+		'Libraries',
+		'Museums',
+		'Agricultural Organizations',
+		'Transportation Authorities',
+		'Port Authorities',
+		'Airport Authorities',
 		'Individuals',
+		'Homeowners',
+		'Renters',
+		'Property Managers',
 	],
 
 	CATEGORIES: [
