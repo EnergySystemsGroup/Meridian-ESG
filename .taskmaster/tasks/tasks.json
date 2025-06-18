@@ -3,10 +3,10 @@
     "tasks": [
       {
         "id": 1,
-        "title": "Database Schema Fixes for V2 Pipeline",
-        "description": "Fix critical database schema issues preventing V2 pipeline from functioning properly",
-        "details": "Add missing columns to api_source_runs table: source_manager_data, api_handler_data, ended_at, final_results. Fix RunManagerV2 UUID generation to use proper UUID format instead of strings. Update Supabase schema cache to recognize new columns. Use Supabase CLI: supabase db diff --schema public to generate migration, then supabase db push to apply changes.",
-        "testStrategy": "Create test run with RunManagerV2 to verify all columns are properly populated and UUID format is correct. Validate schema cache refresh in Supabase dashboard.",
+        "title": "Implement Data Extraction Agent",
+        "description": "Complete the implementation of the Data Extraction Agent, which will handle the core functionality from the v1 apiHandlerAgent.js.",
+        "details": "1. Extract core functionality from apiHandlerAgent.js (2,249 lines)\n2. Implement modular structure following v2 patterns\n3. Create separate modules for:\n   - API request handling (use Axios v1.4.0 for HTTP requests)\n   - Pagination management\n   - Field mapping (consider using json-schema for validation)\n   - Error handling\n   - Retry logic (implement exponential backoff)\n4. Ensure compatibility with both single-step and two-step API patterns\n5. Implement proper error handling and retry logic\n6. Maintain field mapping and taxonomy standardization\n7. Process pagination correctly\n8. Return standardized opportunity data structure\n9. Use TypeScript for type safety and better code organization\n10. Implement unit tests using Jest v29.5.0",
+        "testStrategy": "1. Create unit tests for each module\n2. Implement integration tests for the entire agent\n3. Test with mock API responses for various scenarios\n4. Validate correct handling of pagination\n5. Verify error handling and retry logic\n6. Ensure proper field mapping and data standardization\n7. Test performance and optimize as needed",
         "priority": "high",
         "dependencies": [],
         "status": "pending",
@@ -14,10 +14,10 @@
       },
       {
         "id": 2,
-        "title": "V2 API Activity Logging Implementation",
-        "description": "Add comprehensive API activity logging to V2 agents to match V1 capabilities",
-        "details": "Implement logApiActivity calls in DataExtractionAgent, SourceOrchestrator, and StorageAgent. Log to api_activity_logs table with actions: 'api_check', 'processing', 'detail_processing'. Include success/failure status, action types, and details payload matching V1 patterns. Import logApiActivity from app/lib/utils/logging.js.",
-        "testStrategy": "Run V2 pipeline and verify api_activity_logs table receives records with proper action types and status. Compare logging volume and detail level with V1 pipeline runs.",
+        "title": "Develop Storage Agent",
+        "description": "Implement the Storage Agent to handle database storage logic, including duplicate detection, state eligibility mapping, and funding source relationships.",
+        "details": "1. Refactor dataProcessorAgent.js (1,049 lines) into modular components\n2. Create separate modules for:\n   - Duplicate detection (use fuzzy matching library like fuzzyset.js v1.0.7)\n   - State eligibility processing\n   - Funding source management\n   - Change detection\n   - Data sanitization\n3. Implement database operations using Prisma ORM v4.15.0\n4. Use PostgreSQL as the database (latest stable version)\n5. Implement material change detection algorithm\n6. Create comprehensive metrics tracking system\n7. Optimize for performance, considering batch operations where appropriate\n8. Implement proper error handling and logging (use Winston v3.9.0 for logging)\n9. Use TypeScript for improved code quality and maintainability",
+        "testStrategy": "1. Develop unit tests for each module\n2. Create integration tests for the entire Storage Agent\n3. Test duplicate detection with various similar entries\n4. Validate state eligibility mapping accuracy\n5. Verify funding source relationship management\n6. Test material change detection with different scenarios\n7. Ensure proper metrics tracking and accuracy\n8. Perform performance testing with large datasets",
         "priority": "high",
         "dependencies": [
           1
@@ -27,88 +27,100 @@
       },
       {
         "id": 3,
-        "title": "V2 Raw Response Storage Verification",
-        "description": "Ensure raw API responses are properly stored and linked in V2 pipeline",
-        "details": "Investigate why test runs didn't create new raw response records. Verify raw response deduplication logic in DataExtractionAgent. Ensure responses are linked to correct source IDs. Test with fresh API calls (not cached data). Check api_raw_responses table for proper data insertion and source_id foreign key relationships.",
-        "testStrategy": "Run DataExtractionAgent with fresh API sources and verify new records appear in api_raw_responses table. Validate source_id linking and response content storage.",
-        "priority": "medium",
+        "title": "Finalize Analysis Agent",
+        "description": "Review, validate, and finalize the implementation of the Analysis Agent, ensuring no functionality loss from v1 detailProcessorAgent.js.",
+        "details": "1. Review current implementation (435 lines)\n2. Compare functionality with v1 detailProcessorAgent.js (815 lines)\n3. Implement proper scoring algorithms\n4. Add content enhancement capabilities\n5. Ensure compatibility with filtering system\n6. Update prompts and scoring logic as needed\n7. Implement proper error handling\n8. Optimize for performance and token usage\n9. Use GPT-4 API for advanced language processing tasks\n10. Implement caching mechanism to reduce API calls (use Redis v6.0.0)\n11. Use TypeScript for improved code quality\n12. Implement unit and integration tests",
+        "testStrategy": "1. Develop comprehensive unit tests for each module\n2. Create integration tests for the entire Analysis Agent\n3. Compare results with v1 agent to ensure no functionality loss\n4. Test scoring algorithms with various input scenarios\n5. Validate content enhancement capabilities\n6. Verify compatibility with the filtering system\n7. Perform performance and token usage optimization tests\n8. Test error handling with various edge cases",
+        "priority": "high",
         "dependencies": [
-          1
+          1,
+          2
         ],
         "status": "pending",
         "subtasks": []
       },
       {
         "id": 4,
-        "title": "V2 Token Usage Tracking Enhancement",
-        "description": "Add comprehensive token usage tracking to all V2 agents using Anthropic SDK",
-        "details": "Implement token usage tracking in SourceOrchestrator, DataExtractionAgent, AnalysisAgent using Anthropic SDK response.usage properties. Track input_tokens, output_tokens, and total_tokens. Store in agent_executions table via logAgentExecution calls. Calculate cost estimates using Claude-3.5-Sonnet pricing ($3/1M input, $15/1M output tokens).",
-        "testStrategy": "Run individual V2 agents and verify agent_executions table shows accurate token counts. Compare token usage patterns between V1 (LangChain) and V2 (direct SDK) implementations.",
-        "priority": "medium",
+        "title": "Conduct Individual Agent Testing",
+        "description": "Perform thorough testing of each v2 agent using real data, ensuring performance metrics meet or exceed v1 benchmarks.",
+        "details": "1. Update existing test scripts in scripts/test/\n2. Add comprehensive error scenario testing\n3. Implement performance benchmarking (use Benchmark.js v2.1.4)\n4. Create data quality validation tests\n5. Test with multiple API source types\n6. Use real API responses for testing\n7. Implement mock servers for API testing (use Mock Service Worker v1.2.1)\n8. Create detailed test reports\n9. Use Jest v29.5.0 for test runner and assertion library\n10. Implement code coverage reporting (use Istanbul v0.4.5)\n11. Automate testing process using GitHub Actions",
+        "testStrategy": "1. Run individual tests for each agent\n2. Perform integration tests with real API data\n3. Conduct performance benchmarking against v1 agents\n4. Validate error handling with various scenarios\n5. Verify data quality and accuracy\n6. Test with different API source types\n7. Ensure test coverage is above 80%\n8. Review and analyze test reports",
+        "priority": "high",
         "dependencies": [
-          2
+          1,
+          2,
+          3
         ],
         "status": "pending",
         "subtasks": []
       },
       {
         "id": 5,
-        "title": "Individual V2 Agent Testing with Real Data",
-        "description": "Complete systematic testing of FilterFunction and StorageAgent with real data",
-        "details": "Complete testing of FilterFunction with scored opportunities from AnalysisAgent output. Test StorageAgent with filtered opportunities. Chain outputs from each stage to validate end-to-end data flow. Use scripts/test/ directory structure. Test with both California Grants Portal and Grants.gov data sources.",
-        "testStrategy": "Run each agent in isolation with real data from previous stage. Verify data transformations and output quality. Measure processing times and resource usage for performance optimization.",
-        "priority": "high",
+        "title": "Rewrite Unit Tests",
+        "description": "Update all unit tests to match v2 implementations, maintaining 80%+ coverage and properly covering edge cases.",
+        "details": "1. Update existing unit tests in app/lib/agents-v2/tests/\n2. Add new tests for completed agents\n3. Implement proper mocking for external dependencies (use Jest mocking capabilities)\n4. Create test data fixtures that match real API responses\n5. Ensure test coverage maintains 80%+ (use Istanbul for coverage reporting)\n6. Implement snapshot testing for complex objects\n7. Use TypeScript for writing tests\n8. Implement test helpers and utilities for common testing scenarios\n9. Use faker.js v8.0.2 for generating test data\n10. Implement property-based testing for edge cases (use fast-check v3.10.0)",
+        "testStrategy": "1. Review and update each test suite\n2. Verify that all tests pass after updates\n3. Check test coverage and add tests where needed\n4. Validate mocking of external dependencies\n5. Ensure edge cases are properly covered\n6. Perform code review of test updates\n7. Run the entire test suite and verify results",
+        "priority": "medium",
         "dependencies": [
           1,
-          2
+          2,
+          3,
+          4
         ],
         "status": "pending",
         "subtasks": []
       },
       {
         "id": 6,
-        "title": "API Data Source Issues Resolution",
-        "description": "Resolve external API connectivity and data retrieval issues",
-        "details": "Fix California Grants Portal 409 Conflict error (likely rate limiting - implement exponential backoff). Investigate Grants.gov empty array response (verify query parameters and API endpoint). Add retry logic with configurable delays. Implement API health checks before processing. Use axios with timeout and retry interceptors.",
-        "testStrategy": "Test API connectivity with curl commands first. Implement health check endpoints. Verify API responses contain expected data structure before processing.",
+        "title": "Implement End-to-End Pipeline Testing",
+        "description": "Develop and execute comprehensive end-to-end tests for the complete v2 pipeline, ensuring proper orchestration and error handling.",
+        "details": "1. Implement end-to-end tests covering the entire pipeline: Source → Data Extraction → Analysis → Filter → Storage\n2. Validate process coordinator orchestration\n3. Test Supabase Edge Function integration\n4. Verify run tracking and metrics collection\n5. Implement comprehensive error handling tests\n6. Use Cypress v12.14.0 for end-to-end testing\n7. Implement test scenarios with various data sources and configurations\n8. Create detailed logging for each stage of the pipeline\n9. Implement performance monitoring for the entire pipeline\n10. Use Docker for creating isolated test environments\n11. Implement parallel test execution for faster results",
+        "testStrategy": "1. Design test scenarios covering various use cases\n2. Execute end-to-end tests in a staging environment\n3. Validate correct data flow through the entire pipeline\n4. Test error handling and recovery mechanisms\n5. Verify metrics collection and accuracy\n6. Perform load testing to ensure scalability\n7. Validate Supabase Edge Function integration\n8. Review logs and performance metrics",
         "priority": "high",
-        "dependencies": [],
+        "dependencies": [
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
         "status": "pending",
         "subtasks": []
       },
       {
         "id": 7,
-        "title": "AI JSON Parsing Error Handling",
-        "description": "Improve error handling for non-JSON responses from Anthropic API",
-        "details": "Add robust JSON parsing with fallback handling in all V2 agents. Implement response validation before JSON.parse(). Add retry logic for malformed responses. Use JSON schema validation with ajv library. Log parsing failures for analysis. Implement graceful degradation when JSON parsing fails.",
-        "testStrategy": "Inject malformed JSON responses in test environment. Verify agents handle parsing errors gracefully without crashing. Test retry mechanisms and fallback behaviors.",
-        "priority": "medium",
-        "dependencies": [],
-        "status": "pending",
-        "subtasks": []
-      },
-      {
-        "id": 8,
-        "title": "Edge Function Performance Validation",
-        "description": "Validate Edge Function performance with large datasets and timeout stress testing",
-        "details": "Test Edge Function with 100+ opportunities to validate performance. Stress test with datasets approaching 15-minute timeout limit. Monitor memory usage and processing times. Test with concurrent requests. Use Supabase Edge Function monitoring dashboard. Implement performance benchmarks comparing V1 vs V2 processing times.",
-        "testStrategy": "Create test datasets of varying sizes (50, 100, 200+ opportunities). Monitor Edge Function execution times and memory usage. Verify no timeout errors occur during large dataset processing.",
+        "title": "Conduct Performance Validation",
+        "description": "Perform thorough performance testing to ensure v2 meets or exceeds performance targets, including processing time, memory usage, and token consumption.",
+        "details": "1. Implement performance monitoring tools (use Prometheus v2.40.0 and Grafana v9.5.0)\n2. Compare v1 vs v2 processing times\n3. Monitor memory and resource usage (use node-memwatch v2.0.0)\n4. Validate timeout resolution in Supabase Edge Functions\n5. Document performance improvements\n6. Use Apache JMeter v5.5 for load testing\n7. Implement custom performance benchmarks\n8. Use Datadog v0.36.0 for comprehensive system monitoring\n9. Optimize database queries and indexing\n10. Implement caching strategies where appropriate (use Redis v6.0.0)\n11. Profile code to identify and resolve performance bottlenecks (use Node.js built-in profiler)",
+        "testStrategy": "1. Execute performance tests in a production-like environment\n2. Compare v1 and v2 performance metrics\n3. Validate that processing time is 60-80% faster than v1\n4. Verify memory usage reduction by 70%\n5. Confirm token consumption reduction by 15-25%\n6. Test for timeout issues in Supabase Edge Functions\n7. Perform load testing to ensure scalability\n8. Analyze and document performance results",
         "priority": "high",
         "dependencies": [
-          1,
-          5,
           6
         ],
         "status": "pending",
         "subtasks": []
       },
       {
+        "id": 8,
+        "title": "Implement Feature Flag System",
+        "description": "Develop a feature flag system to toggle between v1 and v2 processing, with granular control and traffic percentage routing.",
+        "details": "1. Implement feature flag configuration (use LaunchDarkly v2.25.1)\n2. Create routing service for v1/v2 selection\n3. Add environment variable controls\n4. Build admin interface for toggle management (use React v18.2.0 and Material-UI v5.13.0)\n5. Implement A/B testing infrastructure\n6. Use Redis for distributed caching of feature flags\n7. Implement logging for feature flag changes\n8. Create dashboard for monitoring feature flag usage\n9. Implement gradual rollout capabilities\n10. Ensure proper error handling for flag-related issues\n11. Use TypeScript for type-safe feature flag implementation",
+        "testStrategy": "1. Test feature flag functionality in various scenarios\n2. Verify correct routing between v1 and v2\n3. Validate admin controls for toggle management\n4. Test gradual traffic routing capabilities\n5. Ensure proper handling of edge cases\n6. Verify logging and monitoring of feature flag usage\n7. Perform security testing on admin interface",
+        "priority": "high",
+        "dependencies": [
+          6,
+          7
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
         "id": 9,
-        "title": "Vercel API Trigger Implementation",
-        "description": "Create lightweight Vercel endpoint to trigger Edge Function processing",
-        "details": "Create /api/funding/process-source-v2/ endpoint in Vercel. Return immediate response with job status tracking. Preserve existing API contracts for frontend compatibility. Use Supabase Edge Function invoke() method. Implement proper error handling and status codes. Maintain consistency with /api/funding/ organization pattern.",
-        "testStrategy": "Test API endpoint returns immediate response. Verify Edge Function is properly triggered. Test error handling for Edge Function failures. Validate frontend compatibility with existing API contracts.",
-        "priority": "medium",
+        "title": "Develop Migration Strategy",
+        "description": "Implement a migration strategy for gradual transition from v1 to v2, including comparison tracking and rollback capability.",
+        "details": "1. Implement Strangler Fig pattern as outlined in the architecture guide\n2. Start with 5% traffic routing to v2\n3. Implement comparison logging between v1 and v2 results\n4. Monitor performance and accuracy metrics\n5. Implement automated rollback triggers\n6. Create dashboard for migration progress monitoring\n7. Implement database schema migrations (use Prisma Migrate)\n8. Develop data consistency checks between v1 and v2\n9. Create detailed rollback procedures\n10. Implement blue-green deployment strategy\n11. Use Terraform v1.5.0 for infrastructure as code",
+        "testStrategy": "1. Test gradual traffic routing mechanism\n2. Validate comparison logging accuracy\n3. Verify automated rollback functionality\n4. Test data consistency between v1 and v2\n5. Perform mock migration scenarios\n6. Validate monitoring and alerting systems\n7. Conduct full rollback test\n8. Review migration dashboard effectiveness",
+        "priority": "high",
         "dependencies": [
           8
         ],
@@ -117,10 +129,10 @@
       },
       {
         "id": 10,
-        "title": "Real-time Status Updates Implementation",
-        "description": "Implement live progress tracking during Edge Function execution",
-        "details": "Implement Supabase real-time subscriptions for run status updates. Create progress indicators for each V2 processing stage. Add error notifications and recovery handling. Use Supabase realtime client with channel subscriptions. Update frontend to display live progress. Implement WebSocket fallback for connectivity issues.",
-        "testStrategy": "Test real-time updates during Edge Function execution. Verify progress indicators update correctly. Test error notification delivery and recovery mechanisms.",
+        "title": "Implement Funding-Only Dashboard",
+        "description": "Develop a new dashboard focused solely on funding opportunities, removing legislation-related features and preparing for user management integration.",
+        "details": "1. Audit current dashboard for legislation references\n2. Remove legislation-specific components\n3. Update navigation and UI elements\n4. Implement enhanced funding opportunity views\n5. Prepare user context integration points\n6. Use React v18.2.0 for frontend development\n7. Implement state management with Redux Toolkit v1.9.5\n8. Use Material-UI v5.13.0 for consistent UI components\n9. Implement responsive design for mobile compatibility\n10. Use React Query v3.39.3 for efficient data fetching\n11. Implement code-splitting for improved performance\n12. Use Storybook v7.0.20 for component development and documentation",
+        "testStrategy": "1. Perform UI/UX testing for the new dashboard\n2. Validate removal of all legislation-related features\n3. Test responsiveness on various devices\n4. Conduct user acceptance testing\n5. Verify data accuracy in funding opportunity displays\n6. Test search and filtering capabilities\n7. Ensure accessibility compliance (WCAG 2.1)\n8. Perform cross-browser testing",
         "priority": "medium",
         "dependencies": [
           9
@@ -130,13 +142,12 @@
       },
       {
         "id": 11,
-        "title": "V1 vs V2 Migration Comparison",
-        "description": "Validate V2 output matches V1 quality with comprehensive comparison",
-        "details": "Run side-by-side processing comparison between V1 and V2 pipelines. Compare accuracy metrics, processing times, token usage, and cost analysis. Validate opportunity extraction quality and scoring consistency. Generate comparison reports. Use same API sources for both pipelines. Measure 60-80% performance improvement target.",
-        "testStrategy": "Process identical API sources through both V1 and V2 pipelines. Compare extracted opportunities count, quality scores, and processing metrics. Validate V2 meets or exceeds V1 quality standards.",
-        "priority": "high",
+        "title": "Enhance Dashboard Performance and UX",
+        "description": "Implement performance improvements and UX enhancements for the funding-only dashboard, including faster load times and improved mobile responsiveness.",
+        "details": "1. Implement lazy loading for opportunity lists (use react-window v1.8.9)\n2. Optimize database queries (use database indexing and query optimization)\n3. Add proper caching strategies (implement Redis caching)\n4. Enhance mobile interface (use responsive design principles)\n5. Implement accessibility standards (follow WCAG 2.1 guidelines)\n6. Use Next.js v13.4.0 for server-side rendering and improved performance\n7. Implement service workers for offline capabilities\n8. Use Web Vitals library to measure and optimize Core Web Vitals\n9. Implement skeleton screens for perceived performance improvement\n10. Use React Suspense for code-splitting and lazy loading\n11. Optimize images using next/image component\n12. Implement virtualized lists for large datasets",
+        "testStrategy": "1. Conduct performance testing using Lighthouse\n2. Measure and validate improvements in page load times\n3. Test mobile responsiveness on various devices\n4. Perform accessibility audit using axe-core\n5. Validate search and filtering performance improvements\n6. Test offline capabilities\n7. Conduct user testing for UX improvements\n8. Verify Core Web Vitals metrics",
+        "priority": "medium",
         "dependencies": [
-          8,
           10
         ],
         "status": "pending",
@@ -144,22 +155,25 @@
       },
       {
         "id": 12,
-        "title": "Database Opportunity Notes Field",
-        "description": "Add notes field to opportunities table for funding amount explanations",
-        "details": "Add notes TEXT field to funding_opportunities table. Update Zod schema to include optional notes field. Modify V2 agents to populate notes with explanations about min, max, and total funding amounts when estimates are used. Create database migration using Supabase CLI. Update frontend to display notes in opportunity detail view.",
-        "testStrategy": "Create migration and verify notes field is added. Test V2 agents populate notes appropriately. Verify frontend displays notes correctly in opportunity detail view.",
-        "priority": "medium",
-        "dependencies": [],
+        "title": "Develop V2 Admin Run Processing Interface",
+        "description": "Create an admin interface for managing v2 processing runs, including run triggering, monitoring, and error handling.",
+        "details": "1. Build admin interface for v2 run management (use React v18.2.0 and Material-UI v5.13.0)\n2. Implement run scheduling capabilities (use node-cron v3.0.2)\n3. Add comprehensive monitoring dashboard (use Grafana v9.5.0)\n4. Create error investigation tools\n5. Build source configuration interface\n6. Implement real-time updates using WebSockets (socket.io v4.6.0)\n7. Use Redux Toolkit v1.9.5 for state management\n8. Implement role-based access control\n9. Create detailed logging system (use Winston v3.9.0)\n10. Implement audit trail for admin actions\n11. Use Formik v2.4.0 for form handling and validation\n12. Implement dark mode for better UX",
+        "testStrategy": "1. Perform unit and integration tests for admin interface\n2. Test run scheduling functionality\n3. Validate monitoring dashboard accuracy\n4. Test error handling and investigation tools\n5. Verify source configuration management\n6. Conduct user acceptance testing with admin users\n7. Test real-time update functionality\n8. Verify role-based access control",
+        "priority": "high",
+        "dependencies": [
+          9,
+          11
+        ],
         "status": "pending",
         "subtasks": []
       },
       {
         "id": 13,
-        "title": "Backend Amount Estimation Enhancement",
-        "description": "Update Zod schema for LLM to estimate min/max amounts when not explicitly provided",
-        "details": "Update opportunityExtraction schema in V2 agents to include estimation logic. Add prompts for LLM to estimate min_amount and max_amount when not explicitly provided in source data. Include confidence indicators for estimates. Update notes field to explain estimation methodology. Use industry standards and historical data for estimation guidance.",
-        "testStrategy": "Test with opportunities lacking explicit funding amounts. Verify LLM provides reasonable estimates with explanatory notes. Validate estimation accuracy against known funding ranges.",
-        "priority": "medium",
+        "title": "Implement Source Management V2",
+        "description": "Develop an enhanced source management system with CRUD operations, API configuration management, and performance monitoring.",
+        "details": "1. Build source management interface (use React v18.2.0 and Material-UI v5.13.0)\n2. Implement configuration validation\n3. Add API testing capabilities (use Postman API v10.14.0 for testing)\n4. Create performance monitoring tools (use Prometheus v2.40.0)\n5. Build bulk operation workflows\n6. Implement version control for source configurations (use Git-like versioning)\n7. Create visual API response mapper\n8. Implement OAuth 2.0 for secure API connections\n9. Use TypeScript for type-safe development\n10. Implement database migrations for schema changes (use Prisma Migrate)\n11. Create comprehensive documentation for each source type\n12. Implement alerting system for source issues (use Alertmanager v0.25.0)",
+        "testStrategy": "1. Perform CRUD operation testing for sources\n2. Validate API configuration management\n3. Test performance monitoring accuracy\n4. Verify bulk operation functionality\n5. Test version control for configurations\n6. Validate OAuth 2.0 implementation\n7. Conduct user acceptance testing\n8. Test alerting system for various scenarios",
+        "priority": "high",
         "dependencies": [
           12
         ],
@@ -168,46 +182,52 @@
       },
       {
         "id": 14,
-        "title": "Agent Schema Documentation Enhancement",
-        "description": "Add comprehensive explanatory notes to V2 agent Zod schemas",
-        "details": "Add detailed comments and descriptions to sourceAnalysis, opportunityExtraction, opportunityScoring, and dataProcessing schemas. Include field purpose explanations, validation rules, and usage examples. Document schema evolution and version compatibility. Use JSDoc format for better IDE support.",
-        "testStrategy": "Review schema documentation for completeness and clarity. Verify JSDoc comments display properly in IDE. Test schema validation with documented examples.",
-        "priority": "low",
-        "dependencies": [],
+        "title": "Develop Lightweight User Identification System",
+        "description": "Implement a simple user identification system with pre-populated user database, client-side token storage, and admin user management.",
+        "details": "1. Implement user identification system as per specifications\n2. Create user selection interface (use React v18.2.0 and Material-UI v5.13.0)\n3. Build token management system (use JWT for token generation)\n4. Add admin user management panel\n5. Implement role-based permissions\n6. Use localStorage for client-side token storage\n7. Implement server-side session management (use express-session v1.17.3)\n8. Create user database schema and migrations\n9. Implement user activity logging\n10. Use bcrypt v5.1.0 for password hashing (for admin users)\n11. Implement GDPR compliance measures\n12. Create user onboarding workflow",
+        "testStrategy": "1. Test user selection and identification process\n2. Validate token management and storage\n3. Verify admin user management functionality\n4. Test role-based permissions\n5. Conduct security testing for token handling\n6. Verify user activity logging\n7. Test GDPR compliance measures\n8. Perform user acceptance testing",
+        "priority": "high",
+        "dependencies": [
+          11,
+          13
+        ],
         "status": "pending",
         "subtasks": []
       },
       {
         "id": 15,
-        "title": "Opportunity Update Algorithm Refinement",
-        "description": "Improve algorithm for opportunity updates to prevent field reversion to null",
-        "details": "Investigate StorageAgent changeDetector.js logic for opportunity updates. Implement field-level change detection to preserve existing data when new data is incomplete. Add merge strategies for different field types. Prevent funding amount fields from reverting to null during updates. Use deep object comparison with lodash.isEqual for change detection.",
-        "testStrategy": "Test opportunity updates with partial data. Verify existing fields are preserved when new data lacks those fields. Test funding amount update scenarios specifically.",
+        "title": "Implement User Activity Tracking",
+        "description": "Develop a system to track user interactions with opportunities, including favorite actions and status changes.",
+        "details": "1. Create user actions tracking system\n2. Build activity logging infrastructure (use Winston v3.9.0 for logging)\n3. Implement user-specific data views\n4. Add analytics and reporting capabilities (use Chart.js v4.3.0 for visualizations)\n5. Create user activity dashboards\n6. Implement real-time activity updates (use WebSockets with socket.io v4.6.0)\n7. Use Redis v6.0.0 for caching frequently accessed user data\n8. Implement data aggregation for analytics (use Apache Spark v3.4.0)\n9. Create export functionality for activity reports\n10. Implement privacy controls for user data\n11. Use Elasticsearch v8.8.0 for efficient activity search\n12. Implement activity notifications system",
+        "testStrategy": "1. Test user interaction tracking accuracy\n2. Validate activity logging system\n3. Verify user-specific data view functionality\n4. Test analytics and reporting features\n5. Validate real-time update functionality\n6. Perform load testing on activity tracking system\n7. Test data privacy controls\n8. Verify activity search functionality",
         "priority": "medium",
         "dependencies": [
-          1
+          14
         ],
         "status": "pending",
         "subtasks": []
       },
       {
         "id": 16,
-        "title": "Source Contact Information Enhancement",
-        "description": "Ensure complete contact information is captured and stored for opportunity sources",
-        "details": "Update api_sources table schema to include comprehensive contact fields: contact_name, contact_email, contact_phone, contact_address, website_url. Modify V2 SourceOrchestrator to extract contact information from API source configurations. Update admin interface to display and edit contact information.",
-        "testStrategy": "Verify all contact fields are populated for existing sources. Test admin interface contact information display and editing. Validate contact information appears on opportunity details page.",
-        "priority": "medium",
-        "dependencies": [],
+        "title": "Develop Three-Status System",
+        "description": "Implement a three-status system (None/Hot/Of Interest) for opportunity management with admin-only Hot status designation.",
+        "details": "1. Implement database schema for status management\n2. Create status change logic and validation\n3. Build status tracking and logging system\n4. Add UI components for status display (use React v18.2.0 and Material-UI v5.13.0)\n5. Implement status-based filtering\n6. Create admin interface for Hot status designation\n7. Implement user favoriting system for Of Interest status\n8. Use Redux Toolkit v1.9.5 for state management\n9. Implement WebSocket (socket.io v4.6.0) for real-time status updates\n10. Create database indexes for efficient status-based queries\n11. Implement status change notifications\n12. Develop status analytics dashboard",
+        "testStrategy": "1. Test status change functionality for all user types\n2. Validate admin-only Hot status designation\n3. Verify user favoriting system\n4. Test status-based filtering accuracy\n5. Validate real-time status updates\n6. Perform database query optimization tests\n7. Test notification system for status changes\n8. Verify status analytics accuracy",
+        "priority": "high",
+        "dependencies": [
+          14,
+          15
+        ],
         "status": "pending",
         "subtasks": []
       },
       {
         "id": 17,
-        "title": "Frontend Contact Info Display",
-        "description": "Display source contact information on opportunity details page",
-        "details": "Update opportunity detail page to display funding source contact information. Add contact section with name, email, phone, and website. Implement proper formatting and validation for contact display. Add click-to-call and click-to-email functionality. Style contact section consistently with existing design.",
-        "testStrategy": "Verify contact information displays correctly on opportunity detail pages. Test click-to-call and email functionality. Validate responsive design for contact section.",
-        "priority": "medium",
+        "title": "Create Hot Board and Of Interest Board",
+        "description": "Develop Hot Board as the primary sales interface and Of Interest Board, combining Hot and Of Interest opportunities with visual distinctions.",
+        "details": "1. Build Hot Board interface (use React v18.2.0 and Material-UI v5.13.0)\n2. Create Of Interest Board\n3. Implement status-based filtering\n4. Add action buttons for status changes\n5. Build team collaboration features\n6. Implement drag-and-drop functionality (use react-beautiful-dnd v13.1.1)\n7. Create visual distinctions between status types\n8. Implement real-time updates (use WebSockets with socket.io v4.6.0)\n9. Add sorting and advanced filtering options\n10. Implement board customization features\n11. Create board sharing functionality\n12. Develop board analytics and reporting",
+        "testStrategy": "1. Test Hot Board and Of Interest Board functionality\n2. Validate status-based filtering and sorting\n3. Verify status change actions\n4. Test team collaboration features\n5. Validate drag-and-drop functionality\n6. Verify real-time update system\n7. Test board customization features\n8. Conduct user acceptance testing with sales team",
+        "priority": "high",
         "dependencies": [
           16
         ],
@@ -216,227 +236,22 @@
       },
       {
         "id": 18,
-        "title": "Database Type Field Cleanup",
-        "description": "Identify and remove duplicate type field in sources table",
-        "details": "Audit api_sources table schema to identify duplicate type fields. Determine which type field is actively used in application code. Create migration to remove unused type field. Update all code references to use consistent type field. Document type field usage and valid values.",
-        "testStrategy": "Query database to identify type field usage patterns. Test application functionality after removing duplicate field. Verify no broken references to removed field.",
-        "priority": "low",
-        "dependencies": [],
-        "status": "pending",
-        "subtasks": []
-      },
-      {
-        "id": 19,
-        "title": "Type Field Normalization",
-        "description": "Normalize type field usage for case-insensitive filtering",
-        "details": "Implement case-insensitive type field handling throughout application. Update database queries to use ILIKE or LOWER() for type filtering. Standardize type values in database (e.g., 'Grant', 'Loan', 'Tax Credit'). Update frontend filtering to handle case variations. Create database function for type normalization.",
-        "testStrategy": "Test type filtering with various case combinations. Verify consistent type display in frontend. Test database queries handle case-insensitive matching correctly.",
+        "title": "Implement Notification System",
+        "description": "Develop an email notification system for Hot opportunities with territory-based routing, deadline reminders, and configurable preferences.",
+        "details": "1. Implement email notification system (use Nodemailer v6.9.0)\n2. Create notification templates (use Handlebars v4.7.0 for templating)\n3. Build territory-based routing logic\n4. Add deadline reminder functionality\n5. Implement status change notifications\n6. Create notification preference management\n7. Implement notification scheduling (use node-cron v3.0.2)\n8. Use Redis v6.0.0 for notification queue management\n9. Implement rate limiting for notifications\n10. Create notification analytics dashboard\n11. Implement multi-channel notifications (email, in-app, SMS)\n12. Develop A/B testing for notification content",
+        "testStrategy": "1. Test email notification delivery and content\n2. Validate territory-based routing accuracy\n3. Verify deadline reminder functionality\n4. Test status change notification system\n5. Validate user preference management\n6. Perform load testing on notification system\n7. Test rate limiting functionality\n8. Verify multi-channel notification delivery",
         "priority": "medium",
         "dependencies": [
-          18
-        ],
-        "status": "pending",
-        "subtasks": []
-      },
-      {
-        "id": 20,
-        "title": "Frontend Opportunity Tracking/Bookmarking",
-        "description": "Implement save/bookmark functionality using local storage",
-        "details": "Add bookmark/save button to opportunity detail page. Implement local storage management for saved opportunities. Create saved opportunities view/page. Add bookmark indicators on opportunity cards. Use localStorage API with JSON serialization. Implement bookmark sync across browser sessions. Add export functionality for saved opportunities.",
-        "testStrategy": "Test bookmark functionality across different opportunities. Verify local storage persistence across browser sessions. Test bookmark indicators display correctly on opportunity cards.",
-        "priority": "medium",
-        "dependencies": [],
-        "status": "pending",
-        "subtasks": []
-      },
-      {
-        "id": 21,
-        "title": "Frontend Map Module/Visualization",
-        "description": "Implement geographic filtering and map visualization for opportunities",
-        "details": "Integrate mapping library (Leaflet or Mapbox GL JS) for geographic visualization. Display opportunities on map based on eligible_locations data. Implement map-based filtering by drawing regions or selecting states. Add clustering for dense opportunity areas. Create map/list toggle view. Use react-leaflet or react-map-gl for React integration.",
-        "testStrategy": "Test map displays opportunities correctly based on geographic eligibility. Verify map-based filtering functionality. Test responsive design for map component on mobile devices.",
-        "priority": "medium",
-        "dependencies": [],
-        "status": "pending",
-        "subtasks": []
-      },
-      {
-        "id": 22,
-        "title": "Frontend Items Per Page Option",
-        "description": "Add configurable items per page with 10/25/50 options",
-        "details": "Add items per page selector to funding opportunities page. Implement options for 10, 25, 50 opportunities per page. Update pagination logic to handle variable page sizes. Persist user preference in localStorage. Update URL parameters to reflect page size. Maintain current page position when changing page size.",
-        "testStrategy": "Test page size changes maintain proper pagination. Verify localStorage persistence of page size preference. Test URL parameter handling for page size.",
-        "priority": "low",
-        "dependencies": [],
-        "status": "pending",
-        "subtasks": []
-      },
-      {
-        "id": 23,
-        "title": "Frontend Advanced Filtering Enhancement",
-        "description": "Add support for advanced filtering with multiple criteria including date ranges and funding amounts",
-        "details": "Implement advanced filter panel with date range picker for deadlines. Add funding amount range slider (min/max). Create applicant type multi-select filter. Implement filter combinations with AND/OR logic. Add filter presets for common searches. Use react-datepicker for date ranges and rc-slider for amount ranges.",
-        "testStrategy": "Test complex filter combinations work correctly. Verify date range filtering accuracy. Test funding amount range filtering with edge cases.",
-        "priority": "medium",
-        "dependencies": [],
-        "status": "pending",
-        "subtasks": []
-      },
-      {
-        "id": 24,
-        "title": "Frontend Legislative Data Warning Labels",
-        "description": "Add warning labels to legislative data views for demonstration purposes",
-        "details": "Add prominent warning banners to all legislative data views stating 'This data is for demonstration purposes only'. Implement consistent warning styling across legislative components. Add disclaimer text about data accuracy and currency. Create reusable WarningBanner component. Apply to all legislative-related pages and components.",
-        "testStrategy": "Verify warning labels appear on all legislative data views. Test warning banner styling consistency. Validate disclaimer text is clear and prominent.",
-        "priority": "low",
-        "dependencies": [],
-        "status": "pending",
-        "subtasks": []
-      },
-      {
-        "id": 25,
-        "title": "Frontend Map View List Size Optimization",
-        "description": "Optimize map view to show only 5 opportunities instead of 10 for better UI balance",
-        "details": "Update map view component to display maximum 5 opportunities in list panel. Implement pagination within map view for additional opportunities. Optimize list item sizing for better visual balance with map. Add 'Show more' functionality for additional opportunities. Ensure responsive design works with reduced list size.",
-        "testStrategy": "Test map view displays exactly 5 opportunities in list. Verify pagination works within map view. Test responsive design with reduced list size.",
-        "priority": "low",
-        "dependencies": [
-          21
-        ],
-        "status": "pending",
-        "subtasks": []
-      },
-      {
-        "id": 26,
-        "title": "Frontend Navigation State Preservation",
-        "description": "Preserve user position, filters, and sort selections when navigating back from detail page",
-        "details": "Implement browser history state management to preserve filter and sort selections. Use sessionStorage to maintain scroll position and current page. Update routing to restore previous state when navigating back. Implement URL parameter persistence for filters and sorting. Use React Router state management or custom hook for state preservation.",
-        "testStrategy": "Test navigation back from detail page restores filters and position. Verify URL parameters correctly restore application state. Test state preservation across browser refresh.",
-        "priority": "medium",
-        "dependencies": [],
-        "status": "pending",
-        "subtasks": []
-      },
-      {
-        "id": 27,
-        "title": "DevOps Remote Deployment Setup",
-        "description": "Migrate database to remote Supabase and deploy to Vercel with production configuration",
-        "details": "Create remote Supabase project for production. Migrate database schema using supabase db push. Configure environment variables for production. Set up Vercel deployment with proper build configuration. Implement database migration strategy without transferring all development data. Configure Edge Functions in production Supabase. Set up monitoring and logging for production environment.",
-        "testStrategy": "Test production deployment with sample data. Verify all environment variables are correctly configured. Test Edge Functions work in production Supabase environment.",
-        "priority": "high",
-        "dependencies": [
-          1,
-          11
-        ],
-        "status": "pending",
-        "subtasks": []
-      },
-      {
-        "id": 28,
-        "title": "Dynamic Source Prioritization Monitoring",
-        "description": "Add monitoring to verify dynamic prioritization system is working as expected",
-        "details": "Implement monitoring dashboard for source prioritization metrics. Track priority score calculations over time. Add alerts for sources not being processed within expected timeframes. Create reports showing prioritization effectiveness. Monitor update frequency adherence and processing queue health. Use Supabase analytics or custom monitoring solution.",
-        "testStrategy": "Verify priority scores are calculated correctly for different source types. Test monitoring alerts trigger appropriately. Validate prioritization reports show expected patterns.",
-        "priority": "medium",
-        "dependencies": [],
-        "status": "pending",
-        "subtasks": []
-      },
-      {
-        "id": 29,
-        "title": "Admin Interface Priority Score Visibility",
-        "description": "Show calculated priority scores in admin source management interface",
-        "details": "Add priority score column to admin sources list. Implement sorting by dynamic priority score. Add filtering options for priority-related fields (update frequency, last check time). Create priority score explanation tooltips. Add visual indicators for high/medium/low priority sources. Update admin interface styling for new priority information.",
-        "testStrategy": "Test priority scores display correctly in admin interface. Verify sorting and filtering by priority works. Test tooltip explanations are helpful and accurate.",
-        "priority": "medium",
-        "dependencies": [
-          28
-        ],
-        "status": "pending",
-        "subtasks": []
-      },
-      {
-        "id": 30,
-        "title": "Performance Optimization and Caching",
-        "description": "Implement caching strategies and performance optimizations for V2 pipeline",
-        "details": "Implement Redis caching for API responses and processed data. Add response caching for frequently accessed opportunities. Implement database query optimization with proper indexing. Add connection pooling for database operations. Use Supabase connection pooling and implement client-side caching with React Query or SWR.",
-        "testStrategy": "Measure performance improvements with caching enabled. Test cache invalidation strategies work correctly. Verify database query performance with optimized indexes.",
-        "priority": "medium",
-        "dependencies": [
-          11
-        ],
-        "status": "pending",
-        "subtasks": []
-      },
-      {
-        "id": 31,
-        "title": "Error Monitoring and Alerting System",
-        "description": "Implement comprehensive error monitoring and alerting for production system",
-        "details": "Integrate error monitoring service (Sentry or similar). Set up alerts for critical system failures. Implement custom error tracking for V2 pipeline stages. Add performance monitoring and slow query detection. Create error dashboards for system health monitoring. Configure alert thresholds and notification channels.",
-        "testStrategy": "Test error monitoring captures and reports errors correctly. Verify alert notifications are sent for critical failures. Test error dashboards provide useful system health insights.",
-        "priority": "high",
-        "dependencies": [
-          27
-        ],
-        "status": "pending",
-        "subtasks": []
-      },
-      {
-        "id": 32,
-        "title": "API Rate Limiting and Throttling",
-        "description": "Implement intelligent rate limiting and throttling for external API calls",
-        "details": "Implement exponential backoff for API rate limiting. Add configurable throttling based on API source specifications. Create queue system for API requests during high load. Implement circuit breaker pattern for failing APIs. Add API health monitoring and automatic retry logic. Use bottleneck.js or similar for rate limiting implementation.",
-        "testStrategy": "Test rate limiting prevents API errors during high-volume processing. Verify throttling respects API source limitations. Test circuit breaker prevents cascade failures.",
-        "priority": "medium",
-        "dependencies": [
-          6
-        ],
-        "status": "pending",
-        "subtasks": []
-      },
-      {
-        "id": 33,
-        "title": "Data Quality and Validation Enhancement",
-        "description": "Implement comprehensive data quality scoring and validation for opportunities",
-        "details": "Create data quality scoring algorithm for opportunities. Implement field completeness validation. Add data consistency checks across related fields. Create quality score display in admin interface. Implement automatic data cleaning and normalization. Add quality-based filtering options for end users.",
-        "testStrategy": "Test data quality scores accurately reflect opportunity completeness. Verify data validation catches inconsistencies. Test quality-based filtering provides meaningful results.",
-        "priority": "medium",
-        "dependencies": [
-          15
-        ],
-        "status": "pending",
-        "subtasks": []
-      },
-      {
-        "id": 34,
-        "title": "Automated Testing and CI/CD Pipeline",
-        "description": "Implement comprehensive automated testing and continuous integration/deployment",
-        "details": "Set up Jest testing framework for V2 agents. Implement integration tests for complete pipeline. Add end-to-end testing with Playwright or Cypress. Create GitHub Actions workflow for CI/CD. Implement automated deployment to staging and production. Add test coverage reporting and quality gates.",
-        "testStrategy": "Verify all tests pass in CI environment. Test automated deployment process works correctly. Validate test coverage meets minimum thresholds.",
-        "priority": "high",
-        "dependencies": [
-          27
-        ],
-        "status": "pending",
-        "subtasks": []
-      },
-      {
-        "id": 35,
-        "title": "Documentation and Knowledge Base",
-        "description": "Create comprehensive documentation for system architecture, deployment, and maintenance",
-        "details": "Create technical documentation for V2 architecture. Document deployment procedures and environment setup. Create troubleshooting guides for common issues. Document API endpoints and data schemas. Create user guides for admin interface. Set up documentation site with GitBook or similar. Include code examples and best practices.",
-        "testStrategy": "Review documentation for completeness and accuracy. Test deployment procedures using documentation. Verify troubleshooting guides resolve common issues effectively.",
-        "priority": "medium",
-        "dependencies": [
-          34
+          16,
+          17
         ],
         "status": "pending",
         "subtasks": []
       }
     ],
     "metadata": {
-      "created": "2025-06-17T02:47:59.150Z",
-      "updated": "2025-06-17T02:47:59.150Z",
+      "created": "2025-06-17T23:54:58.582Z",
+      "updated": "2025-06-17T23:54:58.583Z",
       "description": "Tasks for master context"
     }
   }
