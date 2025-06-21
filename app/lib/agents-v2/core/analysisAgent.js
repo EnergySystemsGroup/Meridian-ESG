@@ -148,16 +148,9 @@ Status: ${opp.status || 'Unknown'}
 
 For each opportunity, provide:
 
-1. ENHANCED_DESCRIPTION: Rewrite as comprehensive 2-3 paragraph description that:
-   - Explains the program clearly and professionally
-   - Highlights key benefits and funding details
-   - Notes important deadlines and requirements
-   - Uses professional grant language
+1. ENHANCED_DESCRIPTION: Write a detailed, strategic description of this funding opportunity. Summarize what it is, why it's important, who qualifies, and what kinds of projects are eligible. Then provide 2–3 short use case examples showing how our clients—such as cities, school districts, or state facilities—could take advantage of the opportunity. Focus on narrative clarity and practical insight, not boilerplate language.
 
-2. ACTIONABLE_SUMMARY: One concise paragraph (2-3 sentences) for sales team with:
-   - Who can apply and for what projects
-   - Funding amounts and key deadlines
-   - Why it's relevant to our clients
+2. ACTIONABLE_SUMMARY: Write an actionable summary of this funding opportunity for a sales team. Focus on what the opportunity is about, who can apply, what types of projects are eligible, and whether this is relevant to our company or client types. Keep it concise, focused, and framed to help a sales rep quickly assess whether to pursue it.
 
 3. SYSTEMATIC_SCORING: Rate each criterion based on the opportunity data above:
 
