@@ -7,6 +7,9 @@
  * Exports: enhanceOpportunities(opportunities, source, anthropic)
  */
 
+import { createSupabaseClient, logAgentExecution } from '../../supabase.js';
+import { TAXONOMIES } from '../../constants/taxonomies.js';
+
 /**
  * Enhances opportunities with better content and systematic scoring
  * @param {Array} opportunities - Standardized opportunities from DataExtractionAgent
@@ -62,14 +65,56 @@ export async function enhanceOpportunities(opportunities, source, anthropic) {
     console.log(`[AnalysisAgent] 📊 Average score: ${analysisMetrics.averageScore}/10`);
     console.log(`[AnalysisAgent] 🎯 High relevance: ${analysisMetrics.scoreDistribution.high} opportunities`);
     
-    return {
+    const result = {
       opportunities: enhancedOpportunities,
       analysisMetrics,
       executionTime
     };
     
+    // Log agent execution for tracking
+    try {
+      const supabase = createSupabaseClient();
+      await logAgentExecution(
+        supabase,
+        'analysis_v2',
+        { 
+          source: { id: source.id, name: source.name },
+          opportunityCount: opportunities.length
+        },
+        result,
+        executionTime,
+        null // TODO: Add token usage tracking from Anthropic SDK
+      );
+    } catch (logError) {
+      console.error('[AnalysisAgent] ❌ Failed to log execution:', logError);
+      // Don't throw - logging failure shouldn't break the pipeline
+    }
+    
+    return result;
+    
   } catch (error) {
     console.error(`[AnalysisAgent] ❌ Error enhancing opportunities:`, error);
+    
+    // Log failed execution
+    try {
+      const supabase = createSupabaseClient();
+      const executionTime = Math.max(1, Date.now() - startTime);
+      await logAgentExecution(
+        supabase,
+        'analysis_v2',
+        { 
+          source: { id: source.id, name: source.name },
+          opportunityCount: opportunities.length
+        },
+        null,
+        executionTime,
+        null,
+        error
+      );
+    } catch (logError) {
+      console.error('[AnalysisAgent] ❌ Failed to log error execution:', logError);
+    }
+    
     throw error;
   }
 }
@@ -81,10 +126,12 @@ async function processBatch(opportunities, source, anthropic) {
   const prompt = `You are analyzing funding opportunities for an energy services business. Enhance the content and provide systematic scoring for each opportunity.
 
 OUR BUSINESS CONTEXT:
-- Energy services company serving K-12 schools, municipal/county government, state facilities
-- Focus on HVAC, lighting, solar, building envelope, energy efficiency projects
-- Prefer grants with $1M+ funding potential per applicant
-- Target opportunities with clear energy/infrastructure focus
+- Energy services company with expertise in energy and infrastructure projects
+- TARGET CLIENTS: ${TAXONOMIES.TARGET_CLIENT_TYPES.join(', ')}
+- TARGET PROJECTS: ${TAXONOMIES.TARGET_PROJECT_TYPES.join(', ')}
+- Strong preference for opportunities with clear infrastructure focus, particularly in the energy space
+- Prefer grants with significant funding potential per applicant
+- Target opportunities where our energy services expertise provides competitive advantage
 
 OPPORTUNITIES TO ANALYZE:
 ${opportunities.map((opp, index) => `
@@ -112,16 +159,32 @@ For each opportunity, provide:
    - Funding amounts and key deadlines
    - Why it's relevant to our clients
 
-3. SYSTEMATIC_SCORING: Rate each criterion 0-10:
-   - projectTypeMatch (0-3): How well project types align with energy/infrastructure
-   - clientTypeMatch (0-3): How well our typical clients can apply
-   - categoryMatch (0-2): Alignment with energy/infrastructure categories  
-   - fundingThreshold (0-1): Does max award meet $1M+ threshold? (1=yes, 0=no)
-   - fundingType (0-1): Grant preferred over loan/tax credit (1=grant, 0=other)
+3. SYSTEMATIC_SCORING: Rate each criterion based on the opportunity data above:
+
+   - clientProjectRelevance (0-6): How well this fits our energy services business
+     • 6 = Perfect: Both "Eligible Applicants" AND "Project Types" match our targets exactly
+     • 5 = Near perfect: One field matches exactly + other is closely related
+     • 4 = Strong: Both fields are strong fits for our energy services business  
+     • 3 = Good: One field is a strong fit + other is reasonable
+     • 2 = Reasonable: Both fields could work with our business (use judgment)
+     • 1 = Weak: Only one field has minimal relevance to our services
+     • 0 = No fit: Neither eligible applicants nor project types fit our focus
+   
+   - fundingAttractiveness (0-3): Based on the "Funding:" line for each opportunity
+     • 3 = Exceptional: Shows $5M+ total funding OR $2M+ maximum per award
+     • 2 = Strong: Shows $1M+ total funding OR $500K+ maximum per award  
+     • 1 = Moderate: Shows meaningful funding amounts
+     • 0 = Low/Unknown: Shows "Unknown" amounts or very small funding
+   
+   - fundingType (0-1): Based on funding mechanism
+     • 1 = Grant (preferred)
+     • 0 = Loan, tax credit, other mechanism, or unknown
 
 4. SCORING_EXPLANATION: Brief explanation of the scoring rationale
 
 5. CONCERNS: Any red flags, unusual requirements, or limitations to note
+
+NOTE: Opportunities need clientProjectRelevance ≥2 to be viable, or ≥5 for auto-qualification.
 
 Return as JSON array with this exact structure:
 [
@@ -130,10 +193,8 @@ Return as JSON array with this exact structure:
     "enhancedDescription": "...",
     "actionableSummary": "...",
     "scoring": {
-      "projectTypeMatch": 3,
-      "clientTypeMatch": 3, 
-      "categoryMatch": 2,
-      "fundingThreshold": 1,
+      "clientProjectRelevance": 6,
+      "fundingAttractiveness": 3, 
       "fundingType": 1,
       "overallScore": 10
     },
@@ -143,21 +204,50 @@ Return as JSON array with this exact structure:
   }
 ]`;
 
-  const response = await anthropic.messages.create({
-    model: "claude-3-5-sonnet-20241022",
-    max_tokens: 4000,
-    messages: [{ role: "user", content: prompt }]
-  });
-  
-  const responseText = response.content[0].text;
+  // Use structured schema-based response
+  const response = await anthropic.callWithSchema(
+    prompt,
+    {
+      type: "object",
+      properties: {
+        opportunities: {
+          type: "array",
+          items: {
+            type: "object",
+            properties: {
+              opportunityIndex: { type: "number" },
+              enhancedDescription: { type: "string" },
+              actionableSummary: { type: "string" },
+              scoring: {
+                type: "object",
+                properties: {
+                  clientProjectRelevance: { type: "number", minimum: 0, maximum: 6 },
+                  fundingAttractiveness: { type: "number", minimum: 0, maximum: 3 },
+                  fundingType: { type: "number", minimum: 0, maximum: 1 }
+                },
+                required: ["clientProjectRelevance", "fundingAttractiveness", "fundingType"]
+              },
+              scoringExplanation: { type: "string" },
+              concerns: { type: "array", items: { type: "string" } },
+              fundingPerApplicant: { type: "number", nullable: true }
+            },
+            required: ["opportunityIndex", "enhancedDescription", "actionableSummary", "scoring", "scoringExplanation"]
+          }
+        }
+      },
+      required: ["opportunities"]
+    },
+    {
+      maxTokens: 4000,
+      temperature: 0.1
+    }
+  );
   
   try {
-    // Parse JSON response
-    const cleanedResponse = responseText.replace(/```json\n?|\n?```/g, '').trim();
-    const analysisResults = JSON.parse(cleanedResponse);
+    const analysisResults = response.data.opportunities;
     
     if (!Array.isArray(analysisResults)) {
-      throw new Error('Response is not an array');
+      throw new Error('Response opportunities is not an array');
     }
     
     // Merge analysis results with original opportunities
@@ -167,7 +257,30 @@ Return as JSON array with this exact structure:
       if (!analysis) {
         console.warn(`[AnalysisAgent] ⚠️ No analysis found for opportunity ${index}`);
         return {
-          ...opportunity,
+          // ===== EXTRACTED DATA (preserved from DataExtractionAgent) =====
+          id: opportunity.id,
+          title: opportunity.title,
+          description: opportunity.description,
+          fundingType: opportunity.fundingType,
+          funding_source: opportunity.funding_source,
+          totalFundingAvailable: opportunity.totalFundingAvailable,
+          minimumAward: opportunity.minimumAward,
+          maximumAward: opportunity.maximumAward,
+          notes: opportunity.notes,
+          openDate: opportunity.openDate,
+          closeDate: opportunity.closeDate,
+          eligibleApplicants: opportunity.eligibleApplicants,
+          eligibleProjectTypes: opportunity.eligibleProjectTypes,
+          eligibleLocations: opportunity.eligibleLocations,
+          url: opportunity.url,
+          matchingRequired: opportunity.matchingRequired,
+          matchingPercentage: opportunity.matchingPercentage,
+          categories: opportunity.categories,
+          tags: opportunity.tags,
+          status: opportunity.status,
+          isNational: opportunity.isNational,
+          
+          // ===== ANALYSIS ENHANCEMENTS (fallback defaults) =====
           enhancedDescription: opportunity.description || 'No description available',
           actionableSummary: `${opportunity.title} - Review required`,
           scoring: getDefaultScoring(),
@@ -179,15 +292,37 @@ Return as JSON array with this exact structure:
       
       // Clamp individual scores first, then calculate overall score
       const clampedScoring = {
-        projectTypeMatch: Math.min(3, Math.max(0, analysis.scoring?.projectTypeMatch || 0)),
-        clientTypeMatch: Math.min(3, Math.max(0, analysis.scoring?.clientTypeMatch || 0)),
-        categoryMatch: Math.min(2, Math.max(0, analysis.scoring?.categoryMatch || 0)),
-        fundingThreshold: Math.min(1, Math.max(0, analysis.scoring?.fundingThreshold || 0)),
+        clientProjectRelevance: Math.min(6, Math.max(0, analysis.scoring?.clientProjectRelevance || 0)),
+        fundingAttractiveness: Math.min(3, Math.max(0, analysis.scoring?.fundingAttractiveness || 0)),
         fundingType: Math.min(1, Math.max(0, analysis.scoring?.fundingType || 0))
       };
       
+      // Return COMPLETE opportunity with all extracted data + analysis enhancements
       return {
-        ...opportunity,
+        // ===== EXTRACTED DATA (preserved from DataExtractionAgent) =====
+        id: opportunity.id,
+        title: opportunity.title,
+        description: opportunity.description,
+        fundingType: opportunity.fundingType,
+        funding_source: opportunity.funding_source,
+        totalFundingAvailable: opportunity.totalFundingAvailable,
+        minimumAward: opportunity.minimumAward,
+        maximumAward: opportunity.maximumAward,
+        notes: opportunity.notes,
+        openDate: opportunity.openDate,
+        closeDate: opportunity.closeDate,
+        eligibleApplicants: opportunity.eligibleApplicants,
+        eligibleProjectTypes: opportunity.eligibleProjectTypes,
+        eligibleLocations: opportunity.eligibleLocations,
+        url: opportunity.url,
+        matchingRequired: opportunity.matchingRequired,
+        matchingPercentage: opportunity.matchingPercentage,
+        categories: opportunity.categories,
+        tags: opportunity.tags,
+        status: opportunity.status,
+        isNational: opportunity.isNational,
+        
+        // ===== ANALYSIS ENHANCEMENTS (added by AnalysisAgent) =====
         enhancedDescription: analysis.enhancedDescription || opportunity.description,
         actionableSummary: analysis.actionableSummary || `${opportunity.title} - Review required`,
         scoring: {
@@ -203,13 +338,36 @@ Return as JSON array with this exact structure:
     console.log(`[AnalysisAgent] ✅ Enhanced ${enhancedOpportunities.length} opportunities`);
     return enhancedOpportunities;
     
-  } catch (parseError) {
-    console.error(`[AnalysisAgent] ❌ Failed to parse AI response:`, parseError);
-    console.log('Raw response:', responseText);
+  } catch (schemaError) {
+    console.error(`[AnalysisAgent] ❌ Failed to process structured AI response:`, schemaError);
+    console.log('Response data:', JSON.stringify(response.data, null, 2));
     
     // Return opportunities with default analysis if parsing fails
     return opportunities.map(opportunity => ({
-      ...opportunity,
+      // ===== EXTRACTED DATA (preserved from DataExtractionAgent) =====
+      id: opportunity.id,
+      title: opportunity.title,
+      description: opportunity.description,
+      fundingType: opportunity.fundingType,
+      funding_source: opportunity.funding_source,
+      totalFundingAvailable: opportunity.totalFundingAvailable,
+      minimumAward: opportunity.minimumAward,
+      maximumAward: opportunity.maximumAward,
+      notes: opportunity.notes,
+      openDate: opportunity.openDate,
+      closeDate: opportunity.closeDate,
+      eligibleApplicants: opportunity.eligibleApplicants,
+      eligibleProjectTypes: opportunity.eligibleProjectTypes,
+      eligibleLocations: opportunity.eligibleLocations,
+      url: opportunity.url,
+      matchingRequired: opportunity.matchingRequired,
+      matchingPercentage: opportunity.matchingPercentage,
+      categories: opportunity.categories,
+      tags: opportunity.tags,
+      status: opportunity.status,
+      isNational: opportunity.isNational,
+      
+      // ===== ANALYSIS ENHANCEMENTS (fallback defaults) =====
       enhancedDescription: opportunity.description || 'No description available',
       actionableSummary: `${opportunity.title} - Analysis failed, requires manual review`,
       scoring: getDefaultScoring(),
@@ -221,15 +379,13 @@ Return as JSON array with this exact structure:
 }
 
 /**
- * Calculate overall score from individual scoring components
+ * Calculate overall score from individual scoring components using gating system
  */
 function calculateOverallScore(scoring) {
   if (!scoring) return 0;
   
-  const total = (scoring.projectTypeMatch || 0) + 
-                (scoring.clientTypeMatch || 0) + 
-                (scoring.categoryMatch || 0) + 
-                (scoring.fundingThreshold || 0) + 
+  const total = (scoring.clientProjectRelevance || 0) + 
+                (scoring.fundingAttractiveness || 0) + 
                 (scoring.fundingType || 0);
                 
   return Math.min(10, Math.max(0, Math.round(total)));
@@ -240,10 +396,8 @@ function calculateOverallScore(scoring) {
  */
 function getDefaultScoring() {
   return {
-    projectTypeMatch: 0,
-    clientTypeMatch: 0,
-    categoryMatch: 0,
-    fundingThreshold: 0,
+    clientProjectRelevance: 0,
+    fundingAttractiveness: 0,
     fundingType: 0,
     overallScore: 0
   };
@@ -273,7 +427,7 @@ function calculateAnalysisMetrics(opportunities) {
   };
   
   const meetsFundingThreshold = opportunities.filter(opp => 
-    opp.scoring?.fundingThreshold === 1
+    opp.scoring?.fundingAttractiveness >= 2
   ).length;
   
   const grantFunding = opportunities.filter(opp => 
