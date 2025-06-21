@@ -556,6 +556,22 @@ export const schemas = {
             isNational: {
               type: "boolean",
               description: "Whether this is a national opportunity"
+            },
+            disbursementType: {
+              type: "string",
+              nullable: true,
+              description: "How funding is distributed (e.g., 'reimbursement', 'upfront', 'milestone-based', 'performance-based')"
+            },
+            awardProcess: {
+              type: "string",
+              nullable: true,
+              description: "Selection process for awards (e.g., 'competitive', 'first-come-first-served', 'lottery', 'formula-based')"
+            },
+            eligibleActivities: {
+              type: "array",
+              items: { type: "string" },
+              nullable: true,
+              description: "Specific activities or expenses that can be funded (e.g., 'equipment purchase', 'installation', 'design', 'maintenance')"
             }
           },
           required: ["id", "title", "description", "eligibleApplicants", "eligibleProjectTypes"]
@@ -738,6 +754,22 @@ export const schemas = {
             isNational: {
               type: "boolean",
               description: "Whether this is a national opportunity"
+            },
+            disbursementType: {
+              type: "string",
+              nullable: true,
+              description: "How funding is distributed (e.g., 'reimbursement', 'upfront', 'milestone-based', 'performance-based')"
+            },
+            awardProcess: {
+              type: "string",
+              nullable: true,
+              description: "Selection process for awards (e.g., 'competitive', 'first-come-first-served', 'lottery', 'formula-based')"
+            },
+            eligibleActivities: {
+              type: "array",
+              items: { type: "string" },
+              nullable: true,
+              description: "Specific activities or expenses that can be funded (e.g., 'equipment purchase', 'installation', 'design', 'maintenance')"
             },
             
             // ===== ANALYSIS ENHANCEMENTS (added by AnalysisAgent) =====
