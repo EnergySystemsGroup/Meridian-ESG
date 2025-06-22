@@ -9,7 +9,7 @@
 
 import { createSupabaseClient, logAgentExecution } from '../../supabase.js';
 import { TAXONOMIES } from '../../constants/taxonomies.js';
-import { schemas } from '../../utils/anthropicClient.js';
+import { schemas } from '../utils/anthropicClient.js';
 
 /**
  * Enhances opportunities with better content and systematic scoring
