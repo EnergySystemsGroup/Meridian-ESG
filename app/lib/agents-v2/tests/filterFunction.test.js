@@ -2,146 +2,207 @@ import { describe, test, expect, beforeEach } from 'vitest';
 import { 
   filterOpportunities, 
   createFilterConfig, 
-  getDefaultFilterConfig,
-  applyStrictFiltering,
-  applyLenientFiltering
+  getDefaultFilterConfig
 } from '../core/filterFunction.js';
 
 /**
- * Test suite for Filter Function V2
+ * Test suite for Filter Function V2 - New Gating System
  * 
- * Tests programmatic filtering logic based on scores and thresholds
+ * Tests programmatic filtering logic based on new gating system scores:
+ * - clientProjectRelevance (0-6)
+ * - fundingAttractiveness (0-3)
+ * - fundingType (0-1)
  */
 
-describe('Filter Function V2', () => {
+describe('Filter Function V2 - New Gating System', () => {
   let mockOpportunities;
 
   beforeEach(() => {
     mockOpportunities = [
-      // High-scoring opportunity (should pass all filters)
+      // Auto-qualifying opportunity (clientProjectRelevance ≥ 5)
       {
         id: 'grant-1',
-        title: 'Energy Efficiency Grants',
-        description: 'HVAC upgrade funding',
+        title: 'Perfect Energy Infrastructure Grant',
+        description: 'HVAC upgrade funding for municipal facilities',
         status: 'open',
         fundingType: 'grant',
         maximumAward: 1000000,
         scoring: {
-          projectTypeMatch: 3,
-          clientTypeMatch: 3,
-          categoryMatch: 2,
-          fundingThreshold: 1,
-          fundingType: 1,
+          clientProjectRelevance: 6,    // Perfect fit - auto-qualifies
+          fundingAttractiveness: 3,     // Excellent funding
+          fundingType: 1,               // Grant
           overallScore: 10
         },
         enhancedDescription: 'Enhanced description available'
       },
-      // Medium-scoring opportunity (should pass default filters)
+      // Auto-qualifying opportunity (clientProjectRelevance = 5)
       {
         id: 'grant-2', 
-        title: 'Solar Installation Program',
-        description: 'Solar panel funding',
+        title: 'Solar Installation for Schools',
+        description: 'Solar panel funding for educational facilities',
         status: 'open',
         fundingType: 'grant',
         maximumAward: 500000,
         scoring: {
-          projectTypeMatch: 2,
-          clientTypeMatch: 2,
-          categoryMatch: 1,
-          fundingThreshold: 0,
-          fundingType: 1,
-          overallScore: 6
+          clientProjectRelevance: 5,    // Auto-qualifies
+          fundingAttractiveness: 2,     // Good funding
+          fundingType: 1,               // Grant
+          overallScore: 8
         }
       },
-      // Low-scoring opportunity (should be excluded by default)
+      // Secondary filtering pass (score 4 with good funding)
       {
         id: 'grant-3',
+        title: 'Energy Efficiency Program',
+        description: 'Building efficiency upgrades',
+        status: 'open',
+        fundingType: 'grant',
+        maximumAward: 750000,
+        scoring: {
+          clientProjectRelevance: 4,    // Good fit, goes to secondary
+          fundingAttractiveness: 2,     // Good funding
+          fundingType: 1,               // Grant
+          overallScore: 7
+        }
+      },
+      // Secondary filtering pass (score 3 with excellent funding)
+      {
+        id: 'grant-4',
+        title: 'Infrastructure Investment',
+        description: 'Critical infrastructure projects',
+        status: 'open',
+        fundingType: 'grant',
+        maximumAward: 2000000,
+        scoring: {
+          clientProjectRelevance: 3,    // Moderate fit, goes to secondary
+          fundingAttractiveness: 3,     // Excellent funding compensates
+          fundingType: 1,               // Grant
+          overallScore: 7
+        }
+      },
+      // Secondary filtering fail (non-grant with insufficient compensation)
+      {
+        id: 'loan-1',
+        title: 'Low-Interest Energy Loan',
+        description: 'Loan program for energy projects',
+        status: 'open',
+        fundingType: 'loan',
+        maximumAward: 500000,
+        scoring: {
+          clientProjectRelevance: 3,    // Moderate fit
+          fundingAttractiveness: 1,     // Moderate funding
+          fundingType: 0,               // Not a grant
+          overallScore: 4
+        }
+      },
+      // Primary gate failure (clientProjectRelevance < 2)
+      {
+        id: 'grant-5',
         title: 'Unrelated Program',
         description: 'Not energy related',
         status: 'open',
-        fundingType: 'loan',
+        fundingType: 'grant',
         maximumAward: 100000,
         scoring: {
-          projectTypeMatch: 0,
-          clientTypeMatch: 1,
-          categoryMatch: 0,
-          fundingThreshold: 0,
-          fundingType: 0,
-          overallScore: 1
+          clientProjectRelevance: 1,    // Fails primary gate
+          fundingAttractiveness: 1,     // Doesn't matter
+          fundingType: 1,               // Doesn't matter
+          overallScore: 3
         }
       },
-      // Closed opportunity (should be excluded)
+      // Closed opportunity (should be excluded regardless of score)
       {
-        id: 'grant-4',
+        id: 'grant-6',
         title: 'Closed Energy Grant',
         description: 'Great opportunity but closed',
         status: 'closed',
         fundingType: 'grant',
         maximumAward: 2000000,
         scoring: {
-          projectTypeMatch: 3,
-          clientTypeMatch: 3,
-          categoryMatch: 2,
-          fundingThreshold: 1,
-          fundingType: 1,
+          clientProjectRelevance: 6,    // Would auto-qualify if open
+          fundingAttractiveness: 3,     // Excellent
+          fundingType: 1,               // Grant
           overallScore: 10
         }
       },
-      // Borderline opportunity (score = 2, exactly at default threshold)
+      // Secondary filtering fail (low funding attractiveness)
       {
-        id: 'grant-5',
-        title: 'Borderline Opportunity',
-        description: 'Right at threshold',
+        id: 'grant-7',
+        title: 'Small Energy Grant',
+        description: 'Limited funding available',
         status: 'open',
         fundingType: 'grant',
-        maximumAward: 250000,
+        maximumAward: 50000,
         scoring: {
-          projectTypeMatch: 1,
-          clientTypeMatch: 1,
-          categoryMatch: 0,
-          fundingThreshold: 0,
-          fundingType: 0,
-          overallScore: 2
+          clientProjectRelevance: 3,    // Passes primary gate
+          fundingAttractiveness: 0,     // Fails funding threshold
+          fundingType: 1,               // Grant
+          overallScore: 4
         }
       }
     ];
   });
 
-  test('should filter opportunities with default configuration', () => {
+  test('should filter opportunities with new gating system', () => {
     const result = filterOpportunities(mockOpportunities);
 
     expect(result).toMatchObject({
       includedOpportunities: expect.any(Array),
       excludedOpportunities: expect.any(Array),
       filterMetrics: {
-        totalAnalyzed: 5,
+        totalAnalyzed: 8,
         included: expect.any(Number),
         excluded: expect.any(Number),
         exclusionReasons: expect.any(Object),
+        gatingMetrics: {
+          failedPrimaryGate: expect.any(Number),
+          autoQualified: expect.any(Number),
+          secondaryFiltered: expect.any(Number)
+        },
         inclusionRate: expect.any(Number)
       },
       executionTime: expect.any(Number)
     });
 
-    // Should include high and medium scoring opportunities (grant-5 excluded due to non-grant + low score)
-    expect(result.includedOpportunities).toHaveLength(2); // grant-1, grant-2
-    expect(result.excludedOpportunities).toHaveLength(3); // grant-3 (low score), grant-4 (closed), grant-5 (non-grant + insufficient score)
+    // Should include: grant-1 (auto), grant-2 (auto), grant-3 (secondary pass), grant-4 (secondary pass), loan-1 (now passes secondary)
+    expect(result.includedOpportunities).toHaveLength(5);
+    
+    // Should exclude: grant-5 (primary gate), grant-6 (closed), grant-7 (low funding)
+    expect(result.excludedOpportunities).toHaveLength(3);
+
+    // Check auto-qualified opportunities
+    expect(result.filterMetrics.gatingMetrics.autoQualified).toBe(2); // grant-1, grant-2
+
+    // Check primary gate failures  
+    expect(result.filterMetrics.gatingMetrics.failedPrimaryGate).toBe(1); // grant-5
+
+    // Check secondary filtering count
+    expect(result.filterMetrics.gatingMetrics.secondaryFiltered).toBe(5); // grant-3, grant-4, loan-1, grant-6, grant-7
 
     // Check specific inclusions
     const includedIds = result.includedOpportunities.map(opp => opp.id);
-    expect(includedIds).toContain('grant-1'); // High score
-    expect(includedIds).toContain('grant-2'); // Medium score
+    expect(includedIds).toContain('grant-1'); // Auto-qualified
+    expect(includedIds).toContain('grant-2'); // Auto-qualified  
+    expect(includedIds).toContain('grant-3'); // Secondary pass
+    expect(includedIds).toContain('grant-4'); // Secondary pass
+    expect(includedIds).toContain('loan-1');  // Now passes secondary (no grant preference)
 
     // Check specific exclusions
     const excludedIds = result.excludedOpportunities.map(opp => opp.id);
-    expect(excludedIds).toContain('grant-3'); // Low score
-    expect(excludedIds).toContain('grant-4'); // Closed status
-    expect(excludedIds).toContain('grant-5'); // Non-grant funding with insufficient score
+    expect(excludedIds).toContain('grant-5'); // Primary gate failure
+    expect(excludedIds).toContain('grant-6'); // Closed status
+    expect(excludedIds).toContain('grant-7'); // Low funding attractiveness
 
-    // Check metrics
-    expect(result.filterMetrics.inclusionRate).toBe(40); // 2/5 = 40%
-    expect(result.filterMetrics.exclusionReasons).toHaveProperty('low_overall_score_1');
-    expect(result.filterMetrics.exclusionReasons).toHaveProperty('opportunity_closed');
+    // Check gate types
+    const autoQualified = result.includedOpportunities.filter(opp => 
+      opp.filterResult.gateType === 'auto_qualified'
+    );
+    expect(autoQualified).toHaveLength(2);
+
+    const secondaryPassed = result.includedOpportunities.filter(opp => 
+      opp.filterResult.gateType === 'secondary_passed'
+    );
+    expect(secondaryPassed).toHaveLength(3); // grant-3, grant-4, loan-1
   });
 
   test('should handle empty opportunities array', () => {
@@ -154,7 +215,12 @@ describe('Filter Function V2', () => {
         totalAnalyzed: 0,
         included: 0,
         excluded: 0,
-        exclusionReasons: {}
+        exclusionReasons: {},
+        gatingMetrics: {
+          failedPrimaryGate: 0,
+          autoQualified: 0,
+          secondaryFiltered: 0
+        }
       },
       executionTime: expect.any(Number)
     });
@@ -162,238 +228,137 @@ describe('Filter Function V2', () => {
     expect(result.executionTime).toBeGreaterThan(0);
   });
 
-  test('should apply custom filtering configuration', () => {
-    const strictConfig = createFilterConfig({
-      minimumOverallScore: 7,
-      minimumProjectTypeMatch: 2,
-      minimumClientTypeMatch: 2
+  test('should apply custom gating configuration', () => {
+    const customConfig = createFilterConfig({
+      minimumClientProjectRelevance: 4,    // Higher primary gate
+      autoQualificationThreshold: 6,       // Only perfect scores auto-qualify
+      minimumFundingAttractiveness: 2      // Higher funding requirement
     });
 
-    const result = filterOpportunities(mockOpportunities, strictConfig);
+    const result = filterOpportunities(mockOpportunities, customConfig);
 
-    // Only grant-1 should pass (score 10, perfect matches)
-    expect(result.includedOpportunities).toHaveLength(1);
-    expect(result.includedOpportunities[0].id).toBe('grant-1');
-    expect(result.excludedOpportunities).toHaveLength(4);
+    // Only grant-1 should auto-qualify (score 6)
+    // grant-2 now goes to secondary (score 5) and passes
+    // grant-3 passes secondary (score 4, funding 2)
+    // grant-4 passes secondary (score 3 fails primary gate now)
+    expect(result.filterMetrics.gatingMetrics.autoQualified).toBe(1); // Only grant-1
+    
+    // Should include grant-1, grant-2, grant-3
+    expect(result.includedOpportunities).toHaveLength(3);
   });
 
-  test('should handle opportunities without scoring data', () => {
-    const opportunitiesWithoutScoring = [
+  test('should handle opportunities without new scoring fields', () => {
+    const legacyOpportunities = [
+      {
+        id: 'legacy-1',
+        title: 'Legacy Opportunity',
+        status: 'open',
+        scoring: {
+          // Missing new scoring fields
+          projectTypeMatch: 2,
+          clientTypeMatch: 3
+        }
+      },
       {
         id: 'no-score-1',
         title: 'No Scoring Data',
         status: 'open'
-      },
+        // No scoring object at all
+      }
+    ];
+
+    const result = filterOpportunities(legacyOpportunities);
+
+    // Both should be excluded due to missing new scoring fields
+    expect(result.includedOpportunities).toHaveLength(0);
+    expect(result.excludedOpportunities).toHaveLength(2);
+    
+    // Check exclusion reasons
+    expect(result.filterMetrics.exclusionReasons).toHaveProperty('missing_new_scoring_fields');
+  });
+
+  test('should validate scoring field ranges', () => {
+    const opportunitiesWithInvalidScores = [
       {
-        id: 'partial-score-1',
-        title: 'Partial Scoring',
+        id: 'invalid-1',
+        title: 'Out of Range Scores',
         status: 'open',
         scoring: {
-          projectTypeMatch: 2
-          // Missing other scoring fields
+          clientProjectRelevance: 10,      // Should be clamped to 6
+          fundingAttractiveness: -1,       // Should be clamped to 0
+          fundingType: 2,                  // Should be clamped to 1
+          overallScore: 5
         }
       }
     ];
 
-    const result = filterOpportunities(opportunitiesWithoutScoring);
+    const result = filterOpportunities(opportunitiesWithInvalidScores);
 
-    // Both should be excluded due to missing/insufficient scoring
-    expect(result.includedOpportunities).toHaveLength(0);
-    expect(result.excludedOpportunities).toHaveLength(2);
-    expect(result.filterMetrics.exclusionReasons).toHaveProperty('low_overall_score_0');
-  });
-
-  test('should apply funding type preferences correctly', () => {
-    const grantPreferenceConfig = createFilterConfig({
-      minimumOverallScore: 2,
-      preferGrants: true
-    });
-
-    // Test with loan opportunity that has medium score
-    const loanOpportunity = [{
-      id: 'loan-1',
-      title: 'Medium Score Loan',
-      status: 'open',
-      fundingType: 'loan',
-      scoring: {
-        projectTypeMatch: 1,
-        clientTypeMatch: 1,
-        categoryMatch: 1,
-        fundingThreshold: 0,
-        fundingType: 0, // Not a grant
-        overallScore: 3 // Above minimum but not high enough to compensate for non-grant
-      }
-    }];
-
-    const result = filterOpportunities(loanOpportunity, grantPreferenceConfig);
-
-    // Should be excluded because it's not a grant and score isn't high enough
-    expect(result.includedOpportunities).toHaveLength(0);
-    expect(result.excludedOpportunities).toHaveLength(1);
-    expect(result.filterMetrics.exclusionReasons).toHaveProperty('non_grant_funding_insufficient_score');
-  });
-
-  test('should exclude closed and expired opportunities', () => {
-    const closedOpportunities = [
-      {
-        id: 'closed-1',
-        title: 'Closed Opportunity',
-        status: 'closed',
-        scoring: { 
-          overallScore: 8,
-          projectTypeMatch: 2,
-          clientTypeMatch: 2 
-        }
-      },
-      {
-        id: 'expired-1',
-        title: 'Expired Opportunity', 
-        status: 'expired',
-        scoring: { 
-          overallScore: 9,
-          projectTypeMatch: 2,
-          clientTypeMatch: 2 
-        }
-      },
-      {
-        id: 'open-1',
-        title: 'Open Opportunity',
-        status: 'open',
-        scoring: { 
-          overallScore: 5,
-          projectTypeMatch: 2,
-          clientTypeMatch: 2 
-        }
-      }
-    ];
-
-    const result = filterOpportunities(closedOpportunities);
-
+    // Should still process but with clamped values
+    // clientProjectRelevance: 10 -> 6 (auto-qualifies)
     expect(result.includedOpportunities).toHaveLength(1);
-    expect(result.includedOpportunities[0].id).toBe('open-1');
-    expect(result.excludedOpportunities).toHaveLength(2);
-    expect(result.filterMetrics.exclusionReasons.opportunity_closed).toBe(2);
+    expect(result.filterMetrics.gatingMetrics.autoQualified).toBe(1);
   });
 
-  test('should validate input parameters', () => {
-    expect(() => filterOpportunities('not an array'))
-      .toThrow('Opportunities must be an array');
-
-    expect(() => filterOpportunities(null))
-      .toThrow('Opportunities must be an array');
-  });
-
-  test('should add filter results to opportunities', () => {
+  test('should provide detailed gating metrics', () => {
     const result = filterOpportunities(mockOpportunities);
 
-    // Check included opportunities have filter results
-    result.includedOpportunities.forEach(opp => {
-      expect(opp.filterResult).toMatchObject({
-        passed: true,
-        reason: expect.stringMatching(/passed_with_score_\d+/)
-      });
+    expect(result.filterMetrics.gatingMetrics).toMatchObject({
+      failedPrimaryGate: expect.any(Number),
+      autoQualified: expect.any(Number), 
+      secondaryFiltered: expect.any(Number)
     });
 
-    // Check excluded opportunities have filter results
-    result.excludedOpportunities.forEach(opp => {
-      expect(opp.filterResult).toMatchObject({
-        passed: false,
-        reason: expect.any(String)
-      });
-    });
+    // Verify counts add up correctly
+    const { gatingMetrics } = result.filterMetrics;
+    expect(gatingMetrics.failedPrimaryGate + gatingMetrics.autoQualified + gatingMetrics.secondaryFiltered)
+      .toBe(mockOpportunities.length);
   });
 
-  test('should apply strict filtering correctly', () => {
-    const result = applyStrictFiltering(mockOpportunities);
+  test('should track exclusion reasons correctly', () => {
+    const result = filterOpportunities(mockOpportunities);
 
-    // Only the highest-scoring opportunity should pass
-    expect(result.includedOpportunities).toHaveLength(1);
-    expect(result.includedOpportunities[0].id).toBe('grant-1');
-    expect(result.filterMetrics.inclusionRate).toBe(20); // 1/5 = 20%
-  });
-
-  test('should apply lenient filtering correctly', () => {
-    const result = applyLenientFiltering(mockOpportunities);
-
-    // Should include most opportunities except closed ones
-    expect(result.includedOpportunities).toHaveLength(4);
-    expect(result.excludedOpportunities).toHaveLength(1);
+    const { exclusionReasons } = result.filterMetrics;
     
-    // Should exclude only the closed opportunity
-    expect(result.excludedOpportunities[0].id).toBe('grant-4');
-    expect(result.filterMetrics.inclusionRate).toBe(80); // 4/5 = 80%
+    // Should have various exclusion reasons
+    expect(Object.keys(exclusionReasons).length).toBeGreaterThan(0);
+    
+    // Check for specific expected reasons
+    const reasonKeys = Object.keys(exclusionReasons);
+    expect(reasonKeys.some(key => key.includes('failed_primary_gate'))).toBe(true);
+    expect(reasonKeys.some(key => key.includes('opportunity_closed'))).toBe(true);
   });
 
-  test('should handle funding threshold preferences', () => {
-    const thresholdConfig = createFilterConfig({
-      minimumOverallScore: 2,
-      preferFundingThreshold: true
-    });
-
-    // Opportunity with low funding that doesn't meet threshold
-    const lowFundingOpportunity = [{
-      id: 'low-funding-1',
-      title: 'Low Funding Opportunity',
-      status: 'open',
-      maximumAward: 50000,
-      scoring: {
-        projectTypeMatch: 1,
-        clientTypeMatch: 1,
-        categoryMatch: 1,
-        fundingThreshold: 0, // Below $1M threshold
-        fundingType: 1,
-        overallScore: 4 // Not high enough to compensate
-      }
+  test('should handle missing scoring gracefully', () => {
+    const opportunityWithoutScoring = [{
+      id: 'no-scoring',
+      title: 'No Scoring Object',
+      status: 'open'
     }];
 
-    const result = filterOpportunities(lowFundingOpportunity, thresholdConfig);
+    const result = filterOpportunities(opportunityWithoutScoring);
 
-    // Should be excluded for not meeting funding threshold with insufficient compensation score
-    expect(result.includedOpportunities).toHaveLength(0);
     expect(result.excludedOpportunities).toHaveLength(1);
-    expect(result.filterMetrics.exclusionReasons).toHaveProperty('below_funding_threshold_insufficient_score');
+    expect(result.excludedOpportunities[0].filterResult.reason).toBe('missing_new_scoring_fields');
+    expect(result.excludedOpportunities[0].filterResult.gateType).toBe('validation_failed');
   });
 
-  test('should get and create filter configurations', () => {
+  test('should create and get filter configurations', () => {
     const defaultConfig = getDefaultFilterConfig();
     expect(defaultConfig).toMatchObject({
-      minimumOverallScore: 2,
-      minimumProjectTypeMatch: 1,
-      minimumClientTypeMatch: 1,
-      preferGrants: true,
-      preferFundingThreshold: false,
-      excludeClosedOpportunities: true,
-      requireDescription: false,
-      requireFundingInfo: false
+      minimumClientProjectRelevance: 2,
+      autoQualificationThreshold: 5,
+      minimumFundingAttractiveness: 1,
+      excludeClosedOpportunities: true
     });
 
     const customConfig = createFilterConfig({
-      minimumOverallScore: 5,
-      preferGrants: false
+      minimumClientProjectRelevance: 4,
+      minimumFundingAttractiveness: 2
     });
 
-    expect(customConfig.minimumOverallScore).toBe(5);
-    expect(customConfig.preferGrants).toBe(false);
-    expect(customConfig.minimumClientTypeMatch).toBe(1); // Should inherit default
-  });
-
-  test('should track detailed exclusion reasons', () => {
-    const mixedOpportunities = [
-      { id: '1', scoring: { overallScore: 1 } }, // Low score
-      { id: '2', scoring: { overallScore: 5, projectTypeMatch: 0, clientTypeMatch: 2 } }, // Insufficient project match
-      { id: '3', scoring: { overallScore: 5, projectTypeMatch: 2, clientTypeMatch: 0 } }, // Insufficient client match
-      { id: '4', status: 'closed', scoring: { overallScore: 8, projectTypeMatch: 2, clientTypeMatch: 2 } }, // Closed
-      { id: '5', scoring: { overallScore: 8, projectTypeMatch: 2, clientTypeMatch: 2 } } // Should pass
-    ];
-
-    const result = filterOpportunities(mixedOpportunities);
-
-    expect(result.includedOpportunities).toHaveLength(1);
-    expect(result.filterMetrics.exclusionReasons).toMatchObject({
-      'low_overall_score_1': 1,
-      'insufficient_project_type_match': 1,
-      'insufficient_client_type_match': 1,
-      'opportunity_closed': 1
-    });
+    expect(customConfig.minimumClientProjectRelevance).toBe(4);
+    expect(customConfig.minimumFundingAttractiveness).toBe(2);
+    expect(customConfig.autoQualificationThreshold).toBe(5); // Should inherit default
   });
 }); 

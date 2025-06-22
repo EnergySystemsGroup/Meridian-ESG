@@ -1,36 +1,30 @@
 /**
- * Filter Function V2 - Simple Threshold Logic
+ * Filter Function V2 - New Gating System Logic
  * 
- * Applies programmatic filtering based on opportunity scores and criteria.
- * Replaces complex AI-based filtering with fast, objective thresholds.
+ * Applies programmatic filtering based on opportunity scores from Analysis Agent V2.
+ * Uses new gating system: clientProjectRelevance (0-6), fundingAttractiveness (0-3), fundingType (0-1).
  * 
  * Exports: filterOpportunities(opportunities, config)
  */
 
 /**
- * Default filtering configuration
+ * Default filtering configuration for new gating system
  */
 const DEFAULT_CONFIG = {
-  // Score thresholds (0-10 scale)
-  minimumOverallScore: 2,        // Only opportunities scoring 2+ pass
-  minimumProjectTypeMatch: 1,    // Must have some project type relevance
-  minimumClientTypeMatch: 1,     // Must have some client type relevance
+  // Primary gating thresholds
+  minimumClientProjectRelevance: 2,    // Primary gate: must score ≥2 to pass
+  autoQualificationThreshold: 5,       // Auto-qualify if clientProjectRelevance ≥5
   
-  // Funding preferences
-  preferGrants: true,            // Prefer grants over loans/tax credits
-  preferFundingThreshold: false, // Don't require $1M+ threshold (too restrictive)
+  // Secondary filtering criteria (for scores 2-4)
+  minimumFundingAttractiveness: 1,     // 0-3 scale: moderate funding required
   
   // Status filtering
-  excludeClosedOpportunities: true,  // Skip opportunities with status 'closed'
-  
-  // Quality filtering
-  requireDescription: false,     // Don't require description (some APIs lack it)
-  requireFundingInfo: false      // Don't require funding amounts (some lack it)
+  excludeClosedOpportunities: true    // Skip opportunities with status 'closed'
 };
 
 /**
- * Filters opportunities based on scores and configurable criteria
- * @param {Array} opportunities - Enhanced opportunities from AnalysisAgent
+ * Filters opportunities based on new gating system scores and configurable criteria
+ * @param {Array} opportunities - Enhanced opportunities from AnalysisAgent V2
  * @param {Object} config - Filtering configuration (optional)
  * @returns {Object} - Filtered opportunities with metrics
  */
@@ -44,7 +38,7 @@ export function filterOpportunities(opportunities, config = DEFAULT_CONFIG) {
       throw new Error('Opportunities must be an array');
     }
     
-    console.log(`[FilterFunction] 🔍 Filtering ${opportunities.length} opportunities with thresholds`);
+    console.log(`[FilterFunction] 🔍 Filtering ${opportunities.length} opportunities with new gating system`);
     
     if (opportunities.length === 0) {
       return {
@@ -54,27 +48,38 @@ export function filterOpportunities(opportunities, config = DEFAULT_CONFIG) {
           totalAnalyzed: 0,
           included: 0,
           excluded: 0,
-          exclusionReasons: {}
+          exclusionReasons: {},
+          gatingMetrics: {
+            failedPrimaryGate: 0,
+            autoQualified: 0,
+            secondaryFiltered: 0
+          }
         },
         executionTime: Math.max(1, Date.now() - startTime)
       };
     }
     
-    console.log(`[FilterFunction] ⚙️ Using config: minScore=${filterConfig.minimumOverallScore}, preferGrants=${filterConfig.preferGrants}`);
+    console.log(`[FilterFunction] ⚙️ Using gating: primaryGate≥${filterConfig.minimumClientProjectRelevance}, autoQualify≥${filterConfig.autoQualificationThreshold}`);
     
     const includedOpportunities = [];
     const excludedOpportunities = [];
     const exclusionReasons = {};
+    const gatingMetrics = {
+      failedPrimaryGate: 0,
+      autoQualified: 0,
+      secondaryFiltered: 0
+    };
     
     for (const opportunity of opportunities) {
-      const filterResult = evaluateOpportunity(opportunity, filterConfig);
+      const filterResult = evaluateOpportunityWithGating(opportunity, filterConfig, gatingMetrics);
       
       if (filterResult.include) {
         includedOpportunities.push({
           ...opportunity,
           filterResult: {
             passed: true,
-            reason: filterResult.reason
+            reason: filterResult.reason,
+            gateType: filterResult.gateType
           }
         });
       } else {
@@ -82,7 +87,8 @@ export function filterOpportunities(opportunities, config = DEFAULT_CONFIG) {
           ...opportunity,
           filterResult: {
             passed: false,
-            reason: filterResult.reason
+            reason: filterResult.reason,
+            gateType: filterResult.gateType
           }
         });
         
@@ -96,6 +102,7 @@ export function filterOpportunities(opportunities, config = DEFAULT_CONFIG) {
       included: includedOpportunities.length,
       excluded: excludedOpportunities.length,
       exclusionReasons,
+      gatingMetrics,
       inclusionRate: Math.round((includedOpportunities.length / opportunities.length) * 100)
     };
     
@@ -103,6 +110,7 @@ export function filterOpportunities(opportunities, config = DEFAULT_CONFIG) {
     
     console.log(`[FilterFunction] ✅ Filtering completed in ${executionTime}ms`);
     console.log(`[FilterFunction] 📊 Results: ${filterMetrics.included}/${filterMetrics.totalAnalyzed} included (${filterMetrics.inclusionRate}%)`);
+    console.log(`[FilterFunction] 🚪 Gating: ${gatingMetrics.autoQualified} auto-qualified, ${gatingMetrics.failedPrimaryGate} failed primary gate`);
     
     if (Object.keys(exclusionReasons).length > 0) {
       console.log(`[FilterFunction] 🚫 Exclusion reasons:`, exclusionReasons);
@@ -122,40 +130,52 @@ export function filterOpportunities(opportunities, config = DEFAULT_CONFIG) {
 }
 
 /**
- * Evaluates a single opportunity against filtering criteria
+ * Evaluates a single opportunity against new gating system criteria
  * @param {Object} opportunity - The opportunity to evaluate
  * @param {Object} config - Filtering configuration
- * @returns {Object} - Evaluation result with include/exclude decision and reason
+ * @param {Object} gatingMetrics - Metrics object to update
+ * @returns {Object} - Evaluation result with include/exclude decision, reason, and gate type
  */
-function evaluateOpportunity(opportunity, config) {
+function evaluateOpportunityWithGating(opportunity, config, gatingMetrics) {
   const scoring = opportunity.scoring || {};
   
-  // Check overall score threshold
-  const overallScore = scoring.overallScore || 0;
-  if (overallScore < config.minimumOverallScore) {
+  // Validate scoring object has new fields
+  if (!scoring.hasOwnProperty('clientProjectRelevance')) {
+    console.warn(`[FilterFunction] ⚠️ Opportunity missing new scoring fields, using fallback:`, opportunity.title);
     return {
       include: false,
-      reason: `low_overall_score_${overallScore}`
+      reason: 'missing_new_scoring_fields',
+      gateType: 'validation_failed'
     };
   }
   
-  // Check project type relevance
-  const projectTypeMatch = scoring.projectTypeMatch || 0;
-  if (projectTypeMatch < config.minimumProjectTypeMatch) {
+  // Extract new scoring fields with validation
+  const clientProjectRelevance = Math.max(0, Math.min(6, scoring.clientProjectRelevance || 0));
+  const fundingAttractiveness = Math.max(0, Math.min(3, scoring.fundingAttractiveness || 0)); 
+  const fundingType = Math.max(0, Math.min(1, scoring.fundingType || 0));
+  
+  // PRIMARY GATE: clientProjectRelevance ≥ 2
+  if (clientProjectRelevance < config.minimumClientProjectRelevance) {
+    gatingMetrics.failedPrimaryGate++;
     return {
       include: false,
-      reason: 'insufficient_project_type_match'
+      reason: `failed_primary_gate_score_${clientProjectRelevance}`,
+      gateType: 'primary_gate_failed'
     };
   }
   
-  // Check client type relevance
-  const clientTypeMatch = scoring.clientTypeMatch || 0;
-  if (clientTypeMatch < config.minimumClientTypeMatch) {
+  // AUTO-QUALIFICATION GATE: clientProjectRelevance ≥ 5
+  if (clientProjectRelevance >= config.autoQualificationThreshold) {
+    gatingMetrics.autoQualified++;
     return {
-      include: false,
-      reason: 'insufficient_client_type_match'
+      include: true,
+      reason: `auto_qualified_score_${clientProjectRelevance}`,
+      gateType: 'auto_qualified'
     };
   }
+  
+  // SECONDARY FILTERING: For scores 2-4, apply additional criteria
+  gatingMetrics.secondaryFiltered++;
   
   // Check status filtering
   if (config.excludeClosedOpportunities) {
@@ -163,59 +183,31 @@ function evaluateOpportunity(opportunity, config) {
     if (status === 'closed' || status === 'expired') {
       return {
         include: false,
-        reason: 'opportunity_closed'
+        reason: 'opportunity_closed',
+        gateType: 'secondary_status_failed'
       };
     }
   }
   
-  // Check funding preferences (non-exclusionary, just affects scoring)
-  if (config.preferGrants) {
-    const fundingType = scoring.fundingType || 0;
-    if (fundingType === 0 && overallScore < config.minimumOverallScore + 2) {
-      // Non-grant funding needs higher overall score to compensate
-      return {
-        include: false,
-        reason: 'non_grant_funding_insufficient_score'
-      };
-    }
-  }
-  
-  // Check funding threshold preference (non-exclusionary)
-  if (config.preferFundingThreshold) {
-    const fundingThreshold = scoring.fundingThreshold || 0;
-    if (fundingThreshold === 0 && overallScore < config.minimumOverallScore + 3) {
-      // Sub-$1M funding needs higher overall score to compensate
-      return {
-        include: false,
-        reason: 'below_funding_threshold_insufficient_score'
-      };
-    }
-  }
-  
-  // Check quality requirements
-  if (config.requireDescription && !opportunity.enhancedDescription && !opportunity.description) {
+  // Check funding attractiveness threshold
+  if (fundingAttractiveness < config.minimumFundingAttractiveness) {
     return {
       include: false,
-      reason: 'missing_description'
+      reason: `insufficient_funding_attractiveness_${fundingAttractiveness}`,
+      gateType: 'secondary_funding_failed'
     };
   }
   
-  if (config.requireFundingInfo && !opportunity.maximumAward && !opportunity.totalFundingAvailable) {
-    return {
-      include: false,
-      reason: 'missing_funding_info'
-    };
-  }
-  
-  // Opportunity passes all filters
+  // Opportunity passes all gates and secondary filtering
   return {
     include: true,
-    reason: `passed_with_score_${overallScore}`
+    reason: `passed_secondary_filtering_score_${clientProjectRelevance}_${fundingAttractiveness}_${fundingType}`,
+    gateType: 'secondary_passed'
   };
 }
 
 /**
- * Creates a custom filtering configuration
+ * Creates a custom filtering configuration for new gating system
  * @param {Object} overrides - Configuration overrides
  * @returns {Object} - Merged configuration
  */
@@ -224,51 +216,9 @@ export function createFilterConfig(overrides = {}) {
 }
 
 /**
- * Gets the default filtering configuration
+ * Gets the default filtering configuration for new gating system
  * @returns {Object} - Default configuration
  */
 export function getDefaultFilterConfig() {
   return { ...DEFAULT_CONFIG };
-}
-
-/**
- * Applies strict filtering for high-value opportunities only
- * @param {Array} opportunities - Opportunities to filter
- * @returns {Object} - Strictly filtered opportunities
- */
-export function applyStrictFiltering(opportunities) {
-  const strictConfig = createFilterConfig({
-    minimumOverallScore: 7,        // High score required
-    minimumProjectTypeMatch: 2,    // Strong project type match
-    minimumClientTypeMatch: 2,     // Strong client type match
-    preferGrants: true,            // Grants only
-    preferFundingThreshold: true,  // $1M+ preferred
-    excludeClosedOpportunities: true,
-    requireDescription: true,      // Must have description
-    requireFundingInfo: true       // Must have funding info
-  });
-  
-  console.log(`[FilterFunction] 🎯 Applying strict filtering criteria`);
-  return filterOpportunities(opportunities, strictConfig);
-}
-
-/**
- * Applies lenient filtering for broader opportunity capture
- * @param {Array} opportunities - Opportunities to filter
- * @returns {Object} - Leniently filtered opportunities
- */
-export function applyLenientFiltering(opportunities) {
-  const lenientConfig = createFilterConfig({
-    minimumOverallScore: 1,        // Very low threshold
-    minimumProjectTypeMatch: 0,    // Any project type match
-    minimumClientTypeMatch: 0,     // Any client type match
-    preferGrants: false,           // Accept all funding types
-    preferFundingThreshold: false, // Accept all funding amounts
-    excludeClosedOpportunities: true,  // Still exclude closed
-    requireDescription: false,     // Don't require description
-    requireFundingInfo: false      // Don't require funding info
-  });
-  
-  console.log(`[FilterFunction] 🌐 Applying lenient filtering criteria`);
-  return filterOpportunities(opportunities, lenientConfig);
 } 
