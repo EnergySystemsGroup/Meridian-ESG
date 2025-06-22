@@ -775,38 +775,26 @@ export const schemas = {
             // ===== ANALYSIS ENHANCEMENTS (added by AnalysisAgent) =====
             enhancedDescription: {
               type: "string",
-              description: "Comprehensive 3-4 paragraph description explaining the opportunity's purpose, goals, eligibility criteria, application process, and key details"
+              description: "A detailed, strategic description that explains what the opportunity is about, who can apply, what types of projects are eligible, and includes 2-3 short use case examples showing how our clients (cities, school districts, state facilities) could take advantage of it. Focus on narrative clarity and practical insight."
             },
             actionableSummary: {
-              type: "string",
-              description: "Concise 2-3 sentence summary stating: funding source, total/per-award amounts, who can apply, what it's for, and deadline"
+              type: "string", 
+              description: "An actionable summary for a sales team that focuses on what the opportunity is about, who can apply, what types of projects are eligible, and whether this is relevant to our company or client types. Written in natural, conversational language."
             },
             scoring: {
               type: "object",
               properties: {
-                projectTypeMatch: {
+                clientProjectRelevance: {
+                  type: "number",
+                  minimum: 0,
+                  maximum: 6,
+                  description: "How well this fits our energy services business (0-6 points)"
+                },
+                fundingAttractiveness: {
                   type: "number",
                   minimum: 0,
                   maximum: 3,
-                  description: "How well this matches our energy/infrastructure project taxonomy (0-3 points)"
-                },
-                clientTypeMatch: {
-                  type: "number", 
-                  minimum: 0,
-                  maximum: 3,
-                  description: "How well our typical clients can apply (0-3 points)"
-                },
-                categoryMatch: {
-                  type: "number",
-                  minimum: 0, 
-                  maximum: 2,
-                  description: "Alignment with our target categories (0-2 points)"
-                },
-                fundingThreshold: {
-                  type: "number",
-                  minimum: 0,
-                  maximum: 1, 
-                  description: "Meets $1M+ per applicant threshold (0-1 points)"
+                  description: "Based on funding amounts available (0-3 points)"
                 },
                 fundingType: {
                   type: "number",
@@ -821,24 +809,19 @@ export const schemas = {
                   description: "Total score (sum of all criteria)"
                 }
               },
-              required: ["projectTypeMatch", "clientTypeMatch", "categoryMatch", "fundingThreshold", "fundingType", "overallScore"]
+              required: ["clientProjectRelevance", "fundingAttractiveness", "fundingType", "overallScore"]
             },
-            scoringExplanation: {
+            relevanceReasoning: {
               type: "string",
-              description: "Brief explanation of scoring rationale with specific examples from the opportunity data"
+              description: "Clear explanation of the scoring rationale and why this opportunity is or isn't a good fit for our energy services business"
             },
             concerns: {
               type: "array",
               items: { type: "string" },
               description: "Any red flags or concerns noted during analysis"
-            },
-            fundingPerApplicant: {
-              type: "number",
-              nullable: true,
-              description: "Estimated funding amount per applicant (for filtering logic)"
             }
           },
-          required: ["id", "title", "description", "eligibleApplicants", "eligibleProjectTypes", "enhancedDescription", "actionableSummary", "scoring", "scoringExplanation"]
+          required: ["id", "title", "description", "eligibleApplicants", "eligibleProjectTypes", "enhancedDescription", "actionableSummary", "scoring", "relevanceReasoning"]
         }
       },
       analysisMetrics: {

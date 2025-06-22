@@ -9,6 +9,7 @@
 
 import { createSupabaseClient, logAgentExecution } from '../../supabase.js';
 import { TAXONOMIES } from '../../constants/taxonomies.js';
+import { schemas } from '../../utils/anthropicClient.js';
 
 /**
  * Enhances opportunities with better content and systematic scoring
@@ -179,57 +180,12 @@ For each opportunity, provide:
 
 NOTE: Opportunities need clientProjectRelevance ≥2 to be viable, or ≥5 for auto-qualification.
 
-Return as JSON array with this exact structure:
-[
-  {
-    "opportunityIndex": 0,
-    "enhancedDescription": "...",
-    "actionableSummary": "...",
-    "scoring": {
-      "clientProjectRelevance": 6,
-      "fundingAttractiveness": 3, 
-      "fundingType": 1,
-      "overallScore": 10
-    },
-    "scoringExplanation": "...",
-    "concerns": ["concern1", "concern2"],
-    "fundingPerApplicant": 1000000
-  }
-]`;
+For each opportunity, return the COMPLETE opportunity object with all original data plus your analysis enhancements. Use the opportunityAnalysis schema format.`;
 
   // Use structured schema-based response
   const response = await anthropic.callWithSchema(
     prompt,
-    {
-      type: "object",
-      properties: {
-        opportunities: {
-          type: "array",
-          items: {
-            type: "object",
-            properties: {
-              opportunityIndex: { type: "number" },
-              enhancedDescription: { type: "string" },
-              actionableSummary: { type: "string" },
-              scoring: {
-                type: "object",
-                properties: {
-                  clientProjectRelevance: { type: "number", minimum: 0, maximum: 6 },
-                  fundingAttractiveness: { type: "number", minimum: 0, maximum: 3 },
-                  fundingType: { type: "number", minimum: 0, maximum: 1 }
-                },
-                required: ["clientProjectRelevance", "fundingAttractiveness", "fundingType"]
-              },
-              scoringExplanation: { type: "string" },
-              concerns: { type: "array", items: { type: "string" } },
-              fundingPerApplicant: { type: "number", nullable: true }
-            },
-            required: ["opportunityIndex", "enhancedDescription", "actionableSummary", "scoring", "scoringExplanation"]
-          }
-        }
-      },
-      required: ["opportunities"]
-    },
+    schemas.opportunityAnalysis,
     {
       maxTokens: 4000,
       temperature: 0.1
@@ -243,145 +199,26 @@ Return as JSON array with this exact structure:
       throw new Error('Response opportunities is not an array');
     }
     
-    // Merge analysis results with original opportunities
-    const enhancedOpportunities = opportunities.map((opportunity, index) => {
-      const analysis = analysisResults.find(result => result.opportunityIndex === index);
-      
-      if (!analysis) {
-        console.warn(`[AnalysisAgent] ⚠️ No analysis found for opportunity ${index}`);
-        return {
-          // ===== EXTRACTED DATA (preserved from DataExtractionAgent) =====
-          id: opportunity.id,
-          title: opportunity.title,
-          description: opportunity.description,
-          fundingType: opportunity.fundingType,
-          funding_source: opportunity.funding_source,
-          totalFundingAvailable: opportunity.totalFundingAvailable,
-          minimumAward: opportunity.minimumAward,
-          maximumAward: opportunity.maximumAward,
-          notes: opportunity.notes,
-          openDate: opportunity.openDate,
-          closeDate: opportunity.closeDate,
-          eligibleApplicants: opportunity.eligibleApplicants,
-          eligibleProjectTypes: opportunity.eligibleProjectTypes,
-          eligibleLocations: opportunity.eligibleLocations,
-          url: opportunity.url,
-          matchingRequired: opportunity.matchingRequired,
-          matchingPercentage: opportunity.matchingPercentage,
-          categories: opportunity.categories,
-          tags: opportunity.tags,
-          status: opportunity.status,
-          isNational: opportunity.isNational,
-          
-          // ===== ANALYSIS ENHANCEMENTS (fallback defaults) =====
-          enhancedDescription: opportunity.description || 'No description available',
-          actionableSummary: `${opportunity.title} - Review required`,
-          scoring: getDefaultScoring(),
-          scoringExplanation: 'Analysis failed - requires manual review',
-          concerns: ['Analysis failed'],
-          fundingPerApplicant: opportunity.maximumAward || 0
-        };
-      }
-      
-      // Clamp individual scores first, then calculate overall score
-      const clampedScoring = {
-        clientProjectRelevance: Math.min(6, Math.max(0, analysis.scoring?.clientProjectRelevance || 0)),
-        fundingAttractiveness: Math.min(3, Math.max(0, analysis.scoring?.fundingAttractiveness || 0)),
-        fundingType: Math.min(1, Math.max(0, analysis.scoring?.fundingType || 0))
-      };
-      
-      // Return COMPLETE opportunity with all extracted data + analysis enhancements
-      return {
-        // ===== EXTRACTED DATA (preserved from DataExtractionAgent) =====
-        id: opportunity.id,
-        title: opportunity.title,
-        description: opportunity.description,
-        fundingType: opportunity.fundingType,
-        funding_source: opportunity.funding_source,
-        totalFundingAvailable: opportunity.totalFundingAvailable,
-        minimumAward: opportunity.minimumAward,
-        maximumAward: opportunity.maximumAward,
-        notes: opportunity.notes,
-        openDate: opportunity.openDate,
-        closeDate: opportunity.closeDate,
-        eligibleApplicants: opportunity.eligibleApplicants,
-        eligibleProjectTypes: opportunity.eligibleProjectTypes,
-        eligibleLocations: opportunity.eligibleLocations,
-        url: opportunity.url,
-        matchingRequired: opportunity.matchingRequired,
-        matchingPercentage: opportunity.matchingPercentage,
-        categories: opportunity.categories,
-        tags: opportunity.tags,
-        status: opportunity.status,
-        isNational: opportunity.isNational,
-        
-        // ===== ANALYSIS ENHANCEMENTS (added by AnalysisAgent) =====
-        enhancedDescription: analysis.enhancedDescription || opportunity.description,
-        actionableSummary: analysis.actionableSummary || `${opportunity.title} - Review required`,
-        scoring: {
-          ...clampedScoring,
-          overallScore: calculateOverallScore(clampedScoring)
-        },
-        scoringExplanation: analysis.scoringExplanation || 'No explanation provided',
-        concerns: Array.isArray(analysis.concerns) ? analysis.concerns : [],
-        fundingPerApplicant: analysis.fundingPerApplicant || opportunity.maximumAward || 0
-      };
-    });
-    
-    console.log(`[AnalysisAgent] ✅ Enhanced ${enhancedOpportunities.length} opportunities`);
-    return enhancedOpportunities;
+    // LLM returns complete opportunity objects with proper scoring via schema
+    // No need for additional processing since schema ensures correct format
+    console.log(`[AnalysisAgent] ✅ Enhanced ${analysisResults.length} opportunities`);
+    return analysisResults;
     
   } catch (schemaError) {
     console.error(`[AnalysisAgent] ❌ Failed to process structured AI response:`, schemaError);
     console.log('Response data:', JSON.stringify(response.data, null, 2));
     
-    // Return opportunities with default analysis if parsing fails
+    // Return original opportunities with default analysis if parsing fails
     return opportunities.map(opportunity => ({
-      // ===== EXTRACTED DATA (preserved from DataExtractionAgent) =====
-      id: opportunity.id,
-      title: opportunity.title,
-      description: opportunity.description,
-      fundingType: opportunity.fundingType,
-      funding_source: opportunity.funding_source,
-      totalFundingAvailable: opportunity.totalFundingAvailable,
-      minimumAward: opportunity.minimumAward,
-      maximumAward: opportunity.maximumAward,
-      notes: opportunity.notes,
-      openDate: opportunity.openDate,
-      closeDate: opportunity.closeDate,
-      eligibleApplicants: opportunity.eligibleApplicants,
-      eligibleProjectTypes: opportunity.eligibleProjectTypes,
-      eligibleLocations: opportunity.eligibleLocations,
-      url: opportunity.url,
-      matchingRequired: opportunity.matchingRequired,
-      matchingPercentage: opportunity.matchingPercentage,
-      categories: opportunity.categories,
-      tags: opportunity.tags,
-      status: opportunity.status,
-      isNational: opportunity.isNational,
-      
-      // ===== ANALYSIS ENHANCEMENTS (fallback defaults) =====
+      ...opportunity,
+      // Add missing analysis fields with defaults
       enhancedDescription: opportunity.description || 'No description available',
       actionableSummary: `${opportunity.title} - Analysis failed, requires manual review`,
       scoring: getDefaultScoring(),
-      scoringExplanation: 'AI analysis failed - requires manual review',
-      concerns: ['AI analysis failed'],
-      fundingPerApplicant: opportunity.maximumAward || 0
+      relevanceReasoning: 'AI analysis failed - requires manual review',
+      concerns: ['AI analysis failed']
     }));
   }
-}
-
-/**
- * Calculate overall score from individual scoring components using gating system
- */
-function calculateOverallScore(scoring) {
-  if (!scoring) return 0;
-  
-  const total = (scoring.clientProjectRelevance || 0) + 
-                (scoring.fundingAttractiveness || 0) + 
-                (scoring.fundingType || 0);
-                
-  return Math.min(10, Math.max(0, Math.round(total)));
 }
 
 /**
