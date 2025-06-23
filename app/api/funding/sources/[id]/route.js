@@ -5,7 +5,7 @@ import { createSupabaseClient } from '@/app/lib/supabase';
 export async function GET(request, { params }) {
 	try {
 		const supabase = createSupabaseClient();
-		const { id } = params;
+		const { id } = await params;
 
 		// Get the source
 		const { data: source, error: sourceError } = await supabase
@@ -66,6 +66,7 @@ export async function GET(request, { params }) {
 				},
 				idField: '',
 				idParam: '',
+				detailResponseDataPath: '',
 			},
 			response_mapping: {
 				title: '',
@@ -107,7 +108,7 @@ export async function GET(request, { params }) {
 export async function PUT(request, { params }) {
 	try {
 		const supabase = createSupabaseClient();
-		const { id } = params;
+		const { id } = await params;
 		const body = await request.json();
 
 		// Update the source
@@ -255,7 +256,7 @@ export async function PUT(request, { params }) {
 export async function DELETE(request, { params }) {
 	try {
 		const supabase = createSupabaseClient();
-		const { id } = params;
+		const { id } = await params;
 
 		// Delete the source (cascade will delete configurations)
 		const { error } = await supabase.from('api_sources').delete().eq('id', id);

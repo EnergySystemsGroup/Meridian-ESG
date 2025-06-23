@@ -7,9 +7,12 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
+    "test": "vitest",
+    "test:run": "vitest run",
     "add-grants-gov-source": "node scripts/insert-grants-gov-source.js",
     "insert-grants-gov": "node scripts/insert-grants-gov-source.js",
-    "test-config": "node scripts/test-configuration-system.js"
+    "test-config": "node scripts/test-configuration-system.js",
+    "tm": "task-master"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.39.0",
@@ -51,6 +54,7 @@
     "sonner": "^2.0.1",
     "tailwind-merge": "^2.6.0",
     "tailwindcss-animate": "^1.0.7",
+    "task-master-ai": "^0.17.0",
     "zod": "^3.24.2"
   },
   "devDependencies": {
@@ -58,6 +62,7 @@
     "eslint": "^8.56.0",
     "eslint-config-next": "14.0.4",
     "postcss": "^8.4.33",
-    "tailwindcss": "^3.4.1"
+    "tailwindcss": "^3.4.1",
+    "vitest": "^3.2.2"
   }
 }
