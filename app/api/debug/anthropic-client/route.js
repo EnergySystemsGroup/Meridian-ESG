@@ -1,4 +1,4 @@
-import { testAnthropicClient, quickTest, testSchemas } from '../../../../lib/agents-v2/tests/anthropicClient.test.js';
+// import { testAnthropicClient, quickTest, testSchemas } from '../../../../lib/agents-v2/tests/anthropicClient.test.js';
 
 /**
  * Debug API route to test AnthropicClient performance
@@ -9,12 +9,23 @@ import { testAnthropicClient, quickTest, testSchemas } from '../../../../lib/age
  * GET /api/debug/anthropic-client?test=schemas
  */
 export async function GET(request) {
+  // Tests disabled in production builds
+  if (process.env.NODE_ENV === 'production') {
+    return Response.json({ 
+      message: 'Debug tests are disabled in production',
+      environment: process.env.NODE_ENV 
+    });
+  }
+
   const { searchParams } = new URL(request.url);
   const test = searchParams.get('test') || 'quick';
 
   console.log(`🧪 Running AnthropicClient test: ${test}`);
 
   try {
+    // Dynamic imports for development only, using the CORRECT path
+    const { testAnthropicClient, quickTest, testSchemas } = await import('../../../lib/agents-v2/tests/anthropicClient.test.js');
+    
     let result;
 
     switch (test) {
