@@ -12,6 +12,41 @@ import {
 import { splitDataIntoChunks, processChunksInParallel } from '../utils/index.js';
 
 /**
+ * Trim opportunity data to reduce payload size and prevent API overload
+ */
+function trimOpportunityData(opportunity) {
+  const trimmed = { ...opportunity };
+  
+  // Remove large unnecessary fields that might bloat the payload
+  const fieldsToTrim = [
+    'fullText', 'rawHtml', 'attachments', 'documents', 'fileList',
+    'metadata', 'debugInfo', 'internalNotes', 'systemFields',
+    'auditTrail', 'versionHistory', 'backup', 'cache'
+  ];
+  
+  fieldsToTrim.forEach(field => {
+    if (trimmed[field]) {
+      delete trimmed[field];
+    }
+  });
+  
+  // Trim excessively long description fields (keep first 10,000 chars as fallback)
+  const descriptionFields = ['description', 'synopsis', 'details', 'summary'];
+  descriptionFields.forEach(field => {
+    if (trimmed[field] && typeof trimmed[field] === 'string' && trimmed[field].length > 10000) {
+      trimmed[field] = trimmed[field].substring(0, 10000) + '... [trimmed for processing]';
+    }
+  });
+  
+  // If opportunity has nested data arrays, limit their size
+  if (trimmed.nestedData && Array.isArray(trimmed.nestedData) && trimmed.nestedData.length > 50) {
+    trimmed.nestedData = trimmed.nestedData.slice(0, 50);
+  }
+  
+  return trimmed;
+}
+
+/**
  * Extract opportunities using the proper dataExtraction schema
  */
 export async function extractOpportunitiesWithSchema(rawData, source, anthropic, processingInstructions) {
@@ -31,8 +66,12 @@ export async function extractOpportunitiesWithSchema(rawData, source, anthropic,
   
   console.log(`[DataExtractionAgent] 🔍 Starting schema-based extraction for ${opportunities.length} opportunities`);
   
-  // Split into chunks for processing
-  const chunks = splitDataIntoChunks(opportunities, 15000);
+  // Trim opportunity data to reduce payload size and prevent API overload
+  const trimmedOpportunities = opportunities.map(trimOpportunityData);
+  console.log(`[DataExtractionAgent] ✂️ Trimmed opportunity data to prevent API overload`);
+  
+  // Split into smaller chunks for processing (reduced from 15000 to 8000)
+  const chunks = splitDataIntoChunks(trimmedOpportunities, 8000);
   console.log(`[DataExtractionAgent] 📦 Split into ${chunks.length} chunks`);
   
   // Process chunks with controlled concurrency

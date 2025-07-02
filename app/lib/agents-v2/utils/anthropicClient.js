@@ -149,8 +149,8 @@ export class AnthropicClient {
    */
   async batchProcess(prompts, batchConfig = {}) {
     const config = {
-      concurrency: 3,
-      delayBetweenBatches: 500,
+      concurrency: 1,
+      delayBetweenBatches: 2000,
       ...batchConfig
     };
     
@@ -232,19 +232,39 @@ export class AnthropicClient {
           throw error;
         }
         
-        // For rate limiting errors (429, 529), use longer delays
-        const isRateLimit = error.status === 429 || error.status === 529;
-        const rateLimitMultiplier = isRateLimit ? 3 : 1;
-        
         // If this was the last attempt, throw the error
         if (attempt === retries) {
           throw error;
         }
         
-        // Wait before retrying with exponential backoff
-        const delay = baseDelay * Math.pow(2, attempt) * rateLimitMultiplier;
-        const errorType = isRateLimit ? 'Rate limit' : 'API error';
-        console.warn(`Anthropic API call failed (attempt ${attempt + 1}/${retries + 1}), retrying in ${delay}ms: ${error.status} ${error.message}`);
+        // Enhanced rate limiting strategy for 529 overload errors
+        let delay;
+        const isRateLimit = error.status === 429;
+        const isOverloaded = error.status === 529;
+        
+        if (isOverloaded) {
+          // For 529 overload errors, use much more conservative delays
+          const baseOverloadDelay = Math.max(baseDelay * 2, 5000); // At least 5 seconds
+          delay = baseOverloadDelay * Math.pow(2, attempt) * 6; // 6x multiplier for overload
+          delay = Math.min(delay, 120000); // Cap at 2 minutes
+        } else if (isRateLimit) {
+          // For 429 rate limit errors, use moderate delays  
+          delay = baseDelay * Math.pow(2, attempt) * 4; // 4x multiplier for rate limits
+          delay = Math.min(delay, 60000); // Cap at 1 minute
+        } else {
+          // For other errors, use standard backoff
+          delay = baseDelay * Math.pow(2, attempt);
+          delay = Math.min(delay, 30000); // Cap at 30 seconds
+        }
+        
+        // Add random jitter (±25%) to prevent thundering herd
+        const jitter = delay * 0.25 * (Math.random() - 0.5);
+        delay = Math.round(delay + jitter);
+        
+        const errorType = isOverloaded ? 'Server overload (529)' : 
+                         isRateLimit ? 'Rate limit (429)' : 
+                         'API error';
+        console.warn(`Anthropic ${errorType} (attempt ${attempt + 1}/${retries + 1}), retrying in ${delay}ms: ${error.status} ${error.message}`);
         await this._delay(delay);
       }
     }
