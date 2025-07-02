@@ -1,0 +1,1126 @@
+{
+  "timestamp": "2025-07-02T19:03:20.365Z",
+  "results": {
+    "california": {
+      "opportunities": [
+        {
+          "id": "107151",
+          "title": "Environmental Enhancement and Mitigation (2025)",
+          "description": "Primary Description: The EEM Program is an annual program established by legislation in 1989 and amended on September 26, 2013. It offers grants to local, state, and federal governmental agencies, and nonprofit organizations for projects to mitigate the environmental impacts caused by new or modified public transportation facilities.\n\nProgram Summary: EEM projects must contribute to mitigation of the environmental effects of transportation facilities. The California Natural Resources Agency prescribes procedures and criteria to evaluate grant project proposals and submits a list of projects recommended for funding to the California Transportation Commission (CTC).\n\nAdditional Details: Projects that demonstrate multiple benefits will be more competitive, including:\n• Improved air and/or water quality\n• Reduced consumption of natural resources and energy\n• Increased reliability of local water supplies\n• Increased adaptability to climate change\n• Increased protection and restoration of biodiversity\n\nEligible Project Types Include:\n- Urban Forestry: Tree planting, greening public lands, urban park restoration\n- Resource Lands: Habitat restoration, conservation easements, land preservation\n- Mitigation Projects Beyond Lead Agency Scope",
+          "funding_source": {
+            "name": "California Natural Resources Agency",
+            "type": "state",
+            "website": "https://resources.ca.gov/grants",
+            "contact_email": "eemcoordinator@resources.ca.gov",
+            "contact_phone": "1-916-653-2812"
+          },
+          "fundingType": "Grant",
+          "totalFundingAvailable": 8000000,
+          "minimumAward": 750000,
+          "maximumAward": 1500000,
+          "openDate": "2025-05-07",
+          "closeDate": "2025-07-16",
+          "status": "open",
+          "isNational": false,
+          "eligibleLocations": [
+            "California"
+          ],
+          "eligibleApplicants": [
+            "Nonprofit Organizations",
+            "City Government",
+            "County Government",
+            "State Agencies",
+            "Tribal Nations"
+          ],
+          "eligibleProjectTypes": [
+            "Urban Forestry",
+            "Environmental Remediation",
+            "Infrastructure Improvements",
+            "Facility Improvements"
+          ],
+          "categories": [
+            "Environmental",
+            "Infrastructure",
+            "Transportation"
+          ],
+          "eligibleActivities": [
+            "Tree planting",
+            "Urban greening",
+            "Habitat restoration",
+            "Land conservation",
+            "Environmental mitigation"
+          ],
+          "matchingRequired": false,
+          "disbursementType": "reimbursement",
+          "awardProcess": "competitive",
+          "url": "https://resources.ca.gov/-/media/CNRA-Website/Files/grants/EEM/2025/Step-1/2025-EEMP-Grant-Guidelines-FINAL.pdf",
+          "tags": [
+            "Environmental Mitigation",
+            "Transportation Impact",
+            "Urban Forestry"
+          ],
+          "sourceId": "68000a0d-02f3-4bc8-93a5-53fcf2fb09b1",
+          "sourceName": "California Grants Portal ",
+          "rawResponseId": "08dd6da0-3075-40a2-8a51-ed5eb67f4f45"
+        },
+        {
+          "id": "83012",
+          "title": "Wildlife Corridor and Fish Passage",
+          "description": "Primary Description: WCB is seeking projects that restore or enhance habitat in wildlife migration corridors or that remove impediments to fish passage.\n\nProgram Summary: The Program is seeking proposals for planning or implementation projects that construct, repair, modify, or remove transportation infrastructure or water resources infrastructure improving passage for wildlife or fish.\n\nPriority Project Types:\nPriority 1:\n- Wildlife overcrossings and undercrossings\n- Habitat restoration in migration corridors\n- Removal of instream impediments to fish passage\n- Fish-friendly infrastructure modifications\n\nPriority 2:\n- Wildlife fencing and corridor redirection\n- Planning projects for future restoration efforts",
+          "funding_source": {
+            "name": "Wildlife Conservation Board",
+            "type": "state",
+            "website": "https://wcb.ca.gov/",
+            "contact_name": "Don Crocker",
+            "contact_email": "don.crocker@wildlife.ca.gov",
+            "contact_phone": "1-916-926-7317"
+          },
+          "fundingType": "Grant",
+          "totalFundingAvailable": 5000000,
+          "minimumAward": null,
+          "maximumAward": null,
+          "openDate": "2024-11-18",
+          "closeDate": null,
+          "status": "open",
+          "isNational": false,
+          "eligibleLocations": [
+            "California"
+          ],
+          "eligibleApplicants": [
+            "Nonprofit Organizations",
+            "City Government",
+            "County Government",
+            "State Agencies",
+            "Tribal Nations"
+          ],
+          "eligibleProjectTypes": [
+            "Wildlife Habitat",
+            "Infrastructure Improvements",
+            "Environmental Remediation"
+          ],
+          "categories": [
+            "Environmental",
+            "Infrastructure",
+            "Transportation"
+          ],
+          "eligibleActivities": [
+            "Wildlife corridor restoration",
+            "Fish passage improvement",
+            "Infrastructure modification",
+            "Habitat conservation"
+          ],
+          "matchingRequired": false,
+          "disbursementType": "reimbursement",
+          "awardProcess": "competitive",
+          "url": "https://wcb.ca.gov/Grants",
+          "tags": [
+            "Wildlife Conservation",
+            "Fish Passage",
+            "Habitat Restoration"
+          ],
+          "sourceId": "68000a0d-02f3-4bc8-93a5-53fcf2fb09b1",
+          "sourceName": "California Grants Portal ",
+          "rawResponseId": "08dd6da0-3075-40a2-8a51-ed5eb67f4f45"
+        },
+        {
+          "id": "1619",
+          "title": "Infrastructure State Revolving Fund (ISRF) Program",
+          "description": "Primary Description: IBank's ISRF Loan Fund program provides low-cost, direct loans to local governments and nonprofits sponsored by public agencies for a wide variety of public infrastructure and economic expansion projects (excluding housing) that improve and sustain communities, helping individuals and families thrive.\n\nProgram Summary: ISRF loans can fund a wide variety of projects – including water and wastewater treatment plant upgrades or construction, venue or airport construction, or street repair and upgrades. ISRF financing is available in amounts ranging from $1 million to $65 million with loan terms for the useful life of the project up to 30 years.\n\nAdditional Details: Eligible Projects Include, but are not limited to: City streets, County highways, State highways, Drainage, water supply and flood control, Educational facilities, Environmental mitigation measures, Goods movement-related infrastructure, Housing-related infrastructure, Parks and recreational facilities, Port facilities, Power and communications facilities, Public transit, Sewage collection and treatment, Solid waste collection and disposal, Water treatment and distribution, Defense conversion, Public safety facilities, Military infrastructure, Economic development facilities.",
+          "fundingType": "Loan",
+          "funding_source": {
+            "name": "Infrastructure and Economic Development Bank",
+            "type": "state",
+            "website": "https://ibank.ca.gov",
+            "contact_email": "infrastructureloans@ibank.ca.gov",
+            "contact_phone": "1-916-341-6600"
+          },
+          "eligibleApplicants": [
+            "Municipal Government",
+            "County Government",
+            "Special Districts",
+            "Nonprofit Organizations"
+          ],
+          "eligibleProjectTypes": [
+            "Infrastructure Improvements",
+            "Water Treatment",
+            "Sewage Collection",
+            "Public Transit",
+            "Parks & Recreation",
+            "Educational Facilities",
+            "Public Safety Systems"
+          ],
+          "eligibleActivities": [
+            "Construction",
+            "Renovation",
+            "Acquisition",
+            "Equipment Purchase",
+            "Working Capital"
+          ],
+          "eligibleLocations": [
+            "California"
+          ],
+          "categories": [
+            "Infrastructure",
+            "Community Development"
+          ],
+          "minimumAward": 1000000,
+          "maximumAward": 65000000,
+          "totalFundingAvailable": 100000000,
+          "matchingRequired": false,
+          "disbursementType": "Reimbursement",
+          "openDate": "2020-07-13",
+          "status": "open",
+          "url": "https://ibank.ca.gov/infrastructure-state-revolving-fund-isrf-program/",
+          "awardProcess": "first-come-first-served",
+          "tags": [
+            "Infrastructure Loans",
+            "Public Projects",
+            "Community Development"
+          ],
+          "sourceId": "68000a0d-02f3-4bc8-93a5-53fcf2fb09b1",
+          "sourceName": "California Grants Portal ",
+          "rawResponseId": "08dd6da0-3075-40a2-8a51-ed5eb67f4f45"
+        },
+        {
+          "id": "1631",
+          "title": "California Pollution Control Financing Authority (CPCFA) Exempt Facility Bond Financing Program",
+          "description": "Primary Description: The Pollution Control Tax-Exempt Bond Financing Program facilitates low cost capital through private activity, tax-exempt bonds. The securities pay for acquisition, construction or installation of qualified pollution control, water furnishing, waste disposal, waste recovery facilities and equipment.\n\nProgram Summary: CPCFA acts as a conduit issuer in the transaction. The bonds are issued to raise capital for revenue-generating projects where the funds are used by the borrower to make payments to investors.\n\nAdditional Details: Eligible Facilities Include: Curbside collection facilities, Recycling facilities, Composting facilities, Materials recovery facilities, Transfer stations, Landfills, Waste-to-energy facilities, Qualified solid waste or hazardous waste disposal projects, Waste recovery facilities, Water Furnishing Facilities, Wastewater Treatment Facilities.",
+          "fundingType": "Loan",
+          "funding_source": {
+            "name": "State Treasurer's Office",
+            "type": "state",
+            "website": "https://www.treasurer.ca.gov/cpcfa/",
+            "contact_email": "CPCFAbonds@treasurer.ca.gov",
+            "contact_phone": "1-916-654-5610"
+          },
+          "eligibleApplicants": [
+            "For-profit Businesses",
+            "Small Businesses"
+          ],
+          "eligibleProjectTypes": [
+            "Waste and Recycling",
+            "Water Treatment",
+            "Environmental Facilities",
+            "Pollution Control"
+          ],
+          "eligibleActivities": [
+            "Construction",
+            "Acquisition",
+            "Equipment Purchase",
+            "Land Costs",
+            "Facility Upgrades"
+          ],
+          "eligibleLocations": [
+            "California"
+          ],
+          "categories": [
+            "Environment & Water",
+            "Waste and Recycling"
+          ],
+          "minimumAward": 1500000,
+          "maximumAward": 550000000,
+          "totalFundingAvailable": 550000000,
+          "matchingRequired": false,
+          "disbursementType": "Advances & Reimbursement",
+          "openDate": "2020-07-09",
+          "status": "open",
+          "url": "https://www.treasurer.ca.gov/cpcfa/tax_exempt.asp",
+          "awardProcess": "first-come-first-served",
+          "tags": [
+            "Environmental Financing",
+            "Pollution Control",
+            "Waste Management"
+          ],
+          "sourceId": "68000a0d-02f3-4bc8-93a5-53fcf2fb09b1",
+          "sourceName": "California Grants Portal ",
+          "rawResponseId": "08dd6da0-3075-40a2-8a51-ed5eb67f4f45"
+        },
+        {
+          "id": "GFO-24-612",
+          "title": "Depot Charging and Hydrogen Refueling Infrastructure for Zero-Emission Medium- and Heavy-Duty On-Road, Off-Road, and Specialty Vehicles",
+          "description": "Primary Description: The California Energy Commission's (CEC's) Clean Transportation Program announces the availability of up to $20 million in grant funds for projects that will fund the deployment of depot charging and hydrogen refueling infrastructure for zero-emission medium- and heavy-duty (MDHD) on-road, off-road, and specialty vehicles.\n\nAdditional Details: This is a competitive grant solicitation. Assembly Bill (AB) 118 (Nuñez, Chapter 750, Statutes of 2007), created the Clean Transportation Program. The statute authorizes the CEC to develop and deploy alternative and renewable fuels and advanced transportation technologies to help attain the state's climate change and clean air goals. AB 126 (Reyes, Chapter 319, Statutes of 2023) reauthorized the funding program through July 1, 2035 and focused the program on zero-emission transportation.",
+          "funding_source": {
+            "name": "California Energy Commission",
+            "type": "state",
+            "website": "https://www.energy.ca.gov",
+            "contact_email": "Brad.Worster@energy.ca.gov",
+            "contact_phone": "1-916-897-1647"
+          },
+          "fundingType": "Grant",
+          "totalFundingAvailable": 20000000,
+          "minimumAward": null,
+          "maximumAward": null,
+          "matchingRequired": true,
+          "matchingPercentage": 50,
+          "openDate": "2025-03-28",
+          "closeDate": "2025-08-01",
+          "status": "open",
+          "isNational": false,
+          "eligibleLocations": [
+            "California"
+          ],
+          "eligibleApplicants": [
+            "Businesses",
+            "Individuals",
+            "Nonprofit Organizations",
+            "Public Agencies",
+            "Tribal Nations"
+          ],
+          "eligibleProjectTypes": [
+            "Electric Vehicle Charging",
+            "Hydrogen Refueling Infrastructure",
+            "Zero-Emission Vehicle Infrastructure"
+          ],
+          "eligibleActivities": [
+            "Infrastructure Deployment",
+            "Charging Station Installation",
+            "Hydrogen Refueling Station Installation"
+          ],
+          "categories": [
+            "Energy",
+            "Transportation",
+            "Infrastructure"
+          ],
+          "awardProcess": "competitive",
+          "disbursementType": "reimbursement",
+          "url": "https://www.energy.ca.gov/solicitations/2025-03/gfo-24-612-depot-charging-and-hydrogen-refueling-infrastructure-zero-emission",
+          "tags": [
+            "Zero-Emission Vehicles",
+            "Clean Transportation",
+            "Infrastructure Funding"
+          ],
+          "sourceId": "68000a0d-02f3-4bc8-93a5-53fcf2fb09b1",
+          "sourceName": "California Grants Portal ",
+          "rawResponseId": "08dd6da0-3075-40a2-8a51-ed5eb67f4f45"
+        },
+        {
+          "id": "WRFP-Construction-Grant",
+          "title": "Water Recycling Funding Program (WRFP) – Construction Grant",
+          "description": "Primary Description: The Water Recycling Funding Program (WRFP) promotes the beneficial use of treated municipal wastewater (water recycling) in order to augment or offset fresh water supplies in California.\n\nProgram Summary: Water recycling construction projects must offset or augment state or local fresh water supplies. Eligible projects include construction of recycled water treatment facilities, storage facilities, pumping facilities, groundwater recharge facilities, and recycled water distribution systems, including onsite improvements.\n\nAdditional Details: Eligible costs for grant are limited to construction only. The grant will be established as 35 percent of the reasonable, estimated construction cost for the project up to the maximum established by the State Water Board in the annual Clean Water State Revolving Fund (CWSRF) Intended Use Plan or as otherwise limited by the State Water Board.",
+          "funding_source": {
+            "name": "State Water Resources Control Board",
+            "type": "state",
+            "website": "https://www.waterboards.ca.gov",
+            "contact_email": "michael.downey@waterboards.ca.gov",
+            "contact_phone": "1-916-324-8404"
+          },
+          "fundingType": "Grant",
+          "totalFundingAvailable": 5000000,
+          "minimumAward": 250000,
+          "maximumAward": 5000000,
+          "matchingRequired": true,
+          "matchingPercentage": 50,
+          "openDate": "2020-06-03",
+          "closeDate": null,
+          "status": "open",
+          "isNational": false,
+          "eligibleLocations": [
+            "California"
+          ],
+          "eligibleApplicants": [
+            "Nonprofit Organizations",
+            "Public Agencies",
+            "Tribal Nations",
+            "Other: Regulated Utilities"
+          ],
+          "eligibleProjectTypes": [
+            "Water Conservation",
+            "Infrastructure",
+            "Water Treatment"
+          ],
+          "eligibleActivities": [
+            "Construction of Water Recycling Facilities",
+            "Water Treatment Infrastructure",
+            "Groundwater Recharge",
+            "Distribution System Improvements"
+          ],
+          "categories": [
+            "Environment & Water",
+            "Infrastructure"
+          ],
+          "awardProcess": "competitive",
+          "disbursementType": "reimbursement",
+          "url": "https://www.waterboards.ca.gov/water_issues/programs/grants_loans/water_recycling/",
+          "tags": [
+            "Water Recycling",
+            "Infrastructure Funding",
+            "Municipal Water"
+          ],
+          "sourceId": "68000a0d-02f3-4bc8-93a5-53fcf2fb09b1",
+          "sourceName": "California Grants Portal ",
+          "rawResponseId": "08dd6da0-3075-40a2-8a51-ed5eb67f4f45"
+        },
+        {
+          "id": "PON-24-002",
+          "title": "K–12 Energy Efficiency Program (KTEP)",
+          "description": "Primary Description: The Kindergarten through Twelfth Grade Energy Efficiency Program's (KTEP) goal is to provide zero-interest loans to Kindergarten through Twelfth Grade (K-12) schools in California for energy efficiency retrofits and renewable energy projects.\n\nAdditional Details: Funds in this Program Opportunity Notice (PON) are made available by the Infrastructure Investment and Jobs Act (IIJA), also referred to as the Bipartisan Infrastructure Law (BIL). Section 40502 of BIL states the purpose is to establish revolving loan funds (RLF) under which states can provide loans and grants for energy upgrades and retrofits to increase the energy efficiency, physical comfort, and air quality of existing building infrastructure.",
+          "funding_source": {
+            "name": "California Energy Commission",
+            "type": "state",
+            "website": "https://www.energy.ca.gov",
+            "contact_email": "marissa.sutton@energy.ca.gov",
+            "contact_phone": "1-916-237-2515"
+          },
+          "fundingType": "Loan",
+          "totalFundingAvailable": null,
+          "minimumAward": null,
+          "maximumAward": null,
+          "matchingRequired": false,
+          "matchingPercentage": null,
+          "openDate": "2025-04-30",
+          "closeDate": null,
+          "status": "open",
+          "isNational": false,
+          "eligibleLocations": [
+            "California"
+          ],
+          "eligibleApplicants": [
+            "K-12 School Districts",
+            "Charter Schools",
+            "County Offices of Education",
+            "State Special Schools"
+          ],
+          "eligibleProjectTypes": [
+            "Energy Efficiency",
+            "Renewable Energy",
+            "Building Upgrades"
+          ],
+          "eligibleActivities": [
+            "Energy Retrofits",
+            "Renewable Energy Installation",
+            "Infrastructure Improvements"
+          ],
+          "categories": [
+            "Education",
+            "Energy"
+          ],
+          "awardProcess": "first-come-first-served",
+          "disbursementType": "reimbursement",
+          "url": "https://www.energy.ca.gov/solicitations/2025-04/pon-24-002-k-12-energy-efficiency-program-ktep",
+          "tags": [
+            "School Energy Efficiency",
+            "Zero-Interest Loans",
+            "Infrastructure Upgrades"
+          ],
+          "sourceId": "68000a0d-02f3-4bc8-93a5-53fcf2fb09b1",
+          "sourceName": "California Grants Portal ",
+          "rawResponseId": "08dd6da0-3075-40a2-8a51-ed5eb67f4f45"
+        },
+        {
+          "id": "1695",
+          "title": "Sales Tax Exclusion (STE) Program",
+          "description": "Primary Description: CAEATFA supports California's mission to provide financial incentives to cutting-edge companies by offering a sales and use tax exclusion to manufacturers purchasing equipment to promote alternative energy, advanced transportation and recycling, as well as advanced manufacturing.\n\nProgram Summary: The California Alternative Energy and Advanced Transportation Financing Authority (CAEATFA) Sales and Use Tax Exclusion (STE) Program excludes from sales and use taxes purchases of Qualified Property if its use is either to process Recycled feedstock or using Recycled feedstock in the production of another product or soil amendment; or that is used in an Advanced Manufacturing process; or that is used to manufacture Alternative Source products or Advanced Transportation Technologies.\n\nAdditional Details: Eligible manufacturers planning to construct a new manufacturing facility or expand or upgrade a currently existing manufacturing facility may apply to CAEATFA for an STE award, and if approved, the purchases of Qualified Property for the project are not subject to state and local sales and use tax. To use the exclusion, approved applicants must present Qualified Property vendors with a certificate made pursuant to the California Department of Tax and Fee Administration (CDTFA).",
+          "funding_source": {
+            "name": "California State Treasurer's Office",
+            "type": "state",
+            "website": "https://www.treasurer.ca.gov/caeatfa"
+          },
+          "fundingType": "Tax Credit",
+          "totalFundingAvailable": 100000000,
+          "maximumAward": null,
+          "minimumAward": null,
+          "matchingRequired": false,
+          "openDate": "2010-09-01",
+          "closeDate": null,
+          "status": "open",
+          "eligibleApplicants": [
+            "For-profit Businesses",
+            "Nonprofit Organizations",
+            "Public Agencies",
+            "Tribal Nations"
+          ],
+          "eligibleProjectTypes": [
+            "Solar Installation",
+            "Renewable Energy Systems",
+            "Advanced Manufacturing",
+            "Electric Vehicle Charging",
+            "Other: Recycling Technologies"
+          ],
+          "eligibleActivities": [
+            "Equipment Purchase",
+            "Facility Construction",
+            "Facility Expansion",
+            "Facility Upgrade"
+          ],
+          "eligibleLocations": [
+            "California"
+          ],
+          "categories": [
+            "Energy",
+            "Economic Development",
+            "Sustainability",
+            "Infrastructure"
+          ],
+          "url": "https://www.treasurer.ca.gov/caeatfa/ste/index.asp",
+          "tags": [
+            "Tax Exclusion",
+            "Manufacturing Incentive",
+            "Advanced Technology"
+          ],
+          "disbursementType": "Tax Exemption",
+          "awardProcess": "Competitive",
+          "notes": "Sales tax exclusion for qualifying manufacturing equipment purchases",
+          "sourceId": "68000a0d-02f3-4bc8-93a5-53fcf2fb09b1",
+          "sourceName": "California Grants Portal ",
+          "rawResponseId": "08dd6da0-3075-40a2-8a51-ed5eb67f4f45"
+        },
+        {
+          "id": "2",
+          "title": "Sustainable Recreation, Tourism, and Equitable Outdoor Access Directed Grant Program (2025-2027)",
+          "description": "Primary Description: Proposition 68 recognizes the critical importance of recreation and tourism to California's economy and ecology and specifically directs funds to be used to support and expand recreation economies, opportunities, and access to outdoor recreation.\n\nProgram Summary: This Grant Program aims to support innovative efforts to enhance, promote, and develop sustainable recreation and tourism opportunities and increase access for all to public lands in the Sierra-Cascade region.\n\nAdditional Details: Projects must fall within three focus areas: 1) Build Climate Resilience, 2) Improve/Increase Access for All, 3) Landscape-scale Assessments. Projects must be located within the Sierra-Cascade Region and result in a clear, demonstrable, and enduring public benefit.",
+          "funding_source": {
+            "name": "Sierra Nevada Conservancy",
+            "type": "state",
+            "website": "https://sierranevada.ca.gov/"
+          },
+          "fundingType": "Grant",
+          "totalFundingAvailable": 4100000,
+          "maximumAward": null,
+          "minimumAward": null,
+          "matchingRequired": false,
+          "openDate": "2025-07-01",
+          "closeDate": "2027-12-31",
+          "status": "upcoming",
+          "eligibleApplicants": [
+            "Nonprofit Organizations",
+            "Public Agencies",
+            "Tribal Nations"
+          ],
+          "eligibleProjectTypes": [
+            "Climate Resilience",
+            "Outdoor Recreation",
+            "Infrastructure Improvements",
+            "Environmental Assessment"
+          ],
+          "eligibleActivities": [
+            "Planning",
+            "Infrastructure Development",
+            "Access Improvement",
+            "Climate Adaptation"
+          ],
+          "eligibleLocations": [
+            "California"
+          ],
+          "categories": [
+            "Environment",
+            "Parks & Recreation",
+            "Sustainability",
+            "Community Development"
+          ],
+          "url": "https://sierranevada.ca.gov/grants/",
+          "tags": [
+            "Outdoor Access",
+            "Climate Resilience",
+            "Recreation"
+          ],
+          "disbursementType": "Reimbursement",
+          "awardProcess": "Competitive",
+          "notes": "Proposals accepted on a rolling basis, first review in December 2025",
+          "sourceId": "68000a0d-02f3-4bc8-93a5-53fcf2fb09b1",
+          "sourceName": "California Grants Portal ",
+          "rawResponseId": "08dd6da0-3075-40a2-8a51-ed5eb67f4f45"
+        },
+        {
+          "id": "1628",
+          "title": "Small Community Drinking Water (SCDW) Funding Program",
+          "description": "Primary Description: Office of Sustainable Water Solution (office) was created within the State Water Resources Control Board to promote permanent and sustainable drinking water and wastewater treatment solutions to ensure effective and efficient provision of safe, clean, affordable, and reliable drinking water and wastewater treatment services.\n\nProgram Summary: Small Community Drinking Water (SCDW) Funding Program provides assistance to help small disadvantage communities (DACs) implement eligible drinking water capital improvement projects. Small communities are defined as having population no more than 10,000 or no more than 3,300 service connections. DACs are defined as communities with a median household income (MHI) less than 80% of the average statewide MHI and severely disadvantage communities (SDACs) have a MHI less than 60% of the average statewide MHI.\n\nAdditional Details: The SCDW Funding Program provides low-interest loans and other financing mechanisms, such as grants or principal forgiveness using federal and state funds, for the planning/design and construction of drinking water infrastructure projects that are needed to achieve or maintain compliance with federal and state drinking water statutes and regulations. Eligible planning/design and construction drinking water projects include treatment systems, distribution systems, interconnections, consolidations, pipeline extensions, water sources, and water meters.",
+          "funding_source": {
+            "name": "State Water Resources Control Board",
+            "type": "state",
+            "website": "https://www.waterboards.ca.gov/",
+            "contact_email": "DFA-OSWS@waterboards.ca.gov",
+            "contact_phone": "1-916-327-9978"
+          },
+          "fundingType": "Grant, Loan",
+          "totalFundingAvailable": 50000000,
+          "minimumAward": null,
+          "maximumAward": null,
+          "matchingRequired": false,
+          "disbursementType": "Reimbursement",
+          "openDate": "2020-07-10",
+          "closeDate": null,
+          "status": "open",
+          "url": "https://www.waterboards.ca.gov/water_issues/programs/grants_loans/sustainable_water_solutions/",
+          "eligibleApplicants": [
+            "Nonprofit Organizations",
+            "Municipal Government",
+            "Tribal Nations"
+          ],
+          "eligibleProjectTypes": [
+            "Water Conservation",
+            "Infrastructure Improvements"
+          ],
+          "eligibleActivities": [
+            "treatment systems",
+            "distribution systems",
+            "interconnections",
+            "consolidations",
+            "pipeline extensions",
+            "water sources",
+            "water meters"
+          ],
+          "categories": [
+            "Water Conservation",
+            "Infrastructure",
+            "Community Development"
+          ],
+          "eligibleLocations": [
+            "California"
+          ],
+          "tags": [
+            "Drinking Water",
+            "Small Communities",
+            "Infrastructure"
+          ],
+          "awardProcess": "first-come-first-served",
+          "notes": "Loan interest rate of 0% may be available with repayment term up to 40 years or the useful life of the financed assets for construction financing.",
+          "sourceId": "68000a0d-02f3-4bc8-93a5-53fcf2fb09b1",
+          "sourceName": "California Grants Portal ",
+          "rawResponseId": "08dd6da0-3075-40a2-8a51-ed5eb67f4f45"
+        }
+      ],
+      "extractionMetrics": {
+        "totalFound": 145,
+        "successfullyExtracted": 10,
+        "workflow": "single_api",
+        "apiCalls": 2,
+        "extractionProcessing": {
+          "totalFound": 10,
+          "successfullyExtracted": 10,
+          "challenges": []
+        },
+        "detailProcessing": null
+      },
+      "source": {
+        "id": "68000a0d-02f3-4bc8-93a5-53fcf2fb09b1",
+        "name": "California Grants Portal ",
+        "organization": "California State Library",
+        "type": "state",
+        "url": "https://data.ca.gov/dataset/california-grants-portal/resource/111c8c88-21f6-453c-ae2c-b4785a0624f5",
+        "api_endpoint": "https://data.ca.gov/api/3/action/datastore_search",
+        "api_documentation_url": "https://data.ca.gov/dataset/california-grants-portal",
+        "auth_type": "none",
+        "auth_details": {},
+        "update_frequency": "daily",
+        "last_checked": "2025-05-02T04:32:16.559+00:00",
+        "active": true,
+        "priority": 5,
+        "notes": "This is a single stage api. we will using sql to filter our key words. ",
+        "handler_type": "standard",
+        "created_at": "2025-03-31T05:35:53.680776+00:00",
+        "updated_at": "2025-06-13T21:40:21.064288+00:00"
+      }
+    },
+    "grantsGov": {
+      "opportunities": [
+        {
+          "id": "347329",
+          "title": "Electrochemical Systems",
+          "description": "Primary Description: The Electrochemical Systems program is part of the Chemical Process Systems cluster, which supports fundamental engineering science research that will enable innovative processes involving electrochemistry or photochemistry for the sustainable production of electricity, fuels, chemicals, and other specialty and commodity products.\n\nProgram Summary: Processes utilizing electrochemistry or photochemistry for sustainable energy and chemical production must be scalable, environmentally benign, reduce greenhouse gas production, and utilize renewable resources. Research projects that stress fundamental understanding of phenomena that directly impact key barriers to improved system or component-level performance are encouraged.\n\nAdditional Details: Topics of interest include:\n- Electrochemical energy storage and production/conversion systems\n- Advanced battery systems for transportation and renewable energy storage\n- Advanced fuel cell systems\n- Flow batteries for stationary energy storage\n- Photocatalytic or photoelectrochemical processes for water splitting and CO2 reduction\n\nThe program encourages highly integrated multidisciplinary projects, collaborations with industrial technologists, and proposals with integrated experimental and theoretical approaches.",
+          "eligibleApplicants": [
+            "Colleges & Universities",
+            "Research Institutions"
+          ],
+          "eligibleProjectTypes": [
+            "Energy Storage Systems",
+            "Renewable Energy Systems",
+            "Fuel Cell Technologies"
+          ],
+          "eligibleActivities": [
+            "Research and Development",
+            "Experimental Design",
+            "Technology Prototype Development",
+            "Performance Testing"
+          ],
+          "funding_source": {
+            "name": "National Science Foundation",
+            "type": "federal",
+            "website": "https://www.nsf.gov",
+            "contact_email": "grantsgovsupport@nsf.gov",
+            "contact_phone": "703-292-4261"
+          },
+          "categories": [
+            "Renewable Energy",
+            "Research & Development",
+            "Energy Efficiency"
+          ],
+          "fundingType": "Grant",
+          "totalFundingAvailable": 13096000,
+          "isNational": true,
+          "status": "open",
+          "openDate": "2023-04-05",
+          "closeDate": "2025-09-30",
+          "url": "http://www.nsf.gov/funding/pgm_summ.jsp?pims_id=506073",
+          "tags": [
+            "Electrochemistry",
+            "Energy Innovation",
+            "Sustainable Technology"
+          ],
+          "matchingRequired": false,
+          "sourceId": "7767eedc-8a09-4058-8837-fc8df8e437cb",
+          "sourceName": "Grants.gov",
+          "rawResponseId": "9eac2001-8d63-4518-9b2e-d2a0303db481"
+        },
+        {
+          "id": "348258",
+          "title": "Energy, Power, Control, and Networks",
+          "description": "Primary Description: The Energy, Power, Control, and Networks (EPCN) Program supports innovative research in modeling, optimization, learning, adaptation, and control of networked multi-agent systems, higher-level decision making, and dynamic resource allocation, as well as risk management in the presence of uncertainty, sub-system failures, and stochastic disturbances.\n\nProgram Summary: EPCN invests in novel machine learning algorithms and analysis, adaptive dynamic programming, brain-like networked architectures performing real-time learning, and neuromorphic engineering. EPCN's goal is to encourage research on emerging technologies and applications including energy, transportation, robotics, and biomedical devices & systems.\n\nAdditional Details: EPCN emphasizes electric power systems, including generation, transmission, storage, and integration of renewable energy sources into the grid; power electronics and drives; battery management systems; hybrid and electric vehicles; and understanding of the interplay of power systems with associated regulatory & economic structures and with consumer behavior.\n\nResearch Areas Include:\n- Control Systems: Distributed Control, Networked Multi-Agent Systems, Stochastic Systems, Cyber-Physical Control Systems\n- Energy and Power Systems: Solar, Wind, Storage Integration, Grid Monitoring, Microgrids, Energy Efficient Buildings\n- Power Electronics Systems: Advanced Power Electronics, Electric Vehicles, Energy Harvesting\n- Learning and Adaptive Systems: Neural Networks, Neuromorphic Engineering, Machine Learning",
+          "funding_source": {
+            "name": "National Science Foundation",
+            "type": "federal",
+            "contact_email": "grantsgovsupport@nsf.gov",
+            "contact_phone": "703-292-4261",
+            "website": "http://www.nsf.gov"
+          },
+          "eligibleApplicants": [
+            "Unrestricted"
+          ],
+          "eligibleProjectTypes": [
+            "Energy Efficiency",
+            "Renewable Energy Systems",
+            "Energy Storage",
+            "Transportation",
+            "Robotics",
+            "Biomedical Devices",
+            "Machine Learning",
+            "Cyber-Physical Systems"
+          ],
+          "eligibleActivities": [
+            "Research",
+            "Technology Development",
+            "Innovation",
+            "System Optimization",
+            "Data Analytics"
+          ],
+          "categories": [
+            "Energy",
+            "Research & Development",
+            "Technology"
+          ],
+          "fundingType": "Grant",
+          "isNational": true,
+          "eligibleLocations": [
+            "National"
+          ],
+          "status": "open",
+          "openDate": "2023-05-19",
+          "closeDate": "2025-09-30",
+          "tags": [
+            "Energy Research",
+            "Power Systems",
+            "Machine Learning",
+            "Innovative Technologies"
+          ],
+          "url": "http://www.nsf.gov/funding/pgm_summ.jsp?pims_id=505249",
+          "sourceId": "7767eedc-8a09-4058-8837-fc8df8e437cb",
+          "sourceName": "Grants.gov",
+          "rawResponseId": "9eac2001-8d63-4518-9b2e-d2a0303db481"
+        },
+        {
+          "id": "347328",
+          "title": "Environmental Sustainability",
+          "description": "Primary Description: The Environmental Sustainability program is part of the Environmental Engineering and Sustainability cluster. The goal is to promote sustainable engineered systems that support human well-being and are compatible with sustaining natural environmental systems.\n\nProgram Summary: There are five principal research areas supported:\n1. Circular Bioeconomy Engineering: Research enabling sustainable societal use of food, energy, water, and materials with reduced fossil fuel combustion.\n2. Industrial Ecology: Advancements in modeling, life cycle assessment, and novel metrics for sustainable systems.\n3. Green Engineering: Research to advance sustainability of manufacturing processes, green buildings, and infrastructure.\n4. Ecological Engineering: Engineering aspects of restoring ecological function to natural systems.\n5. Earth Systems Engineering: Large-scale engineering research involving greenhouse gas mitigation and climate change adaptation.\n\nAdditional Details: All proposed research should be driven by engineering principles and presented in an environmental sustainability context. Proposals must include involvement of at least one graduate student and potentially undergraduates. Incorporation of social, behavioral, and economic sciences is welcomed.",
+          "eligibleApplicants": [
+            "Colleges & Universities",
+            "Research Institutions"
+          ],
+          "eligibleProjectTypes": [
+            "Sustainability",
+            "Green Engineering",
+            "Ecological Engineering",
+            "Energy Efficiency"
+          ],
+          "eligibleActivities": [
+            "Research",
+            "Graduate Student Support",
+            "Undergraduate Research"
+          ],
+          "fundingType": "Grant",
+          "categories": [
+            "Sustainability",
+            "Research & Development",
+            "Environmental"
+          ],
+          "funding_source": {
+            "name": "National Science Foundation",
+            "type": "federal",
+            "website": "https://www.nsf.gov",
+            "contact_email": "grantsgovsupport@nsf.gov",
+            "contact_phone": "703-292-4261"
+          },
+          "totalFundingAvailable": 7066000,
+          "numberOfAwards": 103,
+          "isNational": true,
+          "status": "open",
+          "openDate": "2023-04-05",
+          "closeDate": "2025-09-30",
+          "url": "http://www.nsf.gov/funding/pgm_summ.jsp?pims_id=506053",
+          "tags": [
+            "Sustainability Research",
+            "Engineering Innovation",
+            "Environmental Systems"
+          ],
+          "matchingRequired": false,
+          "sourceId": "7767eedc-8a09-4058-8837-fc8df8e437cb",
+          "sourceName": "Grants.gov",
+          "rawResponseId": "9eac2001-8d63-4518-9b2e-d2a0303db481"
+        },
+        {
+          "id": "357970",
+          "title": "ERDC Broad Agency Announcement",
+          "description": "Primary Description: The U.S. Army Corps of Engineers (USACE) Engineer Research and Development Center (ERDC) is issuing this announcement for various research and development topic areas. The ERDC consists of multiple laboratories conducting research in broad fields including hydraulics, dredging, coastal engineering, instrumentation, oceanography, remote sensing, geotechnical engineering, earthquake engineering, and many other scientific and engineering domains.\n\nProgram Summary: This announcement is continuously open; pre-proposals may be submitted and will be reviewed at any time throughout the year. The availability of funds may limit the ability of the U.S. Government to make awards in specific areas.\n\nAdditional Details: Research areas include infrastructure and environmental issues for installations, computer science, telecommunications management, energy, facilities maintenance, materials and structures, engineering processes, environmental processes, land and heritage conservation, and ecological processes.\n\nSubmission Details: For additional details on research topic areas and submission of pre-proposals, visit: https://www.erdcwerx.org/u-s-army-engineer-research-and-development-center-broad-agency-announcement/",
+          "openDate": "2025-01-02",
+          "closeDate": "2025-12-31",
+          "funding_source": {
+            "name": "U.S. Army Engineer Research and Development Center",
+            "type": "federal",
+            "contact_email": "Allison.B.Hudson@usace.army.mil",
+            "contact_phone": "601-918-6467",
+            "website": "https://www.erdcwerx.org"
+          },
+          "eligibleApplicants": [
+            "Unrestricted"
+          ],
+          "eligibleProjectTypes": [
+            "Research & Development",
+            "Infrastructure",
+            "Energy",
+            "Environmental",
+            "Computer Science",
+            "Facilities Maintenance"
+          ],
+          "eligibleActivities": [
+            "Scientific Research",
+            "Engineering Research",
+            "Technology Development",
+            "Infrastructure Assessment",
+            "Environmental Studies"
+          ],
+          "categories": [
+            "Research & Development",
+            "Infrastructure",
+            "Science and Technology"
+          ],
+          "fundingType": "Cooperative Agreement",
+          "maximumAward": 999999999,
+          "minimumAward": 0,
+          "isNational": true,
+          "eligibleLocations": [
+            "National"
+          ],
+          "status": "open",
+          "matchingRequired": false,
+          "tags": [
+            "Research Funding",
+            "Scientific Innovation",
+            "Engineering Development"
+          ],
+          "url": "https://www.erdcwerx.org/u-s-army-engineer-research-and-development-center-broad-agency-announcement/",
+          "sourceId": "7767eedc-8a09-4058-8837-fc8df8e437cb",
+          "sourceName": "Grants.gov",
+          "rawResponseId": "9eac2001-8d63-4518-9b2e-d2a0303db481"
+        },
+        {
+          "id": "356536",
+          "title": "Geospace Cluster",
+          "description": "Primary Description: The Geospace Cluster (GC) in the Division of Atmospheric and Geospace Sciences (AGS) supports fundamental and solutions-oriented research, technology development and education related to the Earth's near-space environment (including the mesosphere, thermosphere, ionosphere, exosphere, magnetosphere and radiation belts) and the inner heliosphere and solar atmosphere.\n\nProgram Summary: The GC advances knowledge of the Sun--Earth system, including how various parts of the system are coupled through dynamical, electrodynamical and chemical processes. The GC supports research on the societal impacts of these processes including space weather and upper atmosphere climate change, with the aim of increasing resilience to such natural hazards.\n\nResearch Topics Include:\n- Aeronomy: Studies of wave dynamics, ionization, recombination, chemical reactions in Earth's atmospheric regions\n- Magnetospheric physics: Studies of the magnetosphere, solar wind interactions, planetary electric fields\n- Solar-terrestrial physics: Research on solar energy generation, solar activity cycles, solar wind interactions\n- Space weather and space climate: Observations and modeling of geospace system and its impacts on critical infrastructure\n\nAdditional Details: AGS encourages proposals that integrate education, outreach, and efforts to broaden participation in atmospheric and geospace sciences. Proposals are welcome from all institutions, including Minority Serving Institutions, Emerging Research Institutions, and EPSCoR jurisdictions.",
+          "eligibleApplicants": [
+            "Research Institutions",
+            "Colleges & Universities",
+            "Other: Minority Serving Institutions",
+            "Other: Emerging Research Institutions"
+          ],
+          "eligibleProjectTypes": [
+            "Research & Development",
+            "Technology Development",
+            "Educational Programs"
+          ],
+          "eligibleActivities": [
+            "Research",
+            "Technology Development",
+            "Education",
+            "Outreach"
+          ],
+          "funding_source": {
+            "name": "National Science Foundation",
+            "type": "federal",
+            "website": "http://www.nsf.gov",
+            "contact_email": "grantsgovsupport@nsf.gov",
+            "contact_phone": "703-292-4261"
+          },
+          "fundingType": "Grant",
+          "categories": [
+            "Research & Development",
+            "Science and Technology",
+            "Climate"
+          ],
+          "isNational": true,
+          "eligibleLocations": [
+            "National"
+          ],
+          "openDate": "2024-09-26",
+          "closeDate": "2025-09-30",
+          "status": "open",
+          "matchingRequired": false,
+          "tags": [
+            "Geospace Research",
+            "Space Science",
+            "Climate Studies"
+          ],
+          "url": "http://www.nsf.gov/funding/pgm_summ.jsp?pims_id=506312",
+          "sourceId": "7767eedc-8a09-4058-8837-fc8df8e437cb",
+          "sourceName": "Grants.gov",
+          "rawResponseId": "9eac2001-8d63-4518-9b2e-d2a0303db481"
+        },
+        {
+          "id": "348932",
+          "title": "Catalysis",
+          "description": "Primary Description: The Catalysis program is part of the Chemical Process Systems cluster, which aims to increase fundamental understanding in catalytic engineering science and advance the development of catalysts and catalytic reactions beneficial to society.\n\nProgram Summary: Research should focus on critical challenges in catalysis technologies, including novel catalyst compositions, structures, operating environments, data science tools, theory, and modeling. Target applications include fuels, specialty and bulk chemicals, environmental catalysis, biomass conversion, greenhouse gas mitigation, and energy utilization.\n\nAdditional Details: Topic areas of interest include:\n- Energy-related catalysis with renewable/sustainable energy\n- Catalysis for closing the carbon cycle\n- Heterogeneous catalytic alternatives\n- Environmental catalysis\n- Catalytic remediation\n- Commercially scalable catalyst synthesis\n- New catalytic materials and architectures\n- Advanced catalyst characterization tools\n\nProposals are encouraged to assess reproducibility, stability, performance, and quantitative measures of catalyst efficiency.",
+          "funding_source": {
+            "name": "National Science Foundation",
+            "type": "federal",
+            "contact_email": "grantsgovsupport@nsf.gov",
+            "contact_phone": "703-292-4261",
+            "website": "http://www.nsf.gov"
+          },
+          "eligibleApplicants": [
+            "Colleges & Universities",
+            "Research Institutions"
+          ],
+          "eligibleProjectTypes": [
+            "Energy Efficiency",
+            "Renewable Energy Systems",
+            "Environmental Research"
+          ],
+          "eligibleActivities": [
+            "Research Development",
+            "Catalyst Composition Research",
+            "Energy Technology Innovation"
+          ],
+          "categories": [
+            "Energy",
+            "Research & Development",
+            "Sustainability"
+          ],
+          "fundingType": "Grant",
+          "totalFundingAvailable": 4900000,
+          "isNational": true,
+          "openDate": "2023-06-27",
+          "closeDate": "2025-09-30",
+          "status": "open",
+          "matchingRequired": false,
+          "tags": [
+            "Catalysis Research",
+            "Energy Innovation",
+            "Sustainable Technologies"
+          ],
+          "url": "http://www.nsf.gov/funding/pgm_summ.jsp?pims_id=506074",
+          "sourceId": "7767eedc-8a09-4058-8837-fc8df8e437cb",
+          "sourceName": "Grants.gov",
+          "rawResponseId": "9eac2001-8d63-4518-9b2e-d2a0303db481"
+        },
+        {
+          "id": "338143",
+          "title": "Climate Hackathon in Northern Japan",
+          "description": "Primary Description: The U.S. Consulate General in Sapporo is committed to combatting the climate crisis and supporting sustainable energy adoption in Northern Japan.\n\nProgram Summary: Realizing success in the battle against the climate crisis will require innovative approaches over the long term, it is essential for Japan's youth and next-generation scientists, tech sector workers, entrepreneurs, and opinion leaders to develop a better understanding of the issues and start to workshop potential solutions. Northern Japan will play a significant role in whether Japan is able to achieve its ambitious climate change and decarbonization goals, and the prefectural government has made Zero Carbon Hokkaido a signature initiative – and youth involvement could help sustain momentum over time.\n\nAdditional Details: The Consulate invites proposals from academic institutions, engineers, scientists, NGOs, and individuals or groups at tech companies to execute a tech camp or hackathon on climate change preferably in 2022. The program can be online, in-person, or hybrid depending on the public health environment. The program is expected to be interactive under any type of formats above, and it will target university students in Northern Japan. Ideally, it will bring approximately 30 to 50 students, along with several mentors, to work together during the program.",
+          "openDate": "2022-02-18",
+          "closeDate": "2022-04-15",
+          "eligibleApplicants": [
+            "K-12 School Districts",
+            "Nonprofit Organizations",
+            "City Government",
+            "Colleges & Universities",
+            "County Government",
+            "Individuals"
+          ],
+          "eligibleProjectTypes": [
+            "Climate Change Mitigation",
+            "Other: Youth Innovation"
+          ],
+          "eligibleActivities": [
+            "Tech Camp",
+            "Hackathon",
+            "Climate Change Research",
+            "Student Engagement"
+          ],
+          "categories": [
+            "Climate",
+            "Community Development",
+            "Education",
+            "Science and Technology"
+          ],
+          "funding_source": {
+            "name": "U.S. Department of State",
+            "type": "federal",
+            "contact_email": "tokyopasgrants@state.gov",
+            "contact_phone": "81-3-3224-5000",
+            "website": "https://www.state.gov"
+          },
+          "fundingType": "Cooperative Agreement",
+          "isNational": false,
+          "eligibleLocations": [
+            "Hokkaido",
+            "Aomori",
+            "Akita",
+            "Iwate",
+            "Miyagi"
+          ],
+          "status": "closed",
+          "tags": [
+            "Climate Innovation",
+            "Youth Engagement",
+            "Tech Hackathon"
+          ],
+          "url": null,
+          "matchingRequired": false,
+          "maximumAward": null,
+          "minimumAward": null,
+          "totalFundingAvailable": null,
+          "notes": "One award expected. Program targets university students in Northern Japan regions.",
+          "sourceId": "7767eedc-8a09-4058-8837-fc8df8e437cb",
+          "sourceName": "Grants.gov",
+          "rawResponseId": "9eac2001-8d63-4518-9b2e-d2a0303db481"
+        },
+        {
+          "id": "347509",
+          "title": "Combustion and Fire Systems",
+          "description": "Primary Description: The Combustion and Fire Systems program is part of the Transport Phenomena cluster, which also includes 1) the Fluid Dynamics program; 2) the Particulate and Multiphase Processes program; and 3) the Thermal Transport Processes program.\n\nThe goal of the Combustion and Fire Systems program is to create new knowledge to support advances in clean energy, climate change mitigation, a cleaner environment and public safety.\n\nProgram Summary: The program endeavors to create fundamental scientific knowledge that is needed for safe, clean and useful combustion applications and for mitigating the effects of fire. The program aims to identify and understand the controlling basic principles and to use that knowledge to create predictive capabilities for designing and optimizing practical combustion devices and understanding fire.\n\nImportant outcomes for this program include:\n- Broad-based tools — experimental, theoretical, and computational — that can be applied to a variety of problems in combustion technologies and fire\n- Science and technology for clean and efficient generation of power\n- Discoveries that enable clean environments (for example, by reduction in combustion-generated pollutants)\n- Enhanced public safety and climate change mitigation through research on wildland and building fire growth, inhibition, and suppression\n\nResearch areas of interest include:\n- Basic combustion science\n- Combustion science related to clean energy\n- Fire prevention\n- Turbulence-chemistry interactions",
+          "funding_source": {
+            "name": "National Science Foundation",
+            "type": "federal",
+            "contact_email": "grantsgovsupport@nsf.gov",
+            "contact_phone": "703-292-4261",
+            "website": "http://www.nsf.gov"
+          },
+          "totalFundingAvailable": 4654000,
+          "fundingType": "Grant",
+          "eligibleApplicants": [
+            "Research Institutions",
+            "Colleges & Universities"
+          ],
+          "eligibleProjectTypes": [
+            "Energy Efficiency",
+            "Renewable Energy",
+            "Climate Research"
+          ],
+          "eligibleActivities": [
+            "Research and Development",
+            "Scientific Experiments",
+            "Computational Modeling",
+            "Technology Development"
+          ],
+          "categories": [
+            "Energy",
+            "Climate",
+            "Research & Development"
+          ],
+          "isNational": true,
+          "status": "open",
+          "openDate": "2023-04-14",
+          "closeDate": "2025-09-30",
+          "matchingRequired": false,
+          "tags": [
+            "Combustion Research",
+            "Fire Systems",
+            "Clean Energy",
+            "Climate Mitigation"
+          ],
+          "sourceId": "7767eedc-8a09-4058-8837-fc8df8e437cb",
+          "sourceName": "Grants.gov",
+          "rawResponseId": "9eac2001-8d63-4518-9b2e-d2a0303db481"
+        },
+        {
+          "id": "325599",
+          "title": "U.S. Embassy Praia Ambassador's Special Self-Help (SSH) Program",
+          "description": "Primary Description: The SSH is a grass-roots grant assistance program that allows U.S. Ambassadors to support local requests for small community-based development projects. The purpose of the Special Self-Help Program is to support communities through modest grants that will positively impact local communities.\n\nProgram Priorities:\n1. Economic diversification, including small business creation and income generation\n2. Women start-ups and women entrepreneurs\n3. Social inclusion and creation of opportunities\n4. Drought response and environmental resilience\n\nAdditional Details: Projects must generate sustainable income, employment opportunities, and improve economic or living conditions. Local community involvement of at least 10% in cash or in-kind contributions is required. Projects must be completed within 12 months and be self-sustaining.",
+          "eligibleApplicants": [
+            "Nonprofit Organizations",
+            "Community Organizations",
+            "Other: Non-Governmental Organizations"
+          ],
+          "eligibleProjectTypes": [
+            "Economic Development",
+            "Community Infrastructure",
+            "Social Services",
+            "Environmental Resilience"
+          ],
+          "eligibleActivities": [
+            "Small business development",
+            "Income generation projects",
+            "Community infrastructure improvements",
+            "Water management",
+            "Drought resilience initiatives"
+          ],
+          "fundingType": "Grant",
+          "minimumAward": 3000,
+          "maximumAward": 8000,
+          "matchingRequired": true,
+          "matchingPercentage": 10,
+          "categories": [
+            "Community Development",
+            "Economic Development",
+            "Environmental Sustainability"
+          ],
+          "isNational": false,
+          "eligibleLocations": [
+            "Cape Verde"
+          ],
+          "status": "open",
+          "openDate": "2020-03-19",
+          "closeDate": "2022-08-31",
+          "funding_source": {
+            "name": "U.S. Embassy Praia",
+            "type": "federal",
+            "contact_email": "PRAIAGRANTS@state.gov",
+            "contact_phone": "00238 9912642",
+            "website": "https://cv.usembassy.gov/embassy/praia/grants-program/"
+          },
+          "url": "https://cv.usembassy.gov/embassy/praia/grants-program/ambassadors-special-self-help-ssh-program/",
+          "tags": [
+            "Community Grants",
+            "Small Business",
+            "Social Impact",
+            "Entrepreneurship"
+          ],
+          "sourceId": "7767eedc-8a09-4058-8837-fc8df8e437cb",
+          "sourceName": "Grants.gov",
+          "rawResponseId": "9eac2001-8d63-4518-9b2e-d2a0303db481"
+        }
+      ],
+      "extractionMetrics": {
+        "totalFound": 614,
+        "successfullyExtracted": 9,
+        "workflow": "two_step_api",
+        "apiCalls": "multiple",
+        "extractionProcessing": {
+          "totalFound": 10,
+          "successfullyExtracted": 9,
+          "challenges": []
+        },
+        "detailProcessing": {
+          "detailCallsSuccessful": 10,
+          "detailCallsFailed": 0
+        }
+      },
+      "source": {
+        "id": "7767eedc-8a09-4058-8837-fc8df8e437cb",
+        "name": "Grants.gov",
+        "organization": "General Services Administration (GSA)",
+        "type": "federal",
+        "url": "https://www.grants.gov/search-grants",
+        "api_endpoint": "https://api.grants.gov/v1/api/search2",
+        "api_documentation_url": "https://www.grants.gov/api",
+        "auth_type": "none",
+        "auth_details": {},
+        "update_frequency": "daily",
+        "last_checked": "2025-04-30T01:18:56.329+00:00",
+        "active": true,
+        "priority": 5,
+        "notes": "Two-stage API system: 1) Search API for opportunity listings 2) Detail API requires separate calls using opportunity IDs for full details",
+        "handler_type": "standard",
+        "created_at": "2025-03-29T21:21:19.251067+00:00",
+        "updated_at": "2025-06-13T21:47:16.70188+00:00"
+      }
+    }
+  }
+}

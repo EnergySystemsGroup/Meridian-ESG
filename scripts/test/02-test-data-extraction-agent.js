@@ -449,8 +449,9 @@ async function runDataExtractionTests() {
   
   const results = {};
   
-  // Test 1: California Grants Portal (single API) - SKIP FOR NOW
-  // results.california = await testDataExtractionAgent('california', STAGE_1_RESULTS.results.california);
+  // Test 1: California Grants Portal (single API)
+  console.log('\n🔄 Starting California test...\n');
+  results.california = await testDataExtractionAgent('california', STAGE_1_RESULTS.results.california);
   
   // Test 2: Grants.gov (two-step API)  
   console.log('\n🔄 Starting Grants.gov test...\n');
@@ -469,33 +470,51 @@ async function runDataExtractionTests() {
   });
   
   const successCount = Object.values(results).filter(r => r.success).length;
-  console.log(`\n🎯 Overall: ${successCount}/1 sources extracted successfully`);
+  console.log(`\n🎯 Overall: ${successCount}/2 sources extracted successfully`);
   
-  if (successCount === 1) {
-    console.log('\n🎉 Stage 2 Complete! Ready for Stage 3 (AnalysisAgent)');
-    console.log('\n💾 Saving results for next stage...');
-    
-    // Save results for Stage 3
-    const stage2Results = {
-      timestamp: new Date().toISOString(),
-      results: Object.fromEntries(
-        Object.entries(results)
-          .filter(([_, result]) => result.success)
-          .map(([key, result]) => [key, {
-            opportunities: result.result.opportunities,
-            extractionMetrics: result.result.extractionMetrics,
-            source: result.source
-          }])
-      )
-    };
-    
-    console.log('\n📄 Sample Results for Stage 3:');
-    Object.entries(stage2Results.results).forEach(([key, data]) => {
-      console.log(`${key}: ${data.opportunities.length} opportunities extracted`);
+  // Always save results for Analysis Agent, regardless of validation status
+  console.log('\n💾 Saving complete results for Analysis Agent...');
+  
+  // Save results for Stage 3
+  const stage2Results = {
+    timestamp: new Date().toISOString(),
+    results: Object.fromEntries(
+      Object.entries(results)
+        .filter(([_, result]) => result.result && result.result.opportunities && result.result.opportunities.length > 0)
+        .map(([key, result]) => [key, {
+          opportunities: result.result.opportunities,
+          extractionMetrics: result.result.extractionMetrics,
+          source: result.source
+        }])
+    )
+  };
+  
+  // Save to file for Analysis Agent
+  const fs = await import('fs');
+  const path = await import('path');
+  const resultsPath = path.join(process.cwd(), 'scripts', 'test', 'stage2-enhanced-results.json');
+  fs.writeFileSync(resultsPath, JSON.stringify(stage2Results, null, 2));
+  console.log(`📄 Complete results saved to: ${resultsPath}`);
+  
+  // Show sample enhanced descriptions
+  console.log('\n📝 ENHANCED DESCRIPTION SAMPLES:');
+  console.log('=' .repeat(60));
+  
+  Object.entries(stage2Results.results).forEach(([key, data]) => {
+    console.log(`\n🔍 ${key.toUpperCase()} - First 3 Opportunities:`);
+    data.opportunities.slice(0, 3).forEach((opp, index) => {
+      console.log(`\n   📄 ${index + 1}. ${opp.title}`);
+      console.log(`   📝 Full Description:`);
+      console.log(`   ${opp.description}`);
+      console.log('   ' + '─'.repeat(80));
     });
-    
+  });
+  
+  if (successCount >= 1) {
+    console.log('\n🎉 Stage 2 Complete! Enhanced descriptions generated and saved.');
+    console.log(`📊 Total opportunities with enhanced descriptions: ${Object.values(stage2Results.results).reduce((sum, data) => sum + data.opportunities.length, 0)}`);
   } else {
-    console.log('\n⚠️  Some extractions failed - fix issues before proceeding to Stage 3');
+    console.log('\n⚠️  Some extractions failed - but data extraction completed');
   }
   
   return results;

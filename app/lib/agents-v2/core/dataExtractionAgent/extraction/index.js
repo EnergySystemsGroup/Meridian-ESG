@@ -170,35 +170,24 @@ ${responseMappingGuidance}
 COMPREHENSIVE DESCRIPTION EXTRACTION STRATEGY:
 For the 'description' field, provide the most complete and comprehensive description possible by:
 
-1. PRIMARY DESCRIPTION SOURCES (look for these fields first):
-   - 'description', 'summary', 'abstract', 'overview', 'programSummary'
-   - 'synopsis', 'details', 'backgroundInfo', 'programDescription'
-   - 'opportunityDescription', 'fundingDescription', 'projectDescription'
+1. SCAN FOR ALL DESCRIPTIVE FIELDS throughout the entire API response including (but not limited to):
+   description, summary, abstract, overview, programSummary, synopsis, details, backgroundInfo, programDescription, opportunityDescription, fundingDescription, projectDescription, notes, additionalInfo, remarks, commentary, guidance, applicationProcess, eligibilityCriteria, evaluationCriteria, programGoals, objectives, purpose, background, and any other fields containing narrative or descriptive content
 
-2. NESTED DESCRIPTIVE CONTENT (check nested objects):
-   - 'synopsis.description', 'synopsis.detailedDescription', 'synopsis.summary'
-   - 'details.description', 'details.overview', 'details.programInfo'
-   - 'data.synopsis.*', 'data.details.*', 'opportunity.description'
+2. CRITICAL: SCAN FOR MULTIPLE INSTANCES OF SAME FIELD NAMES:
+   - The same field name may appear MULTIPLE times (e.g., description, description, synopsis, synopsis)
+   - Capture EVERY occurrence, even if the field name is repeated
+   - Do not assume field names are unique - each instance may contain different content
+   - When you find "description" in one place, keep looking for more "description" fields elsewhere
+   - When you find "synopsis" in one place, keep looking for more "synopsis" fields elsewhere
+   - Scan the ENTIRE response structure, including nested objects and arrays
 
-3. SUPPLEMENTARY NARRATIVE FIELDS:
-   - 'notes', 'additionalInfo', 'remarks', 'commentary', 'guidance'
-   - 'applicationProcess', 'eligibilityCriteria', 'evaluationCriteria'
-   - 'programGoals', 'objectives', 'purpose', 'background'
-
-4. CONTENT COMBINATION RULES:
-   - Combine ALL available descriptive content into a single comprehensive description
-   - Use clear source markers: "Primary Description: [content]", "Program Summary: [content]", "Additional Details: [content]"
-   - Preserve verbatim content - do NOT modify, enhance, or interpret the original text
-   - Remove duplicate content that appears in multiple fields
-   - Prioritize completeness over brevity - include all unique descriptive information
-   - Maintain logical flow: primary description first, then supplementary details
-
-5. FORMATTING EXAMPLE:
-   "Primary Description: [verbatim content from main description field]
-   
-   Program Summary: [verbatim content from synopsis or summary field]
-   
-   Additional Details: [verbatim content from notes, details, or other fields]"
+3. NATURAL MELDING APPROACH:
+   - Combine all unique descriptive content into one flowing, natural narrative
+   - Preserve ALL content verbatim - do not modify, enhance, or interpret the original text
+   - Intelligently remove duplicate sentences/phrases that appear across different field instances
+   - Organize content logically but let it flow naturally without forced section breaks or labels
+   - Prioritize completeness - include every unique piece of descriptive information found
+   - Create a coherent, comprehensive description that reads naturally
 
 FUNDING EXTRACTION APPROACH:
 1. Look for structured funding fields first (totalFunding, estimatedFunding, award amounts, etc.). Use the response mapping rules, if available.
