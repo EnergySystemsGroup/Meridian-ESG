@@ -570,11 +570,10 @@ export const schemas = {
             eligibleActivities: {
               type: "array",
               items: { type: "string" },
-              nullable: true,
               description: "Specific activities or expenses that can be funded (e.g., 'equipment purchase', 'installation', 'design', 'maintenance')"
             }
           },
-          required: ["id", "title", "description", "eligibleApplicants", "eligibleProjectTypes"]
+          required: ["id", "title", "description", "eligibleApplicants", "eligibleProjectTypes", "eligibleActivities"]
         },
         description: "List of extracted and standardized funding opportunities"
       },
@@ -768,7 +767,6 @@ export const schemas = {
             eligibleActivities: {
               type: "array",
               items: { type: "string" },
-              nullable: true,
               description: "Specific activities or expenses that can be funded (e.g., 'equipment purchase', 'installation', 'design', 'maintenance')"
             },
             
@@ -784,11 +782,17 @@ export const schemas = {
             scoring: {
               type: "object",
               properties: {
-                clientProjectRelevance: {
+                clientRelevance: {
                   type: "number",
                   minimum: 0,
-                  maximum: 6,
-                  description: "How well this fits our energy services business (0-6 points)"
+                  maximum: 3,
+                  description: "How well eligible applicants match our target client types (0-3 points)"
+                },
+                projectRelevance: {
+                  type: "number",
+                  minimum: 0,
+                  maximum: 3,
+                  description: "How well eligible activities match our preferred activities (0-3 points)"
                 },
                 fundingAttractiveness: {
                   type: "number",
@@ -809,7 +813,7 @@ export const schemas = {
                   description: "Total score (sum of all criteria)"
                 }
               },
-              required: ["clientProjectRelevance", "fundingAttractiveness", "fundingType", "overallScore"]
+              required: ["clientRelevance", "projectRelevance", "fundingAttractiveness", "fundingType", "overallScore"]
             },
             relevanceReasoning: {
               type: "string",
@@ -821,7 +825,7 @@ export const schemas = {
               description: "Any red flags or concerns noted during analysis"
             }
           },
-          required: ["id", "title", "description", "eligibleApplicants", "eligibleProjectTypes", "enhancedDescription", "actionableSummary", "scoring", "relevanceReasoning"]
+          required: ["id", "title", "description", "eligibleApplicants", "eligibleProjectTypes", "eligibleActivities", "enhancedDescription", "actionableSummary", "scoring", "relevanceReasoning"]
         }
       },
       analysisMetrics: {

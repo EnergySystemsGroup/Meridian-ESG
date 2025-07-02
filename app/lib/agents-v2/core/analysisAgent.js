@@ -129,7 +129,7 @@ async function processBatch(opportunities, source, anthropic) {
 OUR BUSINESS CONTEXT:
 - Energy services company with expertise in energy and infrastructure projects
 - TARGET CLIENTS: ${TAXONOMIES.TARGET_CLIENT_TYPES.join(', ')}
-- TARGET PROJECTS: ${TAXONOMIES.TARGET_PROJECT_TYPES.join(', ')}
+- PREFERRED ACTIVITIES: ${TAXONOMIES.PREFERRED_ACTIVITIES.join(', ')}
 - Strong preference for opportunities with clear infrastructure focus, particularly in the energy space
 - Prefer grants with significant funding potential per applicant
 - Target opportunities where our energy services expertise provides competitive advantage
@@ -142,6 +142,7 @@ Description: ${opp.description || 'No description provided'}
 Funding: $${opp.totalFundingAvailable?.toLocaleString() || 'Unknown'} total, $${opp.minimumAward?.toLocaleString() || 'Unknown'} - $${opp.maximumAward?.toLocaleString() || 'Unknown'} per award
 Deadline: ${opp.closeDate || 'Unknown'}
 Eligible Applicants: ${opp.eligibleApplicants?.join(', ') || 'Unknown'}
+Eligible Activities: ${opp.eligibleActivities?.join(', ') || 'Unknown'}
 Project Types: ${opp.eligibleProjectTypes?.join(', ') || 'Unknown'}
 Locations: ${opp.eligibleLocations?.join(', ') || 'Unknown'}
 Status: ${opp.status || 'Unknown'}
@@ -149,26 +150,29 @@ Status: ${opp.status || 'Unknown'}
 
 For each opportunity, provide:
 
-1. ENHANCED_DESCRIPTION: Write a detailed, strategic description of this funding opportunity. Summarize what it is, why it's important, who qualifies, and what kinds of projects are eligible. Then provide 2–3 short use case examples showing how our clients—such as cities, school districts, or state facilities—could take advantage of the opportunity. Focus on narrative clarity and practical insight, not boilerplate language.
+1. ENHANCED_DESCRIPTION: Write a detailed, strategic description of this funding opportunity. Summarize what it is, why it's important, who qualifies, and what kinds of projects are eligible. Then provide 2–3 short use case examples showing how WE could help our clients—such as cities, school districts, or state facilities—by executing projects FOR them. Focus on our role as the service provider executing work FOR clients, not clients doing work themselves. Focus on narrative clarity and practical insight, not boilerplate language.
 
-2. ACTIONABLE_SUMMARY: Write an actionable summary of this funding opportunity for a sales team. Focus on what the opportunity is about, who can apply, what types of projects are eligible, and whether this is relevant to our company or client types. Keep it concise, focused, and framed to help a sales rep quickly assess whether to pursue it.
+2. ACTIONABLE_SUMMARY: Write an actionable summary of this funding opportunity for a sales team. Focus on what the opportunity is about, who can apply, what types of projects are eligible, and whether this is relevant to our company or client types. Emphasize our role as the service provider. Keep it concise, focused, and framed to help a sales rep quickly assess whether to pursue it.
 
 3. SYSTEMATIC_SCORING: Rate each criterion based on the opportunity data above:
 
-   - clientProjectRelevance (0-6): How well this fits our energy services business
-     • 6 = Perfect: Both "Eligible Applicants" AND "Project Types" match our targets exactly
-     • 5 = Near perfect: One field matches exactly + other is closely related
-     • 4 = Strong: Both fields are strong fits for our energy services business  
-     • 3 = Good: One field is a strong fit + other is reasonable
-     • 2 = Reasonable: Both fields could work with our business (use judgment)
-     • 1 = Weak: Only one field has minimal relevance to our services
-     • 0 = No fit: Neither eligible applicants nor project types fit our focus
+   - clientRelevance (0-3): Based on "Eligible Applicants" field
+     • 3 = Eligible applicants substantially match our target client types (${TAXONOMIES.TARGET_CLIENT_TYPES.join(', ')})
+     • 2 = Eligible applicants include large businesses or public entities
+     • 1 = Eligible applicants include small and medium businesses
+     • 0 = Eligible applicants are only individuals
+   
+   - projectRelevance (0-3): Based on "Eligible Activities" field (prioritize activities over broad project types)
+     • 3 = Eligible activities substantially match our preferred activities (${TAXONOMIES.PREFERRED_ACTIVITIES.join(', ')})
+     • 2 = Eligible activities involve infrastructure upgrades or construction
+     • 1 = Eligible activities relate to energy services
+     • 0 = None of the above
    
    - fundingAttractiveness (0-3): Based on the "Funding:" line for each opportunity
-     • 3 = Exceptional: Shows $5M+ total funding OR $2M+ maximum per award
-     • 2 = Strong: Shows $1M+ total funding OR $500K+ maximum per award  
-     • 1 = Moderate: Shows meaningful funding amounts
-     • 0 = Low/Unknown: Shows "Unknown" amounts or very small funding
+     • 3 = Exceptional: Shows $50M+ total funding OR $5M+ maximum per award
+     • 2 = Strong: Shows $25M+ total funding OR $2M+ maximum per award  
+     • 1 = Moderate: Shows $10M+ total funding OR $1M+ maximum per award, OR unknown amounts
+     • 0 = Low: Less than $10M total funding AND less than $1M maximum per award
    
    - fundingType (0-1): Based on funding mechanism
      • 1 = Grant (preferred)
@@ -176,9 +180,9 @@ For each opportunity, provide:
 
 4. SCORING_EXPLANATION: Brief explanation of the scoring rationale
 
-5. CONCERNS: Any red flags, unusual requirements, or limitations to note
+5. CONCERNS: Any red flags, unusual requirements, or limitations to note. Flag research-only opportunities that don't involve our service capabilities.
 
-NOTE: Opportunities need clientProjectRelevance ≥2 to be viable, or ≥5 for auto-qualification.
+NOTE: Research-only opportunities (academic studies, planning grants without implementation) should receive low projectRelevance scores.
 
 For each opportunity, return the COMPLETE opportunity object with all original data plus your analysis enhancements. Use the opportunityAnalysis schema format.`;
 
@@ -226,7 +230,8 @@ For each opportunity, return the COMPLETE opportunity object with all original d
  */
 function getDefaultScoring() {
   return {
-    clientProjectRelevance: 0,
+    clientRelevance: 0,
+    projectRelevance: 0,
     fundingAttractiveness: 0,
     fundingType: 0,
     overallScore: 0

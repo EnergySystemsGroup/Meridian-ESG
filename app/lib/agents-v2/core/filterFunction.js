@@ -18,8 +18,9 @@ const DEFAULT_CONFIG = {
   // Secondary filtering criteria (for scores 2-4)
   minimumFundingAttractiveness: 1,     // 0-3 scale: moderate funding required
   
-  // Status filtering
-  excludeClosedOpportunities: true    // Skip opportunities with status 'closed'
+  // Funding amount thresholds (dollar amounts)
+  minimumTotalFunding: 50000,          // $50K minimum total funding pool
+  minimumAwardAmount: 25000,           // $25K minimum per award
 };
 
 /**
@@ -177,19 +178,28 @@ function evaluateOpportunityWithGating(opportunity, config, gatingMetrics) {
   // SECONDARY FILTERING: For scores 2-4, apply additional criteria
   gatingMetrics.secondaryFiltered++;
   
-  // Check status filtering
-  if (config.excludeClosedOpportunities) {
-    const status = (opportunity.status || '').toLowerCase();
-    if (status === 'closed' || status === 'expired') {
-      return {
-        include: false,
-        reason: 'opportunity_closed',
-        gateType: 'secondary_status_failed'
-      };
-    }
+  // Check funding amount thresholds (only exclude if amounts are known and below threshold)
+  const totalFunding = opportunity.totalFundingAvailable;
+  const maxAward = opportunity.maximumAward;
+  
+  // Only check funding thresholds if amounts are known (not null/undefined)
+  if (totalFunding !== null && totalFunding !== undefined && totalFunding < config.minimumTotalFunding) {
+    return {
+      include: false,
+      reason: `funding_too_small_total_${totalFunding}`,
+      gateType: 'secondary_funding_failed'
+    };
   }
   
-  // Check funding attractiveness threshold
+  if (maxAward !== null && maxAward !== undefined && maxAward < config.minimumAwardAmount) {
+    return {
+      include: false,
+      reason: `funding_too_small_award_${maxAward}`,
+      gateType: 'secondary_funding_failed'
+    };
+  }
+  
+  // Check funding attractiveness threshold (fallback for when dollar amounts aren't available)
   if (fundingAttractiveness < config.minimumFundingAttractiveness) {
     return {
       include: false,
