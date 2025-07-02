@@ -43,8 +43,8 @@ export async function enhanceOpportunities(opportunities, source, anthropic) {
       };
     }
     
-    // Process opportunities in batches of 5 for efficiency
-    const batchSize = 5;
+    // Process opportunities in batches of 3 for reliability (reduced from 5 due to token limits)
+    const batchSize = 3;
     const enhancedOpportunities = [];
     
     for (let i = 0; i < opportunities.length; i += batchSize) {
@@ -124,6 +124,7 @@ export async function enhanceOpportunities(opportunities, source, anthropic) {
  * Processes a batch of opportunities for content enhancement and scoring
  */
 async function processBatch(opportunities, source, anthropic) {
+  console.log(`[AnalysisAgent] 🔄 Processing batch of ${opportunities.length} opportunities`);
   const prompt = `You are analyzing funding opportunities for an energy services business. Enhance the content and provide systematic scoring for each opportunity.
 
 OUR BUSINESS CONTEXT:
@@ -157,16 +158,16 @@ For each opportunity, provide:
 3. SYSTEMATIC_SCORING: Rate each criterion based on the opportunity data above:
 
    - clientRelevance (0-3): Based on "Eligible Applicants" field
-     • 3 = Eligible applicants substantially match our target client types (${TAXONOMIES.TARGET_CLIENT_TYPES.join(', ')})
-     • 2 = Eligible applicants include large businesses or public entities
-     • 1 = Eligible applicants include small and medium businesses
-     • 0 = Eligible applicants are only individuals
+     • 3 = Eligible applicants substantially match our target client types (${TAXONOMIES.TARGET_CLIENT_TYPES.join(', ')}) OR include similar government entities like State Agencies, Public Agencies, Regional Authorities
+     • 2 = Eligible applicants include government entities (state, local, municipal), large businesses, or public sector organizations  
+     • 1 = Eligible applicants include small and medium businesses, nonprofits serving public sector
+     • 0 = Eligible applicants are only individuals, homeowners, or very narrow/restricted applicant pools
    
    - projectRelevance (0-3): Based on "Eligible Activities" field (prioritize activities over broad project types)
      • 3 = Eligible activities substantially match our preferred activities (${TAXONOMIES.PREFERRED_ACTIVITIES.join(', ')})
-     • 2 = Eligible activities involve infrastructure upgrades or construction
-     • 1 = Eligible activities relate to energy services
-     • 0 = None of the above
+     • 2 = Eligible activities involve infrastructure upgrades, construction, or building improvements that could incorporate energy components
+     • 1 = Eligible activities relate to facility improvements, equipment installation, or infrastructure projects  
+     • 0 = Activities are purely non-infrastructure (research, planning, training, social services, etc.)
    
    - fundingAttractiveness (0-3): Based on the "Funding:" line for each opportunity
      • 3 = Exceptional: Shows $50M+ total funding OR $5M+ maximum per award
@@ -178,29 +179,53 @@ For each opportunity, provide:
      • 1 = Grant (preferred)
      • 0 = Loan, tax credit, other mechanism, or unknown
 
-4. SCORING_EXPLANATION: Brief explanation of the scoring rationale
+4. relevanceReasoning: CRITICAL - Using the exact numerical scores you assigned in step 3 above, justify each score by referencing which scoring criteria tier from step 3 the opportunity falls into. Format as a single string:
+
+CLIENT RELEVANCE ({your clientRelevance score}/3): Quote: "{exact eligible applicants text}" → Criteria Analysis: {explain which tier (0, 1, 2, or 3) this falls into based on the clientRelevance criteria in step 3} → Score Justification: {confirm why your assigned score matches that tier}
+
+PROJECT RELEVANCE ({your projectRelevance score}/3): Quote: "{exact eligible activities text}" → Criteria Analysis: {explain which tier (0, 1, 2, or 3) this falls into based on the projectRelevance criteria in step 3} → Score Justification: {confirm why your assigned score matches that tier}
+
+FUNDING ATTRACTIVENESS ({your fundingAttractiveness score}/3): Quote: "{exact funding amounts text}" → Criteria Analysis: {explain which tier (0, 1, 2, or 3) this falls into based on the fundingAttractiveness criteria in step 3} → Score Justification: {confirm why your assigned score matches that tier}
+
+FUNDING TYPE ({your fundingType score}/1): Quote: "{mechanism type}" → Criteria Analysis: {explain whether this is a grant (1) or other mechanism (0) based on the fundingType criteria in step 3} → Score Justification: {confirm why your assigned score matches that tier}
 
 5. CONCERNS: Any red flags, unusual requirements, or limitations to note. Flag research-only opportunities that don't involve our service capabilities.
 
 NOTE: Research-only opportunities (academic studies, planning grants without implementation) should receive low projectRelevance scores.
 
-For each opportunity, return the COMPLETE opportunity object with all original data plus your analysis enhancements. Use the opportunityAnalysis schema format.`;
+CRITICAL: You MUST analyze and return ALL ${opportunities.length} opportunities listed above. Do not skip any opportunities. For each opportunity, return the COMPLETE opportunity object with all original data plus your analysis enhancements. Use the opportunityAnalysis schema format.`;
 
   // Use structured schema-based response
   const response = await anthropic.callWithSchema(
     prompt,
     schemas.opportunityAnalysis,
     {
-      maxTokens: 4000,
+      maxTokens: 8000, // Increased for detailed batch analysis
       temperature: 0.1
     }
   );
   
   try {
-    const analysisResults = response.data.opportunities;
+    let analysisResults = response.data.opportunities;
+    
+    // Handle case where LLM returns stringified JSON instead of array
+    if (typeof analysisResults === 'string') {
+      console.log(`[AnalysisAgent] 🔧 LLM returned stringified JSON, parsing...`);
+      try {
+        analysisResults = JSON.parse(analysisResults);
+      } catch (parseError) {
+        throw new Error(`Failed to parse stringified JSON: ${parseError.message}`);
+      }
+    }
     
     if (!Array.isArray(analysisResults)) {
-      throw new Error('Response opportunities is not an array');
+      throw new Error(`Response opportunities is not an array, got: ${typeof analysisResults}`);
+    }
+    
+    // Debug: Check if we got the expected number of results
+    console.log(`[AnalysisAgent] 📊 Batch input: ${opportunities.length} opportunities, LLM output: ${analysisResults.length} opportunities`);
+    if (analysisResults.length !== opportunities.length) {
+      console.warn(`[AnalysisAgent] ⚠️  Mismatch! Expected ${opportunities.length} opportunities, got ${analysisResults.length}`);
     }
     
     // LLM returns complete opportunity objects with proper scoring via schema

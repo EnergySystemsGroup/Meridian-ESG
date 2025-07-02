@@ -12,159 +12,44 @@
  */
 
 import dotenv from 'dotenv';
+import fs from 'fs';
+import path from 'path';
 
-// Load environment variables FIRST before any imports that depend on them
-dotenv.config({ path: '../../.env.local' });
+// Load environment variables from project root
+dotenv.config({ path: path.join(process.cwd(), '.env.local') });
+
+// Verify API key is loaded
+if (!process.env.ANTHROPIC_API_KEY) {
+  console.error('❌ ANTHROPIC_API_KEY not found in environment variables');
+  process.exit(1);
+}
 
 import { enhanceOpportunities } from '../../app/lib/agents-v2/core/analysisAgent.js';
 import { getAnthropicClient } from '../../app/lib/agents-v2/utils/anthropicClient.js';
 
-// Real extracted opportunities from Stage 2 (DataExtractionAgent test results)
-const STAGE_2_RESULTS = {
-  "timestamp": "2025-01-08T15:20:00.000Z",
-  "results": {
-    "california": {
-      "opportunities": [
-        {
-          "id": "107151",
-          "title": "Environmental Enhancement and Mitigation (2025)",
-          "description": "The EEM Program is an annual program established by legislation in 1989 and amended on September 26, 2013. It offers grants to local, state, and federal governmental agencies, and nonprofit organizations for projects that enhance, protect, or mitigate environmental impacts associated with transportation infrastructure. The program supports projects such as urban forestry, habitat restoration, environmental monitoring, and land conservation initiatives.",
-          "fundingType": "grant",
-          "status": "open",
-          "totalFundingAvailable": 8000000,
-          "minimumAward": 750000,
-          "maximumAward": 1500000,
-          "openDate": "2025-05-07",
-          "closeDate": "2025-07-16",
-          "eligibleApplicants": ["Nonprofit Organizations", "State Agencies", "Federal Agencies", "Local Government", "Tribal Government"],
-          "eligibleProjectTypes": ["Urban Forestry", "Land Conservation", "Environmental Mitigation", "Habitat Restoration"],
-          "eligibleLocations": ["California"],
-          "categories": ["Environment", "Transportation", "Parks & Recreation"],
-          "isNational": false,
-          "url": "https://resources.ca.gov/-/media/CNRA-Website/Files/grants/EEM/2025/Step-1/2025-EEMP-Grant-Guidelines-FINAL.pdf",
-          "sourceId": "68000a0d-02f3-4bc8-93a5-53fcf2fb09b1",
-          "sourceName": "California Grants Portal"
-        },
-        {
-          "id": "GFO-24-610",
-          "title": "GFO-24-610 – Medium- and Heavy-Duty Zero-Emission Vehicle Port Infrastructure",
-          "description": "The California Energy Commission's (CEC's) Clean Transportation Program announces the availability of up to $40 million in grant funds for projects that will deploy medium- and heavy-duty (MDHD) zero-emission vehicle (ZEV) infrastructure at ports. This funding opportunity aims to accelerate the adoption of clean transportation technologies, reduce emissions from freight operations, and support California's climate goals through infrastructure development.",
-          "fundingType": "grant",
-          "status": "open",
-          "totalFundingAvailable": 40000000,
-          "minimumAward": null,
-          "maximumAward": null,
-          "openDate": "2025-03-28",
-          "closeDate": "2025-06-13",
-          "eligibleApplicants": ["Business", "Individual", "Nonprofit Organizations", "Public Agency", "Tribal Government"],
-          "eligibleProjectTypes": ["Electric Vehicle Infrastructure", "Hydrogen Infrastructure", "Port Infrastructure", "Zero Emission Vehicles"],
-          "eligibleLocations": ["California"],
-          "categories": ["Energy", "Transportation", "Infrastructure"],
-          "isNational": false,
-          "url": "https://www.energy.ca.gov/solicitations/2025-03/gfo-24-610-medium-and-heavy-duty-zero-emission-vehicle-port-infrastructure",
-          "sourceId": "68000a0d-02f3-4bc8-93a5-53fcf2fb09b1",
-          "sourceName": "California Grants Portal"
-        },
-        {
-          "id": "147",
-          "title": "Wildlife Corridor and Fish Passage",
-          "description": "WCB is seeking projects that restore or enhance habitat in wildlife migration corridors or that remove impediments to fish passage. Examples of project types and their priority are identified below. Applications may be submitted at any time, but funding decisions are typically made on a quarterly basis during board meetings.",
-          "fundingType": "grant",
-          "status": "open",
-          "totalFundingAvailable": 5000000,
-          "minimumAward": null,
-          "maximumAward": null,
-          "openDate": "2024-11-18",
-          "closeDate": null,
-          "eligibleApplicants": ["Nonprofit Organizations", "State Agencies", "Local Government", "Tribal Government"],
-          "eligibleProjectTypes": ["Wildlife Conservation", "Environmental Conservation", "Infrastructure", "Transportation"],
-          "eligibleLocations": ["California"],
-          "categories": ["Environment", "Transportation", "Research", "Infrastructure"],
-          "isNational": false,
-          "url": "https://wcb.ca.gov/Grants",
-          "sourceId": "68000a0d-02f3-4bc8-93a5-53fcf2fb09b1",
-          "sourceName": "California Grants Portal"
-        }
-      ],
-      "source": {
-        "id": "68000a0d-02f3-4bc8-93a5-53fcf2fb09b1",
-        "name": "California Grants Portal",
-        "organization": "California State Library",
-        "type": "state"
-      }
-    },
-    "grantsGov": {
-      "opportunities": [
-        {
-          "id": "347329",
-          "title": "Electrochemical Systems",
-          "description": "The Electrochemical Systems program is part of the Chemical Process Systems cluster, which also includes: 1) the Catalysis program; 2) the Interfacial Engineering program; and 3) the Process Systems, Reaction Engineering and Molecular Thermodynamics program. The Electrochemical Systems program supports research in fundamental electrochemical processes and emerging technologies for energy storage, conversion, and environmental applications. Areas of interest include battery technologies, fuel cells, electrolysis, electrochemical sensors, and novel electrochemical processes for manufacturing and environmental remediation.",
-          "fundingType": "grant",
-          "status": "open",
-          "totalFundingAvailable": 13096000,
-          "minimumAward": null,
-          "maximumAward": null,
-          "openDate": "2023-04-05",
-          "closeDate": "2025-09-30",
-          "eligibleApplicants": ["Unrestricted"],
-          "eligibleProjectTypes": ["Research and Development", "Energy Storage", "Renewable Energy", "Clean Technology"],
-          "eligibleLocations": [],
-          "categories": ["Energy", "Research", "Science and Technology"],
-          "isNational": true,
-          "url": "http://www.nsf.gov/funding/pgm_summ.jsp?pims_id=506073",
-          "sourceId": "7767eedc-8a09-4058-8837-fc8df8e437cb",
-          "sourceName": "Grants.gov"
-        },
-        {
-          "id": "306169",
-          "title": "Engineering for Civil Infrastructure",
-          "description": "The Engineering for Civil Infrastructure (ECI) program supports fundamental research in geotechnical, structural, materials, architectural, and coastal engineering. The ECI program promotes research that will lead to new knowledge, methodologies, and technologies to design, construct, operate, maintain, and protect civil infrastructure systems. Research areas include sustainable infrastructure, resilient infrastructure systems, smart infrastructure technologies, and innovative materials and construction methods.",
-          "fundingType": "grant",
-          "status": "open",
-          "totalFundingAvailable": null,
-          "minimumAward": null,
-          "maximumAward": null,
-          "openDate": "2018-06-12",
-          "closeDate": "2025-09-30",
-          "eligibleApplicants": ["Unrestricted"],
-          "eligibleProjectTypes": ["Research", "Infrastructure", "Civil Engineering", "Structural Engineering", "Materials Engineering", "Coastal Engineering"],
-          "eligibleLocations": ["National"],
-          "categories": ["Infrastructure", "Research", "Engineering", "Climate Change", "Disaster Resilience"],
-          "isNational": true,
-          "url": "http://www.nsf.gov/funding/pgm_summ.jsp?pims_id=505488",
-          "sourceId": "7767eedc-8a09-4058-8837-fc8df8e437cb",
-          "sourceName": "Grants.gov"
-        },
-        {
-          "id": "PD-18-7607",
-          "title": "Energy, Power, Control, and Networks",
-          "description": "The Energy, Power, Control, and Networks (EPCN) Program supports innovative research in modeling, optimization, learning, adaptation, and control of networked multi-agent systems, higher-level decision-making, and the integration of system-wide objectives. The program focuses on systems applications in energy, transportation, and infrastructure networks, including smart grids, microgrids, and energy management systems.",
-          "fundingType": "grant",
-          "status": "open",
-          "totalFundingAvailable": null,
-          "minimumAward": null,
-          "maximumAward": null,
-          "openDate": "2023-05-19",
-          "closeDate": "2025-09-30",
-          "eligibleApplicants": ["Academic Institutions", "Research Organizations", "Private Organizations", "Public Organizations"],
-          "eligibleProjectTypes": ["Research and Development", "Energy Systems", "Power Systems", "Control Systems", "Machine Learning"],
-          "eligibleLocations": ["National"],
-          "categories": ["Energy", "Technology", "Research", "Engineering"],
-          "isNational": true,
-          "url": "http://www.nsf.gov/funding/pgm_summ.jsp?pims_id=505249",
-          "sourceId": "7767eedc-8a09-4058-8837-fc8df8e437cb",
-          "sourceName": "Grants.gov"
-        }
-      ],
-      "source": {
-        "id": "7767eedc-8a09-4058-8837-fc8df8e437cb",
-        "name": "Grants.gov",
-        "organization": "General Services Administration (GSA)",
-        "type": "federal"
-      }
-    }
-  }
-};
+// Load fresh Stage 2 results from the enhanced results file
+const STAGE_2_RESULTS_PATH = path.join(process.cwd(), 'scripts', 'test', 'stage2-enhanced-results.json');
+
+let STAGE_2_RESULTS;
+try {
+  const resultsData = fs.readFileSync(STAGE_2_RESULTS_PATH, 'utf8');
+  STAGE_2_RESULTS = JSON.parse(resultsData);
+  console.log(`📁 Loaded fresh Stage 2 results from: ${STAGE_2_RESULTS_PATH}`);
+  console.log(`📅 Results timestamp: ${STAGE_2_RESULTS.timestamp}`);
+  
+  // Show data summary
+  const californiaCount = STAGE_2_RESULTS.results.california?.opportunities?.length || 0;
+  const grantsGovCount = STAGE_2_RESULTS.results.grantsGov?.opportunities?.length || 0;
+  console.log(`📊 California opportunities: ${californiaCount}`);
+  console.log(`📊 Grants.gov opportunities: ${grantsGovCount}`);
+  console.log(`📊 Total opportunities to analyze: ${californiaCount + grantsGovCount}\n`);
+  
+} catch (error) {
+  console.error(`❌ Failed to load Stage 2 results from ${STAGE_2_RESULTS_PATH}`);
+  console.error(`💡 Make sure to run Stage 2 tests first: node scripts/test/02-test-data-extraction-agent.js`);
+  console.error(`📍 Error: ${error.message}`);
+  process.exit(1);
+}
 
 /**
  * Analyze and display enhanced opportunity details
@@ -180,8 +65,9 @@ function displayEnhancedOpportunity(opportunity, index, sourceKey) {
   
   console.log(`\n📊 SCORING BREAKDOWN:`);
   const scoring = opportunity.scoring || {};
+  const clientProjectRelevance = (scoring.clientRelevance || 0) + (scoring.projectRelevance || 0);
   console.log(`   Overall Score: ${scoring.overallScore || 0}/10`);
-  console.log(`   Client/Project Relevance: ${scoring.clientProjectRelevance || 0}/6`);
+  console.log(`   Client/Project Relevance: ${clientProjectRelevance}/6 (Client: ${scoring.clientRelevance || 0}/3, Project: ${scoring.projectRelevance || 0}/3)`);
   console.log(`   Funding Attractiveness: ${scoring.fundingAttractiveness || 0}/3`);
   console.log(`   Funding Type (Grant): ${scoring.fundingType || 0}/1`);
   
@@ -192,7 +78,7 @@ function displayEnhancedOpportunity(opportunity, index, sourceKey) {
   console.log(`${opportunity.actionableSummary || 'No actionable summary available'}`);
   
   console.log(`\n🔍 SCORING EXPLANATION:`);
-  console.log(`${opportunity.relevanceReasoning || 'No explanation available'}`);
+  console.log(opportunity.relevanceReasoning || 'No explanation available');
   
   if (opportunity.concerns && opportunity.concerns.length > 0) {
     console.log(`\n⚠️  CONCERNS:`);
@@ -262,9 +148,10 @@ async function testAnalysisAgent(sourceKey, testData) {
       'Scores Are Valid (0-10)': result.opportunities.every(opp => 
         opp.scoring.overallScore >= 0 && opp.scoring.overallScore <= 10
       ),
-      'Client/Project Relevance Valid (0-6)': result.opportunities.every(opp => 
-        opp.scoring.clientProjectRelevance >= 0 && opp.scoring.clientProjectRelevance <= 6
-      ),
+      'Client/Project Relevance Valid (0-6)': result.opportunities.every(opp => {
+        const clientProjectRelevance = (opp.scoring.clientRelevance || 0) + (opp.scoring.projectRelevance || 0);
+        return clientProjectRelevance >= 0 && clientProjectRelevance <= 6;
+      }),
       'Funding Attractiveness Valid (0-3)': result.opportunities.every(opp => 
         opp.scoring.fundingAttractiveness >= 0 && opp.scoring.fundingAttractiveness <= 3
       ),
