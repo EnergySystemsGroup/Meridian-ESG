@@ -436,7 +436,7 @@ export const schemas = {
             },
             description: {
               type: "string",
-              description: "Raw description extracted from the API response - no enhancement needed"
+              description: "Comprehensive description combining all available descriptive content from the API response including primary descriptions, program summaries, synopsis details, notes, and supplementary narrative fields. Content is preserved verbatim with clear source markers (e.g., 'Primary Description: ...', 'Program Summary: ...', 'Additional Details: ...')"
             },
             fundingType: {
               type: "string",
@@ -633,7 +633,7 @@ export const schemas = {
             },
             description: {
               type: "string",
-              description: "Raw description extracted from the API response"
+              description: "Comprehensive description combining all available descriptive content from the API response including primary descriptions, program summaries, synopsis details, notes, and supplementary narrative fields. Content is preserved verbatim with clear source markers (e.g., 'Primary Description: ...', 'Program Summary: ...', 'Additional Details: ...')"
             },
             fundingType: {
               type: "string",

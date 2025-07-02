@@ -167,6 +167,39 @@ SOURCE INFORMATION:
 
 ${responseMappingGuidance}
 
+COMPREHENSIVE DESCRIPTION EXTRACTION STRATEGY:
+For the 'description' field, provide the most complete and comprehensive description possible by:
+
+1. PRIMARY DESCRIPTION SOURCES (look for these fields first):
+   - 'description', 'summary', 'abstract', 'overview', 'programSummary'
+   - 'synopsis', 'details', 'backgroundInfo', 'programDescription'
+   - 'opportunityDescription', 'fundingDescription', 'projectDescription'
+
+2. NESTED DESCRIPTIVE CONTENT (check nested objects):
+   - 'synopsis.description', 'synopsis.detailedDescription', 'synopsis.summary'
+   - 'details.description', 'details.overview', 'details.programInfo'
+   - 'data.synopsis.*', 'data.details.*', 'opportunity.description'
+
+3. SUPPLEMENTARY NARRATIVE FIELDS:
+   - 'notes', 'additionalInfo', 'remarks', 'commentary', 'guidance'
+   - 'applicationProcess', 'eligibilityCriteria', 'evaluationCriteria'
+   - 'programGoals', 'objectives', 'purpose', 'background'
+
+4. CONTENT COMBINATION RULES:
+   - Combine ALL available descriptive content into a single comprehensive description
+   - Use clear source markers: "Primary Description: [content]", "Program Summary: [content]", "Additional Details: [content]"
+   - Preserve verbatim content - do NOT modify, enhance, or interpret the original text
+   - Remove duplicate content that appears in multiple fields
+   - Prioritize completeness over brevity - include all unique descriptive information
+   - Maintain logical flow: primary description first, then supplementary details
+
+5. FORMATTING EXAMPLE:
+   "Primary Description: [verbatim content from main description field]
+   
+   Program Summary: [verbatim content from synopsis or summary field]
+   
+   Additional Details: [verbatim content from notes, details, or other fields]"
+
 FUNDING EXTRACTION APPROACH:
 1. Look for structured funding fields first (totalFunding, estimatedFunding, award amounts, etc.). Use the response mapping rules, if available.
 2. If structured fields are missing or contain "N/A"/"none", extract from description text
