@@ -146,17 +146,18 @@ async function testAnalysisAgent(sourceKey, testData) {
       'All Opportunities Have Actionable Summaries': result.opportunities.every(opp => !!opp.actionableSummary),
       'All Opportunities Have Relevance Reasoning': result.opportunities.every(opp => !!opp.relevanceReasoning),
       'Scores Are Valid (0-10)': result.opportunities.every(opp => 
-        opp.scoring.overallScore >= 0 && opp.scoring.overallScore <= 10
+        opp.scoring && opp.scoring.overallScore >= 0 && opp.scoring.overallScore <= 10
       ),
       'Client/Project Relevance Valid (0-6)': result.opportunities.every(opp => {
+        if (!opp.scoring) return false;
         const clientProjectRelevance = (opp.scoring.clientRelevance || 0) + (opp.scoring.projectRelevance || 0);
         return clientProjectRelevance >= 0 && clientProjectRelevance <= 6;
       }),
       'Funding Attractiveness Valid (0-3)': result.opportunities.every(opp => 
-        opp.scoring.fundingAttractiveness >= 0 && opp.scoring.fundingAttractiveness <= 3
+        opp.scoring && opp.scoring.fundingAttractiveness >= 0 && opp.scoring.fundingAttractiveness <= 3
       ),
       'Funding Type Valid (0-1)': result.opportunities.every(opp => 
-        opp.scoring.fundingType >= 0 && opp.scoring.fundingType <= 1
+        opp.scoring && opp.scoring.fundingType >= 0 && opp.scoring.fundingType <= 1
       ),
       'Execution Time < 120s': executionTime < 120000,
       'Average Score Calculated': typeof metrics.averageScore === 'number',
@@ -197,10 +198,10 @@ async function runAnalysisAgentTests() {
   
   const results = {};
   
-  // Test 1: California opportunities
+  // Test 1: California opportunities (full dataset)
   results.california = await testAnalysisAgent('california', STAGE_2_RESULTS.results.california);
   
-  // Test 2: Grants.gov opportunities
+  // Test 2: Grants.gov opportunities (full dataset)  
   console.log('\n🔄 Starting Grants.gov analysis...\n');
   results.grantsGov = await testAnalysisAgent('grantsGov', STAGE_2_RESULTS.results.grantsGov);
   

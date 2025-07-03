@@ -43,8 +43,8 @@ export async function enhanceOpportunities(opportunities, source, anthropic) {
       };
     }
     
-    // Process opportunities in batches of 3 for reliability (reduced from 5 due to token limits)
-    const batchSize = 3;
+    // Process opportunities individually to prevent token limit truncation  
+    const batchSize = 1;
     const enhancedOpportunities = [];
     
     for (let i = 0; i < opportunities.length; i += batchSize) {
@@ -127,6 +127,8 @@ async function processBatch(opportunities, source, anthropic) {
   console.log(`[AnalysisAgent] 🔄 Processing batch of ${opportunities.length} opportunities`);
   const prompt = `You are analyzing funding opportunities for an energy services business. Enhance the content and provide systematic scoring for each opportunity.
 
+CRITICAL: If there is insufficient information to provide enhanced description, actionable summary, or relevance reasoning for any opportunity, respond with "Insufficient information to provide [field type]" rather than omitting the field.
+
 OUR BUSINESS CONTEXT:
 - Energy services company with expertise in energy and infrastructure projects
 - TARGET CLIENTS: ${TAXONOMIES.TARGET_CLIENT_TYPES.join(', ')}
@@ -200,7 +202,7 @@ CRITICAL: You MUST analyze and return ALL ${opportunities.length} opportunities 
     prompt,
     schemas.opportunityAnalysis,
     {
-      maxTokens: 8000, // Increased for detailed batch analysis
+      maxTokens: 4000, // Optimized for individual opportunity analysis
       temperature: 0.1
     }
   );
@@ -212,8 +214,19 @@ CRITICAL: You MUST analyze and return ALL ${opportunities.length} opportunities 
     if (typeof analysisResults === 'string') {
       console.log(`[AnalysisAgent] 🔧 LLM returned stringified JSON, parsing...`);
       try {
-        analysisResults = JSON.parse(analysisResults);
+        // Clean up potential formatting issues in the JSON string
+        let cleanedJson = analysisResults.trim();
+        
+        // Remove any trailing characters after the closing bracket
+        const lastBracket = cleanedJson.lastIndexOf(']');
+        if (lastBracket !== -1) {
+          cleanedJson = cleanedJson.substring(0, lastBracket + 1);
+        }
+        
+        analysisResults = JSON.parse(cleanedJson);
       } catch (parseError) {
+        console.error(`[AnalysisAgent] JSON parsing failed at position ${parseError.message}`);
+        console.error(`[AnalysisAgent] JSON snippet around error:`, analysisResults.substring(Math.max(0, 4530), 4550));
         throw new Error(`Failed to parse stringified JSON: ${parseError.message}`);
       }
     }
@@ -228,6 +241,36 @@ CRITICAL: You MUST analyze and return ALL ${opportunities.length} opportunities 
       console.warn(`[AnalysisAgent] ⚠️  Mismatch! Expected ${opportunities.length} opportunities, got ${analysisResults.length}`);
     }
     
+    // Debug: Check for incomplete analysis within the batch
+    const incompleteOps = analysisResults.filter(opp => {
+      const hasDescription = opp.enhancedDescription && 
+                            typeof opp.enhancedDescription === 'string' && 
+                            opp.enhancedDescription !== 'No enhanced description available' &&
+                            opp.enhancedDescription.length > 50; // Ensure substantial content
+      const hasSummary = opp.actionableSummary && 
+                        typeof opp.actionableSummary === 'string' && 
+                        opp.actionableSummary !== 'No actionable summary available' &&
+                        opp.actionableSummary.length > 30;
+      const hasReasoning = opp.relevanceReasoning && 
+                          typeof opp.relevanceReasoning === 'string' && 
+                          opp.relevanceReasoning !== 'No explanation available' &&
+                          opp.relevanceReasoning.length > 50;
+      const hasScoring = opp.scoring && typeof opp.scoring.overallScore === 'number';
+      
+      return !hasDescription || !hasSummary || !hasReasoning || !hasScoring;
+    });
+    
+          if (incompleteOps.length > 0) {
+        console.warn(`[AnalysisAgent] ⚠️  Found ${incompleteOps.length} opportunities with incomplete analysis:`);
+        incompleteOps.forEach(opp => {
+          const descLen = typeof opp.enhancedDescription === 'string' ? opp.enhancedDescription.length : 0;
+          const summLen = typeof opp.actionableSummary === 'string' ? opp.actionableSummary.length : 0;
+          const reasLen = typeof opp.relevanceReasoning === 'string' ? opp.relevanceReasoning.length : 0;
+          const scor = typeof opp.scoring?.overallScore === 'number' ? opp.scoring.overallScore : 'N/A';
+          console.warn(`   - "${opp.title.substring(0, 30)}...": desc(${descLen}) summ(${summLen}) reas(${reasLen}) score=${scor}`);
+        });
+      }
+    
     // LLM returns complete opportunity objects with proper scoring via schema
     // No need for additional processing since schema ensures correct format
     console.log(`[AnalysisAgent] ✅ Enhanced ${analysisResults.length} opportunities`);
@@ -237,15 +280,21 @@ CRITICAL: You MUST analyze and return ALL ${opportunities.length} opportunities 
     console.error(`[AnalysisAgent] ❌ Failed to process structured AI response:`, schemaError);
     console.log('Response data:', JSON.stringify(response.data, null, 2));
     
-    // Return original opportunities with default analysis if parsing fails
+    // Return original opportunities with complete default analysis if parsing fails
     return opportunities.map(opportunity => ({
       ...opportunity,
-      // Add missing analysis fields with defaults
-      enhancedDescription: opportunity.description || 'No description available',
+      // Add missing analysis fields with defaults to ensure complete structure
+      enhancedDescription: opportunity.description || 'Description not available - analysis failed',
       actionableSummary: `${opportunity.title} - Analysis failed, requires manual review`,
-      scoring: getDefaultScoring(),
-      relevanceReasoning: 'AI analysis failed - requires manual review',
-      concerns: ['AI analysis failed']
+      scoring: {
+        clientRelevance: 0,
+        projectRelevance: 0, 
+        fundingAttractiveness: 0,
+        fundingType: 0,
+        overallScore: 0
+      },
+      relevanceReasoning: 'Analysis failed - manual review required',
+      concerns: ['Analysis failed due to technical error']
     }));
   }
 }

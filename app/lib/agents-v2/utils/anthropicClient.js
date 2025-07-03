@@ -793,10 +793,12 @@ export const schemas = {
             // ===== ANALYSIS ENHANCEMENTS (added by AnalysisAgent) =====
             enhancedDescription: {
               type: "string",
+              nullable: false,
               description: "A detailed, strategic description that explains what the opportunity is about, who can apply, what types of projects are eligible, and includes 2-3 short use case examples showing how our clients (cities, school districts, state facilities) could take advantage of it. Focus on narrative clarity and practical insight."
             },
             actionableSummary: {
-              type: "string", 
+              type: "string",
+              nullable: false,
               description: "An actionable summary for a sales team that focuses on what the opportunity is about, who can apply, what types of projects are eligible, and whether this is relevant to our company or client types. Written in natural, conversational language."
             },
             scoring: {
@@ -837,6 +839,7 @@ export const schemas = {
             },
             relevanceReasoning: {
               type: "string",
+              nullable: false,
               description: "Clear explanation of the scoring rationale and why this opportunity is or isn't a good fit for our energy services business"
             },
             concerns: {
