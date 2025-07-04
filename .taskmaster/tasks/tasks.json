@@ -654,11 +654,114 @@
         ],
         "priority": "medium",
         "subtasks": []
+      },
+      {
+        "id": 32,
+        "title": "Refactor Analysis Agent to Use Parallel Split Processing Architecture",
+        "description": "Split the Analysis Agent's single analysis call into two parallel functions (Content Enhancement and Scoring Analysis) to reduce processing time by 40-50% and eliminate LLM response truncation issues.",
+        "details": "1. Analyze current Analysis Agent architecture and identify bottlenecks:\n   - Review existing 435-line implementation to understand current single-call structure\n   - Document current processing flow and identify where truncation occurs\n   - Measure baseline performance metrics (25-30 seconds per opportunity)\n   - Identify specific LLM response size limitations causing truncation\n\n2. Design parallel processing architecture:\n   - Create two independent processing functions that can run simultaneously\n   - Design simplified schemas for each function to prevent truncation\n   - Implement proper data flow coordination between parallel processes\n   - Ensure both functions can access necessary opportunity data independently\n\n3. Implement Content Enhancement function:\n   - Focus on generating enhanced descriptions and actionable summaries\n   - Use simplified response schema to avoid truncation issues\n   - Implement specific prompts optimized for content enhancement tasks\n   - Add error handling and fallback mechanisms for content generation failures\n   - Optimize token usage for content-focused LLM calls\n\n4. Implement Scoring Analysis function:\n   - Handle relevance scoring (clientProjectRelevance, fundingAttractiveness, fundingType)\n   - Generate scoring reasoning and justification\n   - Use compact response format to minimize truncation risk\n   - Implement independent error handling with scoring fallback logic\n   - Ensure compatibility with existing filter function requirements (Tasks 21, 27)\n\n5. Implement parallel execution coordinator:\n   - Use Promise.all() or similar mechanism to run both functions simultaneously\n   - Implement proper error handling for partial failures\n   - Merge results from both functions into final analysis output\n   - Add timeout handling for individual function calls\n   - Implement retry logic for failed parallel operations\n\n6. Optimize performance and reliability:\n   - Implement independent caching mechanisms for each function\n   - Add comprehensive logging for parallel processing metrics\n   - Implement circuit breaker patterns for LLM API failures\n   - Add monitoring for processing time improvements\n   - Ensure backward compatibility with existing Analysis Agent interface\n\n7. Update integration points:\n   - Modify test scripts to work with new parallel architecture\n   - Update any dependent systems expecting single analysis output\n   - Ensure compatibility with existing scoring system used by filter functions\n   - Maintain existing API interface while changing internal implementation",
+        "testStrategy": "1. Performance Testing:\n   - Measure processing time before and after refactoring with identical opportunity sets\n   - Validate 40-50% performance improvement target (from 25-30s to 15-20s per opportunity)\n   - Test parallel execution timing to ensure functions run simultaneously, not sequentially\n   - Load test with various opportunity batch sizes to verify consistent performance gains\n\n2. Truncation Issue Resolution Testing:\n   - Test with opportunities that previously caused truncation issues\n   - Verify complete response generation from both Content Enhancement and Scoring Analysis functions\n   - Validate that simplified schemas prevent response truncation entirely\n   - Test edge cases with very large opportunity descriptions and complex scoring scenarios\n\n3. Parallel Processing Validation:\n   - Unit test each function independently to ensure they work in isolation\n   - Test parallel execution coordinator with various success/failure combinations\n   - Verify proper error handling when one function fails but the other succeeds\n   - Test timeout scenarios and retry logic for individual functions\n\n4. Output Quality and Compatibility Testing:\n   - Compare analysis quality between old single-call and new parallel architecture\n   - Validate that merged results maintain same data structure and completeness\n   - Test compatibility with existing filter function requirements (Tasks 21, 27)\n   - Verify scoring accuracy matches or exceeds previous implementation\n\n5. Integration Testing:\n   - Run updated Analysis Agent through existing test scripts (Task 19)\n   - Test with real funding source data to ensure no regression in analysis quality\n   - Validate integration with pipeline orchestration and error handling\n   - Test backward compatibility with any systems expecting original Analysis Agent output format\n\n6. Reliability and Error Handling Testing:\n   - Test various failure scenarios: network timeouts, API rate limits, partial LLM failures\n   - Validate independent fallback mechanisms for each parallel function\n   - Test circuit breaker functionality under sustained API failures\n   - Verify proper logging and monitoring of parallel processing metrics",
+        "status": "pending",
+        "dependencies": [
+          3,
+          19,
+          26
+        ],
+        "priority": "high",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Create Simplified Response Schemas for Parallel Functions",
+            "description": "Design and implement two separate, simplified response schemas for Content Enhancement and Scoring Analysis functions to prevent LLM response truncation issues.",
+            "dependencies": [],
+            "details": "Create TypeScript interfaces in src/types/analysis.ts: ContentEnhancementResponse (enhanced_description, actionable_summary, key_highlights) and ScoringAnalysisResponse (clientProjectRelevance, fundingAttractiveness, fundingType, scoring_reasoning). Each schema should be under 2000 tokens to prevent truncation. Remove complex nested structures and focus on essential fields only.",
+            "status": "pending",
+            "testStrategy": "Unit tests to validate schema structure and token count estimation for typical responses"
+          },
+          {
+            "id": 2,
+            "title": "Implement Content Enhancement Function",
+            "description": "Create a dedicated function that focuses solely on generating enhanced descriptions and actionable summaries for opportunities.",
+            "dependencies": [
+              1
+            ],
+            "details": "Create enhanceOpportunityContent() function in src/agents/analysis/contentEnhancer.ts. Implement optimized prompts for content enhancement, use the ContentEnhancementResponse schema, add error handling with fallback to original content, and implement token usage optimization. Function should accept opportunity data and return enhanced content within 10-15 seconds.",
+            "status": "pending",
+            "testStrategy": "Integration tests with sample opportunities to verify content quality and response time under 15 seconds"
+          },
+          {
+            "id": 3,
+            "title": "Implement Scoring Analysis Function",
+            "description": "Create a dedicated function that handles all relevance scoring and generates scoring justifications independently.",
+            "dependencies": [
+              1
+            ],
+            "details": "Create analyzeOpportunityScoring() function in src/agents/analysis/scoringAnalyzer.ts. Implement compact prompts for scoring tasks, use ScoringAnalysisResponse schema, ensure compatibility with existing filter functions (Tasks 21, 27), add fallback scoring logic for API failures, and optimize for 8-12 second response times.",
+            "status": "pending",
+            "testStrategy": "Unit tests for scoring accuracy and integration tests to verify compatibility with existing filter functions"
+          },
+          {
+            "id": 4,
+            "title": "Implement Parallel Execution Coordinator",
+            "description": "Create the main coordination logic that executes both Content Enhancement and Scoring Analysis functions simultaneously using Promise.all().",
+            "dependencies": [
+              2,
+              3
+            ],
+            "details": "Create executeParallelAnalysis() function in src/agents/analysis/parallelCoordinator.ts. Use Promise.all() to run both functions simultaneously, implement timeout handling (30 seconds total), add retry logic for individual function failures, and create result merging logic that combines both outputs into the existing AnalysisResult format.",
+            "status": "pending",
+            "testStrategy": "Load testing to verify 40-50% performance improvement and stress testing for error handling scenarios"
+          },
+          {
+            "id": 5,
+            "title": "Refactor Main Analysis Agent Architecture",
+            "description": "Modify the existing Analysis Agent to use the new parallel processing architecture while maintaining backward compatibility.",
+            "dependencies": [
+              4
+            ],
+            "details": "Update src/agents/analysisAgent.ts to replace the single analysis call with executeParallelAnalysis(). Maintain existing public interface, add performance logging, implement fallback to original single-call method if parallel processing fails, and ensure all existing functionality remains intact. Remove the 435-line single analysis implementation after successful migration.",
+            "status": "pending",
+            "testStrategy": "Regression testing to ensure all existing functionality works and performance benchmarking to confirm speed improvements"
+          },
+          {
+            "id": 6,
+            "title": "Implement Comprehensive Error Handling and Fallback Logic",
+            "description": "Add robust error handling, circuit breaker patterns, and fallback mechanisms for the parallel processing system.",
+            "dependencies": [
+              5
+            ],
+            "details": "Create src/agents/analysis/errorHandler.ts with circuit breaker implementation for LLM API failures, partial failure handling (when only one function succeeds), fallback to original single-call method for critical failures, and comprehensive error logging. Implement exponential backoff for retries and graceful degradation strategies.",
+            "status": "pending",
+            "testStrategy": "Chaos engineering tests to simulate various failure scenarios and verify system resilience"
+          },
+          {
+            "id": 7,
+            "title": "Add Performance Monitoring and Caching Mechanisms",
+            "description": "Implement performance monitoring, metrics collection, and independent caching for both parallel functions.",
+            "dependencies": [
+              6
+            ],
+            "details": "Create src/agents/analysis/performanceMonitor.ts with timing metrics for each function, cache implementation for both content enhancement and scoring results, performance dashboard integration, and alerting for processing time degradation. Add Redis-based caching with appropriate TTL values and cache invalidation strategies.",
+            "status": "pending",
+            "testStrategy": "Performance monitoring validation and cache hit rate analysis to ensure optimal performance gains"
+          },
+          {
+            "id": 8,
+            "title": "Update Integration Points and Testing Infrastructure",
+            "description": "Modify all integration points, test scripts, and dependent systems to work with the new parallel architecture.",
+            "dependencies": [
+              7
+            ],
+            "details": "Update test scripts in tests/agents/analysisAgent.test.ts to validate parallel processing, modify any dependent systems expecting single analysis output, ensure API interface compatibility, update documentation for the new architecture, and create migration scripts if needed. Verify compatibility with existing scoring system used by filter functions.",
+            "status": "pending",
+            "testStrategy": "End-to-end integration testing across all dependent systems and user acceptance testing to validate maintained functionality"
+          }
+        ]
       }
     ],
     "metadata": {
       "created": "2025-06-17T23:54:58.582Z",
-      "updated": "2025-07-02T20:13:31.569Z",
+      "updated": "2025-07-04T05:54:23.845Z",
       "description": "Tasks for master context"
     }
   }

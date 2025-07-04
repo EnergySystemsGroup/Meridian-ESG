@@ -871,6 +871,112 @@ export const schemas = {
       }
     },
     required: ["opportunities", "analysisMetrics"]
+  },
+
+  /**
+   * Content Enhancement Schema - For parallel content enhancement function
+   * Focused on generating enhanced descriptions and actionable summaries
+   * Simplified to prevent LLM response truncation
+   */
+  contentEnhancement: {
+    type: "object",
+    properties: {
+      analyses: {
+        type: "array",
+        items: {
+          type: "object",
+          properties: {
+            id: {
+              type: "string",
+              description: "Unique identifier to match with the input opportunity"
+            },
+            enhancedDescription: {
+              type: "string",
+              nullable: false,
+              description: "A detailed, strategic description that explains what the opportunity is about, who can apply, what types of projects are eligible, and includes 2-3 short use case examples showing how our clients (cities, school districts, state facilities) could take advantage of it. Focus on narrative clarity and practical insight."
+            },
+            actionableSummary: {
+              type: "string", 
+              nullable: false,
+              description: "An actionable summary for a sales team that focuses on what the opportunity is about, who can apply, what types of projects are eligible, and whether this is relevant to our company or client types. Written in natural, conversational language."
+            }
+          },
+          required: ["id", "enhancedDescription", "actionableSummary"]
+        }
+      }
+    },
+    required: ["analyses"]
+  },
+
+  /**
+   * Scoring Analysis Schema - For parallel scoring analysis function  
+   * Focused on systematic relevance scoring and reasoning
+   * Simplified to prevent LLM response truncation
+   */
+  scoringAnalysis: {
+    type: "object",
+    properties: {
+      analyses: {
+        type: "array",
+        items: {
+          type: "object", 
+          properties: {
+            id: {
+              type: "string",
+              description: "Unique identifier to match with the input opportunity"
+            },
+            scoring: {
+              type: "object",
+              properties: {
+                clientRelevance: {
+                  type: "number",
+                  minimum: 0,
+                  maximum: 3,
+                  description: "How well eligible applicants match our target client types (0-3 points)"
+                },
+                projectRelevance: {
+                  type: "number", 
+                  minimum: 0,
+                  maximum: 3,
+                  description: "How well eligible activities match our preferred activities (0-3 points)"
+                },
+                fundingAttractiveness: {
+                  type: "number",
+                  minimum: 0,
+                  maximum: 3,
+                  description: "Based on funding amounts available (0-3 points)"
+                },
+                fundingType: {
+                  type: "number",
+                  minimum: 0,
+                  maximum: 1,
+                  description: "Is grant funding vs loan (0-1 points)"
+                },
+                overallScore: {
+                  type: "number",
+                  minimum: 0,
+                  maximum: 10,
+                  description: "Total score (sum of all criteria)"
+                }
+              },
+              required: ["clientRelevance", "projectRelevance", "fundingAttractiveness", "fundingType", "overallScore"]
+            },
+            relevanceReasoning: {
+              type: "string",
+              nullable: false,
+              description: "Clear explanation of the scoring rationale and why this opportunity is or isn't a good fit for our energy services business"
+            },
+            concerns: {
+              type: "array",
+              items: { type: "string" },
+              description: "Any red flags or concerns noted during analysis"
+            }
+          },
+          required: ["id", "scoring", "relevanceReasoning"]
+        }
+      }
+    },
+    required: ["analyses"]
   }
 };
 
