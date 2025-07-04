@@ -1,4 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk';
+import { getModelConfig, calculateOptimalBatchSize } from './modelConfigs.js';
 
 /**
  * Direct Anthropic SDK Client - Optimized for Performance
@@ -9,6 +10,7 @@ import Anthropic from '@anthropic-ai/sdk';
  * - 15-25% token savings
  * - Better error handling
  * - Access to latest features
+ * - Dynamic batch sizing based on model capabilities
  */
 export class AnthropicClient {
   constructor(config = {}) {
@@ -18,7 +20,7 @@ export class AnthropicClient {
     });
     
     this.defaultConfig = {
-      model: "claude-3-5-haiku-20241022",
+      model: "claude-sonnet-4-20250514",  // Switch to Sonnet 4 for massive performance gains
       maxTokens: 2000,
       temperature: 0,
       retries: 4,
@@ -212,6 +214,76 @@ export class AnthropicClient {
       totalTokens: 0,
       totalTime: 0,
       errors: 0
+    };
+  }
+
+  /**
+   * Get the current model ID being used
+   * @param {Object} options - Optional configuration override
+   * @returns {string} Model ID
+   */
+  getCurrentModel(options = {}) {
+    const config = { ...this.defaultConfig, ...options };
+    return config.model;
+  }
+
+  /**
+   * Get model configuration for the current or specified model
+   * @param {string} modelId - Optional model ID, defaults to current model
+   * @returns {Object|null} Model configuration object or null if not found
+   */
+  getModelConfig(modelId = null) {
+    const actualModelId = modelId || this.getCurrentModel();
+    return getModelConfig(actualModelId);
+  }
+
+  /**
+   * Calculate optimal batch size for current model and content complexity
+   * @param {number} avgDescriptionLength - Average description length in characters
+   * @param {number} tokensPerOpportunity - Base tokens needed per opportunity (default: 1500)
+   * @param {number} baseTokens - Base overhead tokens (default: 1000)
+   * @param {Object} options - Optional configuration override
+   * @returns {Object} Batch configuration with size and max tokens
+   */
+  calculateOptimalBatchSize(avgDescriptionLength, tokensPerOpportunity = 1500, baseTokens = 1000, options = {}) {
+    const modelId = this.getCurrentModel(options);
+    return calculateOptimalBatchSize(modelId, avgDescriptionLength, tokensPerOpportunity, baseTokens);
+  }
+
+  /**
+   * Check if current model supports extended thinking
+   * @param {Object} options - Optional configuration override
+   * @returns {boolean} True if model supports extended thinking
+   */
+  supportsExtendedThinking(options = {}) {
+    const modelConfig = this.getModelConfig(this.getCurrentModel(options));
+    return modelConfig?.capabilities?.includes('extended-thinking') || false;
+  }
+
+  /**
+   * Get model capacity information
+   * @param {Object} options - Optional configuration override
+   * @returns {Object} Model capacity details
+   */
+  getModelCapacity(options = {}) {
+    const modelConfig = this.getModelConfig(this.getCurrentModel(options));
+    
+    if (!modelConfig) {
+      return {
+        maxOutputTokens: 8192, // Fallback to Haiku default
+        contextWindow: 200000,
+        modelName: 'Unknown',
+        family: 'unknown'
+      };
+    }
+
+    return {
+      maxOutputTokens: modelConfig.maxOutputTokens,
+      contextWindow: modelConfig.contextWindow,
+      modelName: modelConfig.name,
+      family: modelConfig.family,
+      tier: modelConfig.tier,
+      capabilities: modelConfig.capabilities || []
     };
   }
 

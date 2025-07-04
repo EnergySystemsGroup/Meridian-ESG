@@ -10,11 +10,14 @@ export async function analyzeOpportunityScoring(opportunities, source, anthropic
   console.log(`[ScoringAnalyzer] 📊 Analyzing scoring for ${opportunities.length} opportunities`);
   
   try {
-    // Calculate appropriate token limit for scoring analysis
-    const tokensPerOpportunity = 600; // Conservative estimate for scoring only
-    const baseTokens = 500; // Reduced overhead for simplified prompt
-    const dynamicMaxTokens = Math.max(3000, (opportunities.length * tokensPerOpportunity) + baseTokens);
-    console.log(`[ScoringAnalyzer] 🎯 Using ${dynamicMaxTokens} max tokens for batch of ${opportunities.length}`);
+    // Calculate appropriate token limit using model-aware configuration
+    const avgDescriptionLength = opportunities.reduce((sum, opp) => 
+      sum + (opp.description?.length || 0), 0) / opportunities.length;
+    
+    const batchConfig = anthropic.calculateOptimalBatchSize(avgDescriptionLength, 600, 500); // Conservative tokens for scoring
+    const dynamicMaxTokens = batchConfig.maxTokens;
+    
+    console.log(`[ScoringAnalyzer] 🎯 Using ${dynamicMaxTokens} max tokens for batch of ${opportunities.length} (${batchConfig.modelName})`);
 
     const prompt = `You are analyzing funding opportunities for systematic relevance scoring for an energy services business. Focus on precise, methodical scoring and clear reasoning.
 

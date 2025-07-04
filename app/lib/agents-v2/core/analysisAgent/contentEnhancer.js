@@ -10,12 +10,14 @@ export async function enhanceOpportunityContent(opportunities, source, anthropic
   console.log(`[ContentEnhancer] 🎨 Enhancing content for ${opportunities.length} opportunities`);
   
   try {
-    // Calculate appropriate token limit for content enhancement
-    const tokensPerOpportunity = 1500; // Increased for detailed descriptions and summaries  
-    const baseTokens = 1000; // Increased overhead for comprehensive prompts
-    const dynamicMaxTokens = Math.max(5000, (opportunities.length * tokensPerOpportunity) + baseTokens);
+    // Calculate appropriate token limit using model-aware configuration
+    const avgDescriptionLength = opportunities.reduce((sum, opp) => 
+      sum + (opp.description?.length || 0), 0) / opportunities.length;
     
-    console.log(`[ContentEnhancer] 🎯 Using ${dynamicMaxTokens} max tokens for batch of ${opportunities.length}`);
+    const batchConfig = anthropic.calculateOptimalBatchSize(avgDescriptionLength);
+    const dynamicMaxTokens = batchConfig.maxTokens;
+    
+    console.log(`[ContentEnhancer] 🎯 Using ${dynamicMaxTokens} max tokens for batch of ${opportunities.length} (${batchConfig.modelName})`);
 
     const prompt = `You are enhancing content for funding opportunities for an energy services business. Focus on creating compelling, strategic descriptions and actionable summaries.
 

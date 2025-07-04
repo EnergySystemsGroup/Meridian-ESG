@@ -48,23 +48,19 @@ export async function enhanceOpportunities(opportunities, source, anthropic) {
 
     console.log(`[AnalysisAgent] 🚀 Starting parallel analysis of ${opportunities.length} opportunities from ${source.name}`);
     
-    // Adaptive batch sizing based on opportunity complexity
-    let batchSize = 3; // Default to 3 for optimal performance
-    
-    // Reduce batch size if opportunities have very long descriptions
+    // Dynamic batch sizing based on model capabilities and content complexity
     const avgDescriptionLength = opportunities.reduce((sum, opp) => 
       sum + (opp.description?.length || 0), 0) / opportunities.length;
     
-    if (avgDescriptionLength > 1500) {
-      batchSize = 2; // Very long descriptions = smaller batches
-      console.log(`[AnalysisAgent] 📏 Reducing batch size to ${batchSize} due to long descriptions (avg: ${Math.round(avgDescriptionLength)} chars)`);
-    } else if (avgDescriptionLength > 800) {
-      batchSize = 3; // Medium descriptions = optimal batch size
-      console.log(`[AnalysisAgent] 📏 Using batch size ${batchSize} for medium descriptions (avg: ${Math.round(avgDescriptionLength)} chars)`);
-    } else {
-      batchSize = 3; // Short descriptions = optimal batch size
-      console.log(`[AnalysisAgent] 📏 Using batch size ${batchSize} for short descriptions (avg: ${Math.round(avgDescriptionLength)} chars)`);
-    }
+    // Get optimal batch configuration from the anthropic client
+    const batchConfig = anthropic.calculateOptimalBatchSize(avgDescriptionLength);
+    const batchSize = batchConfig.batchSize;
+    
+    // Log the dynamic batch sizing decision
+    console.log(`[AnalysisAgent] 🎯 Dynamic batch sizing for ${batchConfig.modelName}:`);
+    console.log(`[AnalysisAgent] 📏 Content complexity: ${Math.round(avgDescriptionLength)} chars avg (${batchConfig.reason})`);
+    console.log(`[AnalysisAgent] 🚀 Optimal batch size: ${batchSize} (model capacity: ${batchConfig.modelCapacity} tokens)`);
+    console.log(`[AnalysisAgent] 🎯 Allocated tokens: ${batchConfig.maxTokens} (${batchConfig.tokensPerOpportunity}/opp + ${batchConfig.baseTokens} base)`);
 
     const enhancedOpportunities = [];
     
