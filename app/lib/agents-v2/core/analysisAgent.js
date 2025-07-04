@@ -43,16 +43,45 @@ export async function enhanceOpportunities(opportunities, source, anthropic) {
       };
     }
     
-    // Process opportunities individually to prevent token limit truncation  
-    const batchSize = 1;
+    // Adaptive batch sizing based on opportunity complexity
+    let batchSize = 5;
+    
+    // Reduce batch size if opportunities have very long descriptions
+    const avgDescriptionLength = opportunities.reduce((sum, opp) => 
+      sum + (opp.description?.length || 0), 0) / opportunities.length;
+    
+    if (avgDescriptionLength > 1500) {
+      batchSize = 3; // Longer descriptions = smaller batches
+      console.log(`[AnalysisAgent] 📏 Reducing batch size to ${batchSize} due to long descriptions (avg: ${Math.round(avgDescriptionLength)} chars)`);
+    } else if (avgDescriptionLength > 800) {
+      batchSize = 4;
+      console.log(`[AnalysisAgent] 📏 Using batch size ${batchSize} for medium descriptions (avg: ${Math.round(avgDescriptionLength)} chars)`);
+    }
     const enhancedOpportunities = [];
     
     for (let i = 0; i < opportunities.length; i += batchSize) {
       const batch = opportunities.slice(i, i + batchSize);
-      const enhancedBatch = await processBatch(batch, source, anthropic);
+      let enhancedBatch = await processBatch(batch, source, anthropic);
+      
+      // Check for truncation and retry with smaller batch if needed
+      if (enhancedBatch.length < batch.length && batch.length > 1) {
+        console.log(`[AnalysisAgent] ⚠️  Truncation detected (${enhancedBatch.length}/${batch.length}), retrying with smaller batches`);
+        enhancedBatch = [];
+        
+        // Process truncated batch individually
+        for (const singleOpp of batch) {
+          const singleResult = await processBatch([singleOpp], source, anthropic);
+          enhancedBatch.push(...singleResult);
+          await new Promise(resolve => setTimeout(resolve, 200)); // Small delay between individual calls
+        }
+      }
+      
       enhancedOpportunities.push(...enhancedBatch);
       
-      // Small delay between batches to avoid rate limiting
+      // Performance tracking and rate limiting
+      const batchTime = Date.now() - startTime;
+      console.log(`[AnalysisAgent] ⏱️  Batch ${Math.floor(i/batchSize) + 1} completed in ${batchTime}ms (${Math.round(batchTime/enhancedBatch.length)}ms per opportunity)`);
+      
       if (i + batchSize < opportunities.length) {
         await new Promise(resolve => setTimeout(resolve, 100));
       }
@@ -127,7 +156,7 @@ async function processBatch(opportunities, source, anthropic) {
   console.log(`[AnalysisAgent] 🔄 Processing batch of ${opportunities.length} opportunities`);
   const prompt = `You are analyzing funding opportunities for an energy services business. Enhance the content and provide systematic scoring for each opportunity.
 
-CRITICAL: If there is insufficient information to provide enhanced description, actionable summary, or relevance reasoning for any opportunity, respond with "Insufficient information to provide [field type]" rather than omitting the field.
+CRITICAL: You MUST provide enhanced description, actionable summary, and relevance reasoning for EVERY opportunity. Even with minimal data, use the title and available information to create meaningful analysis. Work with what you have - there is always enough information to provide valuable insights.
 
 OUR BUSINESS CONTEXT:
 - Energy services company with expertise in energy and infrastructure projects
@@ -136,6 +165,8 @@ OUR BUSINESS CONTEXT:
 - Strong preference for opportunities with clear infrastructure focus, particularly in the energy space
 - Prefer grants with significant funding potential per applicant
 - Target opportunities where our energy services expertise provides competitive advantage
+
+CRITICAL: Analyze each opportunity INDEPENDENTLY using the business context above. Do not let details from one opportunity influence scoring of another.
 
 OPPORTUNITIES TO ANALYZE:
 ${opportunities.map((opp, index) => `
@@ -149,13 +180,13 @@ Eligible Activities: ${opp.eligibleActivities?.join(', ') || 'Unknown'}
 Project Types: ${opp.eligibleProjectTypes?.join(', ') || 'Unknown'}
 Locations: ${opp.eligibleLocations?.join(', ') || 'Unknown'}
 Status: ${opp.status || 'Unknown'}
-`).join('\n')}
+`).join('\n\n')}
 
 For each opportunity, provide:
 
-1. ENHANCED_DESCRIPTION: Write a detailed, strategic description of this funding opportunity. Summarize what it is, why it's important, who qualifies, and what kinds of projects are eligible. Then provide 2–3 short use case examples showing how WE could help our clients—such as cities, school districts, or state facilities—by executing projects FOR them. Focus on our role as the service provider executing work FOR clients, not clients doing work themselves. Focus on narrative clarity and practical insight, not boilerplate language.
+1. ENHANCED_DESCRIPTION: Write a detailed, strategic description of this funding opportunity. Extract insights from the title, description, and all available fields. If some details are unclear, make reasonable inferences based on the opportunity type and context. Summarize what it is, why it's important, who qualifies, and what kinds of projects are eligible. Then provide 2–3 short use case examples showing how WE could help our clients—such as cities, school districts, or state facilities—by executing projects FOR them. Focus on our role as the service provider executing work FOR clients, not clients doing work themselves. Focus on narrative clarity and practical insight, not boilerplate language.
 
-2. ACTIONABLE_SUMMARY: Write an actionable summary of this funding opportunity for a sales team. Focus on what the opportunity is about, who can apply, what types of projects are eligible, and whether this is relevant to our company or client types. Emphasize our role as the service provider. Keep it concise, focused, and framed to help a sales rep quickly assess whether to pursue it.
+2. ACTIONABLE_SUMMARY: Write an actionable summary of this funding opportunity for a sales team. Use all available information including title keywords, funding amounts, and eligible categories to create practical insights. Focus on what the opportunity is about, who can apply, what types of projects are eligible, and whether this is relevant to our company or client types. Emphasize our role as the service provider. Keep it concise, focused, and framed to help a sales rep quickly assess whether to pursue it.
 
 3. SYSTEMATIC_SCORING: Rate each criterion based on the opportunity data above:
 
@@ -181,7 +212,7 @@ For each opportunity, provide:
      • 1 = Grant (preferred)
      • 0 = Loan, tax credit, other mechanism, or unknown
 
-4. relevanceReasoning: CRITICAL - Using the exact numerical scores you assigned in step 3 above, justify each score by referencing which scoring criteria tier from step 3 the opportunity falls into. Format as a single string:
+4. relevanceReasoning: CRITICAL - Using the exact numerical scores you assigned in step 3 above, justify each score by referencing which scoring criteria tier from step 3 the opportunity falls into. Work with all available data - even if some fields are marked "Unknown", use the title, description, and other available information to make informed assessments. Format as a single string:
 
 CLIENT RELEVANCE ({your clientRelevance score}/3): Quote: "{exact eligible applicants text}" → Criteria Analysis: {explain which tier (0, 1, 2, or 3) this falls into based on the clientRelevance criteria in step 3} → Score Justification: {confirm why your assigned score matches that tier}
 
@@ -195,14 +226,30 @@ FUNDING TYPE ({your fundingType score}/1): Quote: "{mechanism type}" → Criteri
 
 NOTE: Research-only opportunities (academic studies, planning grants without implementation) should receive low projectRelevance scores.
 
-CRITICAL: You MUST analyze and return ALL ${opportunities.length} opportunities listed above. Do not skip any opportunities. For each opportunity, return the COMPLETE opportunity object with all original data plus your analysis enhancements. Use the opportunityAnalysis schema format.`;
+CRITICAL: You MUST analyze and return ALL ${opportunities.length} opportunities listed above. Do not skip any opportunities. Every opportunity has enough information for meaningful analysis - extract insights from titles, descriptions, funding amounts, and categories. Be creative and confident in your analysis. For each opportunity, return the COMPLETE opportunity object with all original data plus your analysis enhancements. Use the opportunityAnalysis schema format.`;
+
+  // Calculate appropriate token limit based on batch size
+  const tokensPerOpportunity = 1200; // Conservative estimate
+  const baseTokens = 1000; // For prompt overhead
+  const dynamicMaxTokens = Math.max(4000, (opportunities.length * tokensPerOpportunity) + baseTokens);
+  console.log(`[AnalysisAgent] 🎯 Using ${dynamicMaxTokens} max tokens for batch of ${opportunities.length} (${tokensPerOpportunity} per opp + ${baseTokens} base)`);
+  
+  // Add JSON formatting instructions to reduce parsing errors
+  const jsonSafePrompt = prompt + `
+
+CRITICAL JSON FORMATTING RULES:
+1. Ensure all string values are properly escaped (especially quotes and newlines)
+2. Do not include any text before or after the JSON response
+3. Complete the entire JSON structure - do not truncate
+4. Use consistent indentation for readability
+5. Double-check that all arrays and objects are properly closed`;
 
   // Use structured schema-based response
   const response = await anthropic.callWithSchema(
-    prompt,
+    jsonSafePrompt,
     schemas.opportunityAnalysis,
     {
-      maxTokens: 4000, // Optimized for individual opportunity analysis
+      maxTokens: dynamicMaxTokens, // Dynamic based on batch size
       temperature: 0.1
     }
   );
