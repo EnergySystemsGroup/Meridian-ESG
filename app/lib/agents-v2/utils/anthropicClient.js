@@ -702,9 +702,19 @@ export const schemas = {
   },
 
   /**
-   * Opportunity Analysis Schema - For AnalysisAgent
-   * Content enhancement + systematic scoring
-   * Returns COMPLETE opportunities (extracted data + analysis enhancements)
+   * @deprecated Opportunity Analysis Schema - DEPRECATED as of parallel architecture refactor
+   * 
+   * This monolithic schema was replaced by two separate schemas for parallel processing:
+   * - contentEnhancement: For enhanced descriptions and actionable summaries
+   * - scoringAnalysis: For systematic scoring and reasoning
+   * 
+   * The Analysis Agent now uses parallel processing to avoid LLM response truncation
+   * and improve performance. Final opportunity records are assembled by merging:
+   * 1. Original dataExtraction fields (from Data Extraction Agent)
+   * 2. contentEnhancement fields (enhanced_description, actionable_summary)
+   * 3. scoringAnalysis fields (scoring object, relevance_reasoning, concerns)
+   * 
+   * DO NOT USE - Kept for reference only. Any code using this schema should be updated.
    */
   opportunityAnalysis: {
     type: "object",
