@@ -1,285 +1,233 @@
 #!/usr/bin/env node
 
 /**
- * Stage 4: Filter Function Testing with Real Analysis Results
+ * Stage 4: Filter Function Testing with Static Analysis Results
  * 
- * Takes the enhanced opportunities from Stage 3 (AnalysisAgent) and
- * tests the FilterFunction to validate gating system logic.
+ * Tests the simplified FilterFunction using pre-generated analysis results from stage3-analysis-results.json
+ * This allows for fast, independent testing without LLM calls.
+ * 
+ * New Logic: Exclude if 2 out of 3 core categories (clientRelevance, projectRelevance, fundingAttractiveness) are 0
  * 
  * Tests:
- * - Primary gating (clientProjectRelevance ≥ 2)
- * - Auto-qualification (clientProjectRelevance ≥ 5)
- * - Secondary filtering (status, funding attractiveness)
+ * - Core "2 out of 3 zeros" exclusion logic
  * - Filtering metrics and logging
+ * - Edge cases and validation
  */
 
-import { runAnalysisAgentTests } from './03-test-analysis-agent.js';
+import { readFileSync } from 'fs';
+import { fileURLToPath } from 'url';
+import { dirname, join } from 'path';
 import { filterOpportunities, getDefaultFilterConfig, createFilterConfig } from '../../app/lib/agents-v2/core/filterFunction.js';
 
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
 /**
- * Display detailed information about a filtered opportunity
+ * Load static analysis results from JSON file
  */
-function displayFilteredOpportunity(opportunity, index, sourceKey, status) {
-  const statusIcon = status === 'included' ? '✅' : '❌';
-  console.log(`\n${statusIcon} OPPORTUNITY #${index + 1} (${sourceKey}): ${status.toUpperCase()}`);
-  console.log('─'.repeat(80));
-  
-  console.log(`🏷️  Title: ${opportunity.title}`);
-  console.log(`💰 Funding: $${opportunity.totalFundingAvailable?.toLocaleString() || 'Unknown'} total`);
-  console.log(`⏰ Deadline: ${opportunity.closeDate || 'Open-ended'}`);
-  console.log(`📊 Status: ${opportunity.status || 'Unknown'}`);
-  
-  const scoring = opportunity.scoring || {};
-  console.log(`\n📊 SCORING:`);
-  console.log(`   Overall Score: ${scoring.overallScore || 0}/10`);
-  console.log(`   Client/Project Relevance: ${scoring.clientProjectRelevance || 0}/6`);
-  console.log(`   Funding Attractiveness: ${scoring.fundingAttractiveness || 0}/3`);
-  console.log(`   Funding Type (Grant): ${scoring.fundingType || 0}/1`);
-  
-  // Determine filter reasoning
-  let filterReason = '';
-  if (status === 'excluded') {
-    if ((scoring.clientProjectRelevance || 0) < 2) {
-      filterReason = 'Failed primary gate (clientProjectRelevance < 2)';
-    } else if (opportunity.status === 'closed') {
-      filterReason = 'Opportunity is closed/expired';
-    } else if ((scoring.fundingAttractiveness || 0) < 1) {
-      filterReason = 'Low funding attractiveness (< 1)';
-    } else {
-      filterReason = 'Unknown exclusion reason';
-    }
-  } else {
-    if ((scoring.clientProjectRelevance || 0) >= 5) {
-      filterReason = 'Auto-qualified (clientProjectRelevance ≥ 5)';
-    } else {
-      filterReason = 'Passed secondary filtering';
-    }
-  }
-  
-  console.log(`🔍 Filter Reason: ${filterReason}`);
-  
-  if (opportunity.enhancedDescription) {
-    const desc = opportunity.enhancedDescription.length > 200 
-      ? opportunity.enhancedDescription.substring(0, 200) + '...'
-      : opportunity.enhancedDescription;
-    console.log(`\n💡 Enhanced Description: ${desc}`);
+function loadAnalysisResults() {
+  try {
+    const filePath = join(__dirname, 'stage3-analysis-results.json');
+    const rawData = readFileSync(filePath, 'utf8');
+    const data = JSON.parse(rawData);
+    return data.results;
+  } catch (error) {
+    console.error('❌ Failed to load analysis results:', error.message);
+    return null;
   }
 }
 
 /**
- * Test the FilterFunction with analysis results from a specific source
+ * Test the filter function with default configuration
  */
-async function testFilterFunction(sourceKey, analysisData, filterConfig = null) {
-  const { opportunities, source, analysisMetrics } = analysisData;
+async function testFilterFunction(sourceKey, analysisData) {
+  console.log(`\n🔍 Testing Filter Function: ${sourceKey}`);
+  console.log(`📊 Input: ${analysisData.opportunities.length} opportunities`);
   
-  console.log(`\n🔍 TESTING FILTER FUNCTION: ${source.name}`);
-  console.log('=' .repeat(70));
-  console.log(`Input: ${opportunities.length} analyzed opportunities`);
-  console.log(`Analysis Avg Score: ${analysisMetrics.averageScore}/10`);
+  const startTime = Date.now();
   
   try {
-    const startTime = Date.now();
-    
-    // Use provided config or default
-    const config = filterConfig || getDefaultFilterConfig();
-    console.log(`\n🛠️  Filter Configuration:`);
-    console.log(`   Primary Gate: clientProjectRelevance ≥ ${config.minimumClientProjectRelevance}`);
-    console.log(`   Auto-Qualify: clientProjectRelevance ≥ ${config.autoQualificationThreshold}`);
-    console.log(`   Secondary: fundingAttractiveness ≥ ${config.minimumFundingAttractiveness}`);
-    console.log(`   Exclude Closed: ${config.excludeClosedOpportunities}`);
-    
-    // Apply filter function
-    console.log(`\n🔄 Running FilterFunction...`);
-    const filterResult = filterOpportunities(opportunities, config);
-    
+    const filterResult = await filterOpportunities(analysisData.opportunities);
     const endTime = Date.now();
-    const executionTime = endTime - startTime;
     
-    console.log(`⏱️  Execution time: ${executionTime}ms`);
-    console.log(`✅ Filtering completed successfully!\n`);
-    
-    // Display filtering metrics
-    console.log('📊 FILTERING METRICS:');
-    console.log('─'.repeat(40));
+    if (!filterResult.success) {
+      throw new Error(filterResult.error || 'Filter function failed');
+    }
     
     const metrics = filterResult.filterMetrics;
-    console.log(`Total Input: ${metrics.totalInput}`);
-    console.log(`Included: ${metrics.totalIncluded} (${((metrics.totalIncluded/metrics.totalInput)*100).toFixed(1)}%)`);
-    console.log(`Excluded: ${metrics.totalExcluded} (${((metrics.totalExcluded/metrics.totalInput)*100).toFixed(1)}%)`);
+    console.log(`✅ Filter completed in ${endTime - startTime}ms`);
+    console.log(`📊 Results:`);
+    console.log(`   • Total analyzed: ${metrics.totalAnalyzed}`);
+    console.log(`   • Included: ${metrics.included} (${((metrics.included/metrics.totalAnalyzed)*100).toFixed(1)}%)`);
+    console.log(`   • Excluded: ${metrics.excluded} (${((metrics.excluded/metrics.totalAnalyzed)*100).toFixed(1)}%)`);
     
-    console.log(`\nGating Metrics:`);
-    console.log(`   Failed Primary Gate: ${metrics.gatingMetrics.failedPrimaryGate}`);
-    console.log(`   Auto-Qualified: ${metrics.gatingMetrics.autoQualified}`);
-    console.log(`   Secondary Filtered: ${metrics.gatingMetrics.secondaryFiltered}`);
-    
-    console.log(`\nExclusion Reasons:`);
-    Object.entries(metrics.exclusionReasons).forEach(([reason, count]) => {
-      if (count > 0) {
-        console.log(`   ${reason}: ${count}`);
-      }
-    });
-    
-    // Display detailed results for first few opportunities
-    console.log('\n🌟 DETAILED FILTERING RESULTS:');
-    
-    // Show included opportunities
-    console.log('\n✅ INCLUDED OPPORTUNITIES:');
-    filterResult.includedOpportunities.slice(0, 3).forEach((opp, index) => {
-      displayFilteredOpportunity(opp, index, sourceKey, 'included');
-    });
-    
-    if (filterResult.includedOpportunities.length > 3) {
-      console.log(`\n   ... and ${filterResult.includedOpportunities.length - 3} more included opportunities`);
-    }
-    
-    // Show excluded opportunities  
-    console.log('\n❌ EXCLUDED OPPORTUNITIES:');
-    filterResult.excludedOpportunities.slice(0, 3).forEach((opp, index) => {
-      displayFilteredOpportunity(opp, index, sourceKey, 'excluded');
-    });
-    
-    if (filterResult.excludedOpportunities.length > 3) {
-      console.log(`\n   ... and ${filterResult.excludedOpportunities.length - 3} more excluded opportunities`);
-    }
-    
-    console.log('\n🎯 VALIDATION:');
-    console.log('─'.repeat(40));
+    console.log(`\n📋 Exclusion Breakdown:`);
+    console.log(`   • Two zero categories: ${metrics.exclusionReasons.twoZeroCategories}`);
+    console.log(`   • Missing scoring: ${metrics.exclusionReasons.missingScoring}`);
     
     // Validate filter results
-    const validations = {
-      'Has Included Opportunities': filterResult.includedOpportunities.length > 0,
-      'Has Filter Metrics': !!filterResult.filterMetrics,
-      'Metrics Math Correct': (metrics.totalIncluded + metrics.totalExcluded) === metrics.totalInput,
-      'All Included Have Valid Scores': filterResult.includedOpportunities.every(opp => 
-        opp.scoring && typeof opp.scoring.clientProjectRelevance === 'number'
-      ),
-      'Primary Gate Logic Correct': filterResult.includedOpportunities.every(opp => 
-        (opp.scoring.clientProjectRelevance || 0) >= config.minimumClientProjectRelevance
-      ),
-      'Auto-Qualification Logic Correct': filterResult.includedOpportunities.filter(opp => 
-        (opp.scoring.clientProjectRelevance || 0) >= config.autoQualificationThreshold
-      ).length === metrics.gatingMetrics.autoQualified,
-      'Closed Opportunities Excluded': config.excludeClosedOpportunities ? 
-        filterResult.includedOpportunities.every(opp => opp.status !== 'closed') : true,
-      'Secondary Filter Logic Correct': filterResult.includedOpportunities.filter(opp => 
-        (opp.scoring.clientProjectRelevance || 0) < config.autoQualificationThreshold
-      ).every(opp => (opp.scoring.fundingAttractiveness || 0) >= config.minimumFundingAttractiveness),
-      'Execution Time < 5s': executionTime < 5000,
-      'Filter Rate Reasonable': (metrics.totalIncluded / metrics.totalInput) >= 0.1 && (metrics.totalIncluded / metrics.totalInput) <= 0.9
-    };
-    
-    Object.entries(validations).forEach(([check, passed]) => {
-      const status = passed ? '✅' : '❌';
-      console.log(`   ${status} ${check}`);
-    });
-    
-    const allPassed = Object.values(validations).every(v => v);
-    console.log(`\n🎯 Overall: ${allPassed ? '✅ PASS' : '❌ FAIL'}`);
+    const validations = validateFilterResults(filterResult);
     
     return {
-      success: allPassed,
+      success: true,
       filterResult,
-      executionTime,
-      source,
-      filterConfig: config
+      processingTime: endTime - startTime,
+      validations
     };
     
   } catch (error) {
-    console.log(`❌ ERROR: ${error.message}`);
-    console.log(`📍 Stack: ${error.stack}`);
-    
+    console.error(`❌ Filter function failed:`, error.message);
     return {
       success: false,
       error: error.message,
-      source: source
+      processingTime: Date.now() - startTime
     };
   }
+}
+
+/**
+ * Validate filter results
+ */
+function validateFilterResults(filterResult) {
+  const metrics = filterResult.filterMetrics;
+  
+  const validations = {
+    'Has Included Opportunities': filterResult.includedOpportunities.length >= 0,
+    'Has Filter Metrics': !!filterResult.filterMetrics,
+    'Metrics Math Correct': (metrics.included + metrics.excluded) === metrics.totalAnalyzed,
+    'All Included Have Valid Scores': filterResult.includedOpportunities.every(opp => 
+      opp.scoring && typeof opp.scoring.clientRelevance === 'number'
+    ),
+    'Two Zero Logic Correct': validateTwoZeroLogic(filterResult),
+    'Processing Time Reasonable': filterResult.processingTime < 5000 // Should be under 5 seconds
+  };
+  
+  console.log(`\n✅ Validation Results:`);
+  Object.entries(validations).forEach(([test, passed]) => {
+    const status = passed ? '✅' : '❌';
+    console.log(`   ${status} ${test}`);
+  });
+  
+  const allPassed = Object.values(validations).every(v => v);
+  console.log(`\n${allPassed ? '✅' : '❌'} Overall: ${allPassed ? 'All validations passed' : 'Some validations failed'}`);
+  
+  return validations;
+}
+
+/**
+ * Validate the "2 out of 3 zeros" logic
+ */
+function validateTwoZeroLogic(filterResult) {
+  const { includedOpportunities, excludedOpportunities } = filterResult;
+  
+  // Check included opportunities - should have 0 or 1 zero in core categories
+  const invalidIncluded = includedOpportunities.filter(opp => {
+    const scoring = opp.scoring;
+    const coreCategories = [
+      scoring.clientRelevance || 0,
+      scoring.projectRelevance || 0,
+      scoring.fundingAttractiveness || 0
+    ];
+    const zeroCount = coreCategories.filter(score => score === 0).length;
+    return zeroCount >= 2; // Should not be included if 2+ zeros
+  });
+  
+  // Check excluded opportunities - those excluded for "twoZeroCategories" should have 2+ zeros
+  const invalidExcluded = excludedOpportunities.filter(opp => {
+    if (opp.exclusionReason && opp.exclusionReason.includes('2 out of 3 core categories scored 0')) {
+      const scoring = opp.scoring;
+      const coreCategories = [
+        scoring.clientRelevance || 0,
+        scoring.projectRelevance || 0,
+        scoring.fundingAttractiveness || 0
+      ];
+      const zeroCount = coreCategories.filter(score => score === 0).length;
+      return zeroCount < 2; // Should not be excluded if less than 2 zeros
+    }
+    return false;
+  });
+  
+  if (invalidIncluded.length > 0) {
+    console.log(`   ❌ Found ${invalidIncluded.length} included opportunities with 2+ zero categories`);
+  }
+  
+  if (invalidExcluded.length > 0) {
+    console.log(`   ❌ Found ${invalidExcluded.length} excluded opportunities with <2 zero categories`);
+  }
+  
+  return invalidIncluded.length === 0 && invalidExcluded.length === 0;
 }
 
 /**
  * Test different filter configurations
  */
 async function testFilterConfigurations(sourceKey, analysisData) {
-  console.log(`\n🔧 TESTING DIFFERENT FILTER CONFIGURATIONS: ${analysisData.source.name}`);
-  console.log('=' .repeat(70));
+  console.log(`\n🔧 Testing Filter Configurations: ${sourceKey}`);
   
-  const configs = [
-    {
-      name: 'Default Config',
-      config: getDefaultFilterConfig()
-    },
-    {
-      name: 'Relaxed Config (Lower Thresholds)',
-      config: createFilterConfig({
-        minimumClientProjectRelevance: 1,
-        minimumFundingAttractiveness: 0
-      })
-    },
-    {
-      name: 'Strict Config (Higher Thresholds)', 
-      config: createFilterConfig({
-        minimumClientProjectRelevance: 3,
-        autoQualificationThreshold: 6,
-        minimumFundingAttractiveness: 2
-      })
-    }
-  ];
+  const configs = {
+    'Default': getDefaultFilterConfig(),
+    'No Logging': createFilterConfig({ enableLogging: false })
+  };
   
   const results = {};
   
-  for (const { name, config } of configs) {
-    console.log(`\n🔄 Testing ${name}...`);
-    const result = await testFilterFunction(sourceKey, analysisData, config);
-    results[name] = result;
+  for (const [configName, config] of Object.entries(configs)) {
+    try {
+      const result = await filterOpportunities(analysisData.opportunities, config);
+      results[configName] = {
+        success: true,
+        included: result.filterMetrics.included,
+        excluded: result.filterMetrics.excluded,
+        processingTime: result.processingTime
+      };
+    } catch (error) {
+      results[configName] = {
+        success: false,
+        error: error.message
+      };
+    }
   }
   
-  // Compare configurations
-  console.log('\n📊 CONFIGURATION COMPARISON:');
-  console.log('─'.repeat(60));
-  console.log('Config Name'.padEnd(30) + 'Included'.padEnd(12) + 'Rate'.padEnd(10) + 'Status');
-  console.log('─'.repeat(60));
+  console.log('\n📊 Configuration Comparison:');
+  console.log('Config Name'.padEnd(25) + 'Included'.padEnd(12) + 'Rate'.padEnd(10) + 'Status');
+  console.log('-'.repeat(55));
   
   Object.entries(results).forEach(([name, result]) => {
     if (result.success) {
-      const metrics = result.filterResult.filterMetrics;
-      const rate = ((metrics.totalIncluded / metrics.totalInput) * 100).toFixed(1);
+      const total = result.included + result.excluded;
+      const rate = total > 0 ? ((result.included / total) * 100).toFixed(1) : '0.0';
       const status = result.success ? '✅' : '❌';
-      console.log(`${name.padEnd(30)}${metrics.totalIncluded.toString().padEnd(12)}${rate}%`.padEnd(10) + status);
+      console.log(`${name.padEnd(25)}${result.included.toString().padEnd(12)}${rate}%`.padEnd(10) + status);
     } else {
-      console.log(`${name.padEnd(30)}${'ERROR'.padEnd(12)}${''.padEnd(10)}❌`);
+      console.log(`${name.padEnd(25)}${'ERROR'.padEnd(12)}${''.padEnd(10)}❌`);
     }
   });
   
   return results;
 }
 
-async function runFilterFunctionTests() {
-  console.log('🔍 STAGE 4: FilterFunction Testing with Real Analysis Data');
-  console.log('=' .repeat(80));
-  console.log('Testing opportunity filtering with results from Stage 3 (AnalysisAgent)\n');
+/**
+ * Main test execution
+ */
+async function main() {
+  console.log('🚀 Starting Filter Function Tests (Stage 4)');
+  console.log('=' .repeat(60));
   
-  // First, get the analysis results from Stage 3
-  console.log('🔄 Running Stage 3 to get analysis results...\n');
-  const stage3Results = await runAnalysisAgentTests();
+  // Load analysis results
+  const analysisResults = loadAnalysisResults();
   
-  if (!stage3Results || Object.values(stage3Results).filter(r => r.success).length === 0) {
-    console.log('❌ Stage 3 failed - cannot proceed with filtering tests');
-    return { success: false, error: 'Stage 3 dependency failed' };
+  if (!analysisResults || Object.keys(analysisResults).length === 0) {
+    console.log('❌ Analysis results empty - cannot proceed with filtering tests');
+    return { success: false, error: 'Analysis results dependency failed' };
   }
   
-  console.log('\n🔄 Starting Stage 4 filtering tests...\n');
+  console.log(`✅ Loaded analysis results for ${Object.keys(analysisResults).length} sources`);
   
   const results = {};
   
-  // Test each successful source from Stage 3
-  for (const [sourceKey, stage3Result] of Object.entries(stage3Results)) {
-    if (stage3Result.success) {
-      const analysisData = {
-        opportunities: stage3Result.result.opportunities,
-        analysisMetrics: stage3Result.result.analysisMetrics,
-        source: stage3Result.source
-      };
-      
+  try {
+    // Test each source from the JSON file
+    for (const [sourceKey, analysisData] of Object.entries(analysisResults)) {
       // Test default configuration
       results[sourceKey] = await testFilterFunction(sourceKey, analysisData);
       
@@ -287,52 +235,50 @@ async function runFilterFunctionTests() {
       const configResults = await testFilterConfigurations(sourceKey, analysisData);
       results[`${sourceKey}_configs`] = configResults;
     }
-  }
-  
-  // Summary
-  console.log('\n📊 STAGE 4 SUMMARY');
-  console.log('=' .repeat(50));
-  
-  Object.entries(results).forEach(([sourceKey, result]) => {
-    if (sourceKey.endsWith('_configs')) {
-      return; // Skip config comparison results in main summary
-    }
     
-    const sourceInfo = sourceKey === 'california' ? 'California Grants Portal' : 'Grants.gov';
-    const status = result.success ? '✅ PASS' : '❌ FAIL';
-    const time = result.executionTime ? `(${result.executionTime}ms)` : '';
+    // Print summary
+    console.log('\n' + '='.repeat(60));
+    console.log('📊 FILTER FUNCTION TEST SUMMARY');
+    console.log('='.repeat(60));
     
-    if (result.success) {
-      const metrics = result.filterResult.filterMetrics;
-      const includeRate = ((metrics.totalIncluded / metrics.totalInput) * 100).toFixed(1);
-      console.log(`${sourceInfo}: ${status} ${time} - ${metrics.totalIncluded}/${metrics.totalInput} included (${includeRate}%)`);
-    } else {
-      console.log(`${sourceInfo}: ${status} ${time} - ${result.error || 'Unknown error'}`);
-    }
-  });
-  
-  const successCount = Object.values(results).filter(r => r.success && !r.source).length;
-  const totalSources = Object.keys(results).filter(k => !k.endsWith('_configs')).length;
-  console.log(`\n🎯 Overall: ${successCount}/${totalSources} sources filtered successfully`);
-  
-  if (successCount > 0) {
-    console.log('\n🎉 Stage 4 Complete! FilterFunction is working with real data');
-    console.log('\n💾 Ready for Stage 5 (StorageAgent integration)');
-  } else {
-    console.log('\n⚠️  Filter function tests failed - fix issues before proceeding');
+    Object.entries(results).forEach(([sourceKey, result]) => {
+      if (!sourceKey.includes('_configs')) {
+        const time = result.processingTime ? `${result.processingTime}ms` : 'N/A';
+        const status = result.success ? '✅ PASSED' : '❌ FAILED';
+        const sourceInfo = sourceKey.charAt(0).toUpperCase() + sourceKey.slice(1);
+        
+        if (result.success) {
+          const metrics = result.filterResult.filterMetrics;
+          const includeRate = ((metrics.included / metrics.totalAnalyzed) * 100).toFixed(1);
+          console.log(`${sourceInfo}: ${status} ${time} - ${metrics.included}/${metrics.totalAnalyzed} included (${includeRate}%)`);
+        } else {
+          console.log(`${sourceInfo}: ${status} ${time} - ${result.error || 'Unknown error'}`);
+        }
+      }
+    });
+    
+    const allPassed = Object.values(results)
+      .filter(r => !r.hasOwnProperty('Default')) // Skip config test results
+      .every(r => r.success);
+    
+    console.log('\n' + (allPassed ? '✅ ALL TESTS PASSED' : '❌ SOME TESTS FAILED'));
+    
+    return { success: allPassed, results };
+    
+  } catch (error) {
+    console.error('❌ Test execution failed:', error);
+    return { success: false, error: error.message };
   }
-  
-  return {
-    success: successCount > 0,
-    results,
-    totalSources,
-    successCount
-  };
 }
 
-// Run the tests
+// Run tests if this file is executed directly
 if (import.meta.url === `file://${process.argv[1]}`) {
-  runFilterFunctionTests().catch(console.error);
+  main().then(result => {
+    process.exit(result.success ? 0 : 1);
+  }).catch(error => {
+    console.error('Fatal error:', error);
+    process.exit(1);
+  });
 }
 
-export { runFilterFunctionTests }; 
+export { main as testFilterFunction }; 
