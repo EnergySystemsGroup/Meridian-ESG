@@ -17,7 +17,7 @@
 
 import { analyzeSource } from '../agents-v2/core/sourceOrchestrator.js';
 import { extractFromSource } from '../agents-v2/core/dataExtractionAgent.js';
-import { enhanceOpportunities } from '../agents-v2/core/analysisAgent.js';
+import { enhanceOpportunities } from '../agents-v2/core/analysisAgent/index.js';
 import { filterOpportunities } from '../agents-v2/core/filterFunction.js';
 import { storeOpportunities } from '../agents-v2/core/storageAgent/index.js';
 import { RunManagerV2 } from './runManagerV2.js';

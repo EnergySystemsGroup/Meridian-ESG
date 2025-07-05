@@ -16,7 +16,7 @@ if (!process.env.ANTHROPIC_API_KEY) {
   process.exit(1);
 }
 
-import { enhanceOpportunities } from '../../app/lib/agents-v2/core/analysisAgent.js';
+import { enhanceOpportunities } from '../../app/lib/agents-v2/core/analysisAgent/index.js';
 import { getAnthropicClient } from '../../app/lib/agents-v2/utils/anthropicClient.js';
 
 const STAGE_2_RESULTS_PATH = path.join(process.cwd(), 'scripts', 'test', 'stage2-enhanced-results.json');

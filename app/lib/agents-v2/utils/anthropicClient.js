@@ -20,7 +20,7 @@ export class AnthropicClient {
     });
     
     this.defaultConfig = {
-      model: "claude-sonnet-4-20250514",  // Switch to Sonnet 4 for massive performance gains
+      model: "claude-3-5-haiku-20241022",  // Using Haiku for dev mode
       maxTokens: 2000,
       temperature: 0,
       retries: 4,

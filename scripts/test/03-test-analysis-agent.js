@@ -24,7 +24,7 @@ if (!process.env.ANTHROPIC_API_KEY) {
   process.exit(1);
 }
 
-import { enhanceOpportunities } from '../../app/lib/agents-v2/core/analysisAgent.js';
+import { enhanceOpportunities } from '../../app/lib/agents-v2/core/analysisAgent/index.js';
 import { getAnthropicClient } from '../../app/lib/agents-v2/utils/anthropicClient.js';
 
 // Load fresh Stage 2 results from the enhanced results file

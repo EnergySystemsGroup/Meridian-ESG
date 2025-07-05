@@ -2,7 +2,7 @@ import dotenv from 'dotenv';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import { describe, test, expect, beforeEach, vi } from 'vitest';
-import { enhanceOpportunities } from '../core/analysisAgent.js';
+import { enhanceOpportunities } from '../core/analysisAgent/index.js';
 
 // Load environment variables
 const __filename = fileURLToPath(import.meta.url);
