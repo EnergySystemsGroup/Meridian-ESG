@@ -67,6 +67,9 @@ function sanitizeFields(opportunity) {
   sanitized.url = sanitizeUrl(opportunity.url);
   sanitized.status = sanitizeStatus(opportunity.status);
   
+  // Handle API tracking fields
+  sanitized.api_updated_at = sanitizeDate(opportunity.api_updated_at);
+  
   // Handle monetary fields
   sanitized.minimum_award = sanitizeAmount(opportunity.minimumAward);
   sanitized.maximum_award = sanitizeAmount(opportunity.maximumAward);

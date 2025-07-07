@@ -68,7 +68,7 @@ describe('EarlyDuplicateDetector', () => {
       ).rejects.toThrow('Opportunities must be an array');
 
       await expect(
-        earlyDuplicateDetector.detectDuplicates([], null, mockSupabase)
+        earlyDuplicateDetector.detectDuplicates([], '', mockSupabase)
       ).rejects.toThrow('Source ID is required');
     });
 
@@ -99,16 +99,18 @@ describe('EarlyDuplicateDetector', () => {
   describe('batchFetchDuplicates', () => {
     it('should perform efficient batch queries', async () => {
       const opportunities = [
-        { id: 'id-1', title: 'Grant 1' },
-        { id: 'id-2', title: 'Grant 2' },
-        { id: 'id-1', title: 'Grant 1' } // Duplicate ID should be deduplicated
+        { id: 'id-1', title: 'Environmental Grant Program 1' },
+        { id: 'id-2', title: 'Infrastructure Grant Program 2' },
+        { id: 'id-1', title: 'Environmental Grant Program 1' } // Duplicate ID should be deduplicated
       ];
 
-      const mockSelect = vi.fn(() => ({
-        eq: vi.fn(() => ({
-          in: vi.fn(() => Promise.resolve({ data: [], error: null }))
-        }))
-      }));
+      let queryCount = 0;
+      const mockIn = vi.fn((column, values) => {
+        queryCount++;
+        return Promise.resolve({ data: [], error: null });
+      });
+      const mockEq = vi.fn(() => ({ in: mockIn }));
+      const mockSelect = vi.fn(() => ({ eq: mockEq }));
 
       mockSupabase.from.mockReturnValue({
         select: mockSelect
@@ -119,6 +121,11 @@ describe('EarlyDuplicateDetector', () => {
       // Should only call database twice (once for IDs, once for titles)
       expect(mockSupabase.from).toHaveBeenCalledTimes(2);
       expect(mockSupabase.from).toHaveBeenCalledWith('funding_opportunities');
+      
+      // Check that it queries with correct column names
+      expect(mockEq).toHaveBeenCalledWith('funding_source_id', 'source-1');
+      expect(mockIn).toHaveBeenCalledWith('opportunity_id', ['id-1', 'id-2']); // IDs deduplicated
+      expect(mockIn).toHaveBeenCalledWith('title', ['Environmental Grant Program 1', 'Infrastructure Grant Program 2']); // Titles deduplicated
     });
 
     it('should handle database errors gracefully', async () => {
@@ -155,8 +162,8 @@ describe('EarlyDuplicateDetector', () => {
       await earlyDuplicateDetector.batchFetchDuplicates(opportunities, 'source-1', mockSupabase);
 
       // Should only query for valid ID and valid title
-      expect(mockIn).toHaveBeenCalledWith(['valid-id']); // Only valid ID
-      expect(mockIn).toHaveBeenCalledWith(['This is a valid long title']); // Only valid title
+      expect(mockIn).toHaveBeenCalledWith('opportunity_id', ['valid-id']); // Only valid ID
+      expect(mockIn).toHaveBeenCalledWith('title', ['This is a valid long title']); // Only valid title
     });
   });
 
@@ -223,10 +230,26 @@ describe('EarlyDuplicateDetector', () => {
       expect(result.reason).toBe('api_timestamp_newer');
     });
 
-    it('should handle Scenario 2: API timestamp not newer', () => {
+    it('should handle Scenario 2: API timestamp same (not newer)', () => {
       const opportunity = { 
         ...baseOpportunity, 
         api_updated_at: '2024-05-01T00:00:00Z' 
+      };
+      const existing = { 
+        ...baseExisting, 
+        api_updated_at: '2024-05-01T00:00:00Z' 
+      };
+
+      const result = earlyDuplicateDetector.performFreshnessCheck(opportunity, existing);
+      
+      expect(result.action).toBe('skip');
+      expect(result.reason).toBe('api_timestamp_not_newer');
+    });
+
+    it('should handle Scenario 2: API timestamp older', () => {
+      const opportunity = { 
+        ...baseOpportunity, 
+        api_updated_at: '2024-04-01T00:00:00Z' 
       };
       const existing = { 
         ...baseExisting, 
@@ -262,19 +285,45 @@ describe('EarlyDuplicateDetector', () => {
       expect(result.action).toBe('skip');
       expect(result.reason).toBe('recently_reviewed');
     });
+
+    it('should handle missing updated_at timestamp', () => {
+      const opportunity = baseOpportunity; // No api_updated_at
+      const existing = {}; // No updated_at
+
+      const result = earlyDuplicateDetector.performFreshnessCheck(opportunity, existing);
+      
+      expect(result.action).toBe('process');
+      expect(result.reason).toBe('stale_review_no_timestamp');
+    });
+
+    it('should handle API timestamp when DB has no api_updated_at', () => {
+      const opportunity = { 
+        ...baseOpportunity, 
+        api_updated_at: '2024-06-01T00:00:00Z' 
+      };
+      const existing = { 
+        ...baseExisting
+        // No api_updated_at in database record
+      };
+
+      const result = earlyDuplicateDetector.performFreshnessCheck(opportunity, existing);
+      
+      expect(result.action).toBe('process');
+      expect(result.reason).toBe('api_timestamp_newer');
+    });
   });
 
   describe('checkCriticalFieldChanges', () => {
     it('should detect changes in critical fields', () => {
-      const existing = { minimumAward: 1000 };
-      const opportunity = { minimumAward: 2000 };
+      const existing = { title: 'Old Title' };
+      const opportunity = { title: 'New Title' };
 
       changeDetector.hasFieldChanged.mockReturnValue(true);
 
       const result = earlyDuplicateDetector.checkCriticalFieldChanges(existing, opportunity);
       
       expect(result).toBe(true);
-      expect(changeDetector.hasFieldChanged).toHaveBeenCalledWith(existing, opportunity, 'minimumAward');
+      expect(changeDetector.hasFieldChanged).toHaveBeenCalledWith(existing, opportunity, 'title');
     });
 
     it('should check all 6 critical fields', () => {
@@ -337,19 +386,19 @@ describe('EarlyDuplicateDetector', () => {
       ];
 
       // Mock batch fetch returning existing records
+      const mockIn = vi.fn((column, values) => {
+        if (column === 'opportunity_id') {
+          // For opportunity_id queries, return matching records
+          const matches = existingRecords.filter(r => values.includes(r.opportunity_id));
+          return Promise.resolve({ data: matches, error: null });
+        }
+        // For title queries, return empty (to force ID-based matching)
+        return Promise.resolve({ data: [], error: null });
+      });
+      
       mockSupabase.from.mockReturnValue({
         select: vi.fn(() => ({
-          eq: vi.fn(() => ({
-            in: vi.fn((field, values) => {
-              if (field === 'opportunity_id') {
-                return Promise.resolve({ 
-                  data: existingRecords.filter(r => values.includes(r.opportunity_id)), 
-                  error: null 
-                });
-              }
-              return Promise.resolve({ data: [], error: null });
-            })
-          }))
+          eq: vi.fn(() => ({ in: mockIn }))
         }))
       });
 

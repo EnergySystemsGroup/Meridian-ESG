@@ -663,6 +663,11 @@ export const schemas = {
               type: "array",
               items: { type: "string" },
               description: "Specific activities or expenses that can be funded (e.g., 'equipment purchase', 'installation', 'design', 'maintenance')"
+            },
+            api_updated_at: {
+              type: "string",
+              nullable: true,
+              description: "API's last updated timestamp in ISO format (used for freshness checking in duplicate detection)"
             }
           },
           required: ["id", "title", "description", "eligibleApplicants", "eligibleProjectTypes", "eligibleActivities"]

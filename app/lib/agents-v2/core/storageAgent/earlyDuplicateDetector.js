@@ -26,8 +26,6 @@ import { changeDetector } from './changeDetector.js';
  * @returns {Promise<Object>} - Categorized opportunities for action-oriented processing
  */
 export async function detectDuplicates(opportunities, sourceId, supabase) {
-  console.log(`[EarlyDuplicateDetector] 🔍 Processing ${opportunities.length} opportunities from source: ${sourceId}`);
-  
   const startTime = Date.now();
   
   try {
@@ -35,6 +33,8 @@ export async function detectDuplicates(opportunities, sourceId, supabase) {
     if (!Array.isArray(opportunities)) {
       throw new Error('Opportunities must be an array');
     }
+    
+    console.log(`[EarlyDuplicateDetector] 🔍 Processing ${opportunities.length} opportunities from source: ${sourceId}`);
     
     if (!sourceId) {
       throw new Error('Source ID is required');
@@ -134,7 +134,7 @@ async function batchFetchDuplicates(opportunities, sourceId, supabase) {
     const { data, error } = await supabase
       .from('funding_opportunities')
       .select('*')
-      .eq('api_source_id', sourceId)
+      .eq('funding_source_id', sourceId)
       .in('opportunity_id', opportunityIds);
     
     if (error) {
@@ -151,7 +151,7 @@ async function batchFetchDuplicates(opportunities, sourceId, supabase) {
     const { data, error } = await supabase
       .from('funding_opportunities')
       .select('*')
-      .eq('api_source_id', sourceId)
+      .eq('funding_source_id', sourceId)
       .in('title', titles);
     
     if (error) {

@@ -235,6 +235,14 @@ FUNDING EXTRACTION APPROACH:
 4. Use context clues to determine minimum, maximum, and total funding amounts
 5. If no funding information is available anywhere, set funding amounts to null
 
+API TIMESTAMP EXTRACTION:
+For the 'api_updated_at' field, extract the API's last modification timestamp:
+1. Look for timestamp fields like: lastModified, updated_at, dateModified, modifiedDate, lastUpdated, updatedOn, revisionDate, dateUpdated, or similar
+2. Extract the most recent modification timestamp from the API response
+3. Convert to ISO format (YYYY-MM-DDTHH:mm:ss.sssZ) if possible
+4. If no timestamp is available in the API response, leave null
+5. Do NOT use posted_date, created_date, or application deadlines - only use actual modification/update timestamps
+
 TAXONOMY GUIDELINES:
 
 ${projectTypesInstruction}
