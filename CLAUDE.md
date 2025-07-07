@@ -23,6 +23,16 @@ npm run test:run     # Run tests once
 npm run tm           # Run task-master CLI
 ```
 
+## Claude Code Task Management Guidelines
+
+- Use the `task-master` CLI to manage all project tasks.
+- Regularly run `task-master next` to fetch the current task, and `task-master complete <id>` when finished.
+- Keep the task list accurate: update task content if new information emerges or implementation details change.
+- If a task appears vague, incomplete, or inconsistent with project goals, pause and raise a concern before proceeding.
+- Maintain alignment between project requirements and task execution—act as a second set of eyes.
+- Log your progress explicitly within the task system; do not assume implicit understanding.
+
+
 ### Data Processing Scripts
 ```bash
 npm run add-grants-gov-source    # Add Grants.gov as a funding source

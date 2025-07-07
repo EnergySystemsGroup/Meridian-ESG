@@ -82,9 +82,9 @@
             "id": 1,
             "title": "Implement EarlyDuplicateDetector with ID + Title validation",
             "description": "Create a new module that performs duplicate detection immediately after data extraction using two-step ID + Title validation approach",
-            "status": "pending",
+            "status": "done",
             "dependencies": [],
-            "details": "- Create EarlyDuplicateDetector class in /app/lib/agents-v2/core/storageAgent/\n- Implement ID + Title validation: ID match within source + title similarity confirmation\n- Fall back to title-only matching using fuzzyset.js v1.0.7 if no valid ID match\n- Design API for integration with ProcessCoordinatorV2 branching logic\n- Include timestamp-based freshness checking with 90-day stale threshold\n- Implement 4-scenario freshness check decision matrix\n- Return duplicate status, confidence scores, validation method used, and processing recommendation (bypass/continue)\n- Handle edge cases: ID reuse, missing IDs, scraped data\n- Include critical field comparison logic for duplicates",
+            "details": "- Create EarlyDuplicateDetector class in /app/lib/agents-v2/core/storageAgent/\n- Implement ID + Title validation: ID match within source + title similarity confirmation\n- Fall back to title-only matching using fuzzyset.js v1.0.7 if no valid ID match\n- Design API for integration with ProcessCoordinatorV2 branching logic\n- Include timestamp-based freshness checking with 90-day stale threshold\n- Implement 4-scenario freshness check decision matrix\n- Return duplicate status, confidence scores, validation method used, and processing recommendation (bypass/continue)\n- Handle edge cases: ID reuse, missing IDs, scraped data\n- Include critical field comparison logic for duplicates\n<info added on 2025-07-06T18:10:44.971Z>\n✅ IMPLEMENTATION COMPLETED\n\nSuccessfully implemented EarlyDuplicateDetector V2 with all requested features:\n\n🏗️ ARCHITECTURE IMPLEMENTED:\n- Efficient batch processing: Single batch query for all IDs and titles (2 DB calls vs N calls)\n- Action-oriented output: Categorizes opportunities into newOpportunities, opportunitiesToUpdate, opportunitiesToSkip\n- Reuses existing duplicateDetector.titlesAreSimilar() and changeDetector.hasFieldChanged() logic\n\n🔍 ID + TITLE VALIDATION APPROACH:\n- Step 1: Check ID matches within same source (treats ID as hint)  \n- Step 2: Validate ID match with title similarity (prevents catastrophic updates from ID reuse)\n- Step 3: Fall back to title-only matching if ID validation fails\n- Comprehensive logging for ID reuse detection\n\n📊 4-SCENARIO FRESHNESS CHECK MATRIX:\n1. API has timestamp + newer → Process for update\n2. API has timestamp + same/older → Skip (no changes)\n3. API has NO timestamp + 90+ days old → Process for stale review  \n4. API has NO timestamp + <90 days → Skip (recently reviewed)\n\n⚡ CRITICAL FIELD COMPARISON:\n- Only checks 6 critical fields: title, minimumAward, maximumAward, totalFundingAvailable, closeDate, openDate\n- Uses existing changeDetector logic for consistency\n- Returns boolean for direct update decisions\n\n📁 FILES CREATED:\n- app/lib/agents-v2/core/storageAgent/earlyDuplicateDetector.js (main module)\n- app/lib/agents-v2/core/storageAgent/directUpdateHandler.js (companion utility)\n- app/lib/agents-v2/tests/earlyDuplicateDetector.test.js (comprehensive tests)\n\n🧪 TEST COVERAGE:\n- Main function integration tests\n- Batch optimization validation\n- ID + Title validation scenarios (including ID reuse protection)\n- All 4 freshness check scenarios\n- Critical field change detection\n- Error handling and edge cases\n- Performance characteristics (100 opportunities in <1 second)\n\n✅ READY FOR REVIEW (Task 2.7)\n</info added on 2025-07-06T18:10:44.971Z>",
             "testStrategy": "Test ID + Title validation prevents catastrophic updates when APIs reuse IDs, validate fallback to title-only matching works correctly, test all 4 freshness check scenarios, verify processing recommendations for pipeline branching"
           },
           {
@@ -92,7 +92,9 @@
             "title": "Extend database schema for optimization features",
             "description": "Add necessary database fields to support API timestamp tracking for freshness checks",
             "status": "pending",
-            "dependencies": [],
+            "dependencies": [
+              "2.7"
+            ],
             "details": "- Add api_updated_at timestamp fields to relevant tables\n- Create Prisma migrations for schema changes\n- Update TypeScript types to reflect schema changes\n- Ensure schema supports 90-day stale review threshold tracking\n- Support both api_updated_at (from API) and updated_at (our timestamp) fields",
             "testStrategy": "Validate timestamp fields capture API update times correctly and support freshness calculations with 90-day stale review logic"
           },
@@ -131,6 +133,17 @@
             "dependencies": [],
             "details": "- Create benchmarks comparing old vs new pipeline performance\n- Measure token usage reduction from duplicates bypassing Analysis/Filter stages\n- Test end-to-end latency improvements from pipeline branching\n- Validate accuracy is maintained with ID + Title validation approach\n- Test Critical Fields + Null Protection effectiveness with direct updates\n- Document performance gains and admin edit protection benefits achieved\n- Validate 90-day stale review threshold prevents endless re-processing\n- Test all 4 freshness check scenarios for performance impact\n- Measure maximum reduction in unnecessary LLM processing\n- Validate only new opportunities consume Analysis/Filter resources",
             "testStrategy": "Comprehensive performance testing with real-world data scenarios including edge cases, validate 90-day stale review logic efficiency, measure maximum token savings from pipeline branching"
+          },
+          {
+            "id": 7,
+            "title": "Review and Validate EarlyDuplicateDetector Implementation",
+            "description": "Comprehensive review and validation of the EarlyDuplicateDetector implementation to ensure it meets all architectural requirements before proceeding with database schema changes",
+            "details": "- Review EarlyDuplicateDetector code for architectural compliance with ID + Title validation approach\n- Validate batch processing efficiency and database query optimization\n- Confirm output structure provides clear action-oriented categorization\n- Test ID + Title validation logic prevents catastrophic updates\n- Verify freshness check decision matrix implementation (4 scenarios)\n- Validate integration points with ProcessCoordinatorV2\n- Ensure proper error handling and edge case coverage\n- Confirm critical field comparison logic works correctly\n- Review code quality, TypeScript compliance, and documentation\n- Validate unit tests cover all scenarios and edge cases\n- Check performance characteristics with sample data\n- Ensure no regression with existing Storage Agent functionality",
+            "status": "in-progress",
+            "dependencies": [
+              1
+            ],
+            "parentTaskId": 2
           }
         ]
       },
@@ -834,7 +847,7 @@
     ],
     "metadata": {
       "created": "2025-06-17T23:54:58.582Z",
-      "updated": "2025-07-06T04:17:26.408Z",
+      "updated": "2025-07-06T18:29:44.992Z",
       "description": "Tasks for master context"
     }
   }
