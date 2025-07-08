@@ -1,23 +1,22 @@
 /**
  * StorageAgent V2 - Main Orchestrator
  * 
- * Coordinates the modular storage components to handle opportunity storage,
- * duplicate detection, and state eligibility processing.
+ * Coordinates the modular storage components to handle NEW opportunity storage
+ * and state eligibility processing. Optimized for Approach A architecture where
+ * duplicate detection is handled upstream in the pipeline.
  * 
  * Exports: storeOpportunities(opportunities, source, supabase)
  */
 
 import { fundingSourceManager } from './fundingSourceManager.js';
-import { duplicateDetector } from './duplicateDetector.js';
-import { changeDetector } from './changeDetector.js';
 import { stateEligibilityProcessor } from './stateEligibilityProcessor.js';
 import { dataSanitizer } from './dataSanitizer.js';
 import { createClient } from '@supabase/supabase-js';
 import { createSupabaseClient, logAgentExecution } from '../../../supabase.js';
 
 /**
- * Stores filtered opportunities with comprehensive deduplication and processing
- * @param {Array} opportunities - Filtered opportunities from Filter Function
+ * Stores NEW opportunities (no duplicate detection needed - handled upstream)
+ * @param {Array} opportunities - NEW opportunities from upstream pipeline processing
  * @param {Object} source - The source object for context
  * @param {Object} supabase - Supabase client instance (optional, will create if not provided)
  * @returns {Promise<Object>} - Storage results with metrics
@@ -57,7 +56,7 @@ export async function storeOpportunities(opportunities, source, supabase = null)
     const executionTime = Math.max(1, Date.now() - startTime);
     
     console.log(`[StorageAgent] ✅ Storage completed in ${executionTime}ms`);
-    console.log(`[StorageAgent] 📊 Results: ${metrics.newOpportunities} new, ${metrics.updatedOpportunities} updated, ${metrics.ignoredOpportunities} ignored`);
+    console.log(`[StorageAgent] 📊 Results: ${metrics.newOpportunities} new opportunities stored`);
     
     const result = { results, metrics, executionTime };
     
@@ -110,16 +109,22 @@ export async function storeOpportunities(opportunities, source, supabase = null)
 }
 
 /**
- * Creates empty result structure
+ * Creates empty result structure for new-only opportunities
  */
 function createEmptyResult(startTime) {
   return {
+    results: {
+      newOpportunities: [],
+      updatedOpportunities: [], // Always empty in new-only mode
+      ignoredOpportunities: [], // Always empty in new-only mode
+      duplicatesFound: [] // Always empty in new-only mode
+    },
     metrics: {
       totalProcessed: 0,
       newOpportunities: 0,
-      updatedOpportunities: 0,
-      ignoredOpportunities: 0,
-      duplicatesFound: 0
+      updatedOpportunities: 0, // Always 0 in new-only mode
+      ignoredOpportunities: 0, // Always 0 in new-only mode
+      duplicatesFound: 0 // Always 0 in new-only mode
     },
     executionTime: Math.max(1, Date.now() - startTime)
   };
@@ -154,7 +159,7 @@ async function processOpportunityBatches(opportunities, source, client) {
 }
 
 /**
- * Processes a single batch of opportunities
+ * Processes a single batch of NEW opportunities (no duplicate checking needed)
  */
 async function processBatch(batch, source, client) {
   const results = {
@@ -169,32 +174,13 @@ async function processBatch(batch, source, client) {
       // Step 1: Handle funding source
       const fundingSourceId = await fundingSourceManager.getOrCreate(opportunity, source, client);
       
-      // Step 2: Check for existing opportunity
-      const existing = await duplicateDetector.findExisting(opportunity, source.id, client);
+      // Step 2: Insert new opportunity (no duplicate checking - handled upstream)
+      const inserted = await insertOpportunity(opportunity, source.id, fundingSourceId, client);
+      results.newOpportunities.push(inserted);
       
-      if (existing) {
-        // Step 3: Check for material changes
-        const hasChanges = changeDetector.detectMaterialChanges(existing, opportunity);
-        
-        if (hasChanges) {
-          const updated = await updateOpportunity(existing.id, opportunity, fundingSourceId, client);
-          results.updatedOpportunities.push(updated);
-          
-          // Update state eligibility
-          await stateEligibilityProcessor.updateEligibility(existing.id, opportunity, client);
-        } else {
-          results.ignoredOpportunities.push(existing);
-        }
-        
-        results.duplicatesFound.push(existing);
-      } else {
-        // Step 4: Insert new opportunity
-        const inserted = await insertOpportunity(opportunity, source.id, fundingSourceId, client);
-        results.newOpportunities.push(inserted);
-        
-        // Process state eligibility
-        await stateEligibilityProcessor.processEligibility(inserted.id, opportunity, client);
-      }
+      // Step 3: Process state eligibility
+      await stateEligibilityProcessor.processEligibility(inserted.id, opportunity, client);
+      
     } catch (error) {
       console.error(`[StorageAgent] ❌ Error processing opportunity ${opportunity.id}:`, error);
       // Continue with other opportunities instead of failing entire batch
@@ -204,26 +190,7 @@ async function processBatch(batch, source, client) {
   return results;
 }
 
-/**
- * Updates an existing opportunity
- */
-async function updateOpportunity(opportunityId, opportunity, fundingSourceId, client) {
-  const updateData = dataSanitizer.prepareForUpdate(opportunity, fundingSourceId);
-  
-  const { data: updated, error } = await client
-    .from('funding_opportunities')
-    .update(updateData)
-    .eq('id', opportunityId)
-    .select()
-    .single();
-  
-  if (error) {
-    throw new Error(`Failed to update opportunity: ${error.message}`);
-  }
-  
-  console.log(`[StorageAgent] 📝 Updated opportunity: ${opportunity.title}`);
-  return updated;
-}
+// updateOpportunity function removed - no longer needed for new-only opportunities
 
 /**
  * Inserts a new opportunity

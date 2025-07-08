@@ -91,7 +91,7 @@
             "id": 2,
             "title": "Extend database schema for optimization features",
             "description": "Add necessary database fields to support API timestamp tracking for freshness checks",
-            "status": "pending",
+            "status": "done",
             "dependencies": [
               "2.7"
             ],
@@ -102,7 +102,7 @@
             "id": 3,
             "title": "Modify DataExtractionAgent for timestamp capture",
             "description": "Update DataExtractionAgent to capture and pass through API updated_at timestamps",
-            "status": "pending",
+            "status": "done",
             "dependencies": [],
             "details": "- Modify data extraction logic to capture API timestamps when available\n- Ensure timestamp data flows through to EarlyDuplicateDetector\n- Update data structures and interfaces as needed\n- Maintain backward compatibility\n- Handle cases where APIs don't provide timestamps (for stale review logic)\n- Distinguish between API-provided timestamps and missing timestamp scenarios",
             "testStrategy": "Test timestamp capture from various API sources, validate data flow to duplicate detector, test handling of APIs without timestamps"
@@ -111,16 +111,16 @@
             "id": 4,
             "title": "Update ProcessCoordinatorV2 pipeline branching logic",
             "description": "Implement pipeline branching to ensure duplicates bypass Analysis/Filter stages and go directly to database updates",
-            "status": "pending",
+            "status": "done",
             "dependencies": [],
-            "details": "- Insert EarlyDuplicateDetector step after DataExtraction\n- Implement branching logic: New opportunities → Analysis/Filter/Storage, Duplicates → Direct database update\n- Implement 4-scenario freshness check decision matrix logic\n- Handle duplicates with changes: direct critical field updates with null protection\n- Handle duplicates without changes: skip entirely\n- Handle stale review scenarios: direct field comparison and update\n- Update error handling and logging for new branching flow\n- Ensure metrics tracking captures optimization benefits from bypassed stages\n- Implement direct database update functionality for duplicate processing",
+            "details": "- Insert EarlyDuplicateDetector step after DataExtraction\n- Implement branching logic: New opportunities → Analysis/Filter/Storage, Duplicates → Direct database update\n- Implement 4-scenario freshness check decision matrix logic\n- Handle duplicates with changes: direct critical field updates with null protection\n- Handle duplicates without changes: skip entirely\n- Handle stale review scenarios: direct field comparison and update\n- Update error handling and logging for new branching flow\n- Ensure metrics tracking captures optimization benefits from bypassed stages\n- Implement direct database update functionality for duplicate processing\n<info added on 2025-07-08T00:07:29.793Z>\nSCOPE CLARIFICATION: This subtask prepares EarlyDuplicateDetector and DirectUpdateHandler modules for pipeline integration (ProcessCoordinatorV2 scope). These modules are complete and tested, but will be integrated into the pipeline in a separate task. The Storage Agent itself will be simplified to only handle new opportunities when the pipeline integration is complete.\n</info added on 2025-07-08T00:07:29.793Z>",
             "testStrategy": "Test complete pipeline branching with various duplicate scenarios, validate duplicates never reach Analysis/Filter stages, test token savings maximization, test all 4 freshness check scenarios including stale review logic"
           },
           {
             "id": 5,
             "title": "Implement Critical Fields + Null Protection with direct database updates",
             "description": "Create direct database update functionality for duplicates that only updates 6 critical fields and never overwrites existing data with null values",
-            "status": "pending",
+            "status": "done",
             "dependencies": [],
             "details": "- Implement direct database update logic for duplicates (bypassing StorageAgent)\n- Update only: title, minimumAward, maximumAward, totalFundingAvailable, closeDate, openDate\n- Add null protection: never overwrite existing non-null data with null values\n- Create field comparison logic to detect changes in critical fields\n- Handle stale review updates: update critical fields + reset updated_at timestamp to current time\n- Ensure proper error handling and logging for direct updates\n- Maintain transaction integrity for database operations",
             "testStrategy": "Test critical field updates work correctly with direct database access, validate null protection prevents data loss, ensure admin edits are preserved, test stale review timestamp reset logic, verify transaction integrity"
@@ -847,7 +847,7 @@
     ],
     "metadata": {
       "created": "2025-06-17T23:54:58.582Z",
-      "updated": "2025-07-07T23:16:41.461Z",
+      "updated": "2025-07-08T00:08:38.721Z",
       "description": "Tasks for master context"
     }
   }

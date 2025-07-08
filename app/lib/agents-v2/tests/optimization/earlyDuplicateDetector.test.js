@@ -13,22 +13,22 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 // Mock modules with factory functions
-vi.mock('../core/storageAgent/duplicateDetector.js', () => ({
+vi.mock('../../optimization/duplicateDetector.js', () => ({
   duplicateDetector: {
     titlesAreSimilar: vi.fn()
   }
 }));
 
-vi.mock('../core/storageAgent/changeDetector.js', () => ({
+vi.mock('../../optimization/changeDetector.js', () => ({
   changeDetector: {
     hasFieldChanged: vi.fn()
   }
 }));
 
 // Import after mocking
-const { earlyDuplicateDetector } = await import('../core/storageAgent/earlyDuplicateDetector.js');
-const { duplicateDetector } = await import('../core/storageAgent/duplicateDetector.js');
-const { changeDetector } = await import('../core/storageAgent/changeDetector.js');
+const { earlyDuplicateDetector } = await import('../../optimization/earlyDuplicateDetector.js');
+const { duplicateDetector } = await import('../../optimization/duplicateDetector.js');
+const { changeDetector } = await import('../../optimization/changeDetector.js');
 
 // Mock Supabase client
 const createMockSupabase = () => ({
