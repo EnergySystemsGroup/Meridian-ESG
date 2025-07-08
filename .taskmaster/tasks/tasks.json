@@ -936,11 +936,225 @@
             "parentTaskId": 32
           }
         ]
+      },
+      {
+        "id": 33,
+        "title": "Create Comprehensive Integration Testing for Optimized Pipeline V2",
+        "description": "Develop comprehensive integration tests for the optimized pipeline (v2) that validates real API calls, all three pipeline paths (new/update/skip), with database write protection and performance metrics including local Supabase edge function testing and staging environment validation.",
+        "details": "1. Create integration test suite structure:\n   - Set up test environment with database write protection using test transactions\n   - Configure real API endpoints with rate limiting and test data isolation\n   - Implement test data factories for consistent opportunity generation\n   - Create mock Supabase client with transaction rollback capabilities\n\n2. Test all three pipeline paths:\n   - NEW opportunities: Full pipeline flow (DataExtraction → EarlyDuplicateDetector → Analysis → Filter → Storage)\n   - UPDATE opportunities: Abbreviated flow (DataExtraction → EarlyDuplicateDetector → Storage with update logic)\n   - SKIP opportunities: Minimal flow (DataExtraction → EarlyDuplicateDetector → early termination)\n\n3. Real API integration testing:\n   - Test against actual funding source APIs (Grants.gov, SAM.gov, etc.)\n   - Validate API response handling and error scenarios\n   - Test rate limiting and retry mechanisms\n   - Verify data transformation accuracy with real API responses\n\n4. Performance metrics validation:\n   - Measure and validate 60-80% token reduction compared to v1\n   - Track processing time improvements (target: 40-50% faster)\n   - Monitor memory usage and database query performance\n   - Validate early duplicate detection efficiency\n\n5. Local Supabase edge function testing:\n   - Set up local Supabase environment with supabase start\n   - Test edge functions with realistic data volumes\n   - Validate real-time subscriptions and webhooks\n   - Test database triggers and stored procedures\n\n6. Staging environment validation:\n   - Deploy to staging environment with production-like data\n   - Run end-to-end tests with full pipeline execution\n   - Validate monitoring and alerting systems\n   - Test rollback procedures and error recovery\n\n7. Database write protection:\n   - Implement test transaction isolation\n   - Use separate test database schema\n   - Validate data integrity constraints\n   - Test cleanup procedures for test data",
+        "testStrategy": "1. Execute comprehensive integration test suite covering all pipeline paths with real API data from multiple funding sources\n2. Validate performance metrics meet targets: 60-80% token reduction, 40-50% processing time improvement\n3. Test database write protection by verifying no permanent data changes during test execution\n4. Run local Supabase edge function tests with realistic data volumes and concurrent operations\n5. Deploy to staging environment and execute full end-to-end pipeline validation\n6. Verify error handling and recovery mechanisms work correctly in all pipeline paths\n7. Conduct load testing to ensure system stability under production-like conditions\n8. Validate monitoring and alerting systems capture all relevant metrics and errors\n9. Test rollback procedures and data consistency in failure scenarios\n10. Perform regression testing against v1 pipeline to ensure functionality parity while maintaining performance improvements",
+        "status": "in-progress",
+        "dependencies": [
+          4,
+          19,
+          27,
+          32
+        ],
+        "priority": "high",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Set up Integration Test Infrastructure and Database Protection",
+            "description": "Establish the foundational test infrastructure with database write protection, test transactions, and isolated test environments to ensure integration tests don't affect production data.",
+            "dependencies": [],
+            "details": "Create test configuration files in `app/lib/agents-v2/tests/integration/`, implement test transaction wrapper using Supabase test client, set up separate test database schema, create database cleanup utilities, and configure test environment variables with isolated API keys and endpoints. Implement rollback mechanisms for all database operations during tests.",
+            "status": "done",
+            "testStrategy": "Verify test isolation by running destructive operations and confirming no production data is affected. Test transaction rollback functionality."
+          },
+          {
+            "id": 2,
+            "title": "Create Test Data Factories and Mock Services",
+            "description": "Develop comprehensive test data factories that generate realistic funding opportunity data and mock external services for consistent testing scenarios.",
+            "dependencies": [
+              1
+            ],
+            "details": "Build test data factories in `app/lib/agents-v2/tests/fixtures/` for generating opportunities, funding sources, and API responses. Create mock implementations of external APIs (Grants.gov, SAM.gov) with configurable responses. Implement test data seeding utilities and cleanup procedures. Create realistic test datasets that cover edge cases and various opportunity types.",
+            "status": "done",
+            "testStrategy": "Validate that generated test data matches real API response schemas and covers all pipeline scenarios."
+          },
+          {
+            "id": 3,
+            "title": "Implement NEW Pipeline Path Integration Tests",
+            "description": "Create comprehensive integration tests for the NEW opportunity pipeline path, testing the full flow from data extraction through storage with real API calls and database operations.",
+            "dependencies": [
+              1,
+              2
+            ],
+            "details": "Build integration tests in `app/lib/agents-v2/tests/integration/new-pipeline.test.js` covering DataExtraction → EarlyDuplicateDetector → Analysis → Filter → Storage flow. Test with real API responses, validate each agent's output, verify database writes, and confirm opportunity creation. Include error handling scenarios and retry logic testing.",
+            "status": "pending",
+            "testStrategy": "Assert that new opportunities are properly created in database with correct analysis scores and filtering results. Verify all agent schemas are followed."
+          },
+          {
+            "id": 4,
+            "title": "Implement UPDATE and SKIP Pipeline Path Integration Tests",
+            "description": "Create integration tests for UPDATE and SKIP pipeline paths, validating the abbreviated flows and early termination scenarios with proper database handling.",
+            "dependencies": [
+              1,
+              2
+            ],
+            "details": "Build integration tests in `app/lib/agents-v2/tests/integration/update-skip-pipeline.test.js` for UPDATE path (DataExtraction → EarlyDuplicateDetector → Storage with update logic) and SKIP path (DataExtraction → EarlyDuplicateDetector → early termination). Validate duplicate detection accuracy, update logic correctness, and proper early termination without unnecessary processing.",
+            "status": "pending",
+            "testStrategy": "Verify that UPDATE operations correctly modify existing opportunities and SKIP operations terminate early without database writes or unnecessary API calls."
+          },
+          {
+            "id": 5,
+            "title": "Implement Real API Integration and Error Handling Tests",
+            "description": "Create comprehensive tests against actual funding source APIs with proper rate limiting, error scenarios, and data transformation validation.",
+            "dependencies": [
+              2
+            ],
+            "details": "Build real API integration tests in `app/lib/agents-v2/tests/integration/api-integration.test.js` testing against live Grants.gov, SAM.gov, and other configured APIs. Implement rate limiting respect, timeout handling, retry mechanism validation, and API error scenario testing. Validate data transformation accuracy between API responses and internal opportunity format.",
+            "status": "pending",
+            "testStrategy": "Test with actual API endpoints using test credentials. Verify rate limiting doesn't cause failures and error scenarios are handled gracefully."
+          },
+          {
+            "id": 6,
+            "title": "Implement Performance Metrics Validation and Benchmarking",
+            "description": "Create performance testing suite that validates the 60-80% token reduction and 40-50% processing time improvements compared to v1 architecture.",
+            "dependencies": [
+              3,
+              4
+            ],
+            "details": "Build performance test suite in `app/lib/agents-v2/tests/integration/performance.test.js` measuring token usage, processing time, memory consumption, and database query performance. Create benchmarking utilities comparing v1 vs v2 performance. Implement metrics collection and validation for early duplicate detection efficiency. Include load testing scenarios.",
+            "status": "pending",
+            "testStrategy": "Run comparative benchmarks against v1 architecture baseline. Validate performance improvements meet specified targets through automated assertions."
+          },
+          {
+            "id": 7,
+            "title": "Implement Local Supabase Edge Function Testing",
+            "description": "Set up and test local Supabase environment with edge functions, real-time subscriptions, and database triggers using realistic data volumes.",
+            "dependencies": [
+              1,
+              2
+            ],
+            "details": "Create local Supabase test setup in `app/lib/agents-v2/tests/integration/supabase-local.test.js` using `supabase start`. Test edge functions with realistic data volumes, validate real-time subscriptions during pipeline execution, test database triggers and stored procedures. Implement webhook testing and event handling validation.",
+            "status": "pending",
+            "testStrategy": "Verify edge functions execute correctly with test data. Test real-time subscriptions receive proper events during pipeline execution."
+          },
+          {
+            "id": 8,
+            "title": "Implement Staging Environment End-to-End Validation",
+            "description": "Create comprehensive end-to-end test suite for staging environment with production-like data, monitoring validation, and rollback procedures.",
+            "dependencies": [
+              3,
+              4,
+              5,
+              6,
+              7
+            ],
+            "details": "Build staging environment test suite in `app/lib/agents-v2/tests/integration/staging-e2e.test.js` deploying to staging with production-like data volumes. Test full pipeline execution, validate monitoring and alerting systems, test rollback procedures and error recovery. Include load testing with concurrent pipeline executions and database stress testing.",
+            "status": "pending",
+            "testStrategy": "Execute full pipeline runs in staging environment. Validate monitoring dashboards show correct metrics and alerts trigger appropriately during error scenarios."
+          }
+        ]
+      },
+      {
+        "id": 34,
+        "title": "Build Admin Panel V2 for Pipeline Version Switching and Run Monitoring",
+        "description": "Create a comprehensive admin interface at /admin/funding-v2 that enables switching between v1 and v2 pipelines, triggering runs, and providing real-time monitoring of all pipeline stages with performance metrics.",
+        "details": "1. Create /admin/funding-v2 page structure:\n   - Build React component with Next.js 15 app router pattern\n   - Use shadcn/ui components for consistent design with existing admin interface\n   - Implement role-based access control to restrict admin functionality\n   - Add navigation breadcrumbs and admin-specific layout\n\n2. Implement pipeline version switching:\n   - Create toggle interface for v1/v2 pipeline selection\n   - Add configuration persistence using Supabase for pipeline version state\n   - Implement API route to handle pipeline version changes\n   - Add validation to prevent switching during active runs\n\n3. Build run triggering interface:\n   - Create run configuration form with source selection\n   - Add run type selection (full/incremental/test)\n   - Implement run scheduling with immediate and scheduled execution\n   - Add run parameter configuration (concurrency, batch size, etc.)\n\n4. Develop real-time monitoring dashboard:\n   - Create live status display for SourceOrchestrator coordination\n   - Add DataExtraction agent progress tracking with API call metrics\n   - Implement EarlyDuplicateDetector monitoring with duplicate detection rates\n   - Build Analysis agent tracking with token usage and processing times\n   - Add Filter agent monitoring with filtering statistics\n   - Create Storage agent tracking with database write metrics\n   - Implement DirectUpdate monitoring for duplicate handling\n\n5. Add performance metrics visualization:\n   - Create charts for token usage comparison (v1 vs v2)\n   - Add processing time metrics with stage-by-stage breakdown\n   - Implement throughput monitoring (opportunities/minute)\n   - Add error rate tracking and failure analysis\n   - Create cost analysis dashboard with API usage costs\n\n6. Implement real-time updates:\n   - Use Supabase real-time subscriptions for run status updates\n   - Add WebSocket connections for live progress tracking\n   - Implement progress bars and stage completion indicators\n   - Add notification system for run completion/errors\n\n7. Create run history and logging:\n   - Build run history table with filtering and search\n   - Add detailed run logs with expandable stage details\n   - Implement error investigation tools with stack traces\n   - Create export functionality for run reports\n\n8. Add pipeline comparison tools:\n   - Create side-by-side performance comparison interface\n   - Add metrics comparison charts (v1 vs v2)\n   - Implement A/B testing configuration for pipeline versions\n   - Create recommendation engine for optimal pipeline selection",
+        "testStrategy": "1. Test pipeline version switching:\n   - Verify toggle functionality correctly updates pipeline configuration\n   - Test prevention of version switching during active runs\n   - Validate configuration persistence across browser sessions\n   - Test role-based access control for admin functions\n\n2. Validate run triggering:\n   - Test run configuration form with various parameter combinations\n   - Verify run scheduling functionality with immediate and delayed execution\n   - Test source selection and validation\n   - Validate run parameter constraints and error handling\n\n3. Test real-time monitoring:\n   - Verify live updates for all seven pipeline stages\n   - Test WebSocket connections and reconnection logic\n   - Validate progress tracking accuracy against actual pipeline execution\n   - Test notification system for run events\n\n4. Validate performance metrics:\n   - Test metrics calculation accuracy by comparing with actual run data\n   - Verify chart rendering with various data ranges\n   - Test export functionality for performance reports\n   - Validate cost calculation accuracy\n\n5. Test integration with existing systems:\n   - Verify compatibility with existing admin interface (Task 12)\n   - Test integration with optimized pipeline v2 (Task 2)\n   - Validate real-time updates using Supabase subscriptions\n   - Test performance impact on overall system during monitoring\n\n6. Conduct user acceptance testing:\n   - Test admin workflow efficiency for pipeline management\n   - Verify monitoring dashboard provides actionable insights\n   - Test error investigation workflow with real failure scenarios\n   - Validate overall user experience for admin tasks",
+        "status": "pending",
+        "dependencies": [
+          2,
+          12,
+          27,
+          33
+        ],
+        "priority": "high",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Create Admin Panel V2 Page Structure and Access Control",
+            "description": "Build the foundational /admin/funding-v2 page with proper routing, layout, and role-based access control using Next.js 15 app router pattern.",
+            "dependencies": [],
+            "details": "Create app/(routes)/admin/funding-v2/page.tsx using Next.js 15 app router. Implement admin layout with shadcn/ui components matching existing admin interface. Add role-based access control middleware to restrict access to admin users only. Include navigation breadcrumbs and admin-specific sidebar navigation. Set up proper TypeScript types for admin components.",
+            "status": "pending",
+            "testStrategy": "Test page routing, access control restrictions, and UI component rendering"
+          },
+          {
+            "id": 2,
+            "title": "Implement Pipeline Version Switching Interface",
+            "description": "Create toggle interface for switching between v1 and v2 pipelines with persistent configuration storage and validation against active runs.",
+            "dependencies": [
+              1
+            ],
+            "details": "Build pipeline version toggle component using shadcn/ui Switch component. Create API route /api/admin/pipeline-version for handling version changes. Implement Supabase configuration table for persisting pipeline version state. Add validation to prevent switching during active runs by checking run status. Include visual indicators for current pipeline version and switching confirmation dialogs.",
+            "status": "pending",
+            "testStrategy": "Test pipeline version persistence, active run validation, and UI state management"
+          },
+          {
+            "id": 3,
+            "title": "Build Run Triggering Interface and Configuration",
+            "description": "Create comprehensive run configuration form with source selection, run types, scheduling, and parameter configuration capabilities.",
+            "dependencies": [
+              2
+            ],
+            "details": "Build run configuration form using shadcn/ui Form components. Add dropdown for funding source selection from database. Implement run type selection (full/incremental/test) with radio buttons. Create scheduling interface with immediate and future execution options. Add parameter configuration for concurrency limits and batch sizes. Include run description and tagging fields for organization.",
+            "status": "pending",
+            "testStrategy": "Test form validation, scheduling logic, and parameter range validation"
+          },
+          {
+            "id": 4,
+            "title": "Develop Real-time Monitoring Dashboard Core",
+            "description": "Create the main monitoring dashboard with live status displays for all pipeline stages including SourceOrchestrator, DataExtraction, EarlyDuplicateDetector, Analysis, Filter, Storage, and DirectUpdate agents.",
+            "dependencies": [
+              3
+            ],
+            "details": "Build monitoring dashboard layout with grid system for different agent status cards. Create individual status components for each agent type with progress indicators. Implement real-time status updates using Supabase subscriptions. Add stage completion indicators and current processing counts. Include agent-specific metrics like API call counts, duplicate detection rates, and processing times.",
+            "status": "pending",
+            "testStrategy": "Test real-time updates, status accuracy, and dashboard responsiveness"
+          },
+          {
+            "id": 5,
+            "title": "Add Performance Metrics Visualization",
+            "description": "Implement comprehensive performance metrics with charts for token usage, processing times, throughput, error rates, and cost analysis comparing v1 vs v2 pipelines.",
+            "dependencies": [
+              4
+            ],
+            "details": "Create performance metrics dashboard using chart library (recharts or similar). Build token usage comparison charts between v1 and v2 pipelines. Add processing time breakdowns by stage with bar and line charts. Implement throughput monitoring with opportunities per minute tracking. Create error rate visualization with trend analysis. Build cost analysis dashboard calculating API usage costs and efficiency metrics.",
+            "status": "pending",
+            "testStrategy": "Test chart data accuracy, performance metric calculations, and comparison logic"
+          },
+          {
+            "id": 6,
+            "title": "Implement Real-time Updates System",
+            "description": "Set up comprehensive real-time update system using Supabase subscriptions and WebSocket connections for live progress tracking and notifications.",
+            "dependencies": [
+              5
+            ],
+            "details": "Implement Supabase real-time subscriptions for run status table updates. Create WebSocket connection management for live progress tracking. Build progress bar components with percentage completion and ETA calculations. Add notification system using toast notifications for run completion and error alerts. Implement automatic dashboard refresh and state synchronization.",
+            "status": "pending",
+            "testStrategy": "Test real-time connection stability, progress accuracy, and notification delivery"
+          },
+          {
+            "id": 7,
+            "title": "Create Run History and Logging System",
+            "description": "Build comprehensive run history interface with detailed logging, error investigation tools, and export functionality for administrative analysis.",
+            "dependencies": [
+              6
+            ],
+            "details": "Create run history table component with pagination, filtering, and search capabilities. Build expandable run detail views with stage-by-stage logs. Implement error investigation tools with stack trace display and error categorization. Add export functionality for run reports in JSON/CSV formats. Include run comparison features for analyzing performance differences.",
+            "status": "pending",
+            "testStrategy": "Test data filtering, log detail accuracy, and export functionality"
+          },
+          {
+            "id": 8,
+            "title": "Add Pipeline Comparison and A/B Testing Tools",
+            "description": "Implement advanced pipeline comparison interface with side-by-side metrics, A/B testing configuration, and recommendation engine for optimal pipeline selection.",
+            "dependencies": [
+              7
+            ],
+            "details": "Build side-by-side comparison interface for v1 vs v2 performance metrics. Create comparison charts with overlays and difference highlighting. Implement A/B testing configuration with percentage traffic splitting. Build recommendation engine that analyzes historical performance data to suggest optimal pipeline version. Add configuration persistence for A/B test settings and automatic switching based on performance thresholds.",
+            "status": "pending",
+            "testStrategy": "Test comparison accuracy, A/B testing logic, and recommendation algorithm effectiveness"
+          }
+        ]
       }
     ],
     "metadata": {
       "created": "2025-06-17T23:54:58.582Z",
-      "updated": "2025-07-08T03:03:16.475Z",
+      "updated": "2025-07-08T04:08:32.335Z",
       "description": "Tasks for master context"
     }
   }
