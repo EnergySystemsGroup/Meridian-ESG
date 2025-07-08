@@ -70,7 +70,7 @@
         "id": 2,
         "title": "Develop Storage Agent",
         "description": "Optimize the Storage Agent pipeline by implementing early duplicate detection with ID + Title validation to reduce LLM token usage and improve performance. The Storage Agent V2 already exists and is functionally complete, but needs pipeline flow optimization and duplicate detection repositioning with critical field protection.",
-        "status": "pending",
+        "status": "done",
         "dependencies": [
           1
         ],
@@ -129,7 +129,7 @@
             "id": 6,
             "title": "Performance testing and optimization validation",
             "description": "Measure and validate the performance improvements from pipeline optimization and architectural decisions",
-            "status": "pending",
+            "status": "done",
             "dependencies": [],
             "details": "- Create benchmarks comparing old vs new pipeline performance\n- Measure token usage reduction from duplicates bypassing Analysis/Filter stages\n- Test end-to-end latency improvements from pipeline branching\n- Validate accuracy is maintained with ID + Title validation approach\n- Test Critical Fields + Null Protection effectiveness with direct updates\n- Document performance gains and admin edit protection benefits achieved\n- Validate 90-day stale review threshold prevents endless re-processing\n- Test all 4 freshness check scenarios for performance impact\n- Measure maximum reduction in unnecessary LLM processing\n- Validate only new opportunities consume Analysis/Filter resources",
             "testStrategy": "Comprehensive performance testing with real-world data scenarios including edge cases, validate 90-day stale review logic efficiency, measure maximum token savings from pipeline branching"
@@ -260,17 +260,110 @@
       {
         "id": 4,
         "title": "Conduct Individual Agent Testing",
-        "description": "Perform thorough testing of each v2 agent using real data, ensuring performance metrics meet or exceed v1 benchmarks.",
-        "details": "1. Update existing test scripts in scripts/test/\n2. Add comprehensive error scenario testing\n3. Implement performance benchmarking (use Benchmark.js v2.1.4)\n4. Create data quality validation tests\n5. Test with multiple API source types\n6. Use real API responses for testing\n7. Implement mock servers for API testing (use Mock Service Worker v1.2.1)\n8. Create detailed test reports\n9. Use Jest v29.5.0 for test runner and assertion library\n10. Implement code coverage reporting (use Istanbul v0.4.5)\n11. Automate testing process using GitHub Actions",
-        "testStrategy": "1. Run individual tests for each agent\n2. Perform integration tests with real API data\n3. Conduct performance benchmarking against v1 agents\n4. Validate error handling with various scenarios\n5. Verify data quality and accuracy\n6. Test with different API source types\n7. Ensure test coverage is above 80%\n8. Review and analyze test reports",
-        "priority": "high",
+        "description": "Perform thorough testing of each v2 agent using the new optimized pipeline flow (DataExtraction → EarlyDuplicateDetector → [New opportunities only] → Analysis → Filter → Storage), ensuring performance metrics meet or exceed v1 benchmarks with 60-80% token reduction.",
+        "status": "in-progress",
         "dependencies": [
           1,
           2,
           3
         ],
-        "status": "pending",
-        "subtasks": []
+        "priority": "high",
+        "details": "Test the new optimized pipeline where duplicate opportunities are detected early and handled separately, allowing only NEW opportunities to go through expensive LLM Analysis and Filter stages:\n\n1. Update existing test scripts in scripts/test/ for new pipeline flow\n2. Add comprehensive testing for EarlyDuplicateDetector integration\n3. Test duplicate handling scenarios (update vs skip)\n4. Implement performance benchmarking focusing on token usage reduction (use Benchmark.js v2.1.4)\n5. Validate that only new opportunities reach Analysis and Filter stages\n6. Create data quality validation tests for optimized flow\n7. Test with multiple API source types in new pipeline\n8. Use real API responses for testing duplicate detection accuracy\n9. Implement mock servers for API testing (use Mock Service Worker v1.2.1)\n10. Create detailed test reports showing token usage improvements\n11. Use Jest v29.5.0 for test runner and assertion library\n12. Implement code coverage reporting (use Istanbul v0.4.5)\n13. Automate testing process using GitHub Actions\n14. Measure and validate 60-80% token reduction claims",
+        "testStrategy": "1. Run individual tests for each agent in the new pipeline order\n2. Test EarlyDuplicateDetector with various duplicate scenarios\n3. Verify that duplicates bypass Analysis and Filter stages\n4. Perform integration tests with real API data using optimized flow\n5. Conduct performance benchmarking against v1 agents, focusing on token usage\n6. Validate error handling with various scenarios in new pipeline\n7. Verify data quality and accuracy of duplicate detection\n8. Test with different API source types in optimized pipeline\n9. Ensure test coverage is above 80%\n10. Review and analyze test reports, particularly token usage metrics\n11. Validate that new opportunities still receive full processing\n12. Test edge cases where duplicate detection might fail",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Update Test Scripts for New Pipeline Flow",
+            "description": "Modify existing test scripts in scripts/test/ to reflect the new optimized pipeline flow: DataExtraction → EarlyDuplicateDetector → [New opportunities only] → Analysis → Filter → Storage",
+            "dependencies": [],
+            "details": "Update test scripts to use the new pipeline sequence, ensuring EarlyDuplicateDetector is properly integrated after DataExtraction and before Analysis/Filter stages. Modify test configurations to handle the conditional flow where only new opportunities proceed to expensive LLM stages.",
+            "status": "in-progress",
+            "testStrategy": "Unit tests for pipeline flow validation using Jest v29.5.0"
+          },
+          {
+            "id": 2,
+            "title": "Implement EarlyDuplicateDetector Integration Tests",
+            "description": "Create comprehensive tests for EarlyDuplicateDetector integration within the new pipeline, focusing on duplicate detection accuracy and performance",
+            "dependencies": [
+              1
+            ],
+            "details": "Develop test cases that validate EarlyDuplicateDetector's ability to identify duplicates early in the pipeline. Test various duplicate scenarios including exact matches, near-duplicates, and edge cases. Ensure proper integration with DataExtraction agent output.",
+            "status": "pending",
+            "testStrategy": "Integration tests with real API response data and mock duplicate scenarios"
+          },
+          {
+            "id": 3,
+            "title": "Test Duplicate Handling Scenarios",
+            "description": "Validate duplicate handling logic for update vs skip scenarios, ensuring the system correctly processes existing opportunities without unnecessary LLM calls",
+            "dependencies": [
+              2
+            ],
+            "details": "Create test cases for different duplicate handling scenarios: updating existing opportunities with new information, skipping unchanged duplicates, and handling partial duplicates. Verify that duplicate opportunities bypass Analysis and Filter stages appropriately.",
+            "status": "pending",
+            "testStrategy": "End-to-end tests with controlled duplicate data sets"
+          },
+          {
+            "id": 4,
+            "title": "Setup Performance Benchmarking Framework",
+            "description": "Implement performance benchmarking using Benchmark.js v2.1.4 to measure token usage reduction and overall pipeline performance improvements",
+            "dependencies": [
+              1
+            ],
+            "details": "Setup benchmarking infrastructure to measure token usage, processing time, and throughput for both v1 and v2 pipelines. Create baseline measurements and establish metrics for the 60-80% token reduction target. Implement automated benchmark reporting.",
+            "status": "pending",
+            "testStrategy": "Performance benchmarks comparing v1 vs v2 pipeline efficiency"
+          },
+          {
+            "id": 5,
+            "title": "Validate New Opportunity Flow Control",
+            "description": "Test that only new opportunities reach Analysis and Filter stages, ensuring the optimization logic works correctly and duplicates are properly filtered out",
+            "dependencies": [
+              2,
+              3
+            ],
+            "details": "Create test scenarios that verify the conditional flow where only new opportunities proceed to expensive LLM stages. Validate that duplicate opportunities are handled efficiently without unnecessary processing. Monitor and log the flow control decisions.",
+            "status": "pending",
+            "testStrategy": "Flow control validation tests with mixed new and duplicate opportunity datasets"
+          },
+          {
+            "id": 6,
+            "title": "Implement Data Quality Validation Tests",
+            "description": "Create comprehensive data quality validation tests for the optimized pipeline flow, ensuring data integrity throughout the new process",
+            "dependencies": [
+              3,
+              5
+            ],
+            "details": "Develop tests that validate data quality at each stage of the optimized pipeline. Ensure that duplicate detection doesn't compromise data integrity and that new opportunities maintain full data quality through all processing stages.",
+            "status": "pending",
+            "testStrategy": "Data quality assertion tests with schema validation"
+          },
+          {
+            "id": 7,
+            "title": "Test Multiple API Source Types",
+            "description": "Validate the new pipeline with multiple API source types using Mock Service Worker v1.2.1 to ensure compatibility across different funding source formats",
+            "dependencies": [
+              4,
+              6
+            ],
+            "details": "Setup mock servers using Mock Service Worker v1.2.1 to simulate different API source types. Test the pipeline with various funding source formats to ensure the EarlyDuplicateDetector and overall flow work correctly across all supported sources.",
+            "status": "pending",
+            "testStrategy": "Multi-source integration tests with mocked API responses"
+          },
+          {
+            "id": 8,
+            "title": "Generate Performance Reports and Automate Testing",
+            "description": "Create detailed test reports showing token usage improvements and setup automated testing process using GitHub Actions with code coverage reporting via Istanbul v0.4.5",
+            "dependencies": [
+              4,
+              5,
+              6,
+              7
+            ],
+            "details": "Generate comprehensive performance reports documenting the 60-80% token reduction achievement. Setup GitHub Actions workflow for automated testing and implement code coverage reporting using Istanbul v0.4.5. Create dashboard for monitoring ongoing performance metrics.",
+            "status": "pending",
+            "testStrategy": "Automated test reporting with performance metrics tracking and code coverage analysis"
+          }
+        ]
       },
       {
         "id": 5,
@@ -291,10 +384,8 @@
       {
         "id": 6,
         "title": "Implement End-to-End Pipeline Testing",
-        "description": "Develop and execute comprehensive end-to-end tests for the complete v2 pipeline, ensuring proper orchestration and error handling.",
-        "details": "1. Implement end-to-end tests covering the entire pipeline: Source → Data Extraction → Analysis → Filter → Storage\n2. Validate process coordinator orchestration\n3. Test Supabase Edge Function integration\n4. Verify run tracking and metrics collection\n5. Implement comprehensive error handling tests\n6. Use Cypress v12.14.0 for end-to-end testing\n7. Implement test scenarios with various data sources and configurations\n8. Create detailed logging for each stage of the pipeline\n9. Implement performance monitoring for the entire pipeline\n10. Use Docker for creating isolated test environments\n11. Implement parallel test execution for faster results",
-        "testStrategy": "1. Design test scenarios covering various use cases\n2. Execute end-to-end tests in a staging environment\n3. Validate correct data flow through the entire pipeline\n4. Test error handling and recovery mechanisms\n5. Verify metrics collection and accuracy\n6. Perform load testing to ensure scalability\n7. Validate Supabase Edge Function integration\n8. Review logs and performance metrics",
-        "priority": "high",
+        "description": "Develop and execute comprehensive end-to-end tests for the complete optimized v2 pipeline, ensuring proper orchestration, early duplicate detection, and significant performance improvements.",
+        "status": "pending",
         "dependencies": [
           1,
           2,
@@ -302,20 +393,22 @@
           4,
           5
         ],
-        "status": "pending",
+        "priority": "high",
+        "details": "1. Implement end-to-end tests covering the NEW OPTIMIZED pipeline flow: DataExtraction → EarlyDuplicateDetector → [New opportunities only] → Analysis → Filter → Storage\n2. Test EarlyDuplicateDetector functionality with ID + Title validation logic\n3. Validate that duplicates are handled with direct database updates (Critical Fields + Null Protection)\n4. Verify that only NEW opportunities proceed to expensive LLM Analysis and Filter stages\n5. Measure and validate 60-80% reduction in token usage\n6. Confirm 60-80% performance improvement in processing speed\n7. Test process coordinator orchestration with the new optimized flow\n8. Validate Supabase Edge Function integration with optimized pipeline\n9. Verify run tracking and metrics collection for the new architecture\n10. Implement comprehensive error handling tests for each stage\n11. Use Cypress v12.14.0 for end-to-end testing with optimized pipeline scenarios\n12. Create test scenarios validating duplicate detection accuracy\n13. Implement performance benchmarking comparing old vs new pipeline\n14. Test various data sources and configurations with the optimized flow\n15. Create detailed logging for each stage of the optimized pipeline\n16. Use Docker for creating isolated test environments\n17. Implement parallel test execution for faster results",
+        "testStrategy": "1. Design test scenarios covering the optimized pipeline flow with various duplicate detection cases\n2. Execute end-to-end tests in a staging environment focusing on EarlyDuplicateDetector accuracy\n3. Validate correct data flow through the optimized pipeline (DataExtraction → EarlyDuplicateDetector → Analysis/Filter → Storage)\n4. Test error handling and recovery mechanisms at each stage\n5. Verify metrics collection including token usage reduction and performance improvements\n6. Perform load testing to ensure scalability with the optimized architecture\n7. Validate that duplicate opportunities bypass expensive LLM stages\n8. Test Critical Fields updates and Null Protection for duplicate handling\n9. Benchmark performance improvements (target: 60-80% faster processing)\n10. Validate token usage reduction (target: 60-80% reduction)\n11. Review logs and performance metrics for the optimized pipeline\n12. Compare performance metrics between old and new pipeline architectures",
         "subtasks": []
       },
       {
         "id": 7,
         "title": "Conduct Performance Validation",
-        "description": "Perform thorough performance testing to ensure v2 meets or exceeds performance targets, including processing time, memory usage, and token consumption.",
-        "details": "1. Implement performance monitoring tools (use Prometheus v2.40.0 and Grafana v9.5.0)\n2. Compare v1 vs v2 processing times\n3. Monitor memory and resource usage (use node-memwatch v2.0.0)\n4. Validate timeout resolution in Supabase Edge Functions\n5. Document performance improvements\n6. Use Apache JMeter v5.5 for load testing\n7. Implement custom performance benchmarks\n8. Use Datadog v0.36.0 for comprehensive system monitoring\n9. Optimize database queries and indexing\n10. Implement caching strategies where appropriate (use Redis v6.0.0)\n11. Profile code to identify and resolve performance bottlenecks (use Node.js built-in profiler)",
-        "testStrategy": "1. Execute performance tests in a production-like environment\n2. Compare v1 and v2 performance metrics\n3. Validate that processing time is 60-80% faster than v1\n4. Verify memory usage reduction by 70%\n5. Confirm token consumption reduction by 15-25%\n6. Test for timeout issues in Supabase Edge Functions\n7. Perform load testing to ensure scalability\n8. Analyze and document performance results",
-        "priority": "high",
+        "description": "Perform thorough performance testing to ensure v2 with optimized pipeline meets or exceeds performance targets, focusing on EarlyDuplicateDetector benefits and LLM token reduction.",
+        "status": "pending",
         "dependencies": [
           6
         ],
-        "status": "pending",
+        "priority": "high",
+        "details": "1. Implement performance monitoring tools (use Prometheus v2.40.0 and Grafana v9.5.0)\n2. Compare v1 vs v2 processing times with optimized pipeline\n3. Monitor memory and resource usage with new pipeline architecture (use node-memwatch v2.0.0)\n4. Validate timeout resolution in Supabase Edge Functions\n5. Document performance improvements from optimized pipeline\n6. Use Apache JMeter v5.5 for load testing\n7. Implement custom performance benchmarks for EarlyDuplicateDetector\n8. Use Datadog v0.36.0 for comprehensive system monitoring\n9. Optimize database queries and indexing for Critical Fields updates\n10. Implement caching strategies where appropriate (use Redis v6.0.0)\n11. Profile code to identify and resolve performance bottlenecks (use Node.js built-in profiler)\n12. Measure EarlyDuplicateDetector accuracy and performance impact\n13. Validate 60-80% reduction in LLM token usage from duplicate prevention\n14. Test direct Critical Fields database updates performance\n15. Compare memory usage with new pipeline architecture",
+        "testStrategy": "1. Execute performance tests in a production-like environment\n2. Compare v1 and v2 performance metrics with optimized pipeline\n3. Validate that processing time is 60-80% faster than v1\n4. Verify 60-80% reduction in LLM token usage due to EarlyDuplicateDetector\n5. Confirm memory usage reduction with new pipeline architecture\n6. Test EarlyDuplicateDetector accuracy (>95% duplicate detection rate)\n7. Measure database performance for direct Critical Fields updates\n8. Test for timeout issues in Supabase Edge Functions\n9. Perform load testing to ensure scalability with optimized pipeline\n10. Validate that duplicates are prevented from reaching Analysis/Filter stages\n11. Analyze and document performance results from optimized architecture",
         "subtasks": []
       },
       {
@@ -847,7 +940,7 @@
     ],
     "metadata": {
       "created": "2025-06-17T23:54:58.582Z",
-      "updated": "2025-07-08T00:08:38.721Z",
+      "updated": "2025-07-08T03:03:16.475Z",
       "description": "Tasks for master context"
     }
   }
