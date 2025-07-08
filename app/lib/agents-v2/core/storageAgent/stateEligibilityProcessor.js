@@ -15,6 +15,12 @@ import { locationParsing } from './utils/locationParsing.js';
  * @returns {Promise<Object>} - Processing results
  */
 async function processEligibility(opportunityId, opportunity, client) {
+  // Handle null or undefined opportunity data
+  if (!opportunity) {
+    console.log(`[StateEligibilityProcessor] ⚠️ No opportunity data for: ${opportunityId}`);
+    return { stateCount: 0, isNational: false };
+  }
+  
   // Handle national opportunities
   if (opportunity.isNational) {
     console.log(`[StateEligibilityProcessor] 🌍 National opportunity: ${opportunityId}`);
