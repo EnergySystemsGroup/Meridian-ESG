@@ -1165,85 +1165,63 @@
       {
         "id": 35,
         "title": "Implement Enhanced API Raw Response Capture System",
-        "description": "Develop a comprehensive API raw response capture system that tracks every individual API call while maintaining deduplication benefits, providing full audit trail for both single-step and two-step APIs.",
-        "details": "1. Extend Data Extraction Agent to capture ALL raw API responses individually:\n   - Implement response capture for each API call in single-step APIs\n   - Capture both initial and follow-up API responses in two-step APIs\n   - Store responses with unique identifiers and timestamps\n   - Maintain relationship mapping between responses and extracted opportunities\n\n2. Design enhanced database schema for raw response storage:\n   - Create 'api_raw_responses' table with fields: id, source_id, run_id, call_sequence, endpoint, request_params, response_data, timestamp, processing_status\n   - Implement efficient storage with JSON compression for large responses\n   - Add indexes for fast querying by source, run, and timestamp\n   - Maintain foreign key relationships to funding_opportunities table\n\n3. Implement comprehensive audit trail system:\n   - Track complete API call chain for each opportunity\n   - Store request parameters and headers for reproducibility\n   - Log response processing status and any transformation errors\n   - Create versioned response storage to track API changes over time\n\n4. Enhance deduplication system to work with multiple responses:\n   - Modify early duplicate detection to consider all response variations\n   - Implement intelligent response consolidation for duplicate opportunities\n   - Preserve all raw responses while preventing duplicate processing\n   - Create response diff analysis for tracking API changes\n\n5. Build response analysis and debugging tools:\n   - Implement API response comparison utilities\n   - Create debugging endpoints for response inspection\n   - Add response quality metrics and validation\n   - Build response replay functionality for testing\n\n6. Integrate with existing pipeline performance monitoring:\n   - Track storage overhead and performance impact\n   - Monitor response capture success rates\n   - Implement alerts for response capture failures\n   - Create metrics for response storage efficiency",
-        "testStrategy": "1. Test comprehensive response capture for single-step APIs:\n   - Verify all API calls are captured with correct metadata\n   - Validate response storage integrity and compression\n   - Test relationship mapping between responses and opportunities\n\n2. Validate two-step API response tracking:\n   - Ensure both initial and follow-up responses are captured\n   - Verify correct call sequence tracking\n   - Test response chain reconstruction capabilities\n\n3. Test enhanced deduplication with multiple responses:\n   - Validate duplicate detection accuracy with varied response formats\n   - Test response consolidation without data loss\n   - Verify early duplicate detection performance impact\n\n4. Validate audit trail functionality:\n   - Test complete API call chain reconstruction\n   - Verify request parameter and header storage\n   - Test response versioning and change tracking\n\n5. Performance and storage testing:\n   - Measure storage overhead impact on system performance\n   - Test response compression effectiveness\n   - Validate database query performance with large response datasets\n\n6. Integration testing with existing pipeline:\n   - Test seamless integration with Data Extraction Agent\n   - Verify no disruption to existing deduplication benefits\n   - Test response capture during error scenarios and retries\n\n7. Test debugging and analysis tools:\n   - Validate response comparison utilities\n   - Test response replay functionality\n   - Verify debugging endpoint accuracy and security",
+        "description": "Develop a streamlined API raw response capture system that provides perfect opportunity-to-API traceability while maintaining storage efficiency through intelligent response updating and tracking.",
         "status": "in-progress",
         "dependencies": [
           1
         ],
         "priority": "high",
+        "details": "1. Add tracking fields to existing api_raw_responses table:\n   - Add first_seen_at, last_seen_at, and call_count fields\n   - Track when responses were first captured and last updated\n   - Count frequency of identical responses across runs\n\n2. Modify storeRawResponse to UPDATE existing records:\n   - Instead of skipping duplicate responses, update existing records with fresh metadata\n   - Update last_seen_at timestamp and increment call_count\n   - Preserve original response data while tracking recurrence patterns\n\n3. Enhance EarlyDuplicateDetector for perfect traceability:\n   - Include raw_response_id when updating funding opportunities\n   - Create direct linkage between opportunities and their source API responses\n   - Maintain audit trail without complex schema changes\n\n4. Implement response tracking utilities:\n   - Create simple debugging tools for response inspection\n   - Add basic metrics for response frequency and patterns\n   - Build lightweight monitoring for response capture success rates",
+        "testStrategy": "1. Test response tracking field functionality:\n   - Verify first_seen_at, last_seen_at, and call_count updates\n   - Test timestamp accuracy and call_count incrementation\n   - Validate tracking across multiple runs and sources\n\n2. Validate storeRawResponse update behavior:\n   - Test UPDATE operations instead of INSERT for duplicates\n   - Verify metadata updates without data loss\n   - Test performance impact of UPDATE vs INSERT operations\n\n3. Test enhanced EarlyDuplicateDetector integration:\n   - Verify raw_response_id inclusion in opportunity updates\n   - Test traceability from opportunity back to source response\n   - Validate audit trail completeness and accuracy\n\n4. Integration testing with existing pipeline:\n   - Test seamless integration with current Data Extraction Agent\n   - Verify no disruption to existing deduplication benefits\n   - Test response tracking during error scenarios and retries\n\n5. Performance and efficiency testing:\n   - Measure storage efficiency improvements\n   - Test response capture success rates\n   - Validate minimal performance impact on existing pipeline",
         "subtasks": [
           {
             "id": 1,
-            "title": "Design Enhanced Database Schema for Raw Response Storage",
-            "description": "Create comprehensive database schema for storing API raw responses with proper indexing and relationships",
+            "title": "Add Tracking Fields to api_raw_responses Table",
+            "description": "Extend existing api_raw_responses table with first_seen_at, last_seen_at, and call_count fields",
+            "status": "done",
             "dependencies": [],
-            "details": "Create 'api_raw_responses' table with fields: id, source_id, run_id, call_sequence, endpoint, request_params, response_data, timestamp, processing_status. Implement JSON compression for large responses, add indexes for querying by source/run/timestamp, and establish foreign key relationships to funding_opportunities table.",
-            "status": "pending",
-            "testStrategy": "Create migration tests, verify table structure, test JSON compression performance, validate foreign key constraints, and benchmark query performance with indexes"
+            "details": "Add three new fields to the existing api_raw_responses table: first_seen_at (timestamp for initial capture), last_seen_at (timestamp for most recent update), and call_count (integer tracking frequency of identical responses). Create database migration to add these fields with appropriate defaults.",
+            "testStrategy": "Create migration tests, verify field additions, test default values, and validate data types and constraints"
           },
           {
             "id": 2,
-            "title": "Extend Data Extraction Agent for Individual Response Capture",
-            "description": "Modify Data Extraction Agent to capture all raw API responses individually with unique identifiers",
+            "title": "Modify storeRawResponse to UPDATE Existing Records",
+            "description": "Change storeRawResponse logic to update existing records instead of skipping duplicates",
+            "status": "done",
             "dependencies": [
               1
             ],
-            "details": "Implement response capture for each API call in single-step APIs, capture both initial and follow-up responses in two-step APIs, store responses with unique identifiers and timestamps, and maintain relationship mapping between responses and extracted opportunities.",
-            "status": "pending",
-            "testStrategy": "Unit tests for response capture logic, integration tests for single-step and two-step API flows, verify unique identifier generation, and test relationship mapping accuracy"
+            "details": "Modify the storeRawResponse function to perform UPDATE operations on existing records instead of skipping duplicates. Update last_seen_at timestamp and increment call_count while preserving original response data and first_seen_at timestamp.",
+            "testStrategy": "Unit tests for UPDATE logic, verify metadata updates, test call_count incrementation, and validate timestamp handling"
           },
           {
             "id": 3,
-            "title": "Implement Comprehensive Audit Trail System",
-            "description": "Build complete audit trail tracking for API call chains with request parameters and processing status",
+            "title": "Enhance EarlyDuplicateDetector with raw_response_id",
+            "description": "Modify EarlyDuplicateDetector to include raw_response_id when updating opportunities",
+            "status": "pending",
             "dependencies": [
               2
             ],
-            "details": "Track complete API call chain for each opportunity, store request parameters and headers for reproducibility, log response processing status and transformation errors, and create versioned response storage to track API changes over time.",
-            "status": "pending",
-            "testStrategy": "Verify audit trail completeness, test request parameter storage, validate processing status logging, and test versioned storage functionality"
+            "details": "Update the EarlyDuplicateDetector to include raw_response_id field when updating funding opportunities, creating direct linkage between opportunities and their source API responses for perfect traceability.",
+            "testStrategy": "Test raw_response_id inclusion in opportunity updates, verify traceability links, and validate audit trail completeness"
           },
           {
             "id": 4,
-            "title": "Enhance Deduplication System for Multiple Responses",
-            "description": "Modify deduplication logic to handle multiple responses while preserving audit trail",
+            "title": "Implement Response Tracking Utilities",
+            "description": "Create simple debugging tools and monitoring for response tracking",
+            "status": "pending",
             "dependencies": [
               3
             ],
-            "details": "Modify early duplicate detection to consider all response variations, implement intelligent response consolidation for duplicate opportunities, preserve all raw responses while preventing duplicate processing, and create response diff analysis for tracking API changes.",
-            "status": "pending",
-            "testStrategy": "Test deduplication with various response scenarios, verify response preservation, validate consolidation logic, and test diff analysis accuracy"
-          },
-          {
-            "id": 5,
-            "title": "Build Response Analysis and Debugging Tools",
-            "description": "Create comprehensive tools for response inspection, comparison, and debugging",
-            "dependencies": [
-              4
-            ],
-            "details": "Implement API response comparison utilities, create debugging endpoints for response inspection, add response quality metrics and validation, and build response replay functionality for testing purposes.",
-            "status": "pending",
-            "testStrategy": "Test comparison utilities accuracy, validate debugging endpoints, verify quality metrics calculations, and test replay functionality with historical responses"
-          },
-          {
-            "id": 6,
-            "title": "Integrate Performance Monitoring and Alerting",
-            "description": "Implement monitoring system for response capture performance and storage efficiency",
-            "dependencies": [
-              5
-            ],
-            "details": "Track storage overhead and performance impact, monitor response capture success rates, implement alerts for response capture failures, and create metrics for response storage efficiency and overall system performance.",
-            "status": "pending",
-            "testStrategy": "Verify performance metrics accuracy, test alerting triggers, validate storage efficiency calculations, and ensure monitoring doesn't impact system performance"
+            "details": "Build lightweight utilities for response inspection, basic metrics for response frequency and patterns, and simple monitoring for response capture success rates without complex tooling overhead.",
+            "testStrategy": "Test debugging utility accuracy, verify metrics calculations, and validate monitoring effectiveness"
           }
         ]
       }
     ],
     "metadata": {
       "created": "2025-06-17T23:54:58.582Z",
-      "updated": "2025-07-09T05:12:26.755Z",
+      "updated": "2025-07-09T08:50:43.633Z",
       "description": "Tasks for master context"
     }
   }

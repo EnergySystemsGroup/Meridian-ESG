@@ -47,7 +47,7 @@ export async function extractFromSource(source, processingInstructions, anthropi
     // Step 1: Make API calls based on workflow type
     let rawData;
     if (processingInstructions.workflow === 'two_step_api') {
-      rawData = await handleTwoStepApi(processingInstructions);
+      rawData = await handleTwoStepApi(processingInstructions, source.id);
     } else {
       rawData = await handleSingleApi(processingInstructions);
     }
@@ -58,6 +58,11 @@ export async function extractFromSource(source, processingInstructions, anthropi
       source: source,
       processingInstructions: processingInstructions,
       timestamp: new Date().toISOString()
+    }, {
+      api_endpoint: processingInstructions.apiEndpoint,
+      call_type: processingInstructions.workflow === 'two_step_api' ? 'list' : 'single',
+      execution_time_ms: Date.now() - startTime,
+      opportunity_count: rawData.totalFound || 0
     });
     
     // Step 3: Extract opportunities with schema-based processing

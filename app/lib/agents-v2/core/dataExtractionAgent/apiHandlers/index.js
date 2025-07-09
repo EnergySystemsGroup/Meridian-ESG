@@ -88,7 +88,7 @@ export async function handleSingleApi(processingInstructions) {
 /**
  * Handle two-step API workflow
  */
-export async function handleTwoStepApi(processingInstructions) {
+export async function handleTwoStepApi(processingInstructions, sourceId = null) {
   console.log(`[DataExtractionAgent] 🔄 Starting two-step API process - fetching opportunity list`);
   
   // Step 1: Get list of opportunities
@@ -105,7 +105,7 @@ export async function handleTwoStepApi(processingInstructions) {
   }
   
   // Step 2: Fetch detailed information
-  const detailResult = await makeTwoStepCalls(listResult.data, processingInstructions);
+  const detailResult = await makeTwoStepCalls(listResult.data, processingInstructions, sourceId);
   
   return {
     data: detailResult.detailData,

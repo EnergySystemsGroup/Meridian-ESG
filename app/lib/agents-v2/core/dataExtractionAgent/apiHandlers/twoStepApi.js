@@ -6,11 +6,12 @@
  */
 
 import { extractDataFromResponse } from '../utils/dataExtraction.js';
+import { storeRawResponse } from '../storage/index.js';
 
 /**
  * Make detail calls for each opportunity in the list
  */
-export async function makeTwoStepCalls(opportunities, processingInstructions) {
+export async function makeTwoStepCalls(opportunities, processingInstructions, sourceId = null) {
   const { detailConfig } = processingInstructions;
   
   if (!detailConfig?.enabled) {
@@ -34,9 +35,33 @@ export async function makeTwoStepCalls(opportunities, processingInstructions) {
         continue;
       }
       
-      const { extractedData, rawData } = await fetchOpportunityDetail(opportunityId, detailConfig);
+      const startTime = Date.now();
+      const { extractedData, rawData, requestDetails } = await fetchOpportunityDetail(opportunityId, detailConfig);
+      const executionTime = Date.now() - startTime;
+      
       detailData.push(extractedData);
       rawDetailResponses.push(rawData); // Store raw response
+      
+      // Store each detail API response individually
+      if (sourceId) {
+        try {
+          const detailResponseId = await storeRawResponse(
+            sourceId,
+            rawData,
+            requestDetails,
+            {
+              api_endpoint: detailConfig.endpoint,
+              call_type: 'detail',
+              execution_time_ms: executionTime,
+              opportunity_count: 1
+            }
+          );
+          console.log(`[DataExtractionAgent] 💾 Stored detail response for ${opportunityId}: ${detailResponseId}`);
+        } catch (storageError) {
+          console.error(`[DataExtractionAgent] ❌ Failed to store detail response for ${opportunityId}:`, storageError.message);
+        }
+      }
+      
       detailCallsSuccessful++;
       
       console.log(`[DataExtractionAgent] ✅ Detail fetched for: ${opportunityId}`);
@@ -103,18 +128,30 @@ async function fetchOpportunityDetail(opportunityId, detailConfig) {
     
     const data = await response.json();
     
+    // Build request details for storage
+    const requestDetails = {
+      url: url.toString(),
+      method: detailConfig.method || 'GET',
+      headers: detailConfig.headers || {},
+      body: requestBody,
+      opportunityId: opportunityId,
+      timestamp: new Date().toISOString()
+    };
+    
     // Extract data using detailResponseDataPath if configured
     if (detailConfig.detailResponseDataPath) {
       const extractedData = extractDataByPath(data, detailConfig.detailResponseDataPath);
       return {
         extractedData: extractedData || data,
-        rawData: data
+        rawData: data,
+        requestDetails: requestDetails
       };
     }
     
     return {
       extractedData: data,
-      rawData: data
+      rawData: data,
+      requestDetails: requestDetails
     };
     
   } catch (error) {
