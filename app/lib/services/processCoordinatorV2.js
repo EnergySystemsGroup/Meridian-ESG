@@ -225,9 +225,19 @@ export async function processApiSourceV2(sourceId, runId = null, supabase, anthr
       status: 'success',
       version: 'v2.0',
       environment: 'service-module',
+      pipeline: 'v2-optimized',
       source: {
         id: source.id,
         name: source.name
+      },
+      stages: {
+        sourceOrchestrator: sourceAnalysis,
+        dataExtraction: extractionResult,
+        earlyDuplicateDetector: duplicateDetection,
+        analysis: analysisResult,
+        filter: filterResult,
+        storage: storageResult,
+        ...(duplicateDetection.opportunitiesToUpdate.length > 0 && { directUpdate: directUpdateResult })
       },
       metrics: {
         // V2 optimized specific metrics

@@ -479,4 +479,4 @@ export function createMockOpportunities(type, count = 1) {
   return opportunities;
 }
 
-export { PipelinePathValidator, PerformanceMetricsCollector, TestResultValidator };
+// Individual classes are exported inline above

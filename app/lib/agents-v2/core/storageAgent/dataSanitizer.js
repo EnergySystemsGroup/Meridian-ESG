@@ -18,7 +18,7 @@ function prepareForInsert(opportunity, sourceId, fundingSourceId) {
   const sanitized = sanitizeFields(opportunity);
   
   // Add required fields for insert
-  sanitized.api_source_id = sourceId;
+  sanitized.source_id = sourceId;
   sanitized.funding_source_id = fundingSourceId;
   sanitized.created_at = new Date().toISOString();
   sanitized.updated_at = new Date().toISOString();
@@ -86,11 +86,27 @@ function sanitizeFields(opportunity) {
   sanitized.tags = sanitizeArray(opportunity.tags);
   
   // Handle boolean fields
-  sanitized.matching_required = sanitizeBoolean(opportunity.matchingRequired);
+  sanitized.cost_share_required = sanitizeBoolean(opportunity.matchingRequired);
   sanitized.is_national = sanitizeBoolean(opportunity.isNational);
   
   // Handle percentage fields
-  sanitized.matching_percentage = sanitizePercentage(opportunity.matchingPercentage);
+  sanitized.cost_share_percentage = sanitizePercentage(opportunity.matchingPercentage);
+  
+  // Handle analysis scoring object - extract relevance score
+  if (opportunity.scoring) {
+    sanitized.relevance_score = sanitizeRelevanceScore(opportunity.scoring.overallScore);
+  }
+  
+  // Handle analysis fields explicitly (debug - these should come from field mapping)
+  if (opportunity.actionableSummary) {
+    sanitized.actionable_summary = sanitizeDescription(opportunity.actionableSummary);
+  }
+  if (opportunity.enhancedDescription) {
+    sanitized.enhanced_description = sanitizeDescription(opportunity.enhancedDescription);
+  }
+  if (opportunity.relevanceReasoning) {
+    sanitized.relevance_reasoning = sanitizeDescription(opportunity.relevanceReasoning);
+  }
   
   return sanitized;
 }
@@ -307,6 +323,24 @@ function sanitizePercentage(percentage) {
   return value;
 }
 
+/**
+ * Sanitizes relevance score from scoring analysis
+ * @param {number|string} score - Relevance score value (0-10)
+ * @returns {number|null} - Sanitized relevance score (0-10)
+ */
+function sanitizeRelevanceScore(score) {
+  if (score === null || score === undefined) return null;
+  
+  let value = parseFloat(score);
+  if (isNaN(value)) return null;
+  
+  // Ensure score is between 0 and 10
+  if (value < 0) value = 0;
+  if (value > 10) value = 10;
+  
+  return Math.round(value * 100) / 100; // Round to 2 decimal places
+}
+
 export const dataSanitizer = {
   prepareForInsert,
   prepareForUpdate,
@@ -321,5 +355,6 @@ export const dataSanitizer = {
   sanitizeDate,
   sanitizeArray,
   sanitizeBoolean,
-  sanitizePercentage
+  sanitizePercentage,
+  sanitizeRelevanceScore
 }; 

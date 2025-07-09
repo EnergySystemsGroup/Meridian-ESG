@@ -376,7 +376,7 @@ export class RunManagerV2 {
     }
     
     if (finalResults) {
-      updateData.final_results = finalResults;
+      updateData.storage_results = finalResults;
     }
     
     const { error } = await this.supabase

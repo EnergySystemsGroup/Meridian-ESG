@@ -65,7 +65,7 @@ const DataGenerator = {
  * OpportunityFactory - Generates realistic test opportunities
  */
 export class OpportunityFactory {
-  constructor(fundingSourceId = null) {
+  constructor(fundingSourceId = 'd8410c4e-35f0-4279-909a-93ea141c7e57') {
     this.fundingSourceId = fundingSourceId;
   }
 

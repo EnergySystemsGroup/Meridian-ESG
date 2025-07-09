@@ -277,7 +277,7 @@
             "description": "Modify existing test scripts in scripts/test/ to reflect the new optimized pipeline flow: DataExtraction → EarlyDuplicateDetector → [New opportunities only] → Analysis → Filter → Storage",
             "dependencies": [],
             "details": "Update test scripts to use the new pipeline sequence, ensuring EarlyDuplicateDetector is properly integrated after DataExtraction and before Analysis/Filter stages. Modify test configurations to handle the conditional flow where only new opportunities proceed to expensive LLM stages.",
-            "status": "in-progress",
+            "status": "done",
             "testStrategy": "Unit tests for pipeline flow validation using Jest v29.5.0"
           },
           {
@@ -981,7 +981,7 @@
               2
             ],
             "details": "Build integration tests in `app/lib/agents-v2/tests/integration/new-pipeline.test.js` covering DataExtraction → EarlyDuplicateDetector → Analysis → Filter → Storage flow. Test with real API responses, validate each agent's output, verify database writes, and confirm opportunity creation. Include error handling scenarios and retry logic testing.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Assert that new opportunities are properly created in database with correct analysis scores and filtering results. Verify all agent schemas are followed."
           },
           {
@@ -1045,6 +1045,17 @@
             "details": "Build staging environment test suite in `app/lib/agents-v2/tests/integration/staging-e2e.test.js` deploying to staging with production-like data volumes. Test full pipeline execution, validate monitoring and alerting systems, test rollback procedures and error recovery. Include load testing with concurrent pipeline executions and database stress testing.",
             "status": "pending",
             "testStrategy": "Execute full pipeline runs in staging environment. Validate monitoring dashboards show correct metrics and alerts trigger appropriately during error scenarios."
+          },
+          {
+            "id": 9,
+            "title": "Vet and validate NEW pipeline analysis data quality",
+            "description": "Compare actual database entries from 33.3 tests against expected analysis outputs to verify data accuracy, field completeness, and content quality",
+            "details": "",
+            "status": "in-progress",
+            "dependencies": [
+              "33.3"
+            ],
+            "parentTaskId": 33
           }
         ]
       },
@@ -1154,7 +1165,7 @@
     ],
     "metadata": {
       "created": "2025-06-17T23:54:58.582Z",
-      "updated": "2025-07-08T04:08:32.335Z",
+      "updated": "2025-07-08T06:06:08.031Z",
       "description": "Tasks for master context"
     }
   }

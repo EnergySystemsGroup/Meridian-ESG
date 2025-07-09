@@ -13,7 +13,7 @@
  */
 
 import { createClient } from '@supabase/supabase-js';
-import Anthropic from '@anthropic-ai/sdk';
+import { AnthropicClient } from '../../../app/lib/agents-v2/utils/anthropicClient.js';
 import dotenv from 'dotenv';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
@@ -35,16 +35,16 @@ const TEST_CONFIG = {
   anthropic: {
     apiKey: process.env.ANTHROPIC_API_KEY
   },
-  // Test sources - IDs from local database  
+  // Test sources - API source IDs from local database  
   testSources: {
     californiaGrants: {
-      id: '9cd692b7-485b-4d21-b810-f7e4373385c4', // Department of Energy - National Energy Technology Laboratory
-      name: 'Department of Energy - National Energy Technology Laboratory',
+      id: '68000a0d-02f3-4bc8-93a5-53fcf2fb09b1', // California Grants Portal
+      name: 'California Grants Portal',
       type: 'one-step'
     },
     grantsGov: {
-      id: 'd50b1923-2a8b-480e-a193-619b1ab26a72', // Department of Energy Golden Field Office
-      name: 'Department of Energy Golden Field Office',
+      id: '7767eedc-8a09-4058-8837-fc8df8e437cb', // Grants.gov
+      name: 'Grants.gov',
       type: 'two-step'
     }
   }
@@ -75,7 +75,7 @@ export class TestEnvironment {
         TEST_CONFIG.supabase.serviceKey
       );
 
-      this.anthropic = new Anthropic({
+      this.anthropic = new AnthropicClient({
         apiKey: TEST_CONFIG.anthropic.apiKey
       });
 
@@ -120,7 +120,7 @@ export class TestEnvironment {
     
     // Test Anthropic connection (simple completion)
     try {
-      const response = await this.anthropic.messages.create({
+      const response = await this.anthropic.client.messages.create({
         model: 'claude-3-5-sonnet-20241022',
         max_tokens: 10,
         messages: [{ role: 'user', content: 'Test' }]
@@ -250,7 +250,7 @@ export class TestEnvironment {
       // NEW opportunity (not in database)
       {
         opportunity_number: 'TEST-NEW-001',
-        funding_source_id: TEST_CONFIG.testSources.californiaGrants.id,
+        funding_source_id: 'd8410c4e-35f0-4279-909a-93ea141c7e57', // Use existing funding source ID
         title: 'Test New Opportunity for Integration Testing',
         description: 'This is a test opportunity that should be processed as NEW',
         minimum_award: 10000,
@@ -265,7 +265,7 @@ export class TestEnvironment {
       // DUPLICATE opportunity (will be in database for UPDATE testing)
       {
         opportunity_number: 'TEST-DUP-001',
-        funding_source_id: TEST_CONFIG.testSources.californiaGrants.id,
+        funding_source_id: 'd8410c4e-35f0-4279-909a-93ea141c7e57', // Use existing funding source ID
         title: 'Test Duplicate Opportunity for Integration Testing',
         description: 'This opportunity will be modified to test UPDATE path',
         minimum_award: 5000,
@@ -280,7 +280,7 @@ export class TestEnvironment {
       // SKIP opportunity (identical, no changes)
       {
         opportunity_number: 'TEST-SKIP-001',
-        funding_source_id: TEST_CONFIG.testSources.californiaGrants.id,
+        funding_source_id: 'd8410c4e-35f0-4279-909a-93ea141c7e57', // Use existing funding source ID
         title: 'Test Skip Opportunity for Integration Testing',
         description: 'This opportunity will have no changes and should be skipped',
         minimum_award: 15000,

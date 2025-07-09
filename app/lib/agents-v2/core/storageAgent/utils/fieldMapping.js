@@ -33,11 +33,11 @@ const FIELD_MAPPINGS = {
   'tags': 'tags',
   
   // Boolean fields
-  'matchingRequired': 'matching_required',
+  'matchingRequired': 'cost_share_required',
   'isNational': 'is_national',
   
   // Percentage fields
-  'matchingPercentage': 'matching_percentage',
+  'matchingPercentage': 'cost_share_percentage',
   
   // Agency fields
   'agencyName': 'agency_name',
@@ -50,7 +50,13 @@ const FIELD_MAPPINGS = {
   'fundingType': 'funding_type',
   'applicationDeadline': 'application_deadline',
   'announcementDate': 'announcement_date',
-  'lastUpdated': 'last_updated'
+  'lastUpdated': 'last_updated',
+  
+  // Analysis fields (from AnalysisAgent)
+  'actionableSummary': 'actionable_summary',
+  'relevanceScore': 'relevance_score',
+  'enhancedDescription': 'enhanced_description',
+  'relevanceReasoning': 'relevance_reasoning'
 };
 
 /**
