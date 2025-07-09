@@ -1191,7 +1191,7 @@
             "dependencies": [
               1
             ],
-            "details": "Modify the storeRawResponse function to perform UPDATE operations on existing records instead of skipping duplicates. Update last_seen_at timestamp and increment call_count while preserving original response data and first_seen_at timestamp.",
+            "details": "Modify the storeRawResponse function to perform UPDATE operations on existing records instead of skipping duplicates. Update last_seen_at timestamp and increment call_count while preserving original response data and first_seen_at timestamp.\n<info added on 2025-07-09T09:07:46.707Z>\nSuccessfully implemented the UPDATE functionality for existing records in storeRawResponse function. The system now updates last_seen_at timestamp and increments call_count while preserving original response data and first_seen_at timestamp. Enhanced to capture all detail API calls individually for two-step APIs like Grants.gov, with each detail call stored using call_type='detail' and comprehensive metadata including execution_time_ms, api_endpoint, and opportunity_count. Testing confirmed proper tracking of 5 detail responses plus 1 list response.\n</info added on 2025-07-09T09:07:46.707Z>",
             "testStrategy": "Unit tests for UPDATE logic, verify metadata updates, test call_count incrementation, and validate timestamp handling"
           },
           {
@@ -1215,6 +1215,15 @@
             ],
             "details": "Build lightweight utilities for response inspection, basic metrics for response frequency and patterns, and simple monitoring for response capture success rates without complex tooling overhead.",
             "testStrategy": "Test debugging utility accuracy, verify metrics calculations, and validate monitoring effectiveness"
+          },
+          {
+            "id": 5,
+            "title": "Clean up redundant timestamp fields in api_raw_responses",
+            "description": "Remove duplicate timestamp fields from api_raw_responses table. Currently has 'timestamp', 'created_at', and 'first_seen_at' which are essentially the same for new records. Keep 'first_seen_at' as the creation timestamp and 'last_seen_at' for updates. Remove 'timestamp' and 'created_at' fields to eliminate redundancy.",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 35
           }
         ]
       }
