@@ -56,7 +56,17 @@ const FIELD_MAPPINGS = {
   'actionableSummary': 'actionable_summary',
   'relevanceScore': 'relevance_score',
   'enhancedDescription': 'enhanced_description',
-  'relevanceReasoning': 'relevance_reasoning'
+  'relevanceReasoning': 'relevance_reasoning',
+  
+  // Additional missing fields
+  'opportunityNumber': 'opportunity_number',
+  'disbursementType': 'disbursement_type',
+  'awardProcess': 'award_process',
+  'eligibleActivities': 'eligible_activities',
+  'notes': 'notes',
+  'apiUpdatedAt': 'api_updated_at',
+  'postedDate': 'posted_date',
+  'scoring': 'scoring'
 };
 
 /**

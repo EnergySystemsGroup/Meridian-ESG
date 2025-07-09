@@ -69,6 +69,7 @@ function sanitizeFields(opportunity) {
   
   // Handle API tracking fields
   sanitized.api_updated_at = sanitizeDate(opportunity.api_updated_at);
+  sanitized.raw_response_id = opportunity.rawResponseId || null;
   
   // Handle monetary fields
   sanitized.minimum_award = sanitizeAmount(opportunity.minimumAward);
@@ -78,10 +79,13 @@ function sanitizeFields(opportunity) {
   // Handle date fields
   sanitized.open_date = sanitizeDate(opportunity.openDate);
   sanitized.close_date = sanitizeDate(opportunity.closeDate);
+  sanitized.posted_date = sanitizeDate(opportunity.postedDate);
   
   // Handle arrays
   sanitized.eligible_applicants = sanitizeArray(opportunity.eligibleApplicants);
   sanitized.eligible_project_types = sanitizeArray(opportunity.eligibleProjectTypes);
+  sanitized.eligible_locations = sanitizeArray(opportunity.eligibleLocations);
+  sanitized.eligible_activities = sanitizeArray(opportunity.eligibleActivities);
   sanitized.categories = sanitizeArray(opportunity.categories);
   sanitized.tags = sanitizeArray(opportunity.tags);
   
@@ -95,7 +99,20 @@ function sanitizeFields(opportunity) {
   // Handle analysis scoring object - extract relevance score
   if (opportunity.scoring) {
     sanitized.relevance_score = sanitizeRelevanceScore(opportunity.scoring.overallScore);
+    sanitized.scoring = opportunity.scoring; // Store the full scoring object as JSONB
   }
+  
+  // Handle additional text fields
+  sanitized.opportunity_number = opportunity.opportunityNumber || null;
+  sanitized.disbursement_type = opportunity.disbursementType || null;
+  sanitized.award_process = opportunity.awardProcess || null;
+  sanitized.notes = opportunity.notes || null;
+  
+  // Derive agency_name from funding_source if not explicitly provided
+  sanitized.agency_name = opportunity.agencyName || 
+    (opportunity.funding_source && opportunity.funding_source.name) || 
+    opportunity.fundingAgency || 
+    null;
   
   // Handle analysis fields explicitly (debug - these should come from field mapping)
   if (opportunity.actionableSummary) {
