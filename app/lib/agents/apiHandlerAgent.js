@@ -2039,7 +2039,7 @@ async function storeRawResponse(sourceId, rawResponse, requestDetails) {
 		const { data: existingResponse } = await supabase
 			.from('api_raw_responses')
 			.select('id')
-			.eq('source_id', sourceId)
+			.eq('api_source_id', sourceId)
 			.eq('content_hash', contentHash)
 			.limit(1);
 
@@ -2060,7 +2060,7 @@ async function storeRawResponse(sourceId, rawResponse, requestDetails) {
 		// Store the raw response in the database with the content hash
 		const { error } = await supabase.from('api_raw_responses').insert({
 			id: rawResponseId,
-			source_id: sourceId,
+			api_source_id: sourceId,
 			content: rawResponse,
 			content_hash: contentHash,
 			request_details: requestDetails,

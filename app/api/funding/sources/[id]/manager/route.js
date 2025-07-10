@@ -29,7 +29,7 @@ export async function POST(request, context) {
 		const { data: configurations, error: configError } = await supabase
 			.from('api_source_configurations')
 			.select('*')
-			.eq('source_id', id);
+			.eq('api_source_id', id);
 
 		if (configError) {
 			throw configError;

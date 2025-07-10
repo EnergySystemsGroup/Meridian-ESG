@@ -139,7 +139,7 @@ async function batchFetchDuplicates(opportunities, sourceId, supabase) {
     const { data, error } = await supabase
       .from('funding_opportunities')
       .select('*')
-      .eq('funding_source_id', sourceId)
+      .eq('api_source_id', sourceId)
       .in('api_opportunity_id', opportunityIds);
     
     if (error) {
@@ -156,7 +156,7 @@ async function batchFetchDuplicates(opportunities, sourceId, supabase) {
     const { data, error } = await supabase
       .from('funding_opportunities')
       .select('*')
-      .eq('funding_source_id', sourceId)
+      .eq('api_source_id', sourceId)
       .in('title', titles);
     
     if (error) {

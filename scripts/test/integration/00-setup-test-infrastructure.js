@@ -249,7 +249,7 @@ export class TestEnvironment {
     const testOpportunities = [
       // NEW opportunity (not in database)
       {
-        opportunity_number: 'TEST-NEW-001',
+        api_opportunity_id: 'TEST-NEW-001',
         funding_source_id: 'd8410c4e-35f0-4279-909a-93ea141c7e57', // Use existing funding source ID
         title: 'Test New Opportunity for Integration Testing',
         description: 'This is a test opportunity that should be processed as NEW',
@@ -264,7 +264,7 @@ export class TestEnvironment {
       
       // DUPLICATE opportunity (will be in database for UPDATE testing)
       {
-        opportunity_number: 'TEST-DUP-001',
+        api_opportunity_id: 'TEST-DUP-001',
         funding_source_id: 'd8410c4e-35f0-4279-909a-93ea141c7e57', // Use existing funding source ID
         title: 'Test Duplicate Opportunity for Integration Testing',
         description: 'This opportunity will be modified to test UPDATE path',
@@ -279,7 +279,7 @@ export class TestEnvironment {
       
       // SKIP opportunity (identical, no changes)
       {
-        opportunity_number: 'TEST-SKIP-001',
+        api_opportunity_id: 'TEST-SKIP-001',
         funding_source_id: 'd8410c4e-35f0-4279-909a-93ea141c7e57', // Use existing funding source ID
         title: 'Test Skip Opportunity for Integration Testing',
         description: 'This opportunity will have no changes and should be skipped',

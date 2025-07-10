@@ -320,7 +320,7 @@ export async function processOpportunitiesBatch(
 			}
 
 			// Add required metadata fields but don't include raw_response_id if it's not in the schema
-			sanitized.source_id = sourceId;
+			sanitized.api_source_id = sourceId;
 			sanitized.created_at = new Date().toISOString();
 			sanitized.updated_at = new Date().toISOString();
 
@@ -536,7 +536,7 @@ export async function processOpportunitiesBatch(
 					.from('funding_opportunities')
 					.select('*')
 					.eq('api_opportunity_id', opportunity.id)
-					.eq('source_id', sourceId)
+					.eq('api_source_id', sourceId)
 					.limit(1);
 
 				if (!error && data && data.length > 0) {
@@ -553,7 +553,7 @@ export async function processOpportunitiesBatch(
 					.from('funding_opportunities')
 					.select('*')
 					.eq('title', opportunity.title)
-					.eq('source_id', sourceId)
+					.eq('api_source_id', sourceId)
 					.limit(1);
 
 				if (!error && data && data.length > 0) {

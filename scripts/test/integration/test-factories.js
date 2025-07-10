@@ -18,22 +18,22 @@ async function testFactories() {
   // Test OpportunityFactory
   console.log('\n📋 Testing OpportunityFactory:');
   const newOpp = factories.opportunityFactory.createNewOpportunity();
-  console.log(`  ✅ New Opportunity: ${newOpp.opportunity_number} - ${newOpp.title}`);
+  console.log(`  ✅ New Opportunity: ${newOpp.api_opportunity_id} - ${newOpp.title}`);
   console.log(`     Awards: $${newOpp.minimum_award.toLocaleString()} - $${newOpp.maximum_award.toLocaleString()}`);
   
   const baseOpp = factories.opportunityFactory.createNewOpportunity({
-    opportunity_number: 'BASE-001',
+    api_opportunity_id: 'BASE-001',
     minimum_award: 10000,
     maximum_award: 50000
   });
   
   const updateOpp = factories.opportunityFactory.createUpdateOpportunity(baseOpp);
-  console.log(`  ✅ Update Opportunity: ${updateOpp.opportunity_number}`);
+  console.log(`  ✅ Update Opportunity: ${updateOpp.api_opportunity_id}`);
   console.log(`     Original: $${baseOpp.minimum_award} - $${baseOpp.maximum_award}`);
   console.log(`     Updated:  $${updateOpp.minimum_award} - $${updateOpp.maximum_award}`);
   
   const skipOpp = factories.opportunityFactory.createSkipOpportunity(baseOpp);
-  console.log(`  ✅ Skip Opportunity: ${skipOpp.opportunity_number} (identical to base)`);
+  console.log(`  ✅ Skip Opportunity: ${skipOpp.api_opportunity_id} (identical to base)`);
   
   // Test APIResponseFactory
   console.log('\n🌐 Testing APIResponseFactory:');

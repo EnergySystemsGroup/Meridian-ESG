@@ -68,7 +68,7 @@ describe('RunManagerV2', () => {
     // Setup default mock responses (using V1 database columns)
     mockRunData = {
       id: 'run-test-123',
-      source_id: 'source-abc',
+      api_source_id: 'source-abc',
       status: 'processing',
       started_at: new Date().toISOString(),
       source_manager_status: 'pending',
@@ -123,7 +123,7 @@ describe('RunManagerV2', () => {
       expect(mockSupabaseClient.from).toHaveBeenCalledWith('api_source_runs');
       expect(mockChain.insert).toHaveBeenCalledWith(
         expect.objectContaining({
-          source_id: sourceId,
+          api_source_id: sourceId,
           status: 'processing',
           // V2 stages mapped to V1 database columns
           source_manager_status: 'pending',

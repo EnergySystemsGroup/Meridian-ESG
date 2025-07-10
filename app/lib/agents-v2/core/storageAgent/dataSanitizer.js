@@ -18,7 +18,7 @@ function prepareForInsert(opportunity, sourceId, fundingSourceId) {
   const sanitized = sanitizeFields(opportunity);
   
   // Add required fields for insert
-  sanitized.source_id = sourceId;
+  sanitized.api_source_id = sourceId;
   sanitized.funding_source_id = fundingSourceId;
   sanitized.created_at = new Date().toISOString();
   sanitized.updated_at = new Date().toISOString();

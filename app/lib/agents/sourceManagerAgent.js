@@ -287,7 +287,7 @@ export async function getNextSourceToProcess() {
 			const { data: configData, error: configError } = await supabase
 				.from('api_source_configurations')
 				.select('*')
-				.eq('source_id', data[0].id);
+				.eq('api_source_id', data[0].id);
 
 			if (configError) {
 				throw configError;

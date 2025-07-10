@@ -56,7 +56,7 @@ export async function storeRawResponse(sourceId, rawResponse, requestDetails, me
     
     const { error } = await supabase.from('api_raw_responses').insert({
       id: rawResponseId,
-      source_id: sourceId,
+      api_source_id: sourceId,
       content: rawResponse,
       content_hash: contentHash,
       request_details: requestDetails,
@@ -387,7 +387,7 @@ async function checkForExistingResponse(supabase, sourceId, contentHash) {
     const { data: existingResponse, error } = await supabase
       .from('api_raw_responses')
       .select('id, call_count, api_endpoint, call_type, execution_time_ms, opportunity_count')
-      .eq('source_id', sourceId)
+      .eq('api_source_id', sourceId)
       .eq('content_hash', contentHash)
       .limit(1);
     

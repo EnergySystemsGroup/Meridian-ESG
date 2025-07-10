@@ -19,7 +19,7 @@ export async function GET(request) {
 
 		// Filter by source ID if provided
 		if (sourceId) {
-			query = query.eq('source_id', sourceId);
+			query = query.eq('api_source_id', sourceId);
 		}
 
 		// Execute the query

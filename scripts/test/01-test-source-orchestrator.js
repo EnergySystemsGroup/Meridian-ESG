@@ -60,7 +60,7 @@ async function fetchSourceFromDatabase(sourceId) {
   const { data: configurations, error: configError } = await supabase
     .from('api_source_configurations')
     .select('*')
-    .eq('source_id', sourceId);
+    .eq('api_source_id', sourceId);
 
   if (configError) {
     throw new Error(`Failed to fetch configurations: ${configError.message}`);
