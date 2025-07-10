@@ -61,7 +61,7 @@ function sanitizeFields(opportunity) {
   }
   
   // Handle special fields that need custom processing
-  sanitized.opportunity_id = sanitizeOpportunityId(opportunity.id);
+  sanitized.api_opportunity_id = sanitizeOpportunityId(opportunity.id || opportunity.opportunityNumber);
   sanitized.title = sanitizeTitle(opportunity.title);
   sanitized.description = sanitizeDescription(opportunity.description);
   sanitized.url = sanitizeUrl(opportunity.url);
@@ -103,7 +103,7 @@ function sanitizeFields(opportunity) {
   }
   
   // Handle additional text fields
-  sanitized.opportunity_number = opportunity.opportunityNumber || null;
+  // opportunity_number is now handled as api_opportunity_id above
   sanitized.disbursement_type = opportunity.disbursementType || null;
   sanitized.award_process = opportunity.awardProcess || null;
   sanitized.notes = opportunity.notes || null;

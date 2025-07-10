@@ -299,7 +299,7 @@ export async function processOpportunitiesBatch(
 				relevanceScore: 'relevance_score',
 				relevanceReasoning: 'relevance_reasoning',
 				notes: 'notes',
-				id: 'opportunity_number', // Special case: map external ID to opportunity_number
+				id: 'api_opportunity_id', // Special case: map external ID to api_opportunity_id
 				// Agency is handled separately through funding_source_id
 			};
 
@@ -529,13 +529,13 @@ export async function processOpportunitiesBatch(
 				apiSourceType
 			);
 
-			// Check for existing opportunity by opportunity ID first (mapped to opportunity_number in DB)
+			// Check for existing opportunity by opportunity ID first (mapped to api_opportunity_id in DB)
 			let existingOpportunity = null;
 			if (opportunity.id) {
 				const { data, error } = await supabase
 					.from('funding_opportunities')
 					.select('*')
-					.eq('opportunity_number', opportunity.id)
+					.eq('api_opportunity_id', opportunity.id)
 					.eq('source_id', sourceId)
 					.limit(1);
 

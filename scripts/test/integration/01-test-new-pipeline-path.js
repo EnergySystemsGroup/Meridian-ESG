@@ -42,14 +42,14 @@ class NewPipelinePathTest {
     try {
       // Step 1: Create a NEW opportunity (not in database)
       const newOpportunity = factories.opportunityFactory.createNewOpportunity({
-        opportunity_number: 'INTEGRATION-NEW-001',
+        api_opportunity_id: 'INTEGRATION-NEW-001',
         title: 'Integration Test - Clean Energy Research Grant',
         minimum_award: 25000,
         maximum_award: 100000,
         total_funding_available: 500000
       });
 
-      console.log(`📋 Created test opportunity: ${newOpportunity.opportunity_number}`);
+      console.log(`📋 Created test opportunity: ${newOpportunity.api_opportunity_id}`);
       console.log(`   Title: ${newOpportunity.title}`);
       console.log(`   Awards: $${newOpportunity.minimum_award.toLocaleString()} - $${newOpportunity.maximum_award.toLocaleString()}`);
 
@@ -67,8 +67,8 @@ class NewPipelinePathTest {
       // Step 3: Verify opportunity doesn't exist in database
       const { data: existingCheck, error: checkError } = await supabase
         .from('funding_opportunities')
-        .select('id, opportunity_number')
-        .eq('opportunity_number', newOpportunity.opportunity_number)
+        .select('id, api_opportunity_id')
+        .eq('api_opportunity_id', newOpportunity.api_opportunity_id)
         .eq('funding_source_id', newOpportunity.funding_source_id);
 
       if (checkError) {
@@ -76,7 +76,7 @@ class NewPipelinePathTest {
       }
 
       if (existingCheck.length > 0) {
-        throw new Error(`Test opportunity ${newOpportunity.opportunity_number} already exists in database`);
+        throw new Error(`Test opportunity ${newOpportunity.api_opportunity_id} already exists in database`);
       }
 
       console.log('✅ Verified opportunity does not exist in database');
@@ -209,8 +209,8 @@ class NewPipelinePathTest {
       // Step 13: Validate final database state
       const { data: finalCheck, error: finalError } = await supabase
         .from('funding_opportunities')
-        .select('id, opportunity_number, title')
-        .eq('opportunity_number', newOpportunity.opportunity_number)
+        .select('id, api_opportunity_id, title')
+        .eq('api_opportunity_id', newOpportunity.api_opportunity_id)
         .eq('funding_source_id', newOpportunity.funding_source_id);
 
       if (finalError) {
@@ -220,7 +220,7 @@ class NewPipelinePathTest {
         if (filteredCount > 0 && finalCheck.length === 0) {
           console.log('ℹ️ No opportunities found in database (valid - may not have met storage criteria)');
         } else if (finalCheck.length > 0) {
-          console.log(`✅ Opportunity found in database: ${finalCheck[0].opportunity_number}`);
+          console.log(`✅ Opportunity found in database: ${finalCheck[0].api_opportunity_id}`);
         } else {
           console.log('✅ Database state consistent with pipeline results');
         }
@@ -273,7 +273,7 @@ class NewPipelinePathTest {
       for (let i = 0; i < batchSize; i++) {
         newOpportunities.push(
           factories.opportunityFactory.createNewOpportunity({
-            opportunity_number: `BATCH-NEW-${String(i + 1).padStart(3, '0')}`,
+            api_opportunity_id: `BATCH-NEW-${String(i + 1).padStart(3, '0')}`,
             title: `Batch Test ${i + 1} - ${['Infrastructure', 'Research', 'Education'][i]} Grant`
           })
         );
@@ -281,7 +281,7 @@ class NewPipelinePathTest {
 
       console.log(`📋 Created batch of ${batchSize} NEW opportunities`);
       newOpportunities.forEach((opp, i) => {
-        console.log(`   ${i + 1}. ${opp.opportunity_number}: ${opp.title}`);
+        console.log(`   ${i + 1}. ${opp.api_opportunity_id}: ${opp.title}`);
       });
 
       // Verify none exist in database
@@ -289,11 +289,11 @@ class NewPipelinePathTest {
         const { data: check } = await supabase
           .from('funding_opportunities')
           .select('id')
-          .eq('opportunity_number', opp.opportunity_number)
+          .eq('api_opportunity_id', opp.api_opportunity_id)
           .eq('funding_source_id', opp.funding_source_id);
 
         if (check.length > 0) {
-          throw new Error(`Batch opportunity ${opp.opportunity_number} already exists`);
+          throw new Error(`Batch opportunity ${opp.api_opportunity_id} already exists`);
         }
       }
       console.log('✅ Verified all batch opportunities are NEW');
@@ -336,7 +336,7 @@ class NewPipelinePathTest {
     try {
       // Test with invalid opportunity data
       const invalidOpportunity = {
-        opportunity_number: 'ERROR-TEST-001',
+        api_opportunity_id: 'ERROR-TEST-001',
         // Missing required fields like title
         funding_source_id: config.testSources.californiaGrants.id
       };

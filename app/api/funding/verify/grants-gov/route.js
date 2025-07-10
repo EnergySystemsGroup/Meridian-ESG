@@ -455,7 +455,7 @@ export async function GET() {
 				`
         id, 
         title, 
-        opportunity_number,
+        api_opportunity_id,
         status,
         open_date,
         close_date,

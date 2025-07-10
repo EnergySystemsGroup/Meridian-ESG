@@ -74,7 +74,7 @@ export class OpportunityFactory {
    */
   createNewOpportunity(overrides = {}) {
     const baseOpportunity = {
-      opportunity_number: `NEW-${DataGenerator.randomString(8)}`,
+      api_opportunity_id: `NEW-${DataGenerator.randomString(8)}`,
       title: `${DataGenerator.randomCompany()} - ${DataGenerator.randomWords(4)} Grant Program`,
       description: this.generateDescription(),
       minimum_award: DataGenerator.randomInt(5000, 50000),
@@ -190,7 +190,7 @@ export class OpportunityFactory {
     
     for (let i = 0; i < count; i++) {
       opportunities.push(this.createNewOpportunity({
-        opportunity_number: `BATCH-${String(i + 1).padStart(3, '0')}`
+        api_opportunity_id: `BATCH-${String(i + 1).padStart(3, '0')}`
       }));
     }
     
@@ -356,18 +356,18 @@ export class TestScenarioFactory {
     // Create NEW opportunities
     scenario.opportunities.new = [
       this.opportunityFactory.createNewOpportunity({
-        opportunity_number: 'TEST-NEW-001',
+        api_opportunity_id: 'TEST-NEW-001',
         title: 'New Clean Energy Research Grant'
       }),
       this.opportunityFactory.createNewOpportunity({
-        opportunity_number: 'TEST-NEW-002', 
+        api_opportunity_id: 'TEST-NEW-002', 
         title: 'New Infrastructure Development Program'
       })
     ];
 
     // Create UPDATE opportunities (these will be seeded in DB first)
     const baseUpdateOpportunity = this.opportunityFactory.createNewOpportunity({
-      opportunity_number: 'TEST-UPDATE-001',
+      api_opportunity_id: 'TEST-UPDATE-001',
       title: 'Existing Education Initiative Grant'
     });
     
@@ -378,7 +378,7 @@ export class TestScenarioFactory {
 
     // Create SKIP opportunities (these will be seeded in DB first)
     const baseSkipOpportunity = this.opportunityFactory.createNewOpportunity({
-      opportunity_number: 'TEST-SKIP-001',
+      api_opportunity_id: 'TEST-SKIP-001',
       title: 'Existing Community Development Fund'
     });
     
@@ -421,7 +421,7 @@ export class TestScenarioFactory {
     for (let i = 0; i < newCount; i++) {
       scenario.opportunities.new.push(
         this.opportunityFactory.createNewOpportunity({
-          opportunity_number: `PERF-NEW-${String(i + 1).padStart(4, '0')}`
+          api_opportunity_id: `PERF-NEW-${String(i + 1).padStart(4, '0')}`
         })
       );
     }
@@ -432,7 +432,7 @@ export class TestScenarioFactory {
     
     for (let i = 0; i < duplicateCount; i++) {
       const base = this.opportunityFactory.createNewOpportunity({
-        opportunity_number: `PERF-DUP-${String(i + 1).padStart(4, '0')}`
+        api_opportunity_id: `PERF-DUP-${String(i + 1).padStart(4, '0')}`
       });
       
       scenario.opportunities.baseDuplicates.push(base);
@@ -483,13 +483,13 @@ export class TestScenarioFactory {
     scenario.opportunities.invalid = [
       // Missing required fields
       {
-        opportunity_number: 'ERROR-001',
+        api_opportunity_id: 'ERROR-001',
         // Missing title
         description: 'Invalid opportunity missing title'
       },
       // Invalid data types
       {
-        opportunity_number: 'ERROR-002',
+        api_opportunity_id: 'ERROR-002',
         title: 'Invalid Amount Opportunity',
         minimum_award: 'not-a-number',
         maximum_award: 'also-not-a-number'

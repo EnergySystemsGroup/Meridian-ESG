@@ -10,7 +10,7 @@
  */
 const FIELD_MAPPINGS = {
   // Core fields
-  'id': 'opportunity_id',
+  'id': 'api_opportunity_id',
   'title': 'title',
   'description': 'description',
   'url': 'url',
@@ -59,7 +59,7 @@ const FIELD_MAPPINGS = {
   'relevanceReasoning': 'relevance_reasoning',
   
   // Additional missing fields
-  'opportunityNumber': 'opportunity_number',
+  'opportunityNumber': 'api_opportunity_id',
   'disbursementType': 'disbursement_type',
   'awardProcess': 'award_process',
   'eligibleActivities': 'eligible_activities',

@@ -45,7 +45,7 @@ async function findByOpportunityId(opportunityId, sourceId, client) {
   const { data: existing } = await client
     .from('funding_opportunities')
     .select('*')
-    .eq('opportunity_id', opportunityId)
+    .eq('api_opportunity_id', opportunityId)
     .eq('api_source_id', sourceId)
     .maybeSingle();
   

@@ -140,7 +140,7 @@ async function batchFetchDuplicates(opportunities, sourceId, supabase) {
       .from('funding_opportunities')
       .select('*')
       .eq('funding_source_id', sourceId)
-      .in('opportunity_id', opportunityIds);
+      .in('api_opportunity_id', opportunityIds);
     
     if (error) {
       console.error('[EarlyDuplicateDetector] ❌ Error fetching by IDs:', error);
@@ -170,8 +170,8 @@ async function batchFetchDuplicates(opportunities, sourceId, supabase) {
   // Create lookup maps for instant access
   const idMap = new Map();
   idResults.forEach(record => {
-    if (record.opportunity_id) {
-      idMap.set(record.opportunity_id, record);
+    if (record.api_opportunity_id) {
+      idMap.set(record.api_opportunity_id, record);
     }
   });
   
@@ -191,7 +191,7 @@ async function batchFetchDuplicates(opportunities, sourceId, supabase) {
  * Categorizes a single opportunity using ID + Title validation and freshness checking
  * @param {Object} opportunity - Single opportunity to categorize
  * @param {string} sourceId - API source ID
- * @param {Map} idMap - Map of existing records by opportunity_id
+ * @param {Map} idMap - Map of existing records by api_opportunity_id
  * @param {Map} titleMap - Map of existing records by title
  * @returns {Promise<Object>} - Categorization result with action and reasoning
  */

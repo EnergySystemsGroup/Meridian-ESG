@@ -96,7 +96,7 @@ describe('Storage Agent - Error Scenarios and Edge Cases', () => {
     mockFundingSourceManager.getOrCreate.mockResolvedValue('funding-source-1');
     mockStateEligibilityProcessor.processEligibility.mockResolvedValue({});
     mockDataSanitizer.prepareForInsert.mockReturnValue({
-      opportunity_id: 'test-id',
+      api_opportunity_id: 'test-id',
       title: 'Test Opportunity'
     });
   });

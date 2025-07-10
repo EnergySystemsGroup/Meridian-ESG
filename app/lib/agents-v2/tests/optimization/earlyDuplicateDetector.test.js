@@ -106,13 +106,13 @@ describe('EarlyDuplicateDetector', () => {
       // Mock existing record for update-1
       const existingRecord = {
         id: 1,
-        opportunity_id: 'update-1',
+        api_opportunity_id: 'update-1',
         title: 'Grant to Update',
         updated_at: '2024-01-01T00:00:00Z'
       };
 
       const mockIn = vi.fn((column, values) => {
-        if (column === 'opportunity_id' && values.includes('update-1')) {
+        if (column === 'api_opportunity_id' && values.includes('update-1')) {
           return Promise.resolve({ data: [existingRecord], error: null });
         }
         return Promise.resolve({ data: [], error: null });
@@ -209,7 +209,7 @@ describe('EarlyDuplicateDetector', () => {
       
       // Check that it queries with correct column names
       expect(mockEq).toHaveBeenCalledWith('funding_source_id', 'source-1');
-      expect(mockIn).toHaveBeenCalledWith('opportunity_id', ['id-1', 'id-2']); // IDs deduplicated
+      expect(mockIn).toHaveBeenCalledWith('api_opportunity_id', ['id-1', 'id-2']); // IDs deduplicated
       expect(mockIn).toHaveBeenCalledWith('title', ['Environmental Grant Program 1', 'Infrastructure Grant Program 2']); // Titles deduplicated
     });
 
@@ -247,7 +247,7 @@ describe('EarlyDuplicateDetector', () => {
       await earlyDuplicateDetector.batchFetchDuplicates(opportunities, 'source-1', mockSupabase);
 
       // Should only query for valid ID and valid title
-      expect(mockIn).toHaveBeenCalledWith('opportunity_id', ['valid-id']); // Only valid ID
+      expect(mockIn).toHaveBeenCalledWith('api_opportunity_id', ['valid-id']); // Only valid ID
       expect(mockIn).toHaveBeenCalledWith('title', ['This is a valid long title']); // Only valid title
     });
   });
@@ -255,7 +255,7 @@ describe('EarlyDuplicateDetector', () => {
   describe('findExistingWithValidation', () => {
     it('should prioritize ID + Title validation', () => {
       const opportunity = { id: 'test-id', title: 'Test Grant' };
-      const idMatch = { id: 1, opportunity_id: 'test-id', title: 'Test Grant' };
+      const idMatch = { id: 1, api_opportunity_id: 'test-id', title: 'Test Grant' };
       
       const idMap = new Map([['test-id', idMatch]]);
       const titleMap = new Map();
@@ -270,8 +270,8 @@ describe('EarlyDuplicateDetector', () => {
 
     it('should detect ID reuse and fall back to title matching', () => {
       const opportunity = { id: 'reused-id', title: 'Different Grant' };
-      const idMatch = { id: 1, opportunity_id: 'reused-id', title: 'Original Grant' };
-      const titleMatch = { id: 2, opportunity_id: 'other-id', title: 'Different Grant' };
+      const idMatch = { id: 1, api_opportunity_id: 'reused-id', title: 'Original Grant' };
+      const titleMatch = { id: 2, api_opportunity_id: 'other-id', title: 'Different Grant' };
       
       const idMap = new Map([['reused-id', idMatch]]);
       const titleMap = new Map([['Different Grant', titleMatch]]);
@@ -457,14 +457,14 @@ describe('EarlyDuplicateDetector', () => {
       const existingRecords = [
         { 
           id: 1, 
-          opportunity_id: 'update-1', 
+          api_opportunity_id: 'update-1', 
           title: 'Grant to Update', 
           minimumAward: 1000,
           updated_at: '2024-01-01T00:00:00Z'
         },
         { 
           id: 2, 
-          opportunity_id: 'skip-1', 
+          api_opportunity_id: 'skip-1', 
           title: 'Grant to Skip',
           updated_at: new Date().toISOString() // Recent
         }
@@ -472,9 +472,9 @@ describe('EarlyDuplicateDetector', () => {
 
       // Mock batch fetch returning existing records
       const mockIn = vi.fn((column, values) => {
-        if (column === 'opportunity_id') {
-          // For opportunity_id queries, return matching records
-          const matches = existingRecords.filter(r => values.includes(r.opportunity_id));
+        if (column === 'api_opportunity_id') {
+          // For api_opportunity_id queries, return matching records
+          const matches = existingRecords.filter(r => values.includes(r.api_opportunity_id));
           return Promise.resolve({ data: matches, error: null });
         }
         // For title queries, return empty (to force ID-based matching)
@@ -492,7 +492,7 @@ describe('EarlyDuplicateDetector', () => {
 
       // Mock field changes
       changeDetector.hasFieldChanged.mockImplementation((existing, opportunity, field) => {
-        if (existing.opportunity_id === 'update-1' && field === 'minimumAward') {
+        if (existing.api_opportunity_id === 'update-1' && field === 'minimumAward') {
           return true; // Grant to Update has changes
         }
         return false;

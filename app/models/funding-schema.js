@@ -12,7 +12,7 @@ const fundingOpportunitiesSchema = {
 
 	// Basic Information - Available from opportunity listings
 	title: 'text not null', // Opportunity title
-	opportunity_number: 'text', // Opportunity number/ID from source
+	api_opportunity_id: 'text', // External API identifier for the opportunity
 	source_agency: 'text not null', // Funding agency name
 	source_type: 'text', // Federal, State, Local, Private, etc.
 
@@ -127,7 +127,7 @@ const dataSources = [
 		description: 'Primary source for federal grant opportunities',
 		data_available: [
 			'title',
-			'opportunity_number',
+			'api_opportunity_id',
 			'source_agency',
 			'posted_date',
 			'close_date',
@@ -174,7 +174,7 @@ const dataSources = [
 		description: 'Official journal of federal government notices',
 		data_available: [
 			'title',
-			'opportunity_number',
+			'api_opportunity_id',
 			'source_agency',
 			'posted_date',
 			'close_date',

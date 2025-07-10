@@ -37,7 +37,7 @@ describe('DataSanitizer', () => {
       expect(result.funding_source_id).toBe('funding-1');
       expect(result.created_at).toBeDefined();
       expect(result.updated_at).toBeDefined();
-      expect(result.opportunity_id).toBe('test-id');
+      expect(result.api_opportunity_id).toBe('test-id');
       expect(result.title).toBe('Test Opportunity');
       expect(result.description).toBe('Test Description');
     });
@@ -380,7 +380,7 @@ describe('DataSanitizer', () => {
 
       const result = dataSanitizer.sanitizeFields(opportunity);
 
-      expect(result.opportunity_id).toBe('test-id');
+      expect(result.api_opportunity_id).toBe('test-id');
       expect(result.title).toBe('Test Title');
       expect(result.description).toBe('Test Description');
       expect(result.url).toBe('https://example.com');
@@ -404,7 +404,7 @@ describe('DataSanitizer', () => {
       const opportunity = {};
       const result = dataSanitizer.sanitizeFields(opportunity);
 
-      expect(result.opportunity_id).toBeNull();
+      expect(result.api_opportunity_id).toBeNull();
       expect(result.title).toBeNull();
       expect(result.description).toBeNull();
       expect(result.url).toBeNull();
