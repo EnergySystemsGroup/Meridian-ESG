@@ -102,7 +102,8 @@ export async function processApiSourceV2(sourceId, runId = null, supabase, anthr
     const duplicateDetection = await detectDuplicates(
       extractionResult.opportunities,
       sourceId,
-      supabase
+      supabase,
+      extractionResult.rawResponseId // Pass through API response tracking
     )
     console.log(`[ProcessCoordinatorV2] ✅ Duplicate detection completed: ${duplicateDetection.metrics.newOpportunities} new, ${duplicateDetection.metrics.opportunitiesToUpdate} to update, ${duplicateDetection.metrics.opportunitiesToSkip} to skip`)
     

@@ -23,9 +23,10 @@ import { changeDetector } from './changeDetector.js';
  * @param {Array} opportunities - Array of opportunities from DataExtractionAgent
  * @param {string} sourceId - API source ID
  * @param {Object} supabase - Supabase client instance
+ * @param {string} rawResponseId - Optional raw response ID to track API source lineage
  * @returns {Promise<Object>} - Categorized opportunities for action-oriented processing
  */
-export async function detectDuplicates(opportunities, sourceId, supabase) {
+export async function detectDuplicates(opportunities, sourceId, supabase, rawResponseId = null) {
   const startTime = Date.now();
   
   try {
@@ -65,20 +66,24 @@ export async function detectDuplicates(opportunities, sourceId, supabase) {
       
       switch (categorization.action) {
         case 'new':
-          result.newOpportunities.push(opportunity);
+          // Add rawResponseId to new opportunities for data lineage
+          const newOpportunity = rawResponseId ? { ...opportunity, rawResponseId } : opportunity;
+          result.newOpportunities.push(newOpportunity);
           break;
         case 'update':
           result.opportunitiesToUpdate.push({
             apiRecord: opportunity,
             dbRecord: categorization.existingRecord,
-            reason: categorization.reason
+            reason: categorization.reason,
+            rawResponseId // Include for update tracking
           });
           break;
         case 'skip':
           result.opportunitiesToSkip.push({
             apiRecord: opportunity,
             existingRecord: categorization.existingRecord,
-            reason: categorization.reason
+            reason: categorization.reason,
+            rawResponseId // Include for skip tracking
           });
           break;
       }

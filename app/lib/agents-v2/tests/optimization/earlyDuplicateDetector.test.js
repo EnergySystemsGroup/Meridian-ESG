@@ -94,6 +94,91 @@ describe('EarlyDuplicateDetector', () => {
       expect(result.opportunitiesToSkip).toHaveLength(0);
       expect(result.metrics.totalProcessed).toBe(2);
     });
+
+    it('should include rawResponseId in categorized opportunities when provided', async () => {
+      const opportunities = [
+        { id: 'new-1', title: 'New Grant 1' },
+        { id: 'update-1', title: 'Grant to Update' }
+      ];
+
+      const rawResponseId = 'test-raw-response-123';
+
+      // Mock existing record for update-1
+      const existingRecord = {
+        id: 1,
+        opportunity_id: 'update-1',
+        title: 'Grant to Update',
+        updated_at: '2024-01-01T00:00:00Z'
+      };
+
+      const mockIn = vi.fn((column, values) => {
+        if (column === 'opportunity_id' && values.includes('update-1')) {
+          return Promise.resolve({ data: [existingRecord], error: null });
+        }
+        return Promise.resolve({ data: [], error: null });
+      });
+
+      mockSupabase.from.mockReturnValue({
+        select: vi.fn(() => ({
+          eq: vi.fn(() => ({ in: mockIn }))
+        }))
+      });
+
+      // Mock title similarity check
+      duplicateDetector.titlesAreSimilar.mockReturnValue(true);
+      
+      // Mock field changes detection
+      changeDetector.hasFieldChanged.mockReturnValue(true);
+
+      const result = await earlyDuplicateDetector.detectDuplicates(
+        opportunities, 
+        'source-1', 
+        mockSupabase, 
+        rawResponseId
+      );
+
+      // Verify new opportunity includes rawResponseId
+      expect(result.newOpportunities).toHaveLength(1);
+      expect(result.newOpportunities[0]).toEqual({
+        id: 'new-1',
+        title: 'New Grant 1',
+        rawResponseId: rawResponseId
+      });
+
+      // Verify update opportunity includes rawResponseId in metadata
+      expect(result.opportunitiesToUpdate).toHaveLength(1);
+      expect(result.opportunitiesToUpdate[0]).toEqual({
+        apiRecord: { id: 'update-1', title: 'Grant to Update' },
+        dbRecord: existingRecord,
+        reason: 'stale_review_90_days',
+        rawResponseId: rawResponseId
+      });
+    });
+
+    it('should work without rawResponseId parameter (backward compatibility)', async () => {
+      const opportunities = [
+        { id: 'new-1', title: 'New Grant 1' }
+      ];
+
+      // Mock no existing records found
+      mockSupabase.from.mockReturnValue({
+        select: vi.fn(() => ({
+          eq: vi.fn(() => ({
+            in: vi.fn(() => Promise.resolve({ data: [], error: null }))
+          }))
+        }))
+      });
+
+      // Call without rawResponseId parameter
+      const result = await earlyDuplicateDetector.detectDuplicates(opportunities, 'source-1', mockSupabase);
+      
+      // Should still work and not include rawResponseId
+      expect(result.newOpportunities).toHaveLength(1);
+      expect(result.newOpportunities[0]).toEqual({
+        id: 'new-1',
+        title: 'New Grant 1'
+      });
+    });
   });
 
   describe('batchFetchDuplicates', () => {

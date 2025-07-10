@@ -82,7 +82,7 @@ export async function updateDuplicateOpportunities(updateBatch, supabase) {
  * @returns {Promise<Object>} - Update result
  */
 async function updateSingleOpportunity(update, supabase) {
-  const { apiRecord, dbRecord, reason } = update;
+  const { apiRecord, dbRecord, reason, rawResponseId } = update;
   
   try {
     // Prepare update data with only critical fields
@@ -105,6 +105,11 @@ async function updateSingleOpportunity(update, supabase) {
     // Add API timestamp if available
     if (apiRecord.api_updated_at) {
       updateData.api_updated_at = apiRecord.api_updated_at;
+    }
+    
+    // Add raw response ID for API traceability
+    if (rawResponseId) {
+      updateData.raw_response_id = rawResponseId;
     }
     
     console.log(`[DirectUpdateHandler] 🔄 Updating: ${apiRecord.title || apiRecord.id}`);
