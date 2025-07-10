@@ -37,8 +37,7 @@ export async function storeRawResponse(sourceId, rawResponse, requestDetails, me
           call_type: metadata.call_type || existingResponse.call_type,
           execution_time_ms: metadata.execution_time_ms || existingResponse.execution_time_ms,
           opportunity_count: metadata.opportunity_count || existingResponse.opportunity_count,
-          request_details: requestDetails,
-          timestamp: new Date().toISOString()
+          request_details: requestDetails
         })
         .eq('id', existingResponse.id);
       
@@ -61,9 +60,7 @@ export async function storeRawResponse(sourceId, rawResponse, requestDetails, me
       content: rawResponse,
       content_hash: contentHash,
       request_details: requestDetails,
-      timestamp: currentTime,
       created_at: currentTime,
-      first_seen_at: currentTime,
       last_seen_at: currentTime,
       call_count: 1,
       api_endpoint: metadata.api_endpoint || null,

@@ -134,8 +134,7 @@ async function fetchOpportunityDetail(opportunityId, detailConfig) {
       method: detailConfig.method || 'GET',
       headers: detailConfig.headers || {},
       body: requestBody,
-      opportunityId: opportunityId,
-      timestamp: new Date().toISOString()
+      opportunityId: opportunityId
     };
     
     // Extract data using detailResponseDataPath if configured

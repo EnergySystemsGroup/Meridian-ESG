@@ -1221,7 +1221,7 @@
             "title": "Clean up redundant timestamp fields in api_raw_responses",
             "description": "Remove duplicate timestamp fields from api_raw_responses table. Currently has 'timestamp', 'created_at', and 'first_seen_at' which are essentially the same for new records. Keep 'first_seen_at' as the creation timestamp and 'last_seen_at' for updates. Remove 'timestamp' and 'created_at' fields to eliminate redundancy.",
             "details": "",
-            "status": "pending",
+            "status": "done",
             "dependencies": [],
             "parentTaskId": 35
           }
@@ -1230,7 +1230,7 @@
     ],
     "metadata": {
       "created": "2025-06-17T23:54:58.582Z",
-      "updated": "2025-07-09T08:50:43.633Z",
+      "updated": "2025-07-10T00:34:30.438Z",
       "description": "Tasks for master context"
     }
   }

@@ -56,8 +56,7 @@ export async function extractFromSource(source, processingInstructions, anthropi
     rawApiResponse = rawData.rawResponse;
     rawResponseId = await storeRawResponse(source.id, rawApiResponse, {
       source: source,
-      processingInstructions: processingInstructions,
-      timestamp: new Date().toISOString()
+      processingInstructions: processingInstructions
     }, {
       api_endpoint: processingInstructions.apiEndpoint,
       call_type: processingInstructions.workflow === 'two_step_api' ? 'list' : 'single',
