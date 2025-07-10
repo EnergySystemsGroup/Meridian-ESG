@@ -1159,6 +1159,17 @@
             "details": "Build side-by-side comparison interface for v1 vs v2 performance metrics. Create comparison charts with overlays and difference highlighting. Implement A/B testing configuration with percentage traffic splitting. Build recommendation engine that analyzes historical performance data to suggest optimal pipeline version. Add configuration persistence for A/B test settings and automatic switching based on performance thresholds.",
             "status": "pending",
             "testStrategy": "Test comparison accuracy, A/B testing logic, and recommendation algorithm effectiveness"
+          },
+          {
+            "id": 9,
+            "title": "Implement API Response Tracking Utilities",
+            "description": "Build lightweight utilities for response inspection, basic metrics for response frequency and patterns, and simple monitoring for response capture success rates within the admin dashboard. This includes API raw response monitoring, response tracking visualizations showing API call patterns and deduplication statistics, and debugging interface for inspecting raw API responses and their processing status.",
+            "details": "",
+            "status": "pending",
+            "dependencies": [
+              "34.4"
+            ],
+            "parentTaskId": 34
           }
         ]
       },
@@ -1166,7 +1177,7 @@
         "id": 35,
         "title": "Implement Enhanced API Raw Response Capture System",
         "description": "Develop a streamlined API raw response capture system that provides perfect opportunity-to-API traceability while maintaining storage efficiency through intelligent response updating and tracking.",
-        "status": "in-progress",
+        "status": "done",
         "dependencies": [
           1
         ],
@@ -1206,17 +1217,6 @@
             "testStrategy": "Test raw_response_id inclusion in opportunity updates, verify traceability links, and validate audit trail completeness"
           },
           {
-            "id": 4,
-            "title": "Implement Response Tracking Utilities",
-            "description": "Create simple debugging tools and monitoring for response tracking",
-            "status": "pending",
-            "dependencies": [
-              3
-            ],
-            "details": "Build lightweight utilities for response inspection, basic metrics for response frequency and patterns, and simple monitoring for response capture success rates without complex tooling overhead.",
-            "testStrategy": "Test debugging utility accuracy, verify metrics calculations, and validate monitoring effectiveness"
-          },
-          {
             "id": 5,
             "title": "Clean up redundant timestamp fields in api_raw_responses",
             "description": "Remove duplicate timestamp fields from api_raw_responses table. Currently has 'timestamp', 'created_at', and 'first_seen_at' which are essentially the same for new records. Keep 'first_seen_at' as the creation timestamp and 'last_seen_at' for updates. Remove 'timestamp' and 'created_at' fields to eliminate redundancy.",
@@ -1230,7 +1230,7 @@
     ],
     "metadata": {
       "created": "2025-06-17T23:54:58.582Z",
-      "updated": "2025-07-10T06:29:18.718Z",
+      "updated": "2025-07-10T07:00:11.639Z",
       "description": "Tasks for master context"
     }
   }
