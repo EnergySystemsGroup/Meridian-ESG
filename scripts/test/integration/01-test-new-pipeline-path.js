@@ -430,9 +430,24 @@ class NewPipelinePathTest {
 if (import.meta.url === `file://${process.argv[1]}`) {
   const testSuite = new NewPipelinePathTest();
   
+  // Prevent Node.js from timing out during long-running tests
+  // This is especially important for integration tests that make real API calls
+  const keepAlive = setInterval(() => {}, 1000);
+  
+  // Set a reasonable max timeout for the entire test suite (30 minutes)
+  const maxTestDuration = 30 * 60 * 1000;
+  const testTimeout = setTimeout(() => {
+    console.error('❌ Test suite timed out after 30 minutes');
+    clearInterval(keepAlive);
+    process.exit(1);
+  }, maxTestDuration);
+  
   testSuite.runAllTests()
     .then(summary => {
       console.log('\n🎯 NEW Pipeline Integration Tests Complete!');
+      
+      clearTimeout(testTimeout);
+      clearInterval(keepAlive);
       
       if (summary.passed === summary.totalTests) {
         console.log('🎉 All tests passed!');
@@ -444,6 +459,8 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     })
     .catch(error => {
       console.error('❌ Test suite failed:', error);
+      clearTimeout(testTimeout);
+      clearInterval(keepAlive);
       process.exit(1);
     });
 }
