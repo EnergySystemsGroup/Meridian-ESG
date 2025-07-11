@@ -342,6 +342,203 @@ export class TestScenarioFactory {
   }
 
   /**
+   * Create scenario for testing all three pipeline paths simultaneously
+   */
+  createMultiPathScenario(config = {}) {
+    const {
+      newCount = 2,
+      updateCount = 2,
+      skipCount = 2,
+      staleCount = 1
+    } = config;
+
+    const scenario = {
+      name: 'Multi-Path Pipeline Validation',
+      description: 'Tests NEW, UPDATE, SKIP, and STALE paths in single run',
+      fundingSourceId: this.fundingSourceId,
+      
+      // Test data organized by expected pipeline path
+      opportunities: {
+        // NEW opportunities - should go through full pipeline
+        new: this.generateNewOpportunities(newCount),
+        
+        // UPDATE opportunities - should use DirectUpdate optimization
+        update: this.generateUpdateOpportunities(updateCount),
+        
+        // SKIP opportunities - should be skipped entirely
+        skip: this.generateSkipOpportunities(skipCount),
+        
+        // STALE opportunities - should be re-analyzed due to age
+        stale: this.generateStaleOpportunities(staleCount)
+      },
+      
+      // Pre-existing database state (for duplicates)
+      databaseState: {
+        existingOpportunities: []
+      },
+      
+      // Expected results for validation
+      expectedResults: {
+        pipelinePaths: {
+          NEW: newCount,
+          UPDATE: updateCount,
+          SKIP: skipCount,
+          STALE: staleCount
+        },
+        totalOpportunities: newCount + updateCount + skipCount + staleCount,
+        optimizationExpected: updateCount + skipCount > 0,
+        estimatedTokenSavings: Math.round(((updateCount + skipCount) / (newCount + updateCount + skipCount + staleCount)) * 100)
+      },
+      
+      // Metrics to validate (Task 36 requirements)
+      requiredMetrics: [
+        'pipeline_runs',
+        'pipeline_stages', 
+        'opportunity_processing_paths',
+        'duplicate_detection_sessions'
+      ]
+    };
+
+    // Generate corresponding database records for duplicates
+    scenario.databaseState.existingOpportunities = [
+      ...scenario.opportunities.update.map(opp => this.createDatabaseRecord(opp, 'update')),
+      ...scenario.opportunities.skip.map(opp => this.createDatabaseRecord(opp, 'skip')),
+      ...scenario.opportunities.stale.map(opp => this.createDatabaseRecord(opp, 'stale'))
+    ];
+
+    return scenario;
+  }
+
+  /**
+   * Create metrics validation scenario for Task 36 requirements
+   */
+  createMetricsValidationScenario() {
+    const scenario = {
+      name: 'Metrics Validation Scenario',
+      description: 'Validates Task 36 clean metrics system implementation',
+      fundingSourceId: this.fundingSourceId,
+      
+      opportunities: {
+        // Minimal set to test each path once
+        new: this.generateNewOpportunities(1, 'METRICS-NEW'),
+        update: this.generateUpdateOpportunities(1, 'METRICS-UPD'),
+        skip: this.generateSkipOpportunities(1, 'METRICS-SKIP')
+      },
+      
+      // Define all metrics that must be captured
+      requiredMetrics: {
+        pipeline_runs: {
+          fields: ['id', 'api_source_id', 'status', 'total_execution_time_ms', 'efficiency_score', 'created_at'],
+          validations: [
+            'status should be completed',
+            'total_execution_time_ms should be positive',
+            'efficiency_score should be 0-100'
+          ]
+        },
+        pipeline_stages: {
+          fields: ['run_id', 'stage_name', 'stage_order', 'status', 'execution_time_ms', 'stage_results'],
+          validations: [
+            'all stages should have execution_time_ms',
+            'stage_order should be sequential',
+            'status should be completed or skipped'
+          ]
+        },
+        opportunity_processing_paths: {
+          fields: ['run_id', 'api_opportunity_id', 'path_type', 'final_outcome', 'processing_time_ms'],
+          validations: [
+            'path_type should be NEW, UPDATE, or SKIP',
+            'final_outcome should match path_type',
+            'processing_time_ms should be positive'
+          ]
+        },
+        duplicate_detection_sessions: {
+          fields: ['run_id', 'total_opportunities_checked', 'new_opportunities', 'duplicates_to_update', 'duplicates_to_skip', 'efficiency_improvement_percentage'],
+          validations: [
+            'totals should sum correctly',
+            'efficiency_improvement_percentage should be 0-100',
+            'all counts should be non-negative'
+          ]
+        }
+      },
+      
+      // Performance benchmarks from Task 36
+      performanceBenchmarks: {
+        tokenSavingsTarget: 60, // 60-80% savings expected
+        timeImprovementTarget: 60, // 60-80% time improvement
+        efficiencyScoreTarget: 75 // Overall efficiency target
+      }
+    };
+
+    // Generate database state
+    scenario.databaseState = {
+      existingOpportunities: [
+        ...scenario.opportunities.update.map(opp => this.createDatabaseRecord(opp, 'update')),
+        ...scenario.opportunities.skip.map(opp => this.createDatabaseRecord(opp, 'skip'))
+      ]
+    };
+
+    return scenario;
+  }
+
+  /**
+   * Create edge case testing scenario
+   */
+  createEdgeCaseScenario() {
+    const scenario = {
+      name: 'Edge Case Testing',
+      description: 'Tests pipeline behavior with edge cases and error conditions',
+      fundingSourceId: this.fundingSourceId,
+      
+      opportunities: {
+        // Empty extraction result
+        empty: [],
+        
+        // Invalid data
+        invalid: [
+          {
+            api_opportunity_id: 'EDGE-INVALID-001',
+            // Missing required fields
+            description: 'Invalid opportunity missing title and amounts'
+          },
+          {
+            api_opportunity_id: 'EDGE-INVALID-002',
+            title: 'Invalid Data Types',
+            minimum_award: 'not-a-number',
+            maximum_award: null,
+            close_date: 'invalid-date'
+          }
+        ],
+        
+        // Boundary conditions
+        boundary: [
+          {
+            api_opportunity_id: 'EDGE-BOUNDARY-001',
+            title: 'Zero Amount Opportunity',
+            minimum_award: 0,
+            maximum_award: 0,
+            total_funding_available: 0
+          },
+          {
+            api_opportunity_id: 'EDGE-BOUNDARY-002',
+            title: 'Maximum Amount Opportunity',
+            minimum_award: 999999999,
+            maximum_award: 999999999,
+            total_funding_available: 999999999
+          }
+        ]
+      },
+      
+      expectedBehaviors: {
+        empty: 'Should complete successfully with no processing',
+        invalid: 'Should handle gracefully with error logging',
+        boundary: 'Should process normally with edge values'
+      }
+    };
+
+    return scenario;
+  }
+
+  /**
    * Create comprehensive test scenario with all three pipeline paths
    */
   createComprehensiveScenario() {
@@ -407,10 +604,21 @@ export class TestScenarioFactory {
   /**
    * Create performance testing scenario with large data sets
    */
-  createPerformanceScenario(newCount = 50, duplicateCount = 100) {
+  createPerformanceScenario(config = {}) {
+    const {
+      totalOpportunities = 100,
+      duplicateRatio = 0.7, // 70% duplicates
+      updateRatio = 0.3 // 30% of duplicates are updates
+    } = config;
+
+    const duplicateCount = Math.floor(totalOpportunities * duplicateRatio);
+    const newCount = totalOpportunities - duplicateCount;
+    const updateCount = Math.floor(duplicateCount * updateRatio);
+    const skipCount = duplicateCount - updateCount;
+
     const scenario = {
       name: 'Performance Testing',
-      description: `Tests pipeline performance with ${newCount} new and ${duplicateCount} duplicate opportunities`,
+      description: `Tests pipeline performance with ${totalOpportunities} opportunities (${newCount} new, ${updateCount} updates, ${skipCount} skips)`,
       fundingSourceId: this.fundingSourceId,
       opportunities: {},
       expectedResults: {}
@@ -426,36 +634,59 @@ export class TestScenarioFactory {
       );
     }
 
-    // Generate duplicates for performance testing
-    scenario.opportunities.duplicates = [];
-    scenario.opportunities.baseDuplicates = [];
+    // Generate update opportunities
+    scenario.opportunities.update = [];
+    scenario.opportunities.baseUpdate = [];
     
-    for (let i = 0; i < duplicateCount; i++) {
+    for (let i = 0; i < updateCount; i++) {
       const base = this.opportunityFactory.createNewOpportunity({
-        api_opportunity_id: `PERF-DUP-${String(i + 1).padStart(4, '0')}`
+        api_opportunity_id: `PERF-UPD-${String(i + 1).padStart(4, '0')}`
       });
       
-      scenario.opportunities.baseDuplicates.push(base);
-      
-      // Mix of updates and skips
-      if (i % 3 === 0) {
-        // Update
-        scenario.opportunities.duplicates.push(
-          this.opportunityFactory.createUpdateOpportunity(base)
-        );
-      } else {
-        // Skip
-        scenario.opportunities.duplicates.push(
-          this.opportunityFactory.createSkipOpportunity(base)
-        );
-      }
+      scenario.opportunities.baseUpdate.push(base);
+      scenario.opportunities.update.push(
+        this.opportunityFactory.createUpdateOpportunity(base)
+      );
     }
+
+    // Generate skip opportunities
+    scenario.opportunities.skip = [];
+    scenario.opportunities.baseSkip = [];
+    
+    for (let i = 0; i < skipCount; i++) {
+      const base = this.opportunityFactory.createNewOpportunity({
+        api_opportunity_id: `PERF-SKIP-${String(i + 1).padStart(4, '0')}`
+      });
+      
+      scenario.opportunities.baseSkip.push(base);
+      scenario.opportunities.skip.push(
+        this.opportunityFactory.createSkipOpportunity(base)
+      );
+    }
+
+    scenario.performanceTargets = {
+      maxExecutionTimeMs: 300000, // 5 minutes
+      minTokenSavingsPercent: Math.floor(duplicateRatio * 100 * 0.8), // 80% of theoretical max
+      maxTokensPerOpportunity: 2000,
+      maxMemoryUsageMB: 512
+    };
 
     scenario.expectedResults = {
       newOpportunities: newCount,
-      duplicateOpportunities: duplicateCount,
-      totalProcessed: newCount + duplicateCount,
-      expectedTokenSavings: Math.round((duplicateCount / (newCount + duplicateCount)) * 100)
+      updateOpportunities: updateCount,
+      skipOpportunities: skipCount,
+      totalOpportunities,
+      estimatedTokenSavings: Math.floor(duplicateRatio * 100),
+      estimatedTimeImprovement: Math.floor(duplicateRatio * 60), // 60% time improvement
+      duplicateDetectionAccuracy: 100 // Should be 100% for known test data
+    };
+
+    // Generate database state for duplicates
+    scenario.databaseState = {
+      existingOpportunities: [
+        ...scenario.opportunities.baseUpdate,
+        ...scenario.opportunities.baseSkip
+      ]
     };
 
     return scenario;
@@ -497,6 +728,182 @@ export class TestScenarioFactory {
     ];
 
     return scenario;
+  }
+
+  /**
+   * Generate NEW opportunities
+   */
+  generateNewOpportunities(count, prefix = 'NEW') {
+    const opportunities = [];
+    for (let i = 0; i < count; i++) {
+      opportunities.push(
+        this.opportunityFactory.createNewOpportunity({
+          api_opportunity_id: `${prefix}-${String(i + 1).padStart(3, '0')}`,
+          title: `${prefix} Opportunity ${i + 1} - ${this.generateRandomTitle()}`
+        })
+      );
+    }
+    return opportunities;
+  }
+
+  /**
+   * Generate UPDATE opportunities (with corresponding base records)
+   */
+  generateUpdateOpportunities(count, prefix = 'UPDATE') {
+    const opportunities = [];
+    for (let i = 0; i < count; i++) {
+      const baseOpportunity = this.opportunityFactory.createNewOpportunity({
+        api_opportunity_id: `${prefix}-${String(i + 1).padStart(3, '0')}`,
+        title: `${prefix} Opportunity ${i + 1} - ${this.generateRandomTitle()}`
+      });
+      
+      // Create updated version with changes
+      const updatedOpportunity = this.opportunityFactory.createUpdateOpportunity(baseOpportunity, {
+        // Add some additional changes to ensure detection
+        description: baseOpportunity.description + ' [UPDATED CONTENT]',
+        total_funding_available: baseOpportunity.total_funding_available * 1.5
+      });
+      
+      opportunities.push(updatedOpportunity);
+    }
+    return opportunities;
+  }
+
+  /**
+   * Generate SKIP opportunities (identical to existing records)
+   */
+  generateSkipOpportunities(count, prefix = 'SKIP') {
+    const opportunities = [];
+    for (let i = 0; i < count; i++) {
+      const baseOpportunity = this.opportunityFactory.createNewOpportunity({
+        api_opportunity_id: `${prefix}-${String(i + 1).padStart(3, '0')}`,
+        title: `${prefix} Opportunity ${i + 1} - ${this.generateRandomTitle()}`
+      });
+      
+      // Create skip version (no changes)
+      const skipOpportunity = this.opportunityFactory.createSkipOpportunity(baseOpportunity);
+      opportunities.push(skipOpportunity);
+    }
+    return opportunities;
+  }
+
+  /**
+   * Generate STALE opportunities (old records needing re-analysis)
+   */
+  generateStaleOpportunities(count, prefix = 'STALE') {
+    const opportunities = [];
+    for (let i = 0; i < count; i++) {
+      const baseOpportunity = this.opportunityFactory.createNewOpportunity({
+        api_opportunity_id: `${prefix}-${String(i + 1).padStart(3, '0')}`,
+        title: `${prefix} Opportunity ${i + 1} - ${this.generateRandomTitle()}`
+      });
+      
+      const staleOpportunity = this.opportunityFactory.createStaleOpportunity(baseOpportunity);
+      opportunities.push(staleOpportunity);
+    }
+    return opportunities;
+  }
+
+  /**
+   * Create database record for existing opportunities
+   */
+  createDatabaseRecord(opportunity, type) {
+    const record = { ...opportunity };
+    
+    // Modify based on type
+    switch (type) {
+      case 'update':
+        // Base record before updates
+        record.minimum_award = Math.round(opportunity.minimum_award / 1.1);
+        record.maximum_award = Math.round(opportunity.maximum_award / 1.2);
+        record.close_date = new Date(new Date(opportunity.close_date).getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
+        record.description = opportunity.description?.replace(' [UPDATED CONTENT]', '') || record.description;
+        record.total_funding_available = Math.round(opportunity.total_funding_available / 1.5);
+        break;
+        
+      case 'skip':
+        // Identical record
+        break;
+        
+      case 'stale':
+        // Old record (91+ days old)
+        record.updated_at = new Date(Date.now() - 91 * 24 * 60 * 60 * 1000).toISOString();
+        break;
+    }
+    
+    // Generate proper UUID for database fields
+    record.id = this.generateUUID();
+    record.created_at = record.created_at || new Date().toISOString();
+    record.updated_at = record.updated_at || new Date().toISOString();
+    
+    return record;
+  }
+
+  /**
+   * Generate a valid UUID v4
+   */
+  generateUUID() {
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+      const r = Math.random() * 16 | 0;
+      const v = c == 'x' ? r : (r & 0x3 | 0x8);
+      return v.toString(16);
+    });
+  }
+
+  /**
+   * Generate random opportunity titles
+   */
+  generateRandomTitle() {
+    const subjects = ['Clean Energy', 'Infrastructure', 'Education', 'Healthcare', 'Research', 'Community Development'];
+    const types = ['Grant Program', 'Initiative', 'Fund', 'Research Grant', 'Development Fund'];
+    const descriptors = ['Advanced', 'Innovative', 'Sustainable', 'Comprehensive', 'Strategic'];
+    
+    return `${this.randomChoice(descriptors)} ${this.randomChoice(subjects)} ${this.randomChoice(types)}`;
+  }
+
+  /**
+   * Helper: Random choice from array
+   */
+  randomChoice(array) {
+    return array[Math.floor(Math.random() * array.length)];
+  }
+
+  /**
+   * Generate validation queries for metrics testing
+   */
+  generateMetricsValidationQueries() {
+    return {
+      // Basic existence checks
+      basicChecks: [
+        'SELECT COUNT(*) as count FROM pipeline_runs WHERE api_source_id = $1',
+        'SELECT COUNT(*) as count FROM pipeline_stages WHERE run_id = $1',
+        'SELECT COUNT(*) as count FROM opportunity_processing_paths WHERE run_id = $1',
+        'SELECT COUNT(*) as count FROM duplicate_detection_sessions WHERE run_id = $1'
+      ],
+      
+      // Data integrity checks
+      integrityChecks: [
+        'SELECT * FROM pipeline_runs WHERE status NOT IN (\'started\', \'processing\', \'completed\', \'failed\', \'cancelled\')',
+        'SELECT * FROM pipeline_stages WHERE execution_time_ms < 0',
+        'SELECT * FROM opportunity_processing_paths WHERE path_type NOT IN (\'NEW\', \'UPDATE\', \'SKIP\')',
+        'SELECT * FROM duplicate_detection_sessions WHERE total_opportunities_checked != (new_opportunities + duplicates_to_update + duplicates_to_skip)'
+      ],
+      
+      // Performance validation checks
+      performanceChecks: [
+        'SELECT efficiency_score FROM pipeline_runs WHERE efficiency_score < 50',
+        'SELECT efficiency_improvement_percentage FROM duplicate_detection_sessions WHERE efficiency_improvement_percentage < 30',
+        'SELECT total_execution_time_ms FROM pipeline_runs WHERE total_execution_time_ms > 300000'
+      ],
+      
+      // Analytics queries for dashboard validation
+      analyticsQueries: [
+        'SELECT AVG(efficiency_score) as avg_efficiency FROM pipeline_runs',
+        'SELECT path_type, COUNT(*) as count FROM opportunity_processing_paths GROUP BY path_type',
+        'SELECT stage_name, AVG(execution_time_ms) as avg_time FROM pipeline_stages GROUP BY stage_name',
+        'SELECT AVG(efficiency_improvement_percentage) as avg_improvement FROM duplicate_detection_sessions'
+      ]
+    };
   }
 }
 

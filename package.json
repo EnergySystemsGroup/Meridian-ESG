@@ -2,6 +2,7 @@
   "name": "meridian",
   "version": "0.1.0",
   "private": true,
+  "type": "module",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -9,6 +10,14 @@
     "lint": "next lint",
     "test": "vitest",
     "test:run": "vitest run",
+    "test:coverage": "vitest run --coverage",
+    "test:coverage-report": "node scripts/test/coverage-report.js",
+    "test:watch": "vitest --coverage",
+    "test:integration": "node scripts/test/integration/01-test-new-pipeline-path.js",
+    "test:pipeline-paths": "node scripts/test/integration/02-test-pipeline-paths.js",
+    "test:metrics": "node scripts/test/integration/03-test-metrics-validation.js",
+    "test:performance": "node scripts/test/integration/04-test-performance-baselines.js",
+    "test:all-integration": "npm run test:pipeline-paths && npm run test:metrics && npm run test:performance",
     "add-grants-gov-source": "node scripts/insert-grants-gov-source.js",
     "insert-grants-gov": "node scripts/insert-grants-gov-source.js",
     "test-config": "node scripts/test-configuration-system.js",
@@ -59,6 +68,7 @@
     "zod": "^3.24.2"
   },
   "devDependencies": {
+    "@vitest/coverage-v8": "^3.2.2",
     "autoprefixer": "^10.4.16",
     "eslint": "^8.56.0",
     "eslint-config-next": "14.0.4",
