@@ -1226,11 +1226,80 @@
             "parentTaskId": 35
           }
         ]
+      },
+      {
+        "id": 36,
+        "title": "Implement Clean V2 Pipeline Metrics System",
+        "description": "Develop a comprehensive metrics system for the V2 pipeline with semantic database tables, enhanced RunManagerV2, optimized ProcessCoordinatorV2, improved EarlyDuplicateDetector metrics, and updated integration tests for dashboard analytics.",
+        "details": "1. Create semantic database tables for V2 pipeline metrics:\n   - pipeline_metrics table with columns: id, run_id, pipeline_stage, start_time, end_time, duration_ms, success_count, error_count, token_usage, memory_usage\n   - stage_performance table with columns: id, stage_name, avg_duration_ms, success_rate, error_rate, last_updated\n   - duplicate_detection_metrics table with columns: id, run_id, total_opportunities, duplicates_found, duplicates_skipped, detection_accuracy, processing_time_saved_ms\n\n2. Enhance RunManagerV2 with comprehensive metrics collection:\n   - Add performance tracking for each pipeline stage (DataExtraction, EarlyDuplicateDetector, Analysis, Filter, Storage)\n   - Implement token usage tracking with detailed breakdown by agent\n   - Add memory usage monitoring and garbage collection metrics\n   - Create real-time metrics streaming to database\n   - Implement metrics aggregation and rollup functionality\n\n3. Optimize ProcessCoordinatorV2 with metrics-driven orchestration:\n   - Add pipeline performance monitoring with stage-by-stage timing\n   - Implement adaptive batch sizing based on performance metrics\n   - Add circuit breaker patterns for failing stages\n   - Create metrics-based auto-scaling for concurrent processing\n   - Implement performance threshold alerts and notifications\n\n4. Improve EarlyDuplicateDetector with detailed metrics:\n   - Track duplicate detection accuracy and false positive rates\n   - Monitor processing time savings from early duplicate detection\n   - Add metrics for ID + Title validation logic performance\n   - Implement duplicate pattern analysis for optimization\n   - Create metrics for database update efficiency on duplicates\n\n5. Update integration tests for comprehensive metrics validation:\n   - Create test scenarios for all metrics collection points\n   - Validate metrics accuracy across different pipeline configurations\n   - Test performance impact of metrics collection overhead\n   - Implement metrics regression testing for performance degradation detection\n   - Create dashboard analytics integration tests\n\n6. Implement dashboard analytics integration:\n   - Create real-time metrics API endpoints for dashboard consumption\n   - Implement metrics visualization components using Chart.js v4.3.0\n   - Add historical performance trending and analysis\n   - Create alerting system for performance anomalies\n   - Implement metrics export functionality for reporting",
+        "testStrategy": "1. Test semantic database table functionality:\n   - Verify correct metrics data insertion and retrieval\n   - Test table performance with large datasets\n   - Validate data integrity and foreign key relationships\n   - Test metrics aggregation queries performance\n\n2. Validate RunManagerV2 metrics collection:\n   - Test metrics accuracy across all pipeline stages\n   - Verify token usage tracking precision\n   - Test memory usage monitoring accuracy\n   - Validate real-time metrics streaming functionality\n\n3. Test ProcessCoordinatorV2 optimization features:\n   - Verify adaptive batch sizing based on performance metrics\n   - Test circuit breaker functionality under failure conditions\n   - Validate auto-scaling behavior with varying loads\n   - Test performance threshold alerting system\n\n4. Validate EarlyDuplicateDetector metrics improvements:\n   - Test duplicate detection accuracy measurement\n   - Verify processing time savings calculations\n   - Test duplicate pattern analysis functionality\n   - Validate database update efficiency metrics\n\n5. Execute comprehensive integration tests:\n   - Test end-to-end metrics collection through complete pipeline runs\n   - Validate metrics data consistency across different scenarios\n   - Test performance impact of metrics collection (should be <5% overhead)\n   - Verify dashboard analytics integration accuracy\n\n6. Conduct performance regression testing:\n   - Compare V2 pipeline performance with and without metrics\n   - Validate that metrics collection doesn't degrade core functionality\n   - Test metrics system scalability with high-volume processing\n   - Verify dashboard real-time updates performance",
+        "status": "in-progress",
+        "dependencies": [
+          1,
+          6
+        ],
+        "priority": "high",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Create Clean V2 Database Schema",
+            "description": "Create semantic database tables: pipeline_runs, pipeline_stages, opportunity_processing_paths, duplicate_detection_sessions, and pipeline_performance_baselines with proper indexes and foreign keys. Design for dashboard analytics and future-proof extensibility.",
+            "details": "",
+            "status": "done",
+            "dependencies": [],
+            "parentTaskId": 36
+          },
+          {
+            "id": 2,
+            "title": "Enhance RunManagerV2 with Clean Metrics",
+            "description": "Modify existing RunManagerV2 to use new semantic tables instead of V1-mapped fields. Add comprehensive stage tracking, optimization impact measurement, token usage analytics, and real-time metrics capture without creating new manager classes.",
+            "details": "",
+            "status": "done",
+            "dependencies": [],
+            "parentTaskId": 36
+          },
+          {
+            "id": 3,
+            "title": "Update ProcessCoordinatorV2 for Enhanced Metrics Capture",
+            "description": "Modify ProcessCoordinatorV2 to capture optimization insights, pipeline branching analytics, token savings calculations, and performance improvements. Record opportunity flow paths (NEW/UPDATE/SKIP) and feed data into new metrics system.",
+            "details": "",
+            "status": "done",
+            "dependencies": [],
+            "parentTaskId": 36
+          },
+          {
+            "id": 4,
+            "title": "Enhance EarlyDuplicateDetector Metrics Collection",
+            "description": "Extend EarlyDuplicateDetector to capture detailed analytics: detection accuracy, false positive rates, processing time savings, ID+Title validation performance, duplicate pattern analysis, and database update efficiency. Store results in duplicate_detection_sessions table.",
+            "details": "",
+            "status": "done",
+            "dependencies": [],
+            "parentTaskId": 36
+          },
+          {
+            "id": 5,
+            "title": "Update Integration Tests for New Metrics System",
+            "description": "Modify existing test-new-pipeline-path.js to validate new metrics capture, test optimization analytics, verify opportunity path tracking, validate duplicate detection metrics, and ensure dashboard query compatibility. No new test files - enhance existing integration tests.",
+            "details": "",
+            "status": "done",
+            "dependencies": [],
+            "parentTaskId": 36
+          },
+          {
+            "id": 6,
+            "title": "Create Dashboard-Ready Query APIs",
+            "description": "Implement API endpoints and sample queries for dashboard consumption: real-time progress tracking, optimization impact visualization, stage performance analytics, historical trending, and pipeline health monitoring. Design for Task 34 admin panel integration.",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 36
+          }
+        ]
       }
     ],
     "metadata": {
       "created": "2025-06-17T23:54:58.582Z",
-      "updated": "2025-07-10T07:00:11.639Z",
+      "updated": "2025-07-11T05:46:13.298Z",
       "description": "Tasks for master context"
     }
   }

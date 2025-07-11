@@ -164,11 +164,11 @@ async function updateSingleOpportunity(update, supabase) {
 function prepareCriticalFieldUpdate(existingRecord, apiRecord) {
   const criticalFields = [
     'title',
-    'minimumAward',
-    'maximumAward', 
-    'totalFundingAvailable',
-    'closeDate',
-    'openDate'
+    'minimum_award',
+    'maximum_award', 
+    'total_funding_available',
+    'close_date',
+    'open_date'
   ];
   
   const updateData = {};
@@ -188,7 +188,7 @@ function prepareCriticalFieldUpdate(existingRecord, apiRecord) {
     }
     
     // Special handling for date fields
-    if (field === 'closeDate' || field === 'openDate') {
+    if (field === 'close_date' || field === 'open_date') {
       const existingDate = existingValue ? new Date(existingValue).getTime() : null;
       const newDate = new Date(newValue).getTime();
       
@@ -198,7 +198,7 @@ function prepareCriticalFieldUpdate(existingRecord, apiRecord) {
     }
     
     // Special handling for numeric fields
-    if (field.includes('Award') || field === 'totalFundingAvailable') {
+    if (field.includes('award') || field === 'total_funding_available') {
       const existingNum = parseFloat(existingValue) || 0;
       const newNum = parseFloat(newValue) || 0;
       

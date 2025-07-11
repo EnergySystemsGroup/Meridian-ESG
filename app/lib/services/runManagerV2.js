@@ -1,17 +1,29 @@
 /**
  * RunManagerV2 - Enhanced run tracking for Agent Architecture V2
  * 
+ * ENHANCED WITH CLEAN V2 METRICS SYSTEM:
+ * - Uses semantic database tables (pipeline_runs, pipeline_stages, etc.)
+ * - Captures optimization insights and token savings
+ * - Tracks opportunity processing paths (NEW/UPDATE/SKIP)
+ * - Records detailed duplicate detection analytics
+ * - Maintains V1 compatibility for backward support
+ * 
  * Supports the new V2 pipeline stages:
  * - SourceOrchestrator
  * - DataExtractionAgent  
+ * - EarlyDuplicateDetector
  * - AnalysisAgent
  * - FilterFunction
  * - StorageAgent
+ * - DirectUpdateHandler
  * 
  * Features:
- * - Modular and reusable across different contexts
- * - Enhanced metrics tracking
- * - Better error handling with stage context
+ * - Clean semantic metrics optimized for dashboard analytics
+ * - Real-time optimization impact tracking
+ * - Stage-by-stage performance monitoring
+ * - Opportunity flow path analytics
+ * - Duplicate detection effectiveness measurement
+ * - V1 backward compatibility layer
  * - Compatible with Edge Functions and Vercel deployments
  */
 
@@ -31,15 +43,36 @@ export class RunManagerV2 {
     // Use injected client or create one if available
     this.supabase = supabaseClient || (createSupabaseClient ? createSupabaseClient() : null);
     this.runId = existingRunId;
+    this.v2RunId = null; // Separate ID for clean V2 metrics
     this.startTime = Date.now();
+    
+    // Stage tracking for V2 metrics
+    this.stageOrder = {
+      'source_orchestrator': 1,
+      'data_extraction': 2,
+      'early_duplicate_detector': 3,
+      'analysis': 4,
+      'filter': 5,
+      'storage': 6,
+      'direct_update': 7
+    };
+    
+    // Track current run configuration
+    this.runConfiguration = {
+      pipeline_version: 'v2.0',
+      optimization_enabled: true,
+      early_duplicate_detection: true
+    };
   }
 
   /**
    * Start a new run for V2 processing
+   * Creates both V1 (backward compatibility) and V2 (clean metrics) run records
    * @param {string} sourceId - The API source ID
-   * @returns {Promise<string>} - The created run ID
+   * @param {Object} configuration - Optional run configuration
+   * @returns {Promise<string>} - The created run ID (V1 for compatibility)
    */
-  async startRun(sourceId) {
+  async startRun(sourceId, configuration = {}) {
     // If we already have a run ID, return it instead of creating a new one
     if (this.runId) {
       console.log(`[RunManagerV2] ✅ Using existing run: ${this.runId}`);
@@ -50,154 +83,80 @@ export class RunManagerV2 {
       throw new Error('Supabase client is required to start a run');
     }
     
-    const { data, error } = await this.supabase
-      .from('api_source_runs')
-      .insert({
-        source_id: sourceId,
-        status: 'processing',
-        started_at: new Date().toISOString(),
-        // Map V2 stages to existing V1 database columns
-        source_manager_status: 'pending',        // Maps to SourceOrchestrator
-        api_handler_status: 'pending',           // Maps to DataExtraction + Analysis  
-        detail_processor_status: 'pending',      // Maps to Filter Function
-        data_processor_status: 'pending'         // Maps to StorageAgent
-      })
-      .select()
-      .single();
+    // Merge configuration
+    this.runConfiguration = { ...this.runConfiguration, ...configuration };
     
-    if (error) throw error;
-    
-    this.runId = data.id;
-    console.log(`[RunManagerV2] ✅ Created V2 run: ${this.runId}`);
-    return this.runId;
-  }
-
-  /**
-   * Update status for a specific pipeline stage
-   * @param {string} stage - Stage name (e.g., 'source_manager_status')
-   * @param {string} status - Status value ('processing', 'completed', 'failed', 'skipped')
-   * @param {Object} data - Optional stage result data
-   * @param {Object} metrics - Optional performance metrics
-   */
-  async updateStageStatus(stage, status, data = null, metrics = null) {
-    if (!this.runId) {
-      console.warn('[RunManagerV2] ⚠️ No active run ID, skipping status update');
-      return;
-    }
-    
-    if (!this.supabase) {
-      console.warn('[RunManagerV2] ⚠️ No Supabase client available, skipping database update');
-      return;
-    }
-
-    // V1 compatibility - validate stage and status values
-    const validStages = [
-      'source_manager_status',
-      'api_handler_status',
-      'detail_processor_status',
-      'data_processor_status'
-    ];
-
-    const validStatuses = [
-      'pending',
-      'processing',
-      'completed',
-      'failed',
-      'skipped'
-    ];
-
-    if (!validStages.includes(stage)) {
-      console.error(`[RunManagerV2] ❌ Invalid stage: ${stage}. Must be one of: ${validStages.join(', ')}`);
-      return;
-    }
-
-    if (!validStatuses.includes(status)) {
-      console.error(`[RunManagerV2] ❌ Invalid status: ${status}. Must be one of: ${validStatuses.join(', ')}`);
-      return;
-    }
-    
-    console.log(`[RunManagerV2] 📊 ${stage}: ${status}`);
-    
-    const updateData = { 
-      [stage]: status,
-      updated_at: new Date().toISOString()
-    };
-    
-    // Store stage result data
-    if (data) {
-      const dataField = stage.replace('_status', '_data');
-      updateData[dataField] = data;
-    }
-    
-    // Store performance metrics
-    if (metrics) {
-      const metricsField = stage.replace('_status', '_metrics');
-      updateData[metricsField] = metrics;
-    }
-
-    // V1 compatibility - handle overall run status updates
-    if (status === 'failed') {
-      updateData.status = 'failed';
-      updateData.completed_at = new Date().toISOString();
-    }
-
-    // V1 compatibility - if all stages are completed, mark the overall run as completed
-    if (status === 'completed' && stage === 'data_processor_status') {
-      try {
-        const { data: currentRun } = await this.supabase
-          .from('api_source_runs')
-          .select('source_manager_status, api_handler_status, detail_processor_status')
-          .eq('id', this.runId)
-          .single();
-
-        if (currentRun && 
-            currentRun.source_manager_status === 'completed' &&
-            currentRun.api_handler_status === 'completed' &&
-            (currentRun.detail_processor_status === 'completed' || currentRun.detail_processor_status === 'skipped')) {
-          updateData.status = 'completed';
-          updateData.completed_at = new Date().toISOString();
-        }
-      } catch (error) {
-        // In test environment or if query fails, just mark as completed anyway
-        console.warn('[RunManagerV2] ⚠️ Could not verify stage completion status, proceeding with completion');
-        updateData.status = 'completed';
-        updateData.completed_at = new Date().toISOString();
-      }
-    }
-    
-    const { error } = await this.supabase
-      .from('api_source_runs')
-      .update(updateData)
-      .eq('id', this.runId);
-    
-    if (error) {
-      console.error(`[RunManagerV2] ❌ Failed to update ${stage}:`, error);
+    try {
+      // Create V2 clean metrics run record only
+      const { data: v2Data, error: v2Error } = await this.supabase
+        .from('pipeline_runs')
+        .insert({
+          api_source_id: sourceId,
+          status: 'started',
+          pipeline_version: this.runConfiguration.pipeline_version,
+          run_configuration: this.runConfiguration,
+          started_at: new Date().toISOString()
+        })
+        .select()
+        .single();
+      
+      if (v2Error) throw v2Error;
+      
+      this.runId = v2Data.id;
+      this.v2RunId = v2Data.id;
+      
+      console.log(`[RunManagerV2] ✅ Created V2 pipeline run: ${this.runId}`);
+      return this.runId;
+      
+    } catch (error) {
+      console.error('[RunManagerV2] ❌ Failed to start run:', error);
+      throw error;
     }
   }
 
   /**
-   * V2 Stage-specific helper methods (mapped to V1 database columns)
+   * V2 Clean Metrics Stage Helper Methods
+   * These update V2 semantic database tables only
    */
   
-  async updateSourceOrchestrator(status, analysisResult = null, metrics = null) {
-    return this.updateStageStatus('source_manager_status', status, analysisResult, metrics);
+  async updateV2SourceOrchestrator(status, analysisResult = null, metrics = null, tokensUsed = 0, apiCalls = 0) {
+    // V2 clean metrics only
+    await this.updateV2Stage('source_orchestrator', status, analysisResult, metrics, tokensUsed, apiCalls);
   }
   
-  async updateDataExtraction(status, extractionResult = null, metrics = null) {
-    return this.updateStageStatus('api_handler_status', status, extractionResult, metrics);
+  async updateV2DataExtraction(status, extractionResult = null, metrics = null, tokensUsed = 0, apiCalls = 0) {
+    // V2 clean metrics only
+    await this.updateV2Stage('data_extraction', status, extractionResult, metrics, tokensUsed, apiCalls);
+  }
+
+  async updateV2EarlyDuplicateDetector(status, detectionResult = null, metrics = null) {
+    // V2 only - no V1 equivalent
+    await this.updateV2Stage('early_duplicate_detector', status, detectionResult, metrics, 0, 0);
+    
+    // Record duplicate detection session if completed
+    if (status === 'completed' && detectionResult) {
+      await this.recordDuplicateDetectionSession(detectionResult, metrics);
+    }
   }
   
-  async updateAnalysis(status, analysisResult = null, metrics = null) {
-    // Analysis stage shares api_handler_status column with DataExtraction
-    return this.updateStageStatus('api_handler_status', status, analysisResult, metrics);
+  async updateV2Analysis(status, analysisResult = null, metrics = null, tokensUsed = 0, apiCalls = 0) {
+    // V2 clean metrics only
+    await this.updateV2Stage('analysis', status, analysisResult, metrics, tokensUsed, apiCalls);
   }
   
-  async updateFilter(status, filterResult = null, metrics = null) {
-    return this.updateStageStatus('detail_processor_status', status, filterResult, metrics);
+  async updateV2Filter(status, filterResult = null, metrics = null) {
+    // V2 clean metrics only
+    await this.updateV2Stage('filter', status, filterResult, metrics, 0, 0);
   }
   
-  async updateStorage(status, storageResult = null, metrics = null) {
-    return this.updateStageStatus('data_processor_status', status, storageResult, metrics);
+  async updateV2Storage(status, storageResult = null, metrics = null, tokensUsed = 0) {
+    // V2 clean metrics only
+    await this.updateV2Stage('storage', status, storageResult, metrics, tokensUsed, 0);
+  }
+
+  async updateV2DirectUpdate(status, updateResult = null, metrics = null) {
+    // V2 only - no V1 equivalent
+    await this.updateV2Stage('direct_update', status, updateResult, metrics, 0, 0);
   }
 
   /**
@@ -340,6 +299,247 @@ export class RunManagerV2 {
       .eq('id', this.runId);
   }
 
+  // =============================================================================
+  // V2 CLEAN METRICS SYSTEM METHODS
+  // =============================================================================
+
+  /**
+   * Update a V2 pipeline stage with clean metrics
+   * @param {string} stageName - Clean stage name (e.g., 'data_extraction', 'early_duplicate_detector')
+   * @param {string} status - Stage status
+   * @param {Object} stageResults - Stage execution results
+   * @param {Object} performanceMetrics - Performance metrics for the stage
+   * @param {number} tokensUsed - Tokens consumed by this stage
+   * @param {number} apiCalls - API calls made by this stage
+   */
+  async updateV2Stage(stageName, status, stageResults = {}, performanceMetrics = {}, tokensUsed = 0, apiCalls = 0) {
+    if (!this.v2RunId || !this.supabase) {
+      console.warn(`[RunManagerV2] ⚠️ Cannot update V2 stage ${stageName} - missing V2 run ID or client`);
+      return;
+    }
+
+    const stageOrder = this.stageOrder[stageName] || 0;
+    const executionTime = performanceMetrics?.executionTime || null;
+    const now = new Date().toISOString();
+
+    try {
+      // Check if stage record already exists
+      const { data: existingStage } = await this.supabase
+        .from('pipeline_stages')
+        .select('id, started_at')
+        .eq('run_id', this.v2RunId)
+        .eq('stage_name', stageName)
+        .single();
+
+      if (existingStage) {
+        // Update existing stage
+        const updateData = {
+          status,
+          stage_results: this.sanitizeJsonData(stageResults),
+          performance_metrics: this.sanitizeJsonData(performanceMetrics),
+          tokens_used: this.sanitizeInteger(tokensUsed),
+          api_calls_made: this.sanitizeInteger(apiCalls),
+          updated_at: now
+        };
+
+        if (status === 'completed' && !existingStage.completed_at) {
+          updateData.completed_at = now;
+          if (executionTime && existingStage.started_at) {
+            updateData.execution_time_ms = this.sanitizeInteger(executionTime);
+          }
+        }
+
+        const { error } = await this.supabase
+          .from('pipeline_stages')
+          .update(updateData)
+          .eq('id', existingStage.id);
+
+        if (error) {
+          console.error(`[RunManagerV2] ❌ Failed to update V2 stage ${stageName}:`, error);
+        } else {
+          console.log(`[RunManagerV2] 📊 Updated V2 stage ${stageName}: ${status}`);
+        }
+      } else {
+        // Create new stage record
+        const { error } = await this.supabase
+          .from('pipeline_stages')
+          .insert({
+            run_id: this.v2RunId,
+            stage_name: stageName,
+            stage_order: stageOrder,
+            status,
+            started_at: status === 'processing' ? now : null,
+            completed_at: status === 'completed' ? now : null,
+            execution_time_ms: status === 'completed' ? this.sanitizeInteger(executionTime) : null,
+            api_calls_made: this.sanitizeInteger(apiCalls),
+            tokens_used: this.sanitizeInteger(tokensUsed),
+            stage_results: this.sanitizeJsonData(stageResults),
+            performance_metrics: this.sanitizeJsonData(performanceMetrics)
+          });
+
+        if (error) {
+          console.error(`[RunManagerV2] ❌ Failed to create V2 stage ${stageName}:`, error);
+        } else {
+          console.log(`[RunManagerV2] 📊 Created V2 stage ${stageName}: ${status}`);
+        }
+      }
+    } catch (error) {
+      console.error(`[RunManagerV2] ❌ Error updating V2 stage ${stageName}:`, error);
+    }
+  }
+
+  /**
+   * Record opportunity processing path
+   * @param {Object} opportunity - The opportunity being processed
+   * @param {string} pathType - 'NEW', 'UPDATE', or 'SKIP'
+   * @param {string} pathReason - Reason for the path taken
+   * @param {Array} stagesProcessed - Array of stage names the opportunity went through
+   * @param {string} finalOutcome - Final outcome ('stored', 'updated', 'skipped', 'filtered_out', 'failed')
+   * @param {Object} analytics - Analytics data (tokens used, processing time, etc.)
+   */
+  async recordOpportunityPath(opportunity, pathType, pathReason, stagesProcessed = [], finalOutcome, analytics = {}) {
+    if (!this.v2RunId || !this.supabase) {
+      console.warn('[RunManagerV2] ⚠️ Cannot record opportunity path - missing V2 run ID or client');
+      return;
+    }
+
+    try {
+      const { error } = await this.supabase
+        .from('opportunity_processing_paths')
+        .insert({
+          run_id: this.v2RunId,
+          api_opportunity_id: opportunity.api_opportunity_id || opportunity.id,
+          opportunity_title: opportunity.title,
+          funding_source_id: opportunity.funding_source_id,
+          path_type: pathType,
+          path_reason: pathReason,
+          stages_processed: stagesProcessed,
+          final_outcome: finalOutcome,
+          tokens_used: analytics.tokensUsed || 0,
+          processing_time_ms: analytics.processingTimeMs || 0,
+          cost_usd: analytics.costUsd || 0,
+          duplicate_detected: analytics.duplicateDetected || false,
+          existing_opportunity_id: analytics.existingOpportunityId || null,
+          changes_detected: analytics.changesDetected || [],
+          duplicate_detection_method: analytics.duplicateDetectionMethod || null,
+          processing_quality_score: analytics.qualityScore || null
+        });
+
+      if (error) {
+        console.error('[RunManagerV2] ❌ Failed to record opportunity path:', error);
+      } else {
+        console.log(`[RunManagerV2] 📈 Recorded ${pathType} path for opportunity: ${opportunity.title || opportunity.id}`);
+      }
+    } catch (error) {
+      console.error('[RunManagerV2] ❌ Error recording opportunity path:', error);
+    }
+  }
+
+  /**
+   * Record duplicate detection session analytics
+   * @param {Object} detectionResults - Results from EarlyDuplicateDetector
+   * @param {Object} performanceMetrics - Performance metrics for the detection session
+   * @param {Object} qualityMetrics - Quality metrics (accuracy, false positives, etc.)
+   */
+  async recordDuplicateDetectionSession(detectionResults, performanceMetrics = {}, qualityMetrics = {}) {
+    if (!this.v2RunId || !this.supabase) {
+      console.warn('[RunManagerV2] ⚠️ Cannot record duplicate detection session - missing V2 run ID or client');
+      return;
+    }
+
+    try {
+      const metrics = detectionResults.metrics || {};
+      const { error } = await this.supabase
+        .from('duplicate_detection_sessions')
+        .insert({
+          run_id: this.v2RunId,
+          api_source_id: await this.getApiSourceId(),
+          total_opportunities_checked: metrics.totalProcessed || 0,
+          new_opportunities: metrics.newOpportunities || 0,
+          duplicates_to_update: metrics.opportunitiesToUpdate || 0,
+          duplicates_to_skip: metrics.opportunitiesToSkip || 0,
+          detection_time_ms: metrics.executionTime || 0,
+          database_queries_made: performanceMetrics.databaseQueries || 0,
+          llm_processing_bypassed: (metrics.opportunitiesToUpdate || 0) + (metrics.opportunitiesToSkip || 0),
+          estimated_tokens_saved: performanceMetrics.estimatedTokensSaved || 0,
+          estimated_cost_saved_usd: performanceMetrics.estimatedCostSaved || 0,
+          efficiency_improvement_percentage: performanceMetrics.efficiencyImprovement || 0,
+          id_matches: performanceMetrics.idMatches || 0,
+          title_matches: performanceMetrics.titleMatches || 0,
+          validation_failures: performanceMetrics.validationFailures || 0,
+          freshness_skips: performanceMetrics.freshnessSkips || 0,
+          detection_accuracy_score: qualityMetrics.accuracyScore || null,
+          false_positive_rate: qualityMetrics.falsePositiveRate || null,
+          false_negative_rate: qualityMetrics.falseNegativeRate || null,
+          detection_config: performanceMetrics.config || {}
+        });
+
+      if (error) {
+        console.error('[RunManagerV2] ❌ Failed to record duplicate detection session:', error);
+      } else {
+        console.log(`[RunManagerV2] 🔍 Recorded duplicate detection session: ${metrics.totalProcessed} opportunities checked`);
+      }
+    } catch (error) {
+      console.error('[RunManagerV2] ❌ Error recording duplicate detection session:', error);
+    }
+  }
+
+  /**
+   * Update overall run optimization metrics
+   * @param {Object} optimizationMetrics - Overall optimization impact metrics
+   */
+  async updateOptimizationMetrics(optimizationMetrics) {
+    if (!this.v2RunId || !this.supabase) {
+      console.warn('[RunManagerV2] ⚠️ Cannot update optimization metrics - missing V2 run ID or client');
+      return;
+    }
+
+    try {
+      const { error } = await this.supabase
+        .from('pipeline_runs')
+        .update({
+          total_opportunities_processed: this.sanitizeInteger(optimizationMetrics.totalOpportunities) || 0,
+          opportunities_bypassed_llm: this.sanitizeInteger(optimizationMetrics.bypassedLLM) || 0,
+          token_savings_percentage: parseFloat(optimizationMetrics.tokenSavingsPercentage) || 0,
+          time_savings_percentage: parseFloat(optimizationMetrics.timeSavingsPercentage) || 0,
+          efficiency_score: parseFloat(optimizationMetrics.efficiencyScore) || null,
+          total_tokens_used: this.sanitizeInteger(optimizationMetrics.totalTokens) || 0,
+          total_api_calls: this.sanitizeInteger(optimizationMetrics.totalApiCalls) || 0,
+          estimated_cost_usd: parseFloat(optimizationMetrics.estimatedCost) || 0,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', this.v2RunId);
+
+      if (error) {
+        console.error('[RunManagerV2] ❌ Failed to update optimization metrics:', error);
+      } else {
+        console.log(`[RunManagerV2] 📊 Updated optimization metrics: ${optimizationMetrics.tokenSavingsPercentage || 0}% token savings`);
+      }
+    } catch (error) {
+      console.error('[RunManagerV2] ❌ Error updating optimization metrics:', error);
+    }
+  }
+
+  /**
+   * Helper method to get API source ID from V1 run
+   */
+  async getApiSourceId() {
+    if (!this.runId || !this.supabase) return null;
+    
+    try {
+      const { data } = await this.supabase
+        .from('pipeline_runs')
+        .select('api_source_id')
+        .eq('id', this.runId)
+        .single();
+      
+      return data?.api_source_id || null;
+    } catch (error) {
+      console.warn('[RunManagerV2] ⚠️ Could not retrieve API source ID:', error);
+      return null;
+    }
+  }
+
   /**
    * Complete the run successfully
    * @param {number} totalTime - Total execution time in milliseconds (V1 compatibility)
@@ -360,32 +560,24 @@ export class RunManagerV2 {
     
     console.log(`[RunManagerV2] 🏁 Completing run ${this.runId} (${executionTime}ms)`);
     
-    // V1 compatibility - include all stage completions
+    // V2 clean metrics only
     const updateData = {
       status: 'completed',
       completed_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-      source_manager_status: 'completed',
-      api_handler_status: 'completed',
-      detail_processor_status: 'completed',
-      data_processor_status: 'completed'
+      total_execution_time_ms: executionTime,
+      final_results: finalResults || {},
+      updated_at: new Date().toISOString()
     };
 
-    if (executionTime) {
-      updateData.total_processing_time = executionTime;
-    }
-    
-    if (finalResults) {
-      updateData.storage_results = finalResults;
-    }
-    
     const { error } = await this.supabase
-      .from('api_source_runs')
+      .from('pipeline_runs')
       .update(updateData)
       .eq('id', this.runId);
-    
+
     if (error) {
-      console.error('[RunManagerV2] ❌ Failed to complete run:', error);
+      console.error('[RunManagerV2] ❌ Failed to complete V2 run:', error);
+    } else {
+      console.log(`[RunManagerV2] ✅ Completed V2 run: ${this.runId}`);
     }
   }
 
@@ -417,21 +609,17 @@ export class RunManagerV2 {
         }
       : String(error);
     
+    // V2 clean metrics only
     const updateData = {
       status: 'failed',
-      ended_at: new Date().toISOString(),
-      total_processing_time: totalTime,
-      error_message: errorDetails.message || String(error),
-      error_details: JSON.stringify(errorDetails, null, 2),
+      completed_at: new Date().toISOString(),
+      total_execution_time_ms: totalTime,
+      error_details: errorDetails,
       updated_at: new Date().toISOString()
     };
     
-    if (failedStage) {
-      updateData.failed_stage = failedStage;
-    }
-    
     const { error: updateError } = await this.supabase
-      .from('api_source_runs')
+      .from('pipeline_runs')
       .update(updateData)
       .eq('id', this.runId);
     
@@ -453,7 +641,7 @@ export class RunManagerV2 {
     }
     
     const { data, error } = await this.supabase
-      .from('api_source_runs')
+      .from('pipeline_runs')
       .select('*')
       .eq('id', this.runId)
       .single();
@@ -467,86 +655,52 @@ export class RunManagerV2 {
   }
 
   /**
-   * Get status of a specific stage
-   * @param {string} stage - Stage name to check
-   * @returns {Promise<string|null>} - The stage status
+   * Sanitize integer values to prevent database errors
+   * @param {any} value - Value to sanitize
+   * @returns {number|null} - Safe integer or null
    */
-  async getStageStatus(stage) {
-    const run = await this.getRun();
-    return run ? run[stage] : null;
+  sanitizeInteger(value) {
+    if (value === null || value === undefined || value === '') return null;
+    
+    // Handle string values that might contain non-numeric characters
+    if (typeof value === 'string') {
+      // Extract only numeric characters
+      const numericOnly = value.replace(/[^0-9.-]/g, '');
+      const parsed = parseInt(numericOnly, 10);
+      return isNaN(parsed) ? null : parsed;
+    }
+    
+    const parsed = parseInt(value, 10);
+    return isNaN(parsed) ? null : parsed;
   }
 
   /**
-   * Check if the run can be resumed (for error recovery)
-   * @returns {Promise<boolean>} - Whether the run can be resumed
+   * Sanitize JSON data for database storage
+   * @param {any} data - Data to sanitize
+   * @returns {object} - Safe JSON object
    */
-  async canResume() {
-    const run = await this.getRun();
-    if (!run || run.status === 'completed') return false;
+  sanitizeJsonData(data) {
+    if (data === null || data === undefined) return {};
     
-    // Cannot resume if any stage has failed (using V1 database columns)
-    const stages = [
-      'source_manager_status',
-      'api_handler_status', 
-      'detail_processor_status',
-      'data_processor_status'
-    ];
-    
-    // Check for failed stages first
-    if (stages.some(stage => run[stage] === 'failed')) {
-      return false;
+    try {
+      // If it's already an object, return it
+      if (typeof data === 'object' && !Array.isArray(data)) {
+        return data;
+      }
+      
+      // If it's an array, wrap it in an object
+      if (Array.isArray(data)) {
+        return { items: data, count: data.length };
+      }
+      
+      // If it's a primitive, wrap it
+      return { value: data };
+    } catch (error) {
+      console.warn('[RunManagerV2] ⚠️ Error sanitizing JSON data:', error);
+      return {};
     }
-    
-    // Can resume if any stage is still pending or processing
-    return stages.some(stage => 
-      run[stage] === 'pending' || run[stage] === 'processing'
-    );
   }
 
-  /**
-   * Resume a failed run from the appropriate stage
-   * @returns {Promise<Object>} - Resume result with stage info
-   */
-  async resumeFailedRun() {
-    if (!this.runId) throw new Error('No active run');
-    
-    const run = await this.getRun();
-    if (!run) throw new Error('Run not found');
-    if (run.status !== 'failed') throw new Error('Can only resume failed runs');
-    
-    // Determine which V2 stage to resume from based on V1 column status
-    let resumeStage = null;
-    if (run.source_manager_status === 'failed') {
-      resumeStage = 'source_orchestrator';
-    } else if (run.api_handler_status === 'failed') {
-      resumeStage = 'data_extraction_analysis';
-    } else if (run.detail_processor_status === 'failed') {
-      resumeStage = 'filter_function';
-    } else if (run.data_processor_status === 'failed') {
-      resumeStage = 'storage_agent';
-    }
-    
-    if (!resumeStage) {
-      throw new Error('Could not determine which stage to resume from');
-    }
-    
-    // Update the run status to resume processing
-    await this.supabase
-      .from('api_source_runs')
-      .update({
-        status: 'processing',
-        error_details: null,
-        completed_at: null,
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', this.runId);
-    
-    return {
-      runId: this.runId,
-      resumeStage,
-      message: `Resumed V2 run from ${resumeStage} stage`
-    };
-  }
 }
 
 /**
@@ -557,28 +711,3 @@ export class RunManagerV2 {
 export function createRunManagerV2(existingRunId = null) {
   return new RunManagerV2(existingRunId);
 }
-
-/**
- * Get the next stage to process based on current run status
- * @param {Object} run - The run record
- * @returns {string|null} - The next stage to process
- */
-export function getNextStage(run) {
-  const stageOrder = [
-    'source_manager_status',      // SourceOrchestrator
-    'api_handler_status',         // DataExtraction + Analysis  
-    'detail_processor_status',    // Filter Function
-    'data_processor_status'       // StorageAgent
-  ];
-  
-  for (const stage of stageOrder) {
-    if (run[stage] === 'pending' || run[stage] === 'processing') {
-      return stage;
-    }
-    if (run[stage] === 'failed') {
-      return null; // Cannot continue after failure
-    }
-  }
-  
-  return null; // All stages completed
-} 

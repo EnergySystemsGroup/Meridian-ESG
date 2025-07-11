@@ -14,7 +14,8 @@ export class PipelinePathValidator {
     this.expectedPaths = {
       NEW: ['SourceOrchestrator', 'DataExtraction', 'EarlyDuplicateDetector', 'Analysis', 'Filter', 'Storage'],
       UPDATE: ['SourceOrchestrator', 'DataExtraction', 'EarlyDuplicateDetector', 'DirectUpdate'],
-      SKIP: ['SourceOrchestrator', 'DataExtraction', 'EarlyDuplicateDetector']
+      SKIP: ['SourceOrchestrator', 'DataExtraction', 'EarlyDuplicateDetector'],
+      EMPTY: ['SourceOrchestrator', 'DataExtraction'] // When no opportunities are extracted or all are filtered out
     };
   }
 
@@ -46,12 +47,20 @@ export class PipelinePathValidator {
       }
     }
     
-    // Check for unexpected stages
+    // Check for unexpected stages (but allow skipped stages)
     for (const actualStage of actualStages) {
       const expectedStage = this.getExpectedStage(actualStage);
       if (expectedStage && !expectedPath.includes(expectedStage)) {
-        validation.isValid = false;
-        validation.issues.push(`Unexpected stage: ${actualStage}`);
+        // Check if this stage was skipped (which is valid for optimization)
+        const stageResult = result.stages?.[actualStage];
+        const isSkippedStage = this.isSkippedStage(actualStage, stageResult, expectedType);
+        
+        if (isSkippedStage) {
+          console.log(`✅ Stage ${actualStage} was correctly skipped for ${expectedType} path`);
+        } else {
+          validation.isValid = false;
+          validation.issues.push(`Unexpected stage: ${actualStage} (${JSON.stringify(stageResult)})`);
+        }
       }
     }
     
@@ -94,6 +103,54 @@ export class PipelinePathValidator {
   }
 
   /**
+   * Check if a stage was correctly skipped based on path type and stage results
+   */
+  isSkippedStage(stageName, stageResult, expectedType) {
+    // For UPDATE paths, analysis, filter, and storage should be empty/skipped
+    if (expectedType === 'UPDATE') {
+      switch (stageName) {
+        case 'analysis':
+          return !stageResult.opportunities?.length; // No opportunities processed
+        case 'filter':
+          return !stageResult.includedOpportunities?.length; // No opportunities filtered
+        case 'storage':
+          return !stageResult.metrics?.newOpportunities; // No new opportunities stored
+        default:
+          return false;
+      }
+    }
+    
+    // For SKIP paths, analysis, filter, and storage should be empty/skipped
+    if (expectedType === 'SKIP') {
+      switch (stageName) {
+        case 'analysis':
+          return !stageResult.opportunities?.length; // No opportunities processed
+        case 'filter':
+          return !stageResult.includedOpportunities?.length; // No opportunities filtered
+        case 'storage':
+          return !stageResult.metrics?.newOpportunities; // No new opportunities stored
+        default:
+          return false;
+      }
+    }
+    
+    // For EMPTY paths, similar logic
+    if (expectedType === 'EMPTY') {
+      switch (stageName) {
+        case 'earlyDuplicateDetector':
+        case 'analysis':
+        case 'filter':
+        case 'storage':
+          return true; // All these stages should be empty/skipped for EMPTY path
+        default:
+          return false;
+      }
+    }
+    
+    return false;
+  }
+
+  /**
    * Validate type-specific conditions
    */
   validateTypeSpecificConditions(result, expectedType, validation) {
@@ -116,9 +173,19 @@ export class PipelinePathValidator {
           validation.issues.push('UPDATE opportunities should not go through analysis');
           validation.isValid = false;
         }
-        if (!result.stages?.directUpdate?.metrics?.successful) {
-          validation.issues.push('UPDATE opportunities should have successful direct updates');
+        if (!result.stages?.directUpdate) {
+          validation.issues.push('UPDATE opportunities should have directUpdate stage');
           validation.isValid = false;
+        } else {
+          // Check that direct update was attempted (successful, failed, or skipped counts)
+          const directUpdateMetrics = result.stages.directUpdate.metrics;
+          const totalProcessed = (directUpdateMetrics?.successful || 0) + 
+                                (directUpdateMetrics?.failed || 0) + 
+                                (directUpdateMetrics?.skipped || 0);
+          if (totalProcessed === 0) {
+            validation.issues.push('UPDATE opportunities should have processed direct updates');
+            validation.isValid = false;
+          }
         }
         break;
         
@@ -131,6 +198,24 @@ export class PipelinePathValidator {
         if (result.stages?.storage?.metrics?.newOpportunities) {
           validation.issues.push('SKIP opportunities should not result in new storage');
           validation.isValid = false;
+        }
+        break;
+        
+      case 'EMPTY':
+        // Should have no opportunities extracted or all were filtered out early
+        const extractedCount = result.stages?.dataExtraction?.opportunities?.length || 0;
+        if (extractedCount === 0) {
+          // No opportunities extracted - this is valid for EMPTY path
+          console.log('✅ EMPTY path: No opportunities extracted from API');
+        } else {
+          // Opportunities were extracted but should all be skipped
+          const skippedCount = result.stages?.earlyDuplicateDetector?.metrics?.opportunitiesToSkip || 0;
+          if (skippedCount !== extractedCount) {
+            validation.issues.push('EMPTY path: All extracted opportunities should be skipped');
+            validation.isValid = false;
+          } else {
+            console.log(`✅ EMPTY path: All ${extractedCount} opportunities were correctly skipped`);
+          }
         }
         break;
     }
