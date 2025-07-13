@@ -28,7 +28,7 @@ export async function GET(request, { params }) {
 		const { data: configurations, error: configError } = await supabase
 			.from('api_source_configurations')
 			.select('*')
-			.eq('api_source_id', id);
+			.eq('source_id', id);
 
 		if (configError) {
 			throw configError;
@@ -148,7 +148,7 @@ export async function PUT(request, { params }) {
 			await supabase
 				.from('api_source_configurations')
 				.delete()
-				.eq('api_source_id', id);
+				.eq('source_id', id);
 
 			// Insert new configurations
 			const configInserts = [];
@@ -159,7 +159,7 @@ export async function PUT(request, { params }) {
 				Object.keys(body.configurations.query_params).length > 0
 			) {
 				configInserts.push({
-					api_source_id: id,
+					source_id: id,
 					config_type: 'query_params',
 					configuration: body.configurations.query_params,
 				});
@@ -171,7 +171,7 @@ export async function PUT(request, { params }) {
 				Object.keys(body.configurations.request_body).length > 0
 			) {
 				configInserts.push({
-					api_source_id: id,
+					source_id: id,
 					config_type: 'request_body',
 					configuration: body.configurations.request_body,
 				});
@@ -180,7 +180,7 @@ export async function PUT(request, { params }) {
 			// Process request_config if provided
 			if (body.configurations.request_config) {
 				configInserts.push({
-					api_source_id: id,
+					source_id: id,
 					config_type: 'request_config',
 					configuration: body.configurations.request_config,
 				});
@@ -192,7 +192,7 @@ export async function PUT(request, { params }) {
 				body.configurations.pagination_config.enabled
 			) {
 				configInserts.push({
-					api_source_id: id,
+					source_id: id,
 					config_type: 'pagination_config',
 					configuration: body.configurations.pagination_config,
 				});
@@ -204,7 +204,7 @@ export async function PUT(request, { params }) {
 				body.configurations.detail_config.enabled
 			) {
 				configInserts.push({
-					api_source_id: id,
+					source_id: id,
 					config_type: 'detail_config',
 					configuration: body.configurations.detail_config,
 				});
@@ -213,7 +213,7 @@ export async function PUT(request, { params }) {
 			// Process response_config if provided
 			if (body.configurations.response_config) {
 				configInserts.push({
-					api_source_id: id,
+					source_id: id,
 					config_type: 'response_config',
 					configuration: body.configurations.response_config,
 				});
@@ -230,7 +230,7 @@ export async function PUT(request, { params }) {
 
 				if (Object.keys(filteredMapping).length > 0) {
 					configInserts.push({
-						api_source_id: id,
+						source_id: id,
 						config_type: 'response_mapping',
 						configuration: filteredMapping,
 					});
