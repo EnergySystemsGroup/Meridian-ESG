@@ -31,7 +31,7 @@
 let createSupabaseClient = null;
 if (typeof process === 'undefined' || process.env.NODE_ENV !== 'test') {
   try {
-    const supabaseModule = require('../supabase.js');
+    const supabaseModule = require('@/utils/supabase.js');
     createSupabaseClient = supabaseModule.createSupabaseClient;
   } catch (error) {
     // If import fails, leave as null

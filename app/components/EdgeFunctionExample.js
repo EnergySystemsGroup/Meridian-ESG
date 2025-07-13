@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { sayHello } from '../utils/edge-functions';
+import { sayHello } from '@/utils/edge-functions';
 
 export default function EdgeFunctionExample() {
 	const [message, setMessage] = useState('');

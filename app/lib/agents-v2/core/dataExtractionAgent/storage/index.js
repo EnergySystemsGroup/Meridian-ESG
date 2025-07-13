@@ -4,7 +4,7 @@
  * Handles storage of raw API responses with deduplication
  */
 
-import { createSupabaseClient } from '../../../../supabase.js';
+import { createSupabaseClient } from '@/utils/supabase.js';
 import crypto from 'crypto';
 
 /**

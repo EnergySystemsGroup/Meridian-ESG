@@ -17,7 +17,7 @@ let mockSupabaseClient;
 let mockChain;
 
 // Mock the supabase import
-vi.mock('../../supabase.js', () => ({
+vi.mock('@/utils/supabase.js', () => ({
   createSupabaseClient: () => mockSupabaseClient
 }));
 

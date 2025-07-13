@@ -12,7 +12,7 @@ import { fundingSourceManager } from './fundingSourceManager.js';
 import { stateEligibilityProcessor } from './stateEligibilityProcessor.js';
 import { dataSanitizer } from './dataSanitizer.js';
 import { createClient } from '@supabase/supabase-js';
-import { createSupabaseClient, logAgentExecution } from '../../../supabase.js';
+import { createSupabaseClient, logAgentExecution } from '@/utils/supabase.js';
 
 /**
  * Stores NEW opportunities (no duplicate detection needed - handled upstream)

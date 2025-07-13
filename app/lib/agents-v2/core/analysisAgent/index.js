@@ -7,7 +7,7 @@
  * Exports: enhanceOpportunities(opportunities, source, anthropic)
  */
 
-import { createSupabaseClient, logAgentExecution } from '../../../supabase.js';
+import { createSupabaseClient, logAgentExecution } from '@/utils/supabase.js';
 import { executeParallelAnalysis } from './parallelCoordinator.js';
 
 /**

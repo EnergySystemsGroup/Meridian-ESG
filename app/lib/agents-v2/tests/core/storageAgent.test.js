@@ -31,7 +31,7 @@ vi.mock('@supabase/supabase-js', () => ({
   createClient: vi.fn()
 }));
 
-vi.mock('../../../supabase.js', () => ({
+vi.mock('@/utils/supabase.js', () => ({
   createSupabaseClient: vi.fn(),
   logAgentExecution: vi.fn()
 }));

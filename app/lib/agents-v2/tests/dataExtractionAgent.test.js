@@ -58,7 +58,7 @@ vi.mock('../utils/anthropicClient.js', () => {
 });
 
 // Mock Supabase client
-vi.mock('../../supabase.js', () => ({
+vi.mock('@/utils/supabase.js', () => ({
   createSupabaseClient: vi.fn(() => ({
     from: vi.fn(() => ({
       insert: vi.fn(() => ({
