@@ -19,7 +19,7 @@ import {
 import { Switch } from '@/app/components/ui/switch';
 import { Slider } from '@/app/components/ui/slider';
 import { format } from 'date-fns';
-import { cn } from '@/app/lib/utils';
+import { cn } from '@/lib/utils';
 import {
 	Popover,
 	PopoverContent,

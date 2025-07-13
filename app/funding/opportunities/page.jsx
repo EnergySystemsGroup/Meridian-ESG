@@ -33,7 +33,7 @@ import {
 import { calculateDaysLeft, determineStatus } from '@/app/lib/supabase';
 import TAXONOMIES from '@/app/lib/constants/taxonomies';
 import OpportunityCard from '@/app/components/opportunities/OpportunityCard';
-import { classNames } from '@/app/lib/utils';
+import { classNames } from '@/lib/utils';
 import { useTrackedOpportunities } from '@/app/hooks/useTrackedOpportunities';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import {

@@ -47,7 +47,7 @@ import {
 } from '@/app/components/ui/tooltip';
 import { format } from 'date-fns';
 import { CalendarIcon } from '@radix-ui/react-icons';
-import { cn } from '@/app/lib/utils';
+import { cn } from '@/lib/utils';
 import {
 	Popover,
 	PopoverContent,
