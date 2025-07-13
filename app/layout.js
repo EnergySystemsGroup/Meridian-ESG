@@ -1,7 +1,7 @@
 import { Inter, JetBrains_Mono } from 'next/font/google';
 import './globals.css';
 import { ThemeProvider } from './components/theme-provider';
-import { TrackedOpportunitiesProvider } from './contexts/TrackedOpportunitiesContext';
+import { TrackedOpportunitiesProvider } from '@/contexts/TrackedOpportunitiesContext';
 
 const inter = Inter({
 	subsets: ['latin'],
