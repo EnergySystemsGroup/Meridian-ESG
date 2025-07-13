@@ -10,7 +10,7 @@ import {
 	NavigationMenuList,
 	NavigationMenuTrigger,
 } from '@/app/components/ui/navigation-menu';
-import { cn } from '@/app/utils/cn';
+import { cn } from '@/lib/utils';
 import { HelpCircle, Moon, Settings, Sun } from 'lucide-react';
 import { useTheme } from '@/app/components/theme-provider';
 
