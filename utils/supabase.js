@@ -37,4 +37,14 @@ export const signOut = async () => {
 	return { error };
 };
 
+// Factory function to create a new Supabase client (for RunManagerV2 compatibility)
+export const createSupabaseClient = () => {
+	return createClient(supabaseUrl, supabaseAnonKey, {
+		auth: {
+			persistSession: true,
+			autoRefreshToken: true,
+		},
+	});
+};
+
 // Export other helper functions as needed

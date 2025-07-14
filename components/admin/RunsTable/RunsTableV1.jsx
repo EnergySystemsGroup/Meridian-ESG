@@ -28,7 +28,7 @@ function getStatusBadgeColor(status) {
 	}
 }
 
-export function RunsTable({ runs, loading }) {
+export function RunsTableV1({ runs, loading }) {
 	const router = useRouter();
 
 	if (loading) {
@@ -88,7 +88,7 @@ export function RunsTable({ runs, loading }) {
 							<Button
 								variant='ghost'
 								onClick={() =>
-									router.push(`/admin/funding-sources/runs/${run.id}`)
+									router.push(`/admin/funding-sources/runs/${run.display_id || run.id}`)
 								}>
 								View Details
 							</Button>
