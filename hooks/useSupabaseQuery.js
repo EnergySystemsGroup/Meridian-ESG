@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { supabase } from '../utils/supabase';
+import { supabase } from '@/utils/supabase';
 
 /**
  * Custom hook for fetching data from Supabase

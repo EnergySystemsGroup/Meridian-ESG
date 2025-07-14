@@ -38,7 +38,7 @@ import {
 	TabsTrigger,
 } from '@/app/components/ui/tabs';
 import { Separator } from '@/app/components/ui/separator';
-import { useTrackedOpportunities } from '@/app/hooks/useTrackedOpportunities';
+import { useTrackedOpportunities } from '@/hooks/useTrackedOpportunities';
 import {
 	getCategoryColor,
 	formatCategoryForDisplay,

@@ -8,7 +8,7 @@ import {
 import { Button } from '@/app/components/ui/button';
 import { DollarSign, Calendar, Map, Star, Tag, Info } from 'lucide-react';
 import { calculateDaysLeft, determineStatus } from '@/app/lib/supabase';
-import { useTrackedOpportunities } from '@/app/hooks/useTrackedOpportunities';
+import { useTrackedOpportunities } from '@/hooks/useTrackedOpportunities';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import {
