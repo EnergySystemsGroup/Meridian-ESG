@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
-import { Button } from '@/app/components/ui/button';
+import { Button } from '@/components/ui/button';
 import {
 	Card,
 	CardContent,
@@ -10,13 +10,13 @@ import {
 	CardHeader,
 	CardTitle,
 	CardFooter,
-} from '@/app/components/ui/card';
+} from '@/components/ui/card';
 import {
 	Tabs,
 	TabsContent,
 	TabsList,
 	TabsTrigger,
-} from '@/app/components/ui/tabs';
+} from '@/components/ui/tabs';
 import { toast } from 'sonner';
 
 // Component descriptions and expected outputs

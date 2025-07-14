@@ -4,8 +4,8 @@ import {
 	CardHeader,
 	CardContent,
 	CardTitle,
-} from '@/app/components/ui/card';
-import { Button } from '@/app/components/ui/button';
+} from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { DollarSign, Calendar, Map, Star, Tag, Info } from 'lucide-react';
 import { calculateDaysLeft, determineStatus } from '@/app/lib/supabase';
 import { useTrackedOpportunities } from '@/hooks/useTrackedOpportunities';

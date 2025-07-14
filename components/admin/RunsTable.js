@@ -8,10 +8,10 @@ import {
 	TableHead,
 	TableHeader,
 	TableRow,
-} from '@/app/components/ui/table';
-import { Badge } from '@/app/components/ui/badge';
-import { Button } from '@/app/components/ui/button';
-import { Skeleton } from '@/app/components/ui/skeleton';
+} from '@/components/ui/table';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
 
 function getStatusBadgeColor(status) {
 	switch (status) {

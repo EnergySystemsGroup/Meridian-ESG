@@ -3,15 +3,15 @@
 import { useState, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
-import MainLayout from '@/app/components/layout/main-layout';
+import MainLayout from '@/components/layout/main-layout';
 import {
 	Card,
 	CardContent,
 	CardDescription,
 	CardHeader,
 	CardTitle,
-} from '@/app/components/ui/card';
-import { Button } from '@/app/components/ui/button';
+} from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import {
 	ComposableMap,
 	Geographies,
@@ -36,15 +36,15 @@ import {
 	SelectItem,
 	SelectTrigger,
 	SelectValue,
-} from '@/app/components/ui/select';
-import { Slider } from '@/app/components/ui/slider';
-import { Badge } from '@/app/components/ui/badge';
+} from '@/components/ui/select';
+import { Slider } from '@/components/ui/slider';
+import { Badge } from '@/components/ui/badge';
 import {
 	Tooltip,
 	TooltipContent,
 	TooltipProvider,
 	TooltipTrigger,
-} from '@/app/components/ui/tooltip';
+} from '@/components/ui/tooltip';
 import { format } from 'date-fns';
 import { CalendarIcon } from '@radix-ui/react-icons';
 import { cn } from '@/lib/utils';
@@ -52,12 +52,12 @@ import {
 	Popover,
 	PopoverContent,
 	PopoverTrigger,
-} from '@/app/components/ui/popover';
-import { Calendar as CalendarComponent } from '@/app/components/ui/calendar';
+} from '@/components/ui/popover';
+import { Calendar as CalendarComponent } from '@/components/ui/calendar';
 
 // Dynamically import the map component with SSR disabled
 const FundingMapClient = dynamic(
-	() => import('@/app/components/map/FundingMapClient'),
+	() => import('@/components/map/FundingMapClient'),
 	{
 		ssr: false, // Disable server-side rendering for this component
 		loading: () => (
@@ -71,7 +71,7 @@ const FundingMapClient = dynamic(
 
 // Dynamically import the filter sidebar component
 const FilterSidebar = dynamic(
-	() => import('@/app/components/map/FilterSidebar'),
+	() => import('@/components/map/FilterSidebar'),
 	{ ssr: false } // No specific loader needed for sidebar initially
 );
 

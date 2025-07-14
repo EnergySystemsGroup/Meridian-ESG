@@ -17,10 +17,10 @@ import {
 	CardContent,
 	CardHeader,
 	CardTitle,
-} from '@/app/components/ui/card';
-import { Skeleton } from '@/app/components/ui/skeleton';
+} from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
 import { AlertCircle } from 'lucide-react';
-import { Alert, AlertDescription, AlertTitle } from '@/app/components/ui/alert';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 // Define consistent colors for categories if needed, otherwise use generated
 const COLORS = [

@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
-import { Button } from '@/app/components/ui/button';
+import { Button } from '@/components/ui/button';
 import {
 	Card,
 	CardContent,
@@ -11,13 +11,13 @@ import {
 	CardFooter,
 	CardHeader,
 	CardTitle,
-} from '@/app/components/ui/card';
-import { Separator } from '@/app/components/ui/separator';
-import { Skeleton } from '@/app/components/ui/skeleton';
+} from '@/components/ui/card';
+import { Separator } from '@/components/ui/separator';
+import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
 import { ArrowLeft, Edit, Trash2, Play } from 'lucide-react';
 import Link from 'next/link';
-import { RunsTable } from '@/app/components/admin/RunsTable';
+import { RunsTable } from '@/components/admin/RunsTable';
 
 export default function FundingSourceDetail() {
 	const params = useParams();

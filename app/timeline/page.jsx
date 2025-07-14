@@ -1,9 +1,9 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import MainLayout from '@/app/components/layout/main-layout';
-import { Button } from '@/app/components/ui/button';
-import { Card, CardContent } from '@/app/components/ui/card';
+import MainLayout from '@/components/layout/main-layout';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
 
 export default function TimelinePage() {
 	const [timelineData, setTimelineData] = useState([]);

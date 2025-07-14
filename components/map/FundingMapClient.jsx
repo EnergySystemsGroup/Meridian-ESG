@@ -15,7 +15,7 @@ import {
 	max,
 } from 'd3-scale';
 import { geoCentroid } from 'd3-geo';
-import { Spinner } from '@/app/components/ui/spinner';
+import { Spinner } from '@/components/ui/spinner';
 
 // US States GeoJSON
 const geoUrl = 'https://cdn.jsdelivr.net/npm/us-atlas@3/states-10m.json';

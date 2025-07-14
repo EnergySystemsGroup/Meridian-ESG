@@ -6,7 +6,7 @@ import { ArrowLeft } from 'lucide-react';
 
 // Remove all UI component imports and use native HTML elements
 // We'll only keep the Button import which we know exists
-import { Button } from '@/app/components/ui/button';
+import { Button } from '@/components/ui/button';
 
 export default function VerifyFundingPage() {
 	const [loading, setLoading] = useState(false);

@@ -6,8 +6,8 @@ import {
 	CardContent,
 	CardHeader,
 	CardTitle,
-} from '@/app/components/ui/card';
-import { Button } from '@/app/components/ui/button';
+} from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { Filter, CalendarIcon, ChevronDown, Search, X } from 'lucide-react';
 import {
 	Select,
@@ -15,19 +15,19 @@ import {
 	SelectItem,
 	SelectTrigger,
 	SelectValue,
-} from '@/app/components/ui/select';
-import { Switch } from '@/app/components/ui/switch';
-import { Slider } from '@/app/components/ui/slider';
+} from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
+import { Slider } from '@/components/ui/slider';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import {
 	Popover,
 	PopoverContent,
 	PopoverTrigger,
-} from '@/app/components/ui/popover';
-import { Calendar as CalendarComponent } from '@/app/components/ui/calendar';
+} from '@/components/ui/popover';
+import { Calendar as CalendarComponent } from '@/components/ui/calendar';
 import TAXONOMIES from '@/app/lib/constants/taxonomies';
-import { Input } from '@/app/components/ui/input';
+import { Input } from '@/components/ui/input';
 import {
 	getCategoryColor,
 	formatCategoryForDisplay,

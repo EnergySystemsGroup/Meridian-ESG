@@ -1,16 +1,16 @@
 'use client';
 
 import { useState, useEffect, useRef, Suspense } from 'react';
-import MainLayout from '@/app/components/layout/main-layout';
-import { Button } from '@/app/components/ui/button';
+import MainLayout from '@/components/layout/main-layout';
+import { Button } from '@/components/ui/button';
 import {
 	Card,
 	CardContent,
 	CardDescription,
 	CardHeader,
 	CardTitle,
-} from '@/app/components/ui/card';
-import { Input } from '@/app/components/ui/input';
+} from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
 import {
 	Search,
 	Calendar,
@@ -32,7 +32,7 @@ import {
 } from 'lucide-react';
 import { calculateDaysLeft, determineStatus } from '@/app/lib/supabase';
 import TAXONOMIES from '@/app/lib/constants/taxonomies';
-import OpportunityCard from '@/app/components/opportunities/OpportunityCard';
+import OpportunityCard from '@/components/opportunities/OpportunityCard';
 import { classNames } from '@/lib/utils';
 import { useTrackedOpportunities } from '@/hooks/useTrackedOpportunities';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';

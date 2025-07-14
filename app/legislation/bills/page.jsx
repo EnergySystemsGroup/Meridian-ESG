@@ -1,13 +1,13 @@
-import MainLayout from '@/app/components/layout/main-layout';
-import { Button } from '@/app/components/ui/button';
+import MainLayout from '@/components/layout/main-layout';
+import { Button } from '@/components/ui/button';
 import {
 	Card,
 	CardContent,
 	CardDescription,
 	CardHeader,
 	CardTitle,
-} from '@/app/components/ui/card';
-import { Alert, AlertDescription, AlertTitle } from '@/app/components/ui/alert';
+} from '@/components/ui/card';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { AlertTriangle } from 'lucide-react';
 
 export default function LegislationPage() {

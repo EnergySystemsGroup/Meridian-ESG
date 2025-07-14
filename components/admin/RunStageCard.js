@@ -6,9 +6,9 @@ import {
 	CardDescription,
 	CardHeader,
 	CardTitle,
-} from '@/app/components/ui/card';
-import { Badge } from '@/app/components/ui/badge';
-import { Skeleton } from '@/app/components/ui/skeleton';
+} from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
 
 function getStatusBadgeColor(status) {
 	switch (status) {

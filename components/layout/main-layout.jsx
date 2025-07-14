@@ -9,10 +9,10 @@ import {
 	NavigationMenuItem,
 	NavigationMenuList,
 	NavigationMenuTrigger,
-} from '@/app/components/ui/navigation-menu';
+} from '@/components/ui/navigation-menu';
 import { cn } from '@/lib/utils';
 import { HelpCircle, Moon, Settings, Sun } from 'lucide-react';
-import { useTheme } from '@/app/components/theme-provider';
+import { useTheme } from '@/components/theme-provider';
 
 const ClientSideActiveLink = ({ href, children, className, ...props }) => {
 	const pathname = usePathname();
