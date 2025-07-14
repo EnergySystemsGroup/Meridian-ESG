@@ -31,14 +31,14 @@ export default defineConfig({
         'app/**/not-found.{js,jsx,ts,tsx}',
         'app/**/page.{js,jsx,ts,tsx}',
         'app/**/layout.{js,jsx,ts,tsx}',
-        'app/lib/utils.js' // Utility functions
+        'lib/utils.js' // Utility functions
       ],
       include: [
-        'app/lib/agents-v2/**/*.{js,ts}',
-        'app/lib/services/**/*.{js,ts}',
+        'lib/agents-v2/**/*.{js,ts}',
+        'lib/services/**/*.{js,ts}',
         'app/components/**/*.{js,jsx,ts,tsx}',
-        'app/lib/hooks/**/*.{js,ts}',
-        'app/lib/utils/**/*.{js,ts}'
+        'lib/hooks/**/*.{js,ts}',
+        'lib/utils/**/*.{js,ts}'
       ],
       thresholds: {
         global: {
@@ -48,13 +48,13 @@ export default defineConfig({
           statements: 70
         },
         // Specific thresholds for critical components
-        'app/lib/agents-v2/': {
+        'lib/agents-v2/': {
           branches: 80,
           functions: 80,
           lines: 80,
           statements: 80
         },
-        'app/lib/services/': {
+        'lib/services/': {
           branches: 75,
           functions: 75,
           lines: 75,

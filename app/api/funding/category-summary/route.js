@@ -1,7 +1,7 @@
-import { createAdminSupabaseClient } from '@/app/lib/supabase';
+import { createAdminSupabaseClient } from '@/lib/supabase';
 import { NextResponse } from 'next/server';
-import { TAXONOMIES } from '@/app/lib/constants/taxonomies';
-import { getNormalizedCategories } from '@/app/lib/utils/categoryUtils';
+import { TAXONOMIES } from '@/lib/constants/taxonomies';
+import { getNormalizedCategories } from '@/lib/utils/categoryUtils';
 
 export async function GET() {
 	const supabase = createAdminSupabaseClient();

@@ -1,7 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
-import { processApiSource } from '@/app/lib/services/processCoordinator';
-import { RunManager } from '@/app/lib/services/runManager';
+import { processApiSource } from '@/lib/services/processCoordinator';
+import { RunManager } from '@/lib/services/runManager';
 
 export async function POST(request, { params }) {
 	try {

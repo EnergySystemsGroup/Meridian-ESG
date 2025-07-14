@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
-import { processNextSourceWithHandler } from '@/app/lib/agents/apiHandlerAgent';
-import { createSupabaseClient } from '@/app/lib/supabase';
+import { processNextSourceWithHandler } from '@/lib/agents/apiHandlerAgent';
+import { createSupabaseClient } from '@/lib/supabase';
 
 /**
  * Process the next API source in the queue

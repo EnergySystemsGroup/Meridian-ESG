@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { createSupabaseClient } from '@/app/lib/supabase';
+import { createSupabaseClient } from '@/lib/supabase';
 
 // GET /api/funding/sources - Get all API sources
 export async function GET(request) {

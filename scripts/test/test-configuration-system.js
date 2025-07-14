@@ -1,8 +1,8 @@
 // Script to test the new configuration system
 const { createClient } = require('@supabase/supabase-js');
 const dotenv = require('dotenv');
-const { sourceManagerAgent } = require('../app/lib/agents/sourceManagerAgent');
-const { apiHandlerAgent } = require('../app/lib/agents/apiHandlerAgent');
+const { sourceManagerAgent } = require('../lib/agents/sourceManagerAgent');
+const { apiHandlerAgent } = require('../lib/agents/apiHandlerAgent');
 
 // Load environment variables
 dotenv.config({ path: '.env.local' });

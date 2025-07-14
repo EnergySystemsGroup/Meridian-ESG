@@ -15,7 +15,7 @@ import dotenv from 'dotenv';
 // Load environment variables FIRST before any imports that depend on them
 dotenv.config({ path: '.env.local' });
 
-import { extractFromSource } from '../../app/lib/agents-v2/core/dataExtractionAgent.js';
+import { extractFromSource } from '../../lib/agents-v2/core/dataExtractionAgent.js';
 
 // Stage 1 results (from SourceOrchestrator test)
 const STAGE_1_RESULTS = {

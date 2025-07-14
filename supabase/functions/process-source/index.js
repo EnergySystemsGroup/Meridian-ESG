@@ -3,7 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
 import Anthropic from "https://esm.sh/@anthropic-ai/sdk@0.24.2"
 
 // Import V2 ProcessCoordinator service
-import { processApiSourceV2 } from "../../../app/lib/services/processCoordinatorV2.js";
+import { processApiSourceV2 } from "../../../lib/services/processCoordinatorV2.js";
 
 /**
  * ProcessCoordinator V2 Optimized - Edge Function Implementation

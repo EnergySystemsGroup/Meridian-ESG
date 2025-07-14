@@ -311,7 +311,7 @@ class CoverageReportGenerator {
 
     // Check agents-v2 specific thresholds
     const agentsV2Files = analysis.fileMetrics.filter(f => 
-      f.path.includes('app/lib/agents-v2/'));
+      f.path.includes('lib/agents-v2/'));
     
     if (agentsV2Files.length > 0) {
       const agentsV2Metrics = this.calculateAggregateMetrics(agentsV2Files);

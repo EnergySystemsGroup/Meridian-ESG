@@ -21,7 +21,7 @@
 import { withTestEnvironment } from './00-setup-test-infrastructure.js';
 import { createFactories } from './testDataFactories.js';
 import { PipelinePathValidator, PerformanceMetricsCollector, TestResultValidator, withTimeout } from './testUtils.js';
-import { processApiSourceV2 } from '../../../app/lib/services/processCoordinatorV2.js';
+import { processApiSourceV2 } from '../../../lib/services/processCoordinatorV2.js';
 
 /**
  * NEW Pipeline Path Integration Test Suite
@@ -469,7 +469,7 @@ class NewPipelinePathTest {
       console.log('📋 Testing with invalid opportunity data');
 
       // Test the early duplicate detector with invalid data
-      const { detectDuplicates } = await import('../../../app/lib/agents-v2/optimization/earlyDuplicateDetector.js');
+      const { detectDuplicates } = await import('../../../lib/agents-v2/optimization/earlyDuplicateDetector.js');
       
       try {
         const result = await detectDuplicates([invalidOpportunity], config.testSources.grantsGov.id, supabase);

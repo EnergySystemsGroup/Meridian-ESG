@@ -24,7 +24,7 @@ export async function GET(request) {
 
   try {
     // Dynamic imports for development only, using the CORRECT path
-    const { testAnthropicClient, quickTest, testSchemas } = await import('../../../lib/agents-v2/tests/anthropicClient.test.js');
+    const { testAnthropicClient, quickTest, testSchemas } = await import('../../../../lib/agents-v2/tests/anthropicClient.test.js');
     
     let result;
 

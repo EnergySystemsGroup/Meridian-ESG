@@ -10,7 +10,7 @@
  * This will give us the source analysis results to feed into Stage 2.
  */
 
-import { analyzeSource } from '../../app/lib/agents-v2/core/sourceOrchestrator.js';
+import { analyzeSource } from '../../lib/agents-v2/core/sourceOrchestrator.js';
 import { createClient } from '@supabase/supabase-js';
 import Anthropic from '@anthropic-ai/sdk';
 import dotenv from 'dotenv';

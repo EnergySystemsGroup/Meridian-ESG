@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { createSupabaseClient } from '@/app/lib/supabase';
+import { createSupabaseClient } from '@/lib/supabase';
 import axios from 'axios';
 
 export async function GET() {

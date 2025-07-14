@@ -26,12 +26,12 @@ import {
 	PopoverTrigger,
 } from '@/components/ui/popover';
 import { Calendar as CalendarComponent } from '@/components/ui/calendar';
-import TAXONOMIES from '@/app/lib/constants/taxonomies';
+import TAXONOMIES from '@/lib/constants/taxonomies';
 import { Input } from '@/components/ui/input';
 import {
 	getCategoryColor,
 	formatCategoryForDisplay,
-} from '@/app/lib/utils/uiHelpers';
+} from '@/lib/utils/uiHelpers';
 
 export default function FilterSidebar({
 	filters,

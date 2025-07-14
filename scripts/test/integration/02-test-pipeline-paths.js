@@ -14,7 +14,7 @@
 import { withTestEnvironment } from './00-setup-test-infrastructure.js';
 import { createFactories } from './testDataFactories.js';
 import { PipelinePathValidator, PerformanceMetricsCollector, TestResultValidator, withTimeout } from './testUtils.js';
-import { processApiSourceV2 } from '../../../app/lib/services/processCoordinatorV2.js';
+import { processApiSourceV2 } from '../../../lib/services/processCoordinatorV2.js';
 
 /**
  * Pipeline Path Test Suite

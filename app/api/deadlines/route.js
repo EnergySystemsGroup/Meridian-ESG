@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { supabase, calculateDaysLeft } from '@/app/lib/supabase';
+import { supabase, calculateDaysLeft } from '@/lib/supabase';
 
 export async function GET(request) {
 	try {

@@ -7,14 +7,14 @@ import {
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { DollarSign, Calendar, Map, Star, Tag, Info } from 'lucide-react';
-import { calculateDaysLeft, determineStatus } from '@/app/lib/supabase';
+import { calculateDaysLeft, determineStatus } from '@/lib/supabase';
 import { useTrackedOpportunities } from '@/hooks/useTrackedOpportunities';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import {
 	getCategoryColor,
 	formatCategoryForDisplay,
-} from '@/app/lib/utils/uiHelpers';
+} from '@/lib/utils/uiHelpers';
 
 // Status indicators with colors for badges
 const statusIndicator = {

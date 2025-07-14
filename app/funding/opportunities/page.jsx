@@ -30,8 +30,8 @@ import {
 	ChevronRight,
 	Star,
 } from 'lucide-react';
-import { calculateDaysLeft, determineStatus } from '@/app/lib/supabase';
-import TAXONOMIES from '@/app/lib/constants/taxonomies';
+import { calculateDaysLeft, determineStatus } from '@/lib/supabase';
+import TAXONOMIES from '@/lib/constants/taxonomies';
 import OpportunityCard from '@/components/opportunities/OpportunityCard';
 import { classNames } from '@/lib/utils';
 import { useTrackedOpportunities } from '@/hooks/useTrackedOpportunities';
@@ -39,7 +39,7 @@ import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import {
 	getCategoryColor,
 	formatCategoryForDisplay,
-} from '@/app/lib/utils/uiHelpers';
+} from '@/lib/utils/uiHelpers';
 
 // Status indicator styling
 const statusIndicator = {

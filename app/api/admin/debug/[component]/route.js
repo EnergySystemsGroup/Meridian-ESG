@@ -1,11 +1,11 @@
 import { NextResponse } from 'next/server';
-import { createSupabaseClient } from '@/app/lib/supabase';
-import { sourceManagerAgent } from '@/app/lib/agents/sourceManagerAgent';
-import { apiHandlerAgent } from '@/app/lib/agents/apiHandlerAgent';
-import { processDetailedInfo } from '@/app/lib/agents/detailProcessorAgent';
-import { processOpportunitiesBatch } from '@/app/lib/agents/dataProcessorAgent';
-import { RunManager } from '@/app/lib/services/runManager';
-import { processApiSource } from '@/app/lib/services/processCoordinator';
+import { createSupabaseClient } from '@/lib/supabase';
+import { sourceManagerAgent } from '@/lib/agents/sourceManagerAgent';
+import { apiHandlerAgent } from '@/lib/agents/apiHandlerAgent';
+import { processDetailedInfo } from '@/lib/agents/detailProcessorAgent';
+import { processOpportunitiesBatch } from '@/lib/agents/dataProcessorAgent';
+import { RunManager } from '@/lib/services/runManager';
+import { processApiSource } from '@/lib/services/processCoordinator';
 import { POST as processSourceRoute } from '@/app/api/admin/funding-sources/[id]/process/route';
 
 // Start of Selection

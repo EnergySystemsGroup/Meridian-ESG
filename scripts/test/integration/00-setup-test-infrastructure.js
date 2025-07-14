@@ -13,7 +13,7 @@
  */
 
 import { createClient } from '@supabase/supabase-js';
-import { AnthropicClient } from '../../../app/lib/agents-v2/utils/anthropicClient.js';
+import { AnthropicClient } from '../../../lib/agents-v2/utils/anthropicClient.js';
 import dotenv from 'dotenv';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';

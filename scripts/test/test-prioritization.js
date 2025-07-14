@@ -1,5 +1,5 @@
 // Test script for the prioritization function
-const { calculateSourcePriority } = require('../app/lib/utils/prioritization');
+const { calculateSourcePriority } = require('../lib/utils/prioritization');
 
 // Test with a source that was checked 12 hours ago (daily frequency)
 const source1 = {

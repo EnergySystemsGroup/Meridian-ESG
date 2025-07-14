@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
-import { createSupabaseClient } from '@/app/lib/supabase';
-import { processApiSource } from '@/app/lib/services/processCoordinator';
+import { createSupabaseClient } from '@/lib/supabase';
+import { processApiSource } from '@/lib/services/processCoordinator';
 
 // POST /api/funding/sources/process-next - Process the next API source in the queue
 export async function POST(request) {

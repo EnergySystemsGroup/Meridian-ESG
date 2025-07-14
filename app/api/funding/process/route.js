@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { processNextSource } from '@/app/lib/agents/sourceManagerAgent';
+import { processNextSource } from '@/lib/agents/sourceManagerAgent';
 
 // POST /api/funding/process - Process the next API source in the queue
 export async function POST() {

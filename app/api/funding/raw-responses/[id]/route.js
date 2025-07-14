@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { createSupabaseClient } from '@/app/lib/supabase';
+import { createSupabaseClient } from '@/lib/supabase';
 
 // GET /api/funding/raw-responses/[id] - Get a specific raw API response
 export async function GET(request, { params }) {

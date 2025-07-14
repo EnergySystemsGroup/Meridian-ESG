@@ -28,7 +28,7 @@ import {
 	Info,
 	Star,
 } from 'lucide-react';
-import { calculateDaysLeft, determineStatus } from '@/app/lib/supabase';
+import { calculateDaysLeft, determineStatus } from '@/lib/supabase';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import {
@@ -42,7 +42,7 @@ import { useTrackedOpportunities } from '@/hooks/useTrackedOpportunities';
 import {
 	getCategoryColor,
 	formatCategoryForDisplay,
-} from '@/app/lib/utils/uiHelpers';
+} from '@/lib/utils/uiHelpers';
 
 export default function OpportunityDetailPage() {
 	const params = useParams();
