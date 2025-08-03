@@ -97,7 +97,7 @@ export class MetricsValidationFramework {
       const pipelineRunsValidation = await this.validateTableStructure(
         supabase,
         'pipeline_runs',
-        ['id', 'api_source_id', 'status', 'total_execution_time_ms', 'efficiency_score', 'created_at']
+        ['id', 'api_source_id', 'status', 'total_execution_time_ms', 'opportunities_per_minute', 'created_at']
       );
       validations.push(pipelineRunsValidation);
 
@@ -259,13 +259,13 @@ export class MetricsValidationFramework {
 
       const benchmarkResults = [];
 
-      // Validate efficiency score
-      const efficiencyValid = run.efficiency_score >= this.performanceBaselines.minimumEfficiencyScore;
+      // Validate success rate
+      const successRateValid = (run.success_rate_percentage || 0) >= (this.performanceBaselines.minimumSuccessRate || 90);
       benchmarkResults.push({
-        benchmark: 'Efficiency Score',
-        value: run.efficiency_score,
-        target: this.performanceBaselines.minimumEfficiencyScore,
-        passed: efficiencyValid
+        benchmark: 'Success Rate',
+        value: run.success_rate_percentage || 0,
+        target: this.performanceBaselines.minimumSuccessRate || 90,
+        passed: successRateValid
       });
 
       // Validate execution time
@@ -285,17 +285,17 @@ export class MetricsValidationFramework {
         .single();
 
       if (detectionSession) {
-        // Handle NULL or undefined efficiency_improvement_percentage
-        const efficiencyValue = detectionSession.efficiency_improvement_percentage || 0;
-        const tokenSavingsValid = efficiencyValue >= this.performanceBaselines.minimumTokenSavings;
+        // Check LLM processing bypassed count
+        const bypassedCount = detectionSession.llm_processing_bypassed || 0;
+        const bypassedValid = bypassedCount >= (this.performanceBaselines.minimumBypassed || 0);
         benchmarkResults.push({
-          benchmark: 'Token Savings',
-          value: efficiencyValue,
-          target: this.performanceBaselines.minimumTokenSavings,
-          passed: tokenSavingsValid
+          benchmark: 'LLM Processing Bypassed',
+          value: bypassedCount,
+          target: this.performanceBaselines.minimumBypassed || 0,
+          passed: bypassedValid
         });
         
-        console.log(`🔍 DEBUG - Efficiency improvement percentage: ${detectionSession.efficiency_improvement_percentage}`);
+        console.log(`🔍 DEBUG - LLM processing bypassed: ${detectionSession.llm_processing_bypassed}`);
       }
 
       // Summary

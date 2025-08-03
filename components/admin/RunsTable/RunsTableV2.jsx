@@ -125,23 +125,23 @@ export function RunsTableV2({ runs, loading }) {
 						<TableCell>
 							{run.version === 'v2' ? (
 								<div className='space-y-1'>
-									{run.token_savings_percentage > 0 && (
+									{run.opportunities_per_minute > 0 && (
 										<div className='flex items-center gap-2'>
 											<TrendingUp className='h-3 w-3 text-green-600' />
 											<span className='text-xs font-medium text-green-600'>
-												{run.token_savings_percentage}% tokens saved
+												{run.opportunities_per_minute} opp/min
 											</span>
 										</div>
 									)}
-									{run.efficiency_score && (
+									{run.success_rate_percentage && (
 										<div className='flex items-center gap-2'>
 											<div className='w-12 bg-gray-200 rounded-full h-1'>
 												<div 
 													className='bg-blue-600 h-1 rounded-full'
-													style={{ width: `${Math.min(run.efficiency_score, 100)}%` }}
+													style={{ width: `${Math.min(run.success_rate_percentage, 100)}%` }}
 												/>
 											</div>
-											<span className='text-xs text-gray-600'>{run.efficiency_score}% efficient</span>
+											<span className='text-xs text-gray-600'>{run.success_rate_percentage}% success</span>
 										</div>
 									)}
 								</div>

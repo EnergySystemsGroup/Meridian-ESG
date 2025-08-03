@@ -188,9 +188,9 @@ export default function RunDetailPageV2() {
 	const optimizationMetrics = {
 		totalOpportunities: run?.total_opportunities_processed || 0,
 		bypassedLLM: run?.opportunities_bypassed_llm || 0,
-		tokenSavings: run?.token_savings_percentage || 0,
-		timeSavings: run?.time_savings_percentage || 0,
-		efficiencyScore: run?.efficiency_score || 0
+		opportunitiesPerMinute: run?.opportunities_per_minute || 0,
+		tokensPerOpportunity: run?.tokens_per_opportunity || 0,
+		successRate: run?.success_rate_percentage || 0
 	};
 
 	return (
@@ -229,16 +229,16 @@ export default function RunDetailPageV2() {
 								<p className='text-sm text-gray-500'>Bypassed LLM</p>
 							</div>
 							<div className='text-center'>
-								<p className='text-2xl font-bold text-purple-600'>{optimizationMetrics.tokenSavings}%</p>
-								<p className='text-sm text-gray-500'>Token Savings</p>
+								<p className='text-2xl font-bold text-purple-600'>{optimizationMetrics.opportunitiesPerMinute || 'N/A'}</p>
+								<p className='text-sm text-gray-500'>Opportunities/Min</p>
 							</div>
 							<div className='text-center'>
-								<p className='text-2xl font-bold text-orange-600'>{optimizationMetrics.timeSavings}%</p>
-								<p className='text-sm text-gray-500'>Time Savings</p>
+								<p className='text-2xl font-bold text-orange-600'>{optimizationMetrics.tokensPerOpportunity || 'N/A'}</p>
+								<p className='text-sm text-gray-500'>Tokens/Opportunity</p>
 							</div>
 							<div className='text-center'>
-								<p className='text-2xl font-bold text-indigo-600'>{optimizationMetrics.efficiencyScore}%</p>
-								<p className='text-sm text-gray-500'>Efficiency Score</p>
+								<p className='text-2xl font-bold text-indigo-600'>{optimizationMetrics.successRate || 'N/A'}%</p>
+								<p className='text-sm text-gray-500'>Success Rate</p>
 							</div>
 						</div>
 					</CardContent>
@@ -488,39 +488,27 @@ export default function RunDetailPageV2() {
 												<h4 className='font-semibold'>Performance Gains</h4>
 												<div className='space-y-3'>
 													<div className='flex justify-between items-center'>
-														<span className='text-sm'>Token Savings</span>
+														<span className='text-sm'>Opportunities/Min</span>
 														<div className='flex items-center gap-2'>
-															<div className='w-32 bg-gray-200 rounded-full h-2'>
-																<div 
-																	className='bg-purple-600 h-2 rounded-full'
-																	style={{ width: `${Math.min(optimizationMetrics.tokenSavings, 100)}%` }}
-																/>
-															</div>
-															<span className='text-sm font-medium'>{optimizationMetrics.tokenSavings}%</span>
+															<span className='text-sm font-medium'>{optimizationMetrics.opportunitiesPerMinute || 'N/A'}</span>
 														</div>
 													</div>
 													<div className='flex justify-between items-center'>
-														<span className='text-sm'>Time Savings</span>
+														<span className='text-sm'>Tokens/Opportunity</span>
 														<div className='flex items-center gap-2'>
-															<div className='w-32 bg-gray-200 rounded-full h-2'>
-																<div 
-																	className='bg-orange-600 h-2 rounded-full'
-																	style={{ width: `${Math.min(optimizationMetrics.timeSavings, 100)}%` }}
-																/>
-															</div>
-															<span className='text-sm font-medium'>{optimizationMetrics.timeSavings}%</span>
+															<span className='text-sm font-medium'>{optimizationMetrics.tokensPerOpportunity || 'N/A'}</span>
 														</div>
 													</div>
 													<div className='flex justify-between items-center'>
-														<span className='text-sm'>Efficiency Score</span>
+														<span className='text-sm'>Success Rate</span>
 														<div className='flex items-center gap-2'>
 															<div className='w-32 bg-gray-200 rounded-full h-2'>
 																<div 
 																	className='bg-indigo-600 h-2 rounded-full'
-																	style={{ width: `${Math.min(optimizationMetrics.efficiencyScore, 100)}%` }}
+																	style={{ width: `${Math.min(optimizationMetrics.successRate || 0, 100)}%` }}
 																/>
 															</div>
-															<span className='text-sm font-medium'>{optimizationMetrics.efficiencyScore}%</span>
+															<span className='text-sm font-medium'>{optimizationMetrics.successRate || 'N/A'}%</span>
 														</div>
 													</div>
 												</div>

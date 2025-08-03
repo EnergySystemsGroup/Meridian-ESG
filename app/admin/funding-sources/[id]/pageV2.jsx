@@ -134,9 +134,9 @@ export default function FundingSourceDetailV2() {
 				.select(`
 					total_opportunities_processed,
 					opportunities_bypassed_llm,
-					token_savings_percentage,
-					time_savings_percentage,
-					efficiency_score,
+					opportunities_per_minute,
+					tokens_per_opportunity,
+					success_rate_percentage,
 					total_tokens_used,
 					estimated_cost_usd,
 					status
@@ -152,30 +152,30 @@ export default function FundingSourceDetailV2() {
 					acc.totalBypassedLLM += run.opportunities_bypassed_llm || 0;
 					acc.totalTokens += run.total_tokens_used || 0;
 					acc.totalCost += run.estimated_cost_usd || 0;
-					acc.tokenSavings.push(run.token_savings_percentage || 0);
-					acc.timeSavings.push(run.time_savings_percentage || 0);
-					acc.efficiencyScores.push(run.efficiency_score || 0);
+					acc.opportunitiesPerMinute.push(run.opportunities_per_minute || 0);
+					acc.tokensPerOpportunity.push(run.tokens_per_opportunity || 0);
+					acc.successRates.push(run.success_rate_percentage || 0);
 					return acc;
 				}, {
 					totalOpportunities: 0,
 					totalBypassedLLM: 0,
 					totalTokens: 0,
 					totalCost: 0,
-					tokenSavings: [],
-					timeSavings: [],
-					efficiencyScores: []
+					opportunitiesPerMinute: [],
+					tokensPerOpportunity: [],
+					successRates: []
 				});
 
 				setV2Metrics({
 					totalRuns: v2RunsData.length,
 					totalOpportunities: metrics.totalOpportunities,
 					totalBypassedLLM: metrics.totalBypassedLLM,
-					avgTokenSavings: metrics.tokenSavings.length > 0 ? 
-						Math.round(metrics.tokenSavings.reduce((a, b) => a + b, 0) / metrics.tokenSavings.length) : 0,
-					avgTimeSavings: metrics.timeSavings.length > 0 ? 
-						Math.round(metrics.timeSavings.reduce((a, b) => a + b, 0) / metrics.timeSavings.length) : 0,
-					avgEfficiencyScore: metrics.efficiencyScores.length > 0 ? 
-						Math.round(metrics.efficiencyScores.reduce((a, b) => a + b, 0) / metrics.efficiencyScores.length) : 0,
+					avgOpportunitiesPerMinute: metrics.opportunitiesPerMinute.length > 0 ? 
+						Math.round(metrics.opportunitiesPerMinute.reduce((a, b) => a + b, 0) / metrics.opportunitiesPerMinute.length) : 0,
+					avgTokensPerOpportunity: metrics.tokensPerOpportunity.length > 0 ? 
+						Math.round(metrics.tokensPerOpportunity.reduce((a, b) => a + b, 0) / metrics.tokensPerOpportunity.length) : 0,
+					avgSuccessRate: metrics.successRates.length > 0 ? 
+						Math.round(metrics.successRates.reduce((a, b) => a + b, 0) / metrics.successRates.length) : 0,
 					totalTokens: metrics.totalTokens,
 					totalCost: metrics.totalCost
 				});
@@ -393,9 +393,9 @@ export default function FundingSourceDetailV2() {
 							<div className='text-center p-4 bg-gradient-to-br from-green-50 to-green-100 rounded-lg'>
 								<div className='flex items-center justify-center mb-2'>
 									<Zap className='h-5 w-5 text-green-600 mr-1' />
-									<p className='text-sm font-medium text-green-800'>Avg Token Savings</p>
+									<p className='text-sm font-medium text-green-800'>Avg Opportunities/Min</p>
 								</div>
-								<p className='text-2xl font-bold text-green-600'>{v2Metrics.avgTokenSavings}%</p>
+								<p className='text-2xl font-bold text-green-600'>{v2Metrics.avgOpportunitiesPerMinute || 'N/A'}</p>
 								<p className='text-xs text-green-500'>
 									{v2Metrics.totalTokens.toLocaleString()} total tokens
 								</p>
@@ -404,18 +404,18 @@ export default function FundingSourceDetailV2() {
 							<div className='text-center p-4 bg-gradient-to-br from-purple-50 to-purple-100 rounded-lg'>
 								<div className='flex items-center justify-center mb-2'>
 									<Clock className='h-5 w-5 text-purple-600 mr-1' />
-									<p className='text-sm font-medium text-purple-800'>Avg Time Savings</p>
+									<p className='text-sm font-medium text-purple-800'>Avg Tokens/Opportunity</p>
 								</div>
-								<p className='text-2xl font-bold text-purple-600'>{v2Metrics.avgTimeSavings}%</p>
-								<p className='text-xs text-purple-500'>Faster processing</p>
+								<p className='text-2xl font-bold text-purple-600'>{v2Metrics.avgTokensPerOpportunity || 'N/A'}</p>
+								<p className='text-xs text-purple-500'>Token efficiency</p>
 							</div>
 							
 							<div className='text-center p-4 bg-gradient-to-br from-orange-50 to-orange-100 rounded-lg'>
 								<div className='flex items-center justify-center mb-2'>
 									<TrendingUp className='h-5 w-5 text-orange-600 mr-1' />
-									<p className='text-sm font-medium text-orange-800'>Efficiency Score</p>
+									<p className='text-sm font-medium text-orange-800'>Avg Success Rate</p>
 								</div>
-								<p className='text-2xl font-bold text-orange-600'>{v2Metrics.avgEfficiencyScore}%</p>
+								<p className='text-2xl font-bold text-orange-600'>{v2Metrics.avgSuccessRate || 'N/A'}%</p>
 								<p className='text-xs text-orange-500'>
 									${v2Metrics.totalCost.toFixed(4)} total cost
 								</p>

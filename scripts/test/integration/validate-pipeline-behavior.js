@@ -70,14 +70,14 @@ async function validatePipelineBehavior() {
       // Check pipeline_runs
       const { data: runs } = await supabase
         .from('pipeline_runs')
-        .select('id, status, efficiency_score')
+        .select('id, status, success_rate_percentage')
         .order('created_at', { ascending: false })
         .limit(1);
         
       if (runs && runs.length > 0) {
         console.log(`  ✅ Pipeline run tracked: ${runs[0].id}`);
         console.log(`     Status: ${runs[0].status}`);
-        console.log(`     Efficiency: ${runs[0].efficiency_score}%`);
+        console.log(`     Success Rate: ${runs[0].success_rate_percentage || 'N/A'}%`);
       }
       
       // Check pipeline_stages
@@ -105,13 +105,13 @@ async function validatePipelineBehavior() {
       // Check duplicate detection session
       const { data: detection } = await supabase
         .from('duplicate_detection_sessions')
-        .select('total_opportunities_checked, efficiency_improvement_percentage')
+        .select('total_opportunities_checked, llm_processing_bypassed')
         .eq('run_id', runs[0].id)
         .single();
         
       if (detection) {
         console.log(`  ✅ Duplicate detection tracked: ${detection.total_opportunities_checked} checked`);
-        console.log(`     Efficiency improvement: ${detection.efficiency_improvement_percentage || 0}%`);
+        console.log(`     LLM processing bypassed: ${detection.llm_processing_bypassed || 0}`);
       }
       
       console.log('\n✅ V2 Pipeline Behavior Validation Complete!');

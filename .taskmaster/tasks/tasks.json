@@ -1600,9 +1600,9 @@
             "id": 4,
             "title": "Database Migration Phase 1: Add Absolute Performance Fields",
             "description": "Add new absolute performance tracking fields to pipeline_runs and duplicate_detection_sessions tables. Fields to add: opportunities_per_minute (throughput), tokens_per_opportunity (efficiency), cost_per_opportunity_usd (cost efficiency), success_rate_percentage (quality), sla_compliance_percentage (target tracking). Create migration file in supabase/migrations/ with proper column definitions and constraints.",
-            "status": "in-progress",
+            "status": "done",
             "dependencies": [],
-            "details": "",
+            "details": "<info added on 2025-08-03T20:44:43.193Z>\nRemove superfluous analytics fields from database tables to simplify tracking and focus on measurable business value. Remove from duplicate_detection_sessions table: estimated_tokens_saved, estimated_cost_saved_usd, efficiency_improvement_percentage, detection_accuracy_score, false_positive_rate, false_negative_rate, detection_config. Remove from pipeline_runs table: token_savings_percentage, time_savings_percentage, efficiency_score, opportunities_bypassed_llm. Keep only fields that provide real, measurable business insights rather than theoretical metrics that add complexity without clear value.\n</info added on 2025-08-03T20:44:43.193Z>",
             "testStrategy": ""
           },
           {
@@ -1745,7 +1745,7 @@
             "title": "Fix pipeline_stages input/output count tracking",
             "description": "Priority: HIGH\nProblem: input_count and output_count fields are always 0 (never populated)\nImpact: Performance calculation functions fail, dashboard metrics inaccurate\nSolution: \n- Update RunManagerV2.updateV2Stage() to accept inputCount and outputCount parameters\n- Update ProcessCoordinatorV2 to pass actual opportunity counts to each stage\n- Example: data_extraction stage should set output_count to extractionResult.opportunities.length\n- Example: early_duplicate_detector should set input_count to opportunities received, output_count to new+update opportunities",
             "details": "<info added on 2025-08-03T18:46:45.847Z>\nThis task consolidates with Task 37.14 (Fix N+1 Query Patterns in StorageAgent - Implement batch operations for opportunity storage) which addressed identical scope. Both tasks target the core issue where pipeline_stages input/output count tracking remains unused (always 0), preventing accurate performance calculations. The consolidated implementation will deliver combined benefits: 80% reduction in database round trips from batch operations plus enabled accurate performance metrics through proper stage tracking. Task 37.14 should be marked completed/consolidated to eliminate duplication.\n</info added on 2025-08-03T18:46:45.847Z>",
-            "status": "pending",
+            "status": "in-progress",
             "dependencies": [],
             "parentTaskId": 38
           },
@@ -2034,7 +2034,7 @@
     ],
     "metadata": {
       "created": "2025-06-17T23:54:58.582Z",
-      "updated": "2025-08-03T19:00:57.608Z",
+      "updated": "2025-08-03T21:11:51.043Z",
       "description": "Tasks for master context"
     }
   }

@@ -428,11 +428,11 @@ export class TestScenarioFactory {
       // Define all metrics that must be captured
       requiredMetrics: {
         pipeline_runs: {
-          fields: ['id', 'api_source_id', 'status', 'total_execution_time_ms', 'efficiency_score', 'created_at'],
+          fields: ['id', 'api_source_id', 'status', 'total_execution_time_ms', 'success_rate_percentage', 'created_at'],
           validations: [
             'status should be completed',
             'total_execution_time_ms should be positive',
-            'efficiency_score should be 0-100'
+            'success_rate_percentage should be 0-100'
           ]
         },
         pipeline_stages: {
@@ -452,10 +452,10 @@ export class TestScenarioFactory {
           ]
         },
         duplicate_detection_sessions: {
-          fields: ['run_id', 'total_opportunities_checked', 'new_opportunities', 'duplicates_to_update', 'duplicates_to_skip', 'efficiency_improvement_percentage'],
+          fields: ['run_id', 'total_opportunities_checked', 'new_opportunities', 'duplicates_to_update', 'duplicates_to_skip', 'llm_processing_bypassed'],
           validations: [
             'totals should sum correctly',
-            'efficiency_improvement_percentage should be 0-100',
+            'llm_processing_bypassed should be >= 0',
             'all counts should be non-negative'
           ]
         }
@@ -891,17 +891,16 @@ export class TestScenarioFactory {
       
       // Performance validation checks
       performanceChecks: [
-        'SELECT efficiency_score FROM pipeline_runs WHERE efficiency_score < 50',
-        'SELECT efficiency_improvement_percentage FROM duplicate_detection_sessions WHERE efficiency_improvement_percentage < 30',
+        'SELECT success_rate_percentage FROM pipeline_runs WHERE success_rate_percentage < 50',
         'SELECT total_execution_time_ms FROM pipeline_runs WHERE total_execution_time_ms > 300000'
       ],
       
       // Analytics queries for dashboard validation
       analyticsQueries: [
-        'SELECT AVG(efficiency_score) as avg_efficiency FROM pipeline_runs',
+        'SELECT AVG(success_rate_percentage) as avg_success_rate FROM pipeline_runs',
         'SELECT path_type, COUNT(*) as count FROM opportunity_processing_paths GROUP BY path_type',
         'SELECT stage_name, AVG(execution_time_ms) as avg_time FROM pipeline_stages GROUP BY stage_name',
-        'SELECT AVG(efficiency_improvement_percentage) as avg_improvement FROM duplicate_detection_sessions'
+        'SELECT AVG(detection_time_ms) as avg_detection_time FROM duplicate_detection_sessions'
       ]
     };
   }

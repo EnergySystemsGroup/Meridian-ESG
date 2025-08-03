@@ -320,7 +320,7 @@ class NewPipelinePathTest {
         console.log(`✅ Pipeline run found: ${latestRun.id}`);
         console.log(`   - Status: ${latestRun.status}`);
         console.log(`   - Execution time: ${latestRun.total_execution_time_ms || 'N/A'}ms`);
-        console.log(`   - Efficiency score: ${latestRun.efficiency_score || 'N/A'}%`);
+        console.log(`   - Success rate: ${latestRun.success_rate_percentage || 'N/A'}%`);
         
         // Check pipeline_stages
         const { data: stages, error: stagesError } = await supabase
@@ -358,7 +358,7 @@ class NewPipelinePathTest {
         // Check duplicate_detection_sessions  
         const { data: detectionSessions, error: detectionError } = await supabase
           .from('duplicate_detection_sessions')
-          .select('total_opportunities_checked, new_opportunities, duplicates_to_skip, efficiency_improvement_percentage')
+          .select('total_opportunities_checked, new_opportunities, duplicates_to_skip, llm_processing_bypassed')
           .eq('run_id', latestRun.id);
         
         if (detectionError) {
@@ -368,7 +368,7 @@ class NewPipelinePathTest {
           console.log(`✅ Duplicate detection session tracked:`);
           console.log(`   - Opportunities checked: ${session.total_opportunities_checked}`);
           console.log(`   - New opportunities: ${session.new_opportunities}`);
-          console.log(`   - Efficiency improvement: ${session.efficiency_improvement_percentage || 'N/A'}%`);
+          console.log(`   - LLM processing bypassed: ${session.llm_processing_bypassed || 0}`);
         }
         
       } else {
