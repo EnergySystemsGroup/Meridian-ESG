@@ -467,16 +467,71 @@
       {
         "id": 12,
         "title": "Develop V2 Admin Run Processing Interface",
-        "description": "Create an admin interface for managing v2 processing runs, including run triggering, monitoring, and error handling.",
-        "details": "1. Build admin interface for v2 run management (use React v18.2.0 and Material-UI v5.13.0)\n2. Implement run scheduling capabilities (use node-cron v3.0.2)\n3. Add comprehensive monitoring dashboard (use Grafana v9.5.0)\n4. Create error investigation tools\n5. Build source configuration interface\n6. Implement real-time updates using WebSockets (socket.io v4.6.0)\n7. Use Redux Toolkit v1.9.5 for state management\n8. Implement role-based access control\n9. Create detailed logging system (use Winston v3.9.0)\n10. Implement audit trail for admin actions\n11. Use Formik v2.4.0 for form handling and validation\n12. Implement dark mode for better UX",
-        "testStrategy": "1. Perform unit and integration tests for admin interface\n2. Test run scheduling functionality\n3. Validate monitoring dashboard accuracy\n4. Test error handling and investigation tools\n5. Verify source configuration management\n6. Conduct user acceptance testing with admin users\n7. Test real-time update functionality\n8. Verify role-based access control",
-        "priority": "high",
+        "description": "Create an admin interface for managing v2 processing runs, including run triggering, monitoring, and error handling with focus on comprehensive run details pages.",
+        "status": "deferred",
         "dependencies": [
           9,
           11
         ],
-        "status": "pending",
-        "subtasks": []
+        "priority": "high",
+        "details": "1. Build admin interface for v2 run management using Next.js 15 App Router architecture\n2. Implement comprehensive run details pages with real-time status updates\n3. Add monitoring dashboard with Supabase real-time subscriptions\n4. Create error investigation tools with detailed processing information display\n5. Build source configuration interface\n6. Implement real-time updates using Supabase realtime subscriptions\n7. Use Next.js 15 server components and client components appropriately\n8. Implement role-based access control\n9. Create detailed logging system integrated with Supabase\n10. Implement audit trail for admin actions\n11. Use modern form handling with React Hook Form\n12. Implement responsive design with TailwindCSS",
+        "testStrategy": "1. Perform unit and integration tests for admin interface components\n2. Test run details page functionality and real-time updates\n3. Validate monitoring dashboard accuracy with Supabase integration\n4. Test error handling and investigation tools\n5. Verify source configuration management\n6. Conduct user acceptance testing with admin users\n7. Test Supabase real-time subscription functionality\n8. Verify role-based access control with Next.js middleware",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Set up Admin Interface Foundation with Next.js 15 App Router",
+            "description": "Create the core admin interface structure using Next.js 15 App Router architecture with Supabase authentication and routing foundation.",
+            "status": "pending",
+            "dependencies": [],
+            "details": "Set up Next.js 15 App Router admin interface with TailwindCSS and shadcn/ui components. Implement Supabase authentication with role-based access control. Create protected admin routes using Next.js middleware. Set up base admin layout with navigation, theme toggle, and responsive design. Initialize Supabase client utilities for admin operations.",
+            "testStrategy": "Unit tests for authentication components, integration tests for protected routes, and accessibility testing for the interface"
+          },
+          {
+            "id": 2,
+            "title": "Build Comprehensive Run Details Page with Real-time Updates",
+            "description": "Create detailed individual run view pages with real-time status monitoring, processing information display, and error handling capabilities.",
+            "status": "done",
+            "dependencies": [
+              1
+            ],
+            "details": "Develop run details page using Next.js 15 App Router with dynamic routing (/admin/runs/[id]). Implement Supabase real-time subscriptions for live run status updates. Create comprehensive run information display including processing stages, agent logs, and performance metrics. Build error investigation interface with detailed error logs and context. Add run control capabilities (cancel, retry, pause/resume). Implement processing timeline visualization and progress indicators.\n<info added on 2025-08-01T22:22:29.442Z>\nCOMPLETED: Successfully implemented comprehensive V2 runs details page at /app/admin/funding-sources/runs/[id]/pageV2.jsx featuring V2 optimization metrics dashboard with token/time savings visualization and efficiency scoring, 7-stage pipeline visualization with real-time progress indicators and stage-by-stage status tracking, Supabase real-time subscriptions for live run and stage updates, enhanced tabbed interface with Pipeline Details, Optimization metrics, Stage Details, and Raw Data views, backwards compatibility with automatic V1 fallback when V2 data unavailable, and detailed stage performance tracking including token usage, API calls, execution times, and expandable JSON result views.\n</info added on 2025-08-01T22:22:29.442Z>",
+            "testStrategy": "Component testing for run details interface, Supabase real-time subscription testing, and end-to-end tests for run monitoring functionality"
+          },
+          {
+            "id": 3,
+            "title": "Create Run Management Dashboard with Supabase Integration",
+            "description": "Build the main dashboard for viewing, triggering, and monitoring v2 processing runs with Supabase data persistence.",
+            "status": "pending",
+            "dependencies": [
+              1
+            ],
+            "details": "Develop dashboard using Next.js 15 server and client components with Supabase queries. Create run listing with filtering, sorting, and pagination using Supabase database functions. Implement run triggering interface with source selection and parameter configuration. Build run status overview with real-time updates via Supabase subscriptions. Add bulk run operations and batch processing capabilities.",
+            "testStrategy": "Integration testing with Supabase queries, real-time subscription testing, and dashboard performance testing"
+          },
+          {
+            "id": 4,
+            "title": "Implement Source Configuration Interface",
+            "description": "Build comprehensive interface for managing funding source configurations with Supabase CRUD operations and validation.",
+            "status": "pending",
+            "dependencies": [
+              1
+            ],
+            "details": "Create source management interface using React Hook Form for form handling. Build forms for adding, editing, and deleting funding sources with Supabase integration. Implement source configuration validation with Zod schemas. Add source testing capabilities to verify API connectivity. Create source status monitoring and health checks. Implement bulk source operations with optimistic updates.",
+            "testStrategy": "Form validation testing, Supabase CRUD operation tests, and source configuration validation testing"
+          },
+          {
+            "id": 5,
+            "title": "Develop Monitoring and Analytics Dashboard",
+            "description": "Create comprehensive monitoring interface for analyzing run performance, system health, and processing analytics.",
+            "status": "pending",
+            "dependencies": [
+              2,
+              3
+            ],
+            "details": "Build monitoring dashboard using Next.js 15 with Supabase analytics queries. Create performance metrics visualization with charts and graphs. Implement system health monitoring with real-time status indicators. Add processing analytics including success rates, processing times, and error patterns. Create alerting interface for run failures and performance issues. Build audit trail interface for tracking admin actions.",
+            "testStrategy": "Analytics query testing, real-time monitoring validation, and performance metrics accuracy testing"
+          }
+        ]
       },
       {
         "id": 13,
@@ -1297,11 +1352,689 @@
             "parentTaskId": 36
           }
         ]
+      },
+      {
+        "id": 37,
+        "title": "Database Pruning Initiative - Remove unused tables and optimize schema",
+        "description": "Comprehensive V2 Pipeline Optimization Initiative that combines database schema cleanup with critical performance enhancements to achieve 60-80% performance improvements in the V2 architecture. This multi-phase project encompasses database pruning, query optimization, architecture improvements, and advanced database features implementation.",
+        "status": "pending",
+        "dependencies": [
+          1,
+          2
+        ],
+        "priority": "high",
+        "details": "PHASE 1 - Database Schema Analysis and Cleanup:\n   - Generate complete table usage report using pg_stat_user_tables\n   - Identify tables with zero or minimal activity over past 6 months\n   - Document foreign key relationships and dependencies\n   - Map table usage across application codebase using grep/ripgrep searches\n   - Remove legacy tables, temporary tables, and redundant structures\n   - Consolidate overlapping functionality where appropriate\n\nPHASE 2 - V2 Pipeline Performance Optimization:\n   - Implement strategic database indexes for frequently queried columns\n   - Identify and fix N+1 query patterns in funding opportunities processing\n   - Eliminate dual write operations causing performance bottlenecks\n   - Optimize agent-based processing workflows for better throughput\n   - Implement query batching and connection pooling improvements\n\nPHASE 3 - Advanced Database Features:\n   - Design and implement table partitioning for large datasets (funding_opportunities, api_raw_responses)\n   - Create materialized views for complex aggregations (dashboard metrics, geographic data)\n   - Develop optimized database functions for common operations\n   - Implement proper caching strategies at database level\n\nPHASE 4 - Migration and Testing Strategy:\n   - Create safe migration procedures with rollback capabilities\n   - Implement performance monitoring and benchmarking\n   - Validate 60-80% improvement targets through comprehensive testing\n   - Update application code to leverage optimized database features",
+        "testStrategy": "1. Baseline Performance Measurement:\n   - Document current V2 pipeline execution times and resource usage\n   - Record database query performance metrics and connection statistics\n   - Establish benchmarks for agent processing throughput and latency\n   - Measure current database size, table counts, and index usage\n\n2. Phase-by-Phase Validation:\n   - Test application functionality after each schema change\n   - Validate API endpoints and agent workflows after optimization\n   - Measure incremental performance improvements throughout implementation\n   - Verify data integrity and consistency across all optimizations\n\n3. Performance Target Validation:\n   - Confirm 60-80% improvement in V2 pipeline execution times\n   - Validate reduced memory usage and improved connection efficiency\n   - Test scalability under increased load with optimized architecture\n   - Verify materialized views and partitioning provide expected benefits\n\n4. Rollback and Recovery Testing:\n   - Test migration rollback procedures for each optimization phase\n   - Validate backup and restore processes with new schema features\n   - Ensure rolled-back state maintains full V2 pipeline functionality\n   - Test disaster recovery scenarios with optimized database structure",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Remove unused funding_programs table from database schema",
+            "description": "Analyze the funding_programs table usage across the codebase and remove it from the database schema if it's confirmed to be unused. This includes dropping the table, removing any references in migrations, and updating any related documentation.",
+            "status": "pending",
+            "dependencies": [],
+            "details": "",
+            "testStrategy": ""
+          },
+          {
+            "id": 2,
+            "title": "Rename agency_type field to source_type in funding_sources table",
+            "description": "Rename the agency_type column to source_type in the funding_sources table to better reflect its purpose of categorizing funding source types (Federal, State, Local, etc.) rather than specifically agency types. This includes creating a database migration, updating all code references, and ensuring all functionality continues to work.",
+            "status": "pending",
+            "dependencies": [],
+            "details": "<info added on 2025-08-02T04:25:37.817Z>\n1. Create a Supabase migration file to rename the column from agency_type to source_type. 2. Search the entire codebase for references to agency_type and update them to source_type, including API routes, components, types, and database queries. 3. Update any TypeScript interfaces or types that reference agency_type. 4. Test all funding source-related functionality to ensure the rename doesn't break anything. 5. Update any documentation or comments that reference the old field name. 6. Run the migration in development and test environments before production deployment.\n</info added on 2025-08-02T04:25:37.817Z>",
+            "testStrategy": ""
+          },
+          {
+            "id": 3,
+            "title": "Fix agency_type enum case and values",
+            "description": "Change the PostgreSQL enum from title case (Federal, State) to lowercase (federal, state). Add local as a new enum value option. Update enum values to be: federal, state, utility, foundation, local, other. Create database migration to alter the enum type. Update any existing data to use lowercase values.",
+            "status": "pending",
+            "dependencies": [],
+            "details": "",
+            "testStrategy": ""
+          },
+          {
+            "id": 4,
+            "title": "Fix categorizeAgencyType function",
+            "description": "Change default fallback from government to other. Ensure function returns only valid enum values that match the database. Test that the function properly categorizes agencies and no longer causes enum constraint violations. Verify that NULL values in agency_type get resolved.",
+            "status": "pending",
+            "dependencies": [],
+            "details": "",
+            "testStrategy": ""
+          },
+          {
+            "id": 5,
+            "title": "Test API raw responses deduplication feature",
+            "description": "Verify that the deduplication logic is working correctly for raw API responses before they're processed into opportunities. This should test the early duplicate detection mechanism to ensure redundant processing is prevented and data consistency is maintained.",
+            "status": "pending",
+            "dependencies": [],
+            "details": "",
+            "testStrategy": ""
+          },
+          {
+            "id": 6,
+            "title": "Analyze api_extracted_opportunities table for potential removal",
+            "description": "Analyze the usage and necessity of the api_extracted_opportunities intermediate table in the data processing pipeline. Determine if this table can be removed to simplify the architecture by examining current usage patterns, dependencies, performance impact, and migration strategy if removal is beneficial.",
+            "status": "pending",
+            "dependencies": [],
+            "details": "",
+            "testStrategy": ""
+          },
+          {
+            "id": 7,
+            "title": "Implement strategic database indexes for V2 pipeline optimization",
+            "description": "Analyze query patterns in the V2 pipeline and implement strategic indexes on frequently queried columns in funding_opportunities, funding_sources, and runs tables. Focus on indexes that will provide the most significant performance improvements for agent processing workflows.",
+            "status": "pending",
+            "dependencies": [],
+            "details": "",
+            "testStrategy": ""
+          },
+          {
+            "id": 8,
+            "title": "Identify and fix N+1 query patterns in funding opportunities processing",
+            "description": "Audit the V2 pipeline codebase to identify N+1 query patterns that are causing performance bottlenecks. Implement solutions such as eager loading, query batching, or JOIN optimizations to eliminate these inefficient query patterns.",
+            "status": "pending",
+            "dependencies": [],
+            "details": "",
+            "testStrategy": ""
+          },
+          {
+            "id": 9,
+            "title": "Eliminate dual write operations causing performance bottlenecks",
+            "description": "Identify and eliminate dual write operations in the V2 pipeline that are causing unnecessary database load and performance degradation. Consolidate write operations and implement more efficient data persistence patterns.",
+            "status": "pending",
+            "dependencies": [],
+            "details": "",
+            "testStrategy": ""
+          },
+          {
+            "id": 10,
+            "title": "Implement table partitioning for large datasets",
+            "description": "Design and implement table partitioning strategies for large tables like funding_opportunities and api_raw_responses to improve query performance and maintenance operations. Focus on time-based or geographic partitioning strategies that align with common query patterns.",
+            "status": "pending",
+            "dependencies": [],
+            "details": "",
+            "testStrategy": ""
+          },
+          {
+            "id": 11,
+            "title": "Create materialized views for complex aggregations",
+            "description": "Implement materialized views for complex aggregations used in dashboard metrics and geographic data visualization. This should significantly improve query performance for frequently accessed aggregated data while maintaining data freshness through appropriate refresh strategies.",
+            "status": "pending",
+            "dependencies": [],
+            "details": "",
+            "testStrategy": ""
+          },
+          {
+            "id": 12,
+            "title": "Develop optimized database functions for common operations",
+            "description": "Create optimized PostgreSQL functions for frequently used operations in the V2 pipeline, such as duplicate detection, data aggregation, and complex filtering logic. This will reduce application-level processing and improve overall pipeline performance.",
+            "status": "pending",
+            "dependencies": [],
+            "details": "",
+            "testStrategy": ""
+          },
+          {
+            "id": 13,
+            "title": "Add Missing Composite Indexes for V2 Pipeline",
+            "description": "Create critical composite indexes for V2 pipeline performance: idx_pipeline_stages_run_order_status, idx_opportunity_paths_duplicate_analysis, idx_pipeline_runs_analytics. Expected impact: 3-5x query speedup for pipeline operations. Priority: HIGH (Week 1-2)",
+            "details": "",
+            "status": "done",
+            "dependencies": [],
+            "parentTaskId": 37
+          },
+          {
+            "id": 14,
+            "title": "Fix N+1 Query Patterns in StorageAgent",
+            "description": "Implement batch operations for opportunity storage in StorageAgent. Replace individual inserts with bulk operations. Target locations: app/lib/agents-v2/storageAgent.js. Expected impact: Reduce database round trips by 80%. Priority: HIGH (Week 1-2)",
+            "details": "",
+            "status": "done",
+            "dependencies": [],
+            "parentTaskId": 37
+          },
+          {
+            "id": 15,
+            "title": "Eliminate Dual V1/V2 Writes in RunManagerV2",
+            "description": "Remove V1 table writes from V2 pipeline in RunManagerV2. Keep only V2 persistence for new runs. Target locations: app/lib/agents-v2/services/runManagerV2.js. Expected impact: 20-30% performance improvement. Priority: HIGH (Week 1-2)",
+            "details": "",
+            "status": "done",
+            "dependencies": [],
+            "parentTaskId": 37
+          },
+          {
+            "id": 16,
+            "title": "Implement Table Partitioning Strategy",
+            "description": "Partition pipeline_runs by month and opportunity_processing_paths by hash. Add archival strategy for old data. Design automated partition management. Expected impact: Improved query performance on large datasets. Priority: MEDIUM (Month 2-3)",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 37
+          },
+          {
+            "id": 17,
+            "title": "Create Materialized Views for Dashboard Performance",
+            "description": "Build mv_pipeline_efficiency and mv_duplicate_detection_effectiveness materialized views. Add refresh scheduling and integrate with dashboard queries. Expected impact: Faster dashboard load times. Priority: MEDIUM (Month 2-3)",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 37
+          },
+          {
+            "id": 18,
+            "title": "Move Duplicate Detection to Database Functions",
+            "description": "Create optimized SQL function for duplicate checking. Replace application-level duplicate logic with database functions. Implement similarity threshold configuration. Expected impact: Faster duplicate detection. Priority: MEDIUM (Month 2-3)",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 37
+          },
+          {
+            "id": 19,
+            "title": "Add Data Integrity Constraints",
+            "description": "Add cross-table consistency checks, standardize foreign key cascade rules, and add enum validation constraints. Improve database data quality and referential integrity. Priority: LOW (Month 4+)",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 37
+          },
+          {
+            "id": 20,
+            "title": "Implement Comprehensive Analytics Dashboard",
+            "description": "Build dashboards consuming V2 metrics, add real-time efficiency monitoring, and create cost savings calculations. Showcase V2 optimization results and provide ongoing performance insights. Priority: LOW (Month 4+)",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 37
+          }
+        ]
+      },
+      {
+        "id": 38,
+        "title": "V2 Pipeline Status Handling Improvements",
+        "description": "Implement comprehensive improvements to the V2 process runs system with a primary focus on removing V1 vs V2 comparison metrics and replacing them with meaningful absolute performance metrics. This architecture change eliminates over-engineered comparison tracking in favor of direct throughput, efficiency, cost, and quality measurements that provide actionable insights for system optimization. Additionally, enhance overall system reliability, error handling, and monitoring capabilities.",
+        "status": "in-progress",
+        "dependencies": [
+          36,
+          2,
+          6
+        ],
+        "priority": "high",
+        "details": "1. **Primary Focus: Eliminate V1 vs V2 Comparison Architecture**\n   - Remove all percentage-based comparison metrics (token_savings_percentage, time_savings_percentage, efficiency_score)\n   - Replace with absolute performance metrics: opportunities_per_minute, tokens_per_opportunity, cost_per_opportunity_usd\n   - Add quality metrics: success_rate_percentage, sla_compliance_percentage\n   - Remove comparison baseline tracking and pipeline_performance_baselines table\n   - Update all UI components to display absolute values instead of V1 vs V2 improvements\n\n2. **Database Architecture Transformation**\n   - Migrate database schema to support absolute performance tracking\n   - Remove comparison-focused tables and fields\n   - Add new absolute performance fields with proper constraints and indexes\n   - Create automated calculation functions and triggers for real-time metrics\n\n3. **Frontend and API Updates**\n   - Update admin dashboard pages to show absolute performance metrics\n   - Replace V2 Optimization Impact displays with meaningful throughput dashboards\n   - Modify API endpoints to serve absolute performance data\n   - Update table components to display actionable performance columns\n\n4. **Critical System Reliability Fixes**\n   - Fix pipeline runs stuck in 'started/processing' status\n   - Implement comprehensive error handling and timeout mechanisms\n   - Add proper status transition logging and recovery strategies\n   - Ensure all processing paths update run status appropriately\n\n5. **Enhanced Monitoring and Performance Tracking**\n   - Implement performance metrics collection focused on absolute values\n   - Add execution time tracking and resource utilization monitoring\n   - Create performance profiling capabilities for bottleneck identification\n   - Add system health checks and diagnostic tools\n\n6. **Improved User Experience**\n   - Provide meaningful performance insights instead of abstract comparisons\n   - Enhance real-time updates and progress reporting\n   - Improve error messaging and system feedback\n   - Create actionable performance dashboards for optimization decisions",
+        "testStrategy": "1. **Validate Architecture Migration**\n   - Verify all V1 vs V2 comparison metrics are completely removed\n   - Test absolute performance metric accuracy and calculation correctness\n   - Validate database migration integrity and data preservation\n   - Test automated performance calculation functions and triggers\n\n2. **Test Frontend and API Changes**\n   - Verify admin dashboard displays absolute performance metrics correctly\n   - Test API endpoints serve proper absolute performance data\n   - Validate table components show actionable performance information\n   - Test UI responsiveness and data visualization accuracy\n\n3. **Validate System Reliability Improvements**\n   - Test pipeline runs complete with proper status updates\n   - Verify timeout mechanisms prevent indefinite hanging\n   - Test error handling prevents system crashes\n   - Validate status recovery mechanisms for orphaned runs\n\n4. **Test Performance Monitoring**\n   - Verify performance metrics collection accuracy\n   - Test execution time tracking and resource monitoring\n   - Validate performance profiling effectiveness\n   - Test system health checks and diagnostic capabilities\n\n5. **Integration and End-to-End Testing**\n   - Test complete pipeline execution with absolute performance tracking\n   - Verify user experience improvements and dashboard functionality\n   - Test system performance under various load conditions\n   - Validate overall system stability and reliability",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Fix Status Stuck in 'Started/Processing' Issue",
+            "description": "Implement immediate fixes for pipeline runs that get stuck in 'started' or 'processing' status and never update. This is the critical first step to prevent indefinite hanging and improve system reliability.",
+            "status": "pending",
+            "dependencies": [
+              "38.4"
+            ],
+            "details": "<info added on 2025-08-02T17:30:07.109Z>\nPROBLEM ANALYSIS:\n- Pipeline runs remain indefinitely in 'started' or 'processing' status\n- Indicates system crashes, timeouts, or unhandled exceptions before status updates\n- Affects monitoring, debugging, and user experience\n- Critical reliability issue for V2 agent architecture\n\nIMMEDIATE FIXES NEEDED:\n1. Add comprehensive try-catch blocks around all status transition points\n2. Implement timeout mechanisms for long-running processes (e.g., 30-minute default timeout)\n3. Add proper error handling in RunManagerV2 status update methods\n4. Ensure all code paths (success, error, timeout) update run status appropriately\n5. Add status transition logging for debugging purposes\n6. Implement automatic status recovery for orphaned runs on system restart\n\nSPECIFIC CODE AREAS TO REVIEW:\n- app/lib/agents-v2/services/RunManagerV2.js (status update methods)\n- app/lib/agents-v2/orchestrators/SourceOrchestrator.js (processing loops)\n- app/api/admin/run-source/route.js (API endpoint error handling)\n- Any agent processing methods that don't properly handle exceptions\n\nSUCCESS CRITERIA:\n- No runs remain stuck in 'started'/'processing' for more than timeout period\n- All processing paths update status on completion or failure\n- System handles crashes gracefully with proper status cleanup\n- Comprehensive logging enables effective debugging of status issues\n</info added on 2025-08-02T17:30:07.109Z>",
+            "testStrategy": ""
+          },
+          {
+            "id": 2,
+            "title": "Enhance V2 Pipeline Error Handling",
+            "description": "Implement comprehensive error handling throughout the V2 pipeline to improve system reliability and provide better error recovery mechanisms.",
+            "status": "pending",
+            "dependencies": [
+              1,
+              "38.1"
+            ],
+            "details": "- Add structured error handling in all V2 agents and orchestrators\n- Implement proper exception handling with contextual error information\n- Create error classification and categorization system\n- Add retry mechanisms for transient failures\n- Implement graceful degradation for non-critical failures\n- Add error logging and reporting for debugging and monitoring",
+            "testStrategy": ""
+          },
+          {
+            "id": 3,
+            "title": "Improve V2 Performance Monitoring",
+            "description": "Implement comprehensive performance monitoring and metrics collection for the V2 pipeline focused on absolute performance values rather than V1 comparisons.",
+            "status": "pending",
+            "dependencies": [
+              2
+            ],
+            "details": "- Add absolute performance metrics collection: opportunities_per_minute, tokens_per_opportunity, cost_per_opportunity_usd\n- Implement quality metrics tracking: success_rate_percentage, sla_compliance_percentage\n- Create execution time tracking and resource utilization monitoring\n- Add performance profiling capabilities for bottleneck identification\n- Implement performance alerting based on absolute thresholds\n- Remove all V1 vs V2 comparison metric calculations",
+            "testStrategy": ""
+          },
+          {
+            "id": 4,
+            "title": "Database Migration Phase 1: Add Absolute Performance Fields",
+            "description": "Add new absolute performance tracking fields to pipeline_runs and duplicate_detection_sessions tables. Fields to add: opportunities_per_minute (throughput), tokens_per_opportunity (efficiency), cost_per_opportunity_usd (cost efficiency), success_rate_percentage (quality), sla_compliance_percentage (target tracking). Create migration file in supabase/migrations/ with proper column definitions and constraints.",
+            "status": "in-progress",
+            "dependencies": [],
+            "details": "",
+            "testStrategy": ""
+          },
+          {
+            "id": 5,
+            "title": "Database Migration Phase 2: Remove Comparison Fields",
+            "description": "Remove V1 vs V2 comparison fields from database tables. Remove from pipeline_runs: token_savings_percentage, time_savings_percentage, efficiency_score, opportunities_bypassed_llm. Remove from duplicate_detection_sessions: estimated_tokens_saved, estimated_cost_saved_usd, efficiency_improvement_percentage. Archive existing comparison data before removal. Create migration file in supabase/migrations/.",
+            "status": "pending",
+            "dependencies": [
+              4,
+              "38.4"
+            ],
+            "details": "",
+            "testStrategy": ""
+          },
+          {
+            "id": 6,
+            "title": "Database Migration Phase 3: Remove Baseline Comparison Table",
+            "description": "Remove the entire pipeline_performance_baselines table as it exists only for V1 comparison tracking. Archive table data first, then drop the table completely. Update any foreign key references or dependent views. Create migration file in supabase/migrations/. This table serves no purpose in the new absolute performance tracking approach.",
+            "status": "pending",
+            "dependencies": [
+              5,
+              "38.5"
+            ],
+            "details": "",
+            "testStrategy": ""
+          },
+          {
+            "id": 7,
+            "title": "Update Admin Runs Detail Page - Remove V2 Optimization Card",
+            "description": "Update /app/admin/funding-sources/runs/[id]/pageV2.jsx to remove the V2 Optimization Impact card that displays comparison metrics. Replace with absolute performance metrics display showing opportunities_per_minute, tokens_per_opportunity, cost_per_opportunity_usd, success_rate_percentage, and sla_compliance_percentage. Update the page layout and styling accordingly.",
+            "status": "pending",
+            "dependencies": [
+              "38.4",
+              "38.10",
+              "38.12"
+            ],
+            "details": "",
+            "testStrategy": ""
+          },
+          {
+            "id": 8,
+            "title": "Update Admin Funding Sources Page - Remove V2 Pipeline Performance",
+            "description": "Update /app/admin/funding-sources/[id]/pageV2.jsx to remove V2 Pipeline Performance comparison metrics section. Replace with absolute performance dashboard showing real throughput metrics, cost efficiency, success rates, and SLA compliance. Update charts and visualizations to display absolute values instead of percentage improvements over V1.",
+            "status": "pending",
+            "dependencies": [
+              "38.4",
+              "38.10",
+              "38.12"
+            ],
+            "details": "",
+            "testStrategy": ""
+          },
+          {
+            "id": 9,
+            "title": "Update RunsTableV2 Component - Replace Optimization Column",
+            "description": "Update /components/admin/RunsTable/RunsTableV2.jsx to replace the Optimization column with absolute performance metrics columns. Add columns for throughput (opportunities/min), efficiency (tokens/opportunity), cost efficiency ($/opportunity), success rate %, and SLA compliance %. Update table sorting, filtering, and display logic to work with absolute values instead of comparison percentages.",
+            "status": "pending",
+            "dependencies": [
+              "38.4",
+              "38.10",
+              "38.12"
+            ],
+            "details": "",
+            "testStrategy": ""
+          },
+          {
+            "id": 10,
+            "title": "Update RunManagerV2 Service - Remove Comparison Calculations",
+            "description": "Update /lib/services/runManagerV2.js to remove all V1 vs V2 comparison metric calculations. Replace with absolute performance metric calculations for opportunities_per_minute, tokens_per_opportunity, cost_per_opportunity_usd, success_rate_percentage, and sla_compliance_percentage. Update calculateMetrics functions and remove comparison baseline lookups.",
+            "status": "pending",
+            "dependencies": [
+              4,
+              "38.4"
+            ],
+            "details": "<info added on 2025-08-03T18:47:09.915Z>\nThis subtask has been consolidated with Task 37.15 (Eliminate Dual V1/V2 Writes in RunManagerV2) which addressed identical scope. Both tasks target removing V1 table writes from V2 pipeline in RunManagerV2, keeping only V2 persistence for new runs. The consolidated implementation will deliver combined benefits: 20-30% performance improvement from eliminating dual writes plus complete removal of V1 vs V2 comparison metric calculations. Task 37.15 should be marked completed/consolidated to eliminate duplication. Target locations: app/lib/agents-v2/services/runManagerV2.js.\n</info added on 2025-08-03T18:47:09.915Z>",
+            "testStrategy": ""
+          },
+          {
+            "id": 11,
+            "title": "Update API Routes - Remove Comparison Data Endpoints",
+            "description": "Review and update all API routes that serve comparison data. Remove endpoints or response fields related to V1 vs V2 comparisons (token_savings_percentage, time_savings_percentage, efficiency_score, etc.). Update API responses to include new absolute performance fields. Focus on routes under /api/admin/ that serve dashboard and runs data.",
+            "status": "pending",
+            "dependencies": [
+              10,
+              "38.10"
+            ],
+            "details": "",
+            "testStrategy": ""
+          },
+          {
+            "id": 12,
+            "title": "Create Performance Calculation Functions and Triggers",
+            "description": "Create database functions and triggers to automatically calculate absolute performance metrics. Implement functions for: calculating opportunities_per_minute from run duration, computing tokens_per_opportunity averages, determining cost_per_opportunity_usd, calculating success_rate_percentage from processed vs failed opportunities, and computing sla_compliance_percentage against target benchmarks. Add triggers to update metrics on data changes.",
+            "status": "pending",
+            "dependencies": [
+              4,
+              "38.4"
+            ],
+            "details": "",
+            "testStrategy": ""
+          },
+          {
+            "id": 13,
+            "title": "Build Advanced Analytics Dashboard from final_results Data",
+            "description": "Create sophisticated data visualizations and monitoring capabilities from the rich analytics data stored in pipeline_runs.final_results JSONB field.",
+            "details": "<info added on 2025-08-02T19:23:28.306Z>\nLooking at the user request and the context, I'll generate the new content that should be added to subtask 38.13's details.**Problem Statement:**\nWe have Netflix-level analytics stored in the final_results JSONB field of the pipeline_runs table, but we're only displaying McDonald's-level dashboards (basic summary numbers and raw JSON dumps). We're sitting on a goldmine of detailed performance data that could power sophisticated monitoring and optimization dashboards.\n\n**Rich Data Currently Unused:**\n\nStage Performance Analytics:\n- Individual stage execution times, token usage, API calls\n- Stage-by-stage success/failure rates  \n- Resource utilization per stage (memory, processing time)\n\nOpportunity Path Analytics:\n- Individual opportunity journeys through the pipeline\n- Path type distribution (NEW vs UPDATE vs SKIP)\n- Token savings per opportunity, processing time per opportunity\n\nAdvanced Duplicate Detection Analytics:\n- Detection method breakdown (ID matches vs title matches)\n- Detection accuracy scores and confidence levels\n- False positive/negative rates\n\nQuality Metrics:\n- Data quality scores per stage\n- Processing accuracy rates\n- Error breakdown by type and stage\n\n**Technical Implementation:**\n- Parse and display data from final_results.enhancedMetrics.stageMetrics\n- Visualize final_results.enhancedMetrics.opportunityPaths data\n- Create charts from final_results.enhancedMetrics.duplicateDetectionMetrics\n- Add stage performance comparison widgets\n- Build pipeline efficiency trending over time\n\n**Files to Update:**\n- /app/admin/funding-sources/runs/[id]/pageV2.jsx - Replace raw JSON with rich visualizations\n- /app/admin/funding-sources/[id]/pageV2.jsx - Add advanced performance analytics\n- /components/admin/RunsTable/RunsTableV2.jsx - Enhance with detailed metrics\n- Create new components for stage analytics, opportunity path tracking\n\n**Priority**: MEDIUM-HIGH (significant value unlock from existing data)\n\nThis subtask leverages the comprehensive final_results data documented in our PRD to create actionable insights and monitoring capabilities.\n</info added on 2025-08-02T19:23:28.306Z>",
+            "status": "pending",
+            "dependencies": [
+              "38.4",
+              "38.7",
+              "38.10",
+              "38.12"
+            ],
+            "parentTaskId": 38
+          },
+          {
+            "id": 14,
+            "title": "Implement User-Friendly Error Details Display",
+            "description": "Address the poor error presentation problem by implementing comprehensive error details display in the admin UI. Transform excellent error data capture in error_details JSONB fields into meaningful user-facing error messages with actionable guidance.",
+            "details": "<info added on 2025-08-02T19:37:32.330Z>\n**Problem Statement:**\nCurrently users only see generic 'failed' indicators without understanding what went wrong, why it failed, or how to fix it, despite having robust error capture in pipeline_runs.error_details and pipeline_stages.error_details JSONB fields.\n\n**Technical Implementation:**\n- Parse and display pipeline_runs.error_details.message in run detail pages\n- Show pipeline_stages.error_details for individual stage failures  \n- Create error severity classification (warning, error, critical)\n- Add 'Retry Run' functionality for transient errors\n- Implement error correlation between stage and pipeline failures\n\n**Files to Update:**\n- /app/admin/funding-sources/runs/[id]/pageV2.jsx - Add error details display\n- /app/admin/funding-sources/[id]/pageV2.jsx - Show failed run details\n- /components/admin/RunsTable/RunsTableV2.jsx - Add error message column\n- Create new error display components and error categorization logic\n\n**User Experience Goals:**\n- Replace '❌ Failed' with '❌ Anthropic API rate limit exceeded - retry in 5 minutes'\n- Show which specific stage failed and why\n- Provide actionable guidance for common error types\n- Enable troubleshooting without raw JSON inspection\n\n**Priority:** MEDIUM (improves debugging and user experience significantly)\n\n**Dependencies:** Should come after 38.2 (Enhance V2 Pipeline Error Handling) as it builds on the error handling infrastructure\n\n**Scope:**\n- Display meaningful error messages from error_details.message in admin UI\n- Add stage-specific error indicators in pipeline visualization\n- Create expandable error details modal with technical information\n- Add error categorization (user-actionable vs system issues)\n- Provide retry suggestions for transient failures\n</info added on 2025-08-02T19:37:32.330Z>",
+            "status": "pending",
+            "dependencies": [
+              "38.2"
+            ],
+            "parentTaskId": 38
+          },
+          {
+            "id": 15,
+            "title": "Fix Pipeline Stages Field Usage and Performance Calculations",
+            "description": "Critical fixes for pipeline_stages table: Currently input_count and output_count fields are completely unused (always 0), preventing accurate performance calculations. Execution time is duplicated between execution_time_ms field and performance_metrics.executionTime. Performance calculation functions fail because they expect real counts but receive 0s.\n\nImplementation Phases:\nPhase 1 - Update Count Tracking:\n- Update RunManagerV2 to accept and store actual opportunity counts for each stage\n- Modify ProcessCoordinatorV2 to pass real input/output counts to RunManager\n- Ensure counts are properly tracked for: storage, analysis, filtering stages\n\nPhase 2 - Eliminate Duplication:\n- Standardize on execution_time_ms field (remove performance_metrics.executionTime)\n- Update all references to use single source of truth\n- Ensure consistent time tracking across all stages\n\nPhase 3 - Add Meaningful Performance Fields:\n- Add opportunities_processed field for actual work done\n- Add processing_rate_per_second for throughput metrics\n- Update performance calculation functions to use real data\n- Add proper constraints and indexes for new fields\n\nThis directly impacts dashboard analytics accuracy as current calculations show incorrect or meaningless values (e.g., infinite processing rates due to 0 denominators).\n\nDependencies: Should be completed before or alongside 38.4 (Database Migration Phase 1) as both involve schema changes.",
+            "details": "<info added on 2025-08-02T20:11:17.692Z>\nCRITICAL FINDING: The pipeline_stages table has proper structure but is NOT being populated correctly, making our performance metrics unreliable.\n\nKey Issues Identified:\n1. input_count and output_count fields are ALWAYS 0 (never populated by RunManagerV2 or ProcessCoordinatorV2)\n2. Execution time is duplicated in both execution_time_ms field AND performance_metrics.executionTime\n3. Performance calculation functions use GREATEST(input_count, output_count, 1) but always get 0s, defaulting to 1, making operations per second calculations meaningless\n4. Missing critical performance fields: opportunities_processed, processing_rate_per_second, token_efficiency\n5. Inconsistent data placement between stage_results and performance_metrics JSONB fields\n\nImplementation Steps Required:\n\n1. Fix RunManagerV2 stage tracking to properly populate input_count and output_count fields\n2. Update ProcessCoordinatorV2 to consistently track and record stage metrics\n3. Resolve execution time duplication by standardizing on single field location\n4. Add missing performance fields to pipeline_stages table schema\n5. Implement proper data flow between stage_results and performance_metrics\n6. Update performance calculation functions to handle actual count data instead of defaulting to 1\n7. Add validation to ensure metrics are being recorded correctly during pipeline execution\n8. Create migration script to backfill any missing performance data where possible\n</info added on 2025-08-02T20:11:17.692Z>",
+            "status": "pending",
+            "dependencies": [
+              "38.16"
+            ],
+            "parentTaskId": 38
+          },
+          {
+            "id": 16,
+            "title": "Fix pipeline_stages input/output count tracking",
+            "description": "Priority: HIGH\nProblem: input_count and output_count fields are always 0 (never populated)\nImpact: Performance calculation functions fail, dashboard metrics inaccurate\nSolution: \n- Update RunManagerV2.updateV2Stage() to accept inputCount and outputCount parameters\n- Update ProcessCoordinatorV2 to pass actual opportunity counts to each stage\n- Example: data_extraction stage should set output_count to extractionResult.opportunities.length\n- Example: early_duplicate_detector should set input_count to opportunities received, output_count to new+update opportunities",
+            "details": "<info added on 2025-08-03T18:46:45.847Z>\nThis task consolidates with Task 37.14 (Fix N+1 Query Patterns in StorageAgent - Implement batch operations for opportunity storage) which addressed identical scope. Both tasks target the core issue where pipeline_stages input/output count tracking remains unused (always 0), preventing accurate performance calculations. The consolidated implementation will deliver combined benefits: 80% reduction in database round trips from batch operations plus enabled accurate performance metrics through proper stage tracking. Task 37.14 should be marked completed/consolidated to eliminate duplication.\n</info added on 2025-08-03T18:46:45.847Z>",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 38
+          },
+          {
+            "id": 17,
+            "title": "Eliminate execution time duplication in pipeline_stages",
+            "description": "Priority: MEDIUM\nProblem: Execution time stored in both execution_time_ms field AND performance_metrics.executionTime\nImpact: Data inconsistency, confusion in reporting\nSolution:\n- Standardize on execution_time_ms field only\n- Remove executionTime from performance_metrics JSONB\n- Update all agents to stop adding executionTime to performance_metrics\n- Create migration to clean existing data",
+            "details": "",
+            "status": "pending",
+            "dependencies": [
+              "38.16"
+            ],
+            "parentTaskId": 38
+          },
+          {
+            "id": 18,
+            "title": "Fix performance calculation functions for pipeline_stages",
+            "description": "Priority: HIGH\nProblem: calculate_pipeline_stage_metrics function uses GREATEST(input_count, output_count, 1) but always gets 0s, defaulting to 1\nImpact: Operations per second calculations are meaningless\nSolution:\n- First fix subtask 38.15.16 to populate real counts\n- Update performance calculation functions to handle actual opportunity counts\n- Add proper fallback logic for edge cases\n- Test with real processing data",
+            "details": "",
+            "status": "pending",
+            "dependencies": [
+              "38.16"
+            ],
+            "parentTaskId": 38
+          },
+          {
+            "id": 19,
+            "title": "Add missing performance tracking fields to pipeline_stages",
+            "description": "Priority: MEDIUM\nProblem: Missing key performance fields for meaningful analytics\nSolution:\n- Add opportunities_processed INTEGER field\n- Add processing_rate_per_second DECIMAL field\n- Add token_efficiency DECIMAL field (tokens per opportunity)\n- Create migration to add these fields\n- Update RunManagerV2 to calculate and populate these fields",
+            "details": "",
+            "status": "pending",
+            "dependencies": [
+              "38.16"
+            ],
+            "parentTaskId": 38
+          },
+          {
+            "id": 20,
+            "title": "Clarify stage_results vs performance_metrics separation",
+            "description": "Priority: LOW\nProblem: Inconsistent data placement between stage_results and performance_metrics\nSolution:\n- Document clear guidelines: stage_results for business outcomes, performance_metrics for resource usage\n- Audit all agents to ensure consistent data placement\n- Move misplaced data to correct JSONB field\n- Update agent templates with correct patterns",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 38
+          },
+          {
+            "id": 21,
+            "title": "Fix api_raw_responses linkage to opportunities",
+            "description": "Problem: 24 orphaned raw responses not linked to opportunities (92.59% opportunities have raw_response_id but only 7/31 responses are linked). Solution: Run cleanup query to link orphaned opportunities to their raw responses, fix dataExtractionAgent to ensure raw_response_id is always populated, add foreign key constraint to ensure referential integrity, add monitoring to track linkage success rate. Priority: HIGH",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 38
+          },
+          {
+            "id": 22,
+            "title": "Fix two-step API workflow response aggregation",
+            "description": "Problem: Detail API calls create individual raw responses that aren't aggregated properly. Impact: Storage inefficiency, broken traceability. Solution: Modify dataExtractionAgent to aggregate detail responses under parent list response, add parent_response_id field for detail responses, update storage logic to handle two-step workflows correctly, clean up existing orphaned detail responses. Priority: MEDIUM",
+            "details": "",
+            "status": "pending",
+            "dependencies": [
+              "38.21"
+            ],
+            "parentTaskId": 38
+          },
+          {
+            "id": 23,
+            "title": "Add missing indexes and constraints to api_raw_responses",
+            "description": "Problem: Missing indexes for content_hash, call_type, created_at affecting query performance. Solution: Add index on content_hash for deduplication queries, add index on call_type for filtering, add index on created_at for time-based queries, add foreign key constraint from funding_opportunities.raw_response_id to api_raw_responses.id. Priority: LOW",
+            "details": "<info added on 2025-08-03T18:47:34.108Z>\nThis subtask has been consolidated with Task 37.13 (Add Missing Composite Indexes for V2 Pipeline) due to identical scope. Both tasks target creating critical composite indexes for V2 pipeline performance including idx_pipeline_stages_run_order_status, idx_opportunity_paths_duplicate_analysis, idx_pipeline_runs_analytics, plus additional indexes for content_hash, call_type, and created_at on api_raw_responses. The consolidated implementation delivers combined benefits of 3-5x query speedup for pipeline operations and improved query performance for content_hash deduplication queries, call_type filtering, and time-based queries. Task 37.13 should be marked completed/consolidated to eliminate duplication.\n</info added on 2025-08-03T18:47:34.108Z>",
+            "status": "pending",
+            "dependencies": [
+              "38.21"
+            ],
+            "parentTaskId": 38
+          },
+          {
+            "id": 24,
+            "title": "Fix Early Duplicate Detection metrics data flow",
+            "description": "CRITICAL PRIORITY: Enhanced metrics from earlyDuplicateDetector not reaching database, making performance claims unsubstantiated. 60-80% efficiency claims are based on hardcoded estimates, not real measurements. Fix processCoordinatorV2.js line 201 to pass duplicateDetection.enhancedMetrics, update runManagerV2.recordDuplicateDetectionSession() to accept enhanced metrics, ensure duplicate_detection_method field gets populated (currently always null), and fix token tracking to show real values instead of 0.",
+            "details": "",
+            "status": "pending",
+            "dependencies": [
+              "38.27"
+            ],
+            "parentTaskId": 38
+          },
+          {
+            "id": 25,
+            "title": "Implement real token measurement for V2 optimization validation",
+            "description": "HIGH PRIORITY: Token savings calculations use hardcoded 1500 tokens/opportunity estimate instead of real measurements. Cannot validate actual V2 efficiency gains, performance claims may be overstated. Remove hardcoded token estimates from earlyDuplicateDetector.js, implement baseline measurement by processing sample sets through full pipeline, track actual tokens used in analysis/filter stages for comparison, create A/B testing framework to compare V1 vs V2 processing, and calculate real savings by measuring bypassed processing costs.",
+            "details": "",
+            "status": "pending",
+            "dependencies": [
+              "38.27"
+            ],
+            "parentTaskId": 38
+          },
+          {
+            "id": 26,
+            "title": "Complete duplicate_detection_sessions schema migration",
+            "description": "MEDIUM PRIORITY: Table still contains comparison metric fields that should have been removed in migration Phase 2. Data inconsistency, potential corruption in reporting. Complete migration to remove estimated_tokens_saved, estimated_cost_saved_usd, efficiency_improvement_percentage. Ensure data consistency between duplicate_detection_sessions and pipeline_runs. Update any dependent queries or reports.",
+            "details": "",
+            "status": "pending",
+            "dependencies": [
+              "38.5"
+            ],
+            "parentTaskId": 38
+          },
+          {
+            "id": 27,
+            "title": "Implement missing token usage tracking in Analysis Agent",
+            "description": "CRITICAL PRIORITY - Fix broken token usage tracking in Analysis Agent that invalidates all V2 efficiency claims.\n\n**Problem**: Analysis Agent completely ignores token usage data from Anthropic API, making all V2 efficiency claims invalid\n**Evidence**: Line 153 analysisAgent/index.js has TODO comment for token tracking, all database records show 0 tokens despite real API calls\n**Impact**: Cannot validate 60-80% efficiency claims, cost calculations are fictional, performance metrics unreliable\n\n**Required Implementation**:\n- Extract token usage from anthropicClient responses in analysisAgent/index.js\n- Fix line 153 to capture and pass real token data to logAgentExecution\n- Update runManagerV2.updateV2Analysis() to receive and store actual token counts\n- Modify processCoordinatorV2.js lines 263-276 to pass real token data instead of hardcoded estimates\n- Replace all hardcoded token estimates with actual measurements\n- Validate token savings calculations with real data\n\n**Validation**: Verify real token usage is recorded in database for analysis operations and efficiency calculations are based on actual measurements rather than estimates.\n\nThis is the most critical finding - the entire V2 efficiency validation system is broken because token usage is never actually measured or stored, despite the infrastructure existing to do so.",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 38
+          },
+          {
+            "id": 28,
+            "title": "Fix non-functional Filter Function stage",
+            "description": "Filter stage has 100% pass rate and provides zero quality improvement",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 38
+          },
+          {
+            "id": 29,
+            "title": "Add Storage Agent conflict resolution and transaction safety",
+            "description": "Storage Agent performs direct INSERTs without conflict resolution, relying entirely on upstream duplicate detection. Missing ON CONFLICT handling, atomic transactions, and metrics accuracy validation. Add conflict resolution, transaction safety, and cross-validation with database state.",
+            "details": "",
+            "status": "pending",
+            "dependencies": [
+              "38.32"
+            ],
+            "parentTaskId": 38
+          },
+          {
+            "id": 31,
+            "title": "Fix false parallel processing documentation claims",
+            "description": "Documentation claims Direct Update Handler runs in parallel with Storage Agent, but code shows sequential execution. Update architecture documentation to accurately describe intelligent branching vs false parallelism claims.",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 38
+          },
+          {
+            "id": 32,
+            "title": "Fix changeDetector field name mismatch with directUpdateHandler",
+            "description": "Critical field naming inconsistency: changeDetector.js uses camelCase (openDate, closeDate) while directUpdateHandler.js expects snake_case (open_date, close_date). This causes direct updates to fail silently. Solution: Standardize field names across both components, update field mapping in directUpdateHandler.js lines that reference these fields, ensure consistent naming convention throughout the pipeline, add tests to catch field name mismatches.",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 38
+          },
+          {
+            "id": 33,
+            "title": "Fix processCoordinatorV2 configuration flag integration",
+            "description": "High Priority: Configuration flags (optimization_enabled, early_duplicate_detection, metrics_collection) are hardcoded as true in processCoordinatorV2.js lines 112-114. Never reads from database configuration. Solution: Import configurationReader service, read flags from run_configuration table, apply flags throughout pipeline execution, ensure stages respect configuration settings, add configuration validation and error handling.",
+            "details": "",
+            "status": "pending",
+            "dependencies": [
+              "38.1"
+            ],
+            "parentTaskId": 38
+          },
+          {
+            "id": 34,
+            "title": "Fix V2 efficiency claims validation system",
+            "description": "CRITICAL: Entire V2 efficiency validation system is fundamentally broken. All 60-80% efficiency claims are unsubstantiated due to three critical issues: 1) Token tracking completely unimplemented (analysisAgent/index.js line 153 TODO), 2) Hardcoded estimates instead of real measurements (1500 tokens/opportunity estimate), 3) Performance metrics based on fictional data. Solution: Implement real token measurement from Anthropic API, replace all hardcoded estimates with actual measurements, create A/B testing framework to validate claims, establish baseline measurements for comparison.",
+            "details": "",
+            "status": "pending",
+            "dependencies": [
+              "38.27"
+            ],
+            "parentTaskId": 38
+          }
+        ]
+      },
+      {
+        "id": 39,
+        "title": "Implement V2 Pipeline Configuration Flag Logic",
+        "description": "Make the existing configuration flags (optimization_enabled, early_duplicate_detection, metrics_collection) actually functional in the V2 pipeline system by implementing the logic to read and apply these flags during pipeline execution. Additionally, create a comprehensive configuration management system with admin UI, API endpoints, database storage, validation, and audit capabilities.",
+        "status": "pending",
+        "dependencies": [
+          1,
+          36
+        ],
+        "priority": "medium",
+        "details": "CORE CONFIGURATION LOGIC:\n1. Analyze current run_configuration table structure and existing flag definitions\n2. Implement configuration reader service in app/lib/services/ to fetch flags from run_configuration\n3. Modify ProcessCoordinatorV2 to read and apply optimization_enabled flag\n4. Update EarlyDuplicateDetector to respect early_duplicate_detection flag\n5. Integrate metrics_collection flag into RunManagerV2\n6. Update agent initialization in app/lib/agents-v2/ to pass configuration flags\n7. Modify existing V2 pipeline stages to check and apply relevant configuration flags\n\nCOMPREHENSIVE CONFIGURATION SYSTEM:\n8. Create pipeline_configurations database table with versioning and user/organization scoping\n9. Build admin UI for real-time configuration management with preview capabilities\n10. Implement API endpoints for configuration CRUD operations\n11. Add comprehensive validation and error handling with rollback capability\n12. Implement configuration audit logging for compliance and debugging\n13. Add real-time configuration validation during pipeline execution\n14. Create configuration export/import functionality for backup and migration\n15. Add configuration change notification system\n16. Update run creation API to use new configuration system\n17. Create comprehensive documentation for all configuration options",
+        "testStrategy": "CORE FUNCTIONALITY TESTS:\n1. Test configuration reader service with various flag combinations\n2. Validate optimization_enabled flag behavior by comparing performance metrics\n3. Test early_duplicate_detection flag by running with known duplicate datasets\n4. Verify metrics_collection flag by checking database metrics table population\n5. Test flag validation logic with invalid configuration combinations\n6. Run end-to-end pipeline tests with different flag configurations\n\nCOMPREHENSIVE SYSTEM TESTS:\n7. Test admin UI configuration changes with real-time preview validation\n8. Validate API endpoints for configuration management (CRUD operations)\n9. Test database versioning and rollback functionality\n10. Verify user/organization scoping of configuration settings\n11. Test configuration audit logging and compliance tracking\n12. Validate export/import functionality with various configuration sets\n13. Test real-time configuration validation during active pipeline runs\n14. Verify configuration change notifications and alerting\n15. Test error handling and rollback scenarios for invalid configurations\n16. Performance test impact of different configuration combinations\n17. Integration test full configuration lifecycle from UI to pipeline execution",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Create pipeline_configurations database table",
+            "description": "Design and implement database table for storing user-configurable pipeline settings with versioning, user/organization scoping, and audit trail capabilities",
+            "status": "pending",
+            "dependencies": [],
+            "details": "",
+            "testStrategy": ""
+          },
+          {
+            "id": 2,
+            "title": "Implement configuration reader service",
+            "description": "Create service in app/lib/services/ to fetch and validate configuration flags from pipeline_configurations table with caching and real-time updates",
+            "status": "pending",
+            "dependencies": [],
+            "details": "",
+            "testStrategy": ""
+          },
+          {
+            "id": 3,
+            "title": "Build admin UI for configuration management",
+            "description": "Create comprehensive admin interface for toggling configuration options with real-time preview, validation feedback, and change confirmation dialogs",
+            "status": "pending",
+            "dependencies": [],
+            "details": "",
+            "testStrategy": ""
+          },
+          {
+            "id": 4,
+            "title": "Implement configuration management API endpoints",
+            "description": "Create REST API endpoints for configuration CRUD operations with proper authentication, validation, and error handling",
+            "status": "pending",
+            "dependencies": [],
+            "details": "",
+            "testStrategy": ""
+          },
+          {
+            "id": 5,
+            "title": "Integrate configuration flags into V2 pipeline components",
+            "description": "Update ProcessCoordinatorV2, EarlyDuplicateDetector, and RunManagerV2 to read and apply configuration flags during execution",
+            "status": "pending",
+            "dependencies": [],
+            "details": "",
+            "testStrategy": ""
+          },
+          {
+            "id": 6,
+            "title": "Add configuration validation and rollback capability",
+            "description": "Implement comprehensive validation logic and rollback functionality for configuration changes with error recovery mechanisms",
+            "status": "pending",
+            "dependencies": [],
+            "details": "",
+            "testStrategy": ""
+          },
+          {
+            "id": 7,
+            "title": "Implement configuration audit logging",
+            "description": "Create audit trail system for tracking all configuration changes with user attribution, timestamps, and change details for compliance purposes",
+            "status": "pending",
+            "dependencies": [],
+            "details": "",
+            "testStrategy": ""
+          },
+          {
+            "id": 8,
+            "title": "Add configuration export/import functionality",
+            "description": "Create system for exporting and importing configuration sets for backup, migration, and template sharing capabilities",
+            "status": "pending",
+            "dependencies": [],
+            "details": "",
+            "testStrategy": ""
+          },
+          {
+            "id": 9,
+            "title": "Create configuration documentation",
+            "description": "Write comprehensive documentation explaining all configuration options, their impacts, best practices, and troubleshooting guides",
+            "status": "pending",
+            "dependencies": [],
+            "details": "",
+            "testStrategy": ""
+          },
+          {
+            "id": 10,
+            "title": "Implement comprehensive test suite",
+            "description": "Create unit tests, integration tests, and end-to-end tests covering all configuration functionality including UI, API, validation, and pipeline integration",
+            "status": "pending",
+            "dependencies": [],
+            "details": "",
+            "testStrategy": ""
+          }
+        ]
       }
     ],
     "metadata": {
       "created": "2025-06-17T23:54:58.582Z",
-      "updated": "2025-07-11T05:46:13.298Z",
+      "updated": "2025-08-03T19:00:57.608Z",
       "description": "Tasks for master context"
     }
   }
