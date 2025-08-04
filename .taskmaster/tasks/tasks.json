@@ -1745,7 +1745,7 @@
             "title": "Fix pipeline_stages input/output count tracking",
             "description": "Priority: HIGH\nProblem: input_count and output_count fields are always 0 (never populated)\nImpact: Performance calculation functions fail, dashboard metrics inaccurate\nSolution: \n- Update RunManagerV2.updateV2Stage() to accept inputCount and outputCount parameters\n- Update ProcessCoordinatorV2 to pass actual opportunity counts to each stage\n- Example: data_extraction stage should set output_count to extractionResult.opportunities.length\n- Example: early_duplicate_detector should set input_count to opportunities received, output_count to new+update opportunities",
             "details": "<info added on 2025-08-03T18:46:45.847Z>\nThis task consolidates with Task 37.14 (Fix N+1 Query Patterns in StorageAgent - Implement batch operations for opportunity storage) which addressed identical scope. Both tasks target the core issue where pipeline_stages input/output count tracking remains unused (always 0), preventing accurate performance calculations. The consolidated implementation will deliver combined benefits: 80% reduction in database round trips from batch operations plus enabled accurate performance metrics through proper stage tracking. Task 37.14 should be marked completed/consolidated to eliminate duplication.\n</info added on 2025-08-03T18:46:45.847Z>",
-            "status": "in-progress",
+            "status": "done",
             "dependencies": [],
             "parentTaskId": 38
           },
@@ -2034,7 +2034,7 @@
     ],
     "metadata": {
       "created": "2025-06-17T23:54:58.582Z",
-      "updated": "2025-08-03T21:11:51.043Z",
+      "updated": "2025-08-03T22:18:01.389Z",
       "description": "Tasks for master context"
     }
   }
