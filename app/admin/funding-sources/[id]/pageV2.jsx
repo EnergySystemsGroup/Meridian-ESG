@@ -207,7 +207,7 @@ export default function FundingSourceDetailV2() {
 			}
 
 			const result = await response.json();
-			toast.success(`${result.version?.toUpperCase() || 'V2'} Source processing started`);
+			toast.success('Source processing started');
 
 			// Refresh runs after a short delay
 			setTimeout(() => {
@@ -337,7 +337,7 @@ export default function FundingSourceDetailV2() {
 				</Button>
 				<div className='flex items-center space-x-2'>
 					<Badge variant='default' className='bg-blue-100 text-blue-800'>
-						V2 Enhanced
+						Enhanced Processing
 					</Badge>
 					<Button
 						variant='default'
@@ -346,7 +346,7 @@ export default function FundingSourceDetailV2() {
 						disabled={processing}
 						className='bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700'>
 						<Zap className='mr-2 h-4 w-4' />
-						{processing ? 'Processing...' : 'Process with V2'}
+						{processing ? 'Processing...' : 'Process Source'}
 					</Button>
 					<Button variant='outline' size='sm' asChild>
 						<Link href={`/admin/funding-sources/${params.id}/edit`}>
@@ -365,16 +365,16 @@ export default function FundingSourceDetailV2() {
 				</div>
 			</div>
 
-			{/* V2 Performance Metrics */}
+			{/* Performance Metrics */}
 			{v2Metrics && (
 				<Card className='mb-6'>
 					<CardHeader>
 						<CardTitle className='flex items-center gap-2'>
 							<TrendingUp className='h-5 w-5 text-green-500' />
-							V2 Pipeline Performance
+							Pipeline Performance Dashboard
 						</CardTitle>
 						<CardDescription>
-							Aggregate metrics from {v2Metrics.totalRuns} completed V2 runs
+							Aggregate metrics from {v2Metrics.totalRuns} completed processing runs
 						</CardDescription>
 					</CardHeader>
 					<CardContent>
@@ -430,7 +430,7 @@ export default function FundingSourceDetailV2() {
 					<CardTitle className='flex items-center gap-2'>
 						{source.name}
 						<Badge variant='outline'>
-							{v2Runs.length > 0 ? 'V2 Compatible' : 'V1 Legacy'}
+							{v2Runs.length > 0 ? 'Optimized' : 'Legacy'}
 						</Badge>
 					</CardTitle>
 					<CardDescription>Enhanced Funding Source Details</CardDescription>
@@ -494,7 +494,7 @@ export default function FundingSourceDetailV2() {
 								</div>
 							)}
 							
-							{/* V2 Processing Stats */}
+							{/* Processing Stats */}
 							<div className='bg-blue-50 p-3 rounded-lg'>
 								<h4 className='text-sm font-medium text-blue-800 mb-2'>Processing Statistics</h4>
 								<div className='grid grid-cols-2 gap-2 text-xs'>
@@ -503,7 +503,7 @@ export default function FundingSourceDetailV2() {
 										<span className='font-medium ml-1'>{runs.length}</span>
 									</div>
 									<div>
-										<span className='text-blue-600'>V2 Runs:</span>
+										<span className='text-blue-600'>Enhanced Runs:</span>
 										<span className='font-medium ml-1'>{v2Runs.length}</span>
 									</div>
 								</div>
@@ -524,7 +524,7 @@ export default function FundingSourceDetailV2() {
 						)}
 					</CardTitle>
 					<CardDescription>
-						Combined history of V1 and V2 processing runs for this source
+						Combined history of all processing runs for this source
 					</CardDescription>
 				</CardHeader>
 				<CardContent>

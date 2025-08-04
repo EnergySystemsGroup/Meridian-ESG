@@ -203,19 +203,19 @@ export default function RunDetailPageV2() {
 					</Link>
 				</Button>
 				<Badge variant={isV2Run ? 'default' : 'secondary'}>
-					{isV2Run ? 'V2 Pipeline' : 'V1 Legacy'}
+					{isV2Run ? 'Optimized Pipeline' : 'Legacy Pipeline'}
 				</Badge>
 			</div>
 
-			<h1 className='text-2xl font-bold mb-6'>Run Details (V2 Enhanced)</h1>
+			<h1 className='text-2xl font-bold mb-6'>Run Details</h1>
 
-			{/* V2 Optimization Metrics */}
+			{/* Performance Metrics */}
 			{isV2Run && (
 				<Card className='mb-6'>
 					<CardHeader>
 						<CardTitle className='flex items-center gap-2'>
 							<Zap className='h-5 w-5 text-yellow-500' />
-							V2 Optimization Impact
+							Performance Metrics
 						</CardTitle>
 					</CardHeader>
 					<CardContent>
@@ -245,13 +245,13 @@ export default function RunDetailPageV2() {
 				</Card>
 			)}
 
-			{/* V2 Pipeline Visualization */}
+			{/* Pipeline Visualization */}
 			{isV2Run && stages.length > 0 ? (
 				<Card className='mb-6'>
 					<CardHeader>
 						<CardTitle className='flex items-center gap-2'>
 							<Target className='h-5 w-5 text-blue-500' />
-							V2 Pipeline Progress
+							Pipeline Progress
 						</CardTitle>
 						<div className='flex items-center gap-4'>
 							<Progress value={getStageProgress()} className='flex-1' />
@@ -568,7 +568,7 @@ export default function RunDetailPageV2() {
 								</CardHeader>
 								<CardContent>
 									<p className='text-gray-500'>
-										Optimization metrics are only available for V2 pipeline runs.
+										Optimization metrics are only available for enhanced pipeline runs.
 									</p>
 								</CardContent>
 							</Card>
@@ -639,7 +639,7 @@ export default function RunDetailPageV2() {
 								</CardHeader>
 								<CardContent>
 									<p className='text-gray-500'>
-										{isV2Run ? 'No stage data available for this V2 run.' : 'Stage details are only available for V2 pipeline runs.'}
+										{isV2Run ? 'No stage data available for this run.' : 'Stage details are only available for enhanced pipeline runs.'}
 									</p>
 								</CardContent>
 							</Card>
@@ -679,7 +679,7 @@ export default function RunDetailPageV2() {
 						{isV2Run && stages.length > 0 && (
 							<Card>
 								<CardHeader>
-									<CardTitle>V2 Stages Data</CardTitle>
+									<CardTitle>Pipeline Stages Data</CardTitle>
 								</CardHeader>
 								<CardContent>
 									<div className='border rounded-lg bg-gray-50 overflow-hidden'>

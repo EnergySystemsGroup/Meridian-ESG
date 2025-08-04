@@ -1609,7 +1609,7 @@
             "id": 5,
             "title": "Database Migration Phase 2: Remove Comparison Fields",
             "description": "Remove V1 vs V2 comparison fields from database tables. Remove from pipeline_runs: token_savings_percentage, time_savings_percentage, efficiency_score, opportunities_bypassed_llm. Remove from duplicate_detection_sessions: estimated_tokens_saved, estimated_cost_saved_usd, efficiency_improvement_percentage. Archive existing comparison data before removal. Create migration file in supabase/migrations/.",
-            "status": "pending",
+            "status": "done",
             "dependencies": [
               4,
               "38.4"
@@ -1621,7 +1621,7 @@
             "id": 6,
             "title": "Database Migration Phase 3: Remove Baseline Comparison Table",
             "description": "Remove the entire pipeline_performance_baselines table as it exists only for V1 comparison tracking. Archive table data first, then drop the table completely. Update any foreign key references or dependent views. Create migration file in supabase/migrations/. This table serves no purpose in the new absolute performance tracking approach.",
-            "status": "pending",
+            "status": "done",
             "dependencies": [
               5,
               "38.5"
@@ -1633,7 +1633,7 @@
             "id": 7,
             "title": "Update Admin Runs Detail Page - Remove V2 Optimization Card",
             "description": "Update /app/admin/funding-sources/runs/[id]/pageV2.jsx to remove the V2 Optimization Impact card that displays comparison metrics. Replace with absolute performance metrics display showing opportunities_per_minute, tokens_per_opportunity, cost_per_opportunity_usd, success_rate_percentage, and sla_compliance_percentage. Update the page layout and styling accordingly.",
-            "status": "pending",
+            "status": "done",
             "dependencies": [
               "38.4",
               "38.10",
@@ -1646,7 +1646,7 @@
             "id": 8,
             "title": "Update Admin Funding Sources Page - Remove V2 Pipeline Performance",
             "description": "Update /app/admin/funding-sources/[id]/pageV2.jsx to remove V2 Pipeline Performance comparison metrics section. Replace with absolute performance dashboard showing real throughput metrics, cost efficiency, success rates, and SLA compliance. Update charts and visualizations to display absolute values instead of percentage improvements over V1.",
-            "status": "pending",
+            "status": "done",
             "dependencies": [
               "38.4",
               "38.10",
@@ -2034,7 +2034,7 @@
     ],
     "metadata": {
       "created": "2025-06-17T23:54:58.582Z",
-      "updated": "2025-08-04T02:18:44.070Z",
+      "updated": "2025-08-04T03:14:48.854Z",
       "description": "Tasks for master context"
     }
   }
