@@ -31,6 +31,7 @@ npm run tm           # Run task-master CLI
 - If a task appears vague, incomplete, or inconsistent with project goals, pause and raise a concern before proceeding.
 - Maintain alignment between project requirements and task execution—act as a second set of eyes.
 - Log your progress explicitly within the task system; do not assume implicit understanding.
+- **Use specialized sub-agents proactively when tasks warrant their expertise** (e.g., code-info-retriever for codebase analysis, database-architect-dba for schema work, supabase-query-agent for data queries).
 
 
 ### Data Processing Scripts

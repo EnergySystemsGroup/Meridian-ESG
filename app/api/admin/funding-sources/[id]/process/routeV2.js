@@ -35,13 +35,43 @@ export async function POST(request, { params }) {
 			api_route: 'process-v2'
 		});
 
-		// Get the run ID from the promise (the processCoordinatorV2 returns it)
+		// Monitor background processing with enhanced error handling
 		let runId = null;
+		const controller = new AbortController();
+		const timeoutId = setTimeout(() => {
+			console.error('[RouteV2] ⏰ API route timeout - background process may be stuck');
+		}, 30 * 60 * 1000); // 30 minutes
+
 		processPromise.then((result) => {
+			clearTimeout(timeoutId);
 			runId = result.runId;
-			console.log(`V2 processing completed for run: ${runId}`);
-		}).catch((error) => {
-			console.error('Error processing source with V2:', error);
+			console.log(`[RouteV2] ✅ V2 processing completed successfully for run: ${runId}`);
+		}).catch(async (error) => {
+			clearTimeout(timeoutId);
+			console.error('[RouteV2] ❌ V2 processing failed:', error);
+			
+			// If we have a runId, the error was handled by processCoordinatorV2
+			// If not, this was an early failure before run creation
+			if (!runId) {
+				console.error('[RouteV2] ❌ Early failure - no run ID available for cleanup');
+				
+				// Log the failure to api_activities for tracking
+				try {
+					await supabase.from('api_activities').insert({
+						source_id: id,
+						activity_type: 'process_start',
+						status: 'failure',
+						details: {
+							error: String(error),
+							pipeline: 'v2-optimized',
+							failure_stage: 'pre_run_creation',
+							api_route: 'process-v2'
+						}
+					});
+				} catch (logError) {
+					console.error('[RouteV2] ❌ Failed to log early failure:', logError);
+				}
+			}
 		});
 
 		return NextResponse.json({

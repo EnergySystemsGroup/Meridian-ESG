@@ -1566,7 +1566,7 @@
             "id": 1,
             "title": "Fix Status Stuck in 'Started/Processing' Issue",
             "description": "Implement immediate fixes for pipeline runs that get stuck in 'started' or 'processing' status and never update. This is the critical first step to prevent indefinite hanging and improve system reliability.",
-            "status": "pending",
+            "status": "done",
             "dependencies": [
               "38.4"
             ],
@@ -1787,7 +1787,7 @@
             "title": "Clarify stage_results vs performance_metrics separation",
             "description": "Priority: LOW\nProblem: Inconsistent data placement between stage_results and performance_metrics\nSolution:\n- Document clear guidelines: stage_results for business outcomes, performance_metrics for resource usage\n- Audit all agents to ensure consistent data placement\n- Move misplaced data to correct JSONB field\n- Update agent templates with correct patterns",
             "details": "",
-            "status": "pending",
+            "status": "in-progress",
             "dependencies": [],
             "parentTaskId": 38
           },
@@ -2034,7 +2034,7 @@
     ],
     "metadata": {
       "created": "2025-06-17T23:54:58.582Z",
-      "updated": "2025-08-03T22:18:01.389Z",
+      "updated": "2025-08-04T02:18:44.070Z",
       "description": "Tasks for master context"
     }
   }
