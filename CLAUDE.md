@@ -20,7 +20,7 @@ npm run test:run     # Run tests once
 
 ### Task Management
 ```bash
-npm run tm           # Run task-master CLI
+task-master          # Run task-master CLI (globally installed)
 ```
 
 ## Claude Code Task Management Guidelines
@@ -121,6 +121,7 @@ When working with agents:
 - Use Supabase migrations in `supabase/migrations/`
 - Test locally with `supabase start`
 - Migration naming: `YYYYMMDD_description.sql`
+- **IMPORTANT**: For dev environments, always use `supabase migration up` - NEVER do database resets during migrations
 
 ### API Routes
 - Follow Next.js 15 async API patterns

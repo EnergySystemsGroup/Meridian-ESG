@@ -1659,7 +1659,7 @@
             "id": 9,
             "title": "Update RunsTableV2 Component - Replace Optimization Column",
             "description": "Update /components/admin/RunsTable/RunsTableV2.jsx to replace the Optimization column with absolute performance metrics columns. Add columns for throughput (opportunities/min), efficiency (tokens/opportunity), cost efficiency ($/opportunity), success rate %, and SLA compliance %. Update table sorting, filtering, and display logic to work with absolute values instead of comparison percentages.",
-            "status": "pending",
+            "status": "done",
             "dependencies": [
               "38.4",
               "38.10",
@@ -2034,8 +2034,28 @@
     ],
     "metadata": {
       "created": "2025-06-17T23:54:58.582Z",
-      "updated": "2025-08-04T03:31:55.882Z",
+      "updated": "2025-08-05T03:12:33.840Z",
       "description": "Tasks for master context"
+    }
+  },
+  "test": {
+    "tasks": [
+      {
+        "id": 1,
+        "title": "Fix debug API route Vitest import issue causing runtime errors",
+        "description": "Resolve the runtime error in /app/api/debug/anthropic-client/route.js caused by importing Vitest test files that are not available in production environment.",
+        "details": "The debug API route is currently importing Vitest test utilities or test files directly, which causes runtime errors when the application runs outside of the test environment. Three potential solutions: 1) Extract shared utility functions from test files into separate modules that can be safely imported in both test and runtime contexts, 2) Add conditional imports with proper error handling to gracefully handle missing test dependencies, or 3) Remove the debug route entirely if it's not essential for production debugging. Recommended approach is to create utility modules in lib/utils/ that contain the needed functionality without test-specific dependencies, then update both the debug route and test files to use these utilities. If conditional imports are chosen, wrap the imports in try-catch blocks and provide fallback functionality when test utilities are unavailable.",
+        "testStrategy": "1) Verify the debug API route loads without runtime errors by making a request to /api/debug/anthropic-client in both development and production-like environments, 2) Run npm run build to ensure no build-time errors occur, 3) Execute npm run test to confirm existing tests still pass after refactoring, 4) Test the debug route functionality to ensure it provides the expected debugging information, 5) Verify that any extracted utility functions work correctly in both test and runtime contexts",
+        "status": "pending",
+        "dependencies": [],
+        "priority": "medium",
+        "subtasks": []
+      }
+    ],
+    "metadata": {
+      "created": "2025-08-05T04:35:00.718Z",
+      "updated": "2025-08-05T04:35:33.740Z",
+      "description": "=Testing-related tasks and bug fixes"
     }
   }
 }
