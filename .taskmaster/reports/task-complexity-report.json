@@ -1,0 +1,21 @@
+{
+	"meta": {
+		"generatedAt": "2025-08-05T06:44:42.663Z",
+		"tasksAnalyzed": 1,
+		"totalTasks": 39,
+		"analysisCount": 1,
+		"thresholdScore": 5,
+		"projectName": "Taskmaster",
+		"usedResearch": false
+	},
+	"complexityAnalysis": [
+		{
+			"taskId": 14,
+			"taskTitle": "Develop Lightweight User Identification System",
+			"complexityScore": 8,
+			"recommendedSubtasks": 6,
+			"expansionPrompt": "Break down the user identification system into: 1) Database schema and user model creation, 2) Authentication service with JWT token management, 3) User selection interface component, 4) Admin management panel with CRUD operations, 5) Role-based permission middleware, and 6) Security implementation including token storage and GDPR compliance",
+			"reasoning": "This is a complex full-stack authentication system requiring database design, security implementation, UI components, admin functionality, and compliance measures. The 12 detailed requirements span multiple technical domains and would benefit from organized subtask breakdown to ensure proper implementation order and testing coverage."
+		}
+	]
+}

@@ -2030,11 +2030,98 @@
             "testStrategy": ""
           }
         ]
+      },
+      {
+        "id": 40,
+        "title": "Fix Parallel Analysis Validation Error in Agent Architecture",
+        "description": "Resolve ID mismatch between opportunities and AI results causing parallel analysis validation failures, where opportunities have undefined IDs while AI results use OPPORTUNITY_1, OPPORTUNITY_2 format.",
+        "details": "1. **Investigate ID Assignment Logic in parallelCoordinator.js:**\n   - Examine how opportunity IDs are assigned during parallel processing initialization\n   - Identify why opportunities are receiving undefined IDs instead of proper identifiers\n   - Review the coordination logic between opportunity batching and AI processing\n   - Fix ID generation to ensure consistent format (OPPORTUNITY_1, OPPORTUNITY_2, etc.)\n\n2. **Fix Content Enhancement ID Handling in contentEnhancer.js:**\n   - Review how contentEnhancer processes opportunity IDs from parallel coordinator\n   - Ensure content enhancement results maintain proper ID mapping\n   - Validate that enhanced content is correctly associated with opportunity IDs\n   - Fix any ID transformation or mapping issues in the enhancement pipeline\n\n3. **Correct Scoring Analysis ID Validation in scoringAnalyzer.js:**\n   - Examine scoring analyzer's ID handling and validation logic\n   - Ensure scoring results use consistent ID format matching content enhancement\n   - Fix validation logic to properly match opportunity IDs with analysis results\n   - Update error messages to provide clearer debugging information\n\n4. **Implement Robust ID Validation System:**\n   - Add comprehensive ID format validation at each pipeline stage\n   - Implement consistent ID generation strategy across all parallel processing components\n   - Add logging to track ID assignments and transformations throughout the pipeline\n   - Create fallback mechanisms for ID recovery in case of assignment failures\n\n5. **Update Parallel Analysis Validation Logic:**\n   - Fix validation checks to handle the corrected ID format consistently\n   - Improve error reporting to identify specific validation failures\n   - Add debug logging to trace ID flow through the entire parallel analysis pipeline\n   - Ensure validation properly handles edge cases and malformed data",
+        "testStrategy": "1. **Unit Test ID Assignment Logic:**\n   - Test parallelCoordinator ID generation with various opportunity batch sizes\n   - Verify consistent ID format (OPPORTUNITY_1, OPPORTUNITY_2, etc.) across all components\n   - Test edge cases with empty batches, single opportunities, and large datasets\n\n2. **Integration Test Parallel Analysis Pipeline:**\n   - Execute full parallel analysis with known test data and verify ID consistency\n   - Test contentEnhancer and scoringAnalyzer ID handling with corrected coordinator output\n   - Validate that validation errors no longer occur with fixed ID assignment\n\n3. **Regression Test with Real Data:**\n   - Run parallel analysis with actual funding opportunity data to ensure fix works in production scenarios\n   - Monitor for any remaining ID mismatch errors or validation failures\n   - Verify that all opportunities are properly processed and results correctly associated\n\n4. **Error Handling Validation:**\n   - Test error scenarios to ensure improved error messages provide actionable debugging information\n   - Verify fallback mechanisms work correctly when ID assignment issues occur\n   - Test logging output provides sufficient detail for troubleshooting future ID-related issues",
+        "status": "pending",
+        "dependencies": [
+          3,
+          19,
+          36
+        ],
+        "priority": "medium",
+        "subtasks": []
+      },
+      {
+        "id": 41,
+        "title": "Optimize V2 Data Extraction Performance",
+        "description": "Optimize V2 data extraction to reduce processing time from 45 minutes to 6-8 minutes for 100 opportunities by implementing parallel processing, optimizing token usage, reducing rate limiting, and streamlining API calls.",
+        "details": "1. **Implement Parallel Processing Architecture:**\n   - Increase maxConcurrency from 1 to 8-12 for parallel opportunity processing\n   - Implement proper concurrency control with semaphores to prevent API rate limit violations\n   - Add dynamic concurrency adjustment based on API response times and error rates\n   - Implement batch processing with optimal batch sizes (15-20 opportunities per batch)\n\n2. **Optimize Token Usage and Chunking:**\n   - Increase token chunk size from 8K to 32K-64K tokens for better context utilization\n   - Implement intelligent prompt compression to reduce token overhead\n   - Optimize JSON schemas to be more concise while maintaining accuracy\n   - Remove redundant prompt instructions and consolidate similar operations\n\n3. **Reduce Rate Limiting Delays:**\n   - Decrease rate limiting delays from 250ms to 50-100ms between requests\n   - Implement adaptive rate limiting based on API response headers\n   - Add intelligent backoff strategies for 429 (rate limit) responses\n   - Implement request queuing with priority handling\n\n4. **Streamline API Call Architecture:**\n   - Combine two-step API sequential calls into single optimized calls where possible\n   - Implement request batching for multiple data points\n   - Cache frequently accessed data to reduce redundant API calls\n   - Optimize data extraction prompts to get all required information in fewer calls\n\n5. **Performance Monitoring and Metrics:**\n   - Implement real-time performance tracking with millisecond precision\n   - Add performance benchmarks: target 3.6-4.8 seconds per opportunity (vs current 27 seconds)\n   - Monitor token usage per opportunity and optimize for cost efficiency\n   - Implement performance alerting for regression detection\n\n6. **Memory and Resource Optimization:**\n   - Implement streaming data processing to reduce memory footprint\n   - Add garbage collection optimization for large dataset processing\n   - Optimize data structures for faster serialization/deserialization\n   - Implement connection pooling for database operations",
+        "testStrategy": "1. **Performance Benchmarking:**\n   - Run baseline tests with current V2 implementation (27 seconds per opportunity)\n   - Execute optimized version with target metrics (3.6-4.8 seconds per opportunity)\n   - Validate total processing time reduction from 45 minutes to 6-8 minutes for 100 opportunities\n   - Compare token usage efficiency before and after optimization\n\n2. **Concurrency and Stability Testing:**\n   - Test parallel processing with various concurrency levels (4, 8, 12, 16 concurrent operations)\n   - Validate error handling and recovery with high concurrency loads\n   - Test API rate limiting handling under maximum load conditions\n   - Verify data consistency across parallel processing operations\n\n3. **Load and Stress Testing:**\n   - Test with datasets of 50, 100, 200, and 500 opportunities\n   - Validate memory usage remains stable under high-volume processing\n   - Test system behavior under API failures and network issues\n   - Verify graceful degradation when hitting API limits\n\n4. **Quality Assurance:**\n   - Compare data extraction accuracy between original and optimized versions\n   - Validate all extracted fields maintain same quality and completeness\n   - Test edge cases with malformed or incomplete API responses\n   - Verify error logging and monitoring functionality\n\n5. **Integration Testing:**\n   - Test integration with Storage Agent and Analysis Agent pipelines\n   - Validate compatibility with existing EarlyDuplicateDetector functionality\n   - Test end-to-end processing pipeline performance\n   - Verify database performance under increased processing speeds",
+        "status": "pending",
+        "dependencies": [
+          1,
+          2,
+          38
+        ],
+        "priority": "high",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Implement Parallel Processing Architecture with Increased Concurrency",
+            "description": "Upgrade the V2 data extraction system to support parallel processing by increasing maxConcurrency from 1 to 4 concurrent opportunities, implementing proper semaphore-based concurrency control to prevent API rate limit violations.",
+            "dependencies": [],
+            "details": "1. Modify the V2 processing pipeline in app/lib/agents-v2/ to increase maxConcurrency parameter from 1 to 4\n2. Implement semaphore-based concurrency control using a semaphore pattern to manage concurrent API requests\n3. Add proper queue management for opportunities waiting to be processed\n4. Implement error handling for concurrent operations with proper cleanup on failures\n5. Add logging to track concurrent processing performance metrics\n6. Test with small batches first to validate stability before scaling",
+            "status": "pending",
+            "testStrategy": "1. Run baseline performance test with 10 opportunities at concurrency=1\n2. Test with concurrency=4 on same 10 opportunities and measure time reduction\n3. Validate no API rate limit violations occur during concurrent processing\n4. Monitor memory usage during concurrent operations\n5. Test error scenarios with concurrent failures to ensure proper cleanup"
+          },
+          {
+            "id": 2,
+            "title": "Optimize Token Usage by Increasing Chunk Size",
+            "description": "Increase token chunk size from 8K to 18K tokens to improve context utilization and reduce the number of API calls required per opportunity processing.",
+            "dependencies": [
+              "41.1"
+            ],
+            "details": "1. Locate the token chunking configuration in the V2 data extraction agent\n2. Increase the chunk size parameter from 8K to 18K tokens\n3. Implement intelligent chunk boundary detection to avoid cutting off important context mid-sentence\n4. Add token usage monitoring to track improvements in token efficiency\n5. Optimize prompt structure to take advantage of larger context windows\n6. Test with various opportunity sizes to ensure 18K chunks handle the largest opportunities effectively",
+            "status": "pending",
+            "testStrategy": "1. Measure token usage per opportunity before and after chunk size increase\n2. Validate that larger chunks don't cause API timeouts or memory issues\n3. Test with opportunities of varying content lengths to ensure proper chunking\n4. Monitor API response times with larger chunks\n5. Verify data extraction accuracy is maintained with larger chunk sizes"
+          },
+          {
+            "id": 3,
+            "title": "Reduce Rate Limiting Delays Between API Calls",
+            "description": "Decrease the rate limiting delays from 250ms to 100ms between API requests while implementing adaptive rate limiting based on API response patterns.",
+            "dependencies": [
+              "41.1"
+            ],
+            "details": "1. Locate rate limiting configuration in the V2 anthropic client (app/lib/agents-v2/utils/anthropicClient.js)\n2. Reduce base delay from 250ms to 100ms between API requests\n3. Implement adaptive rate limiting that monitors API response headers for rate limit information\n4. Add intelligent backoff strategy for 429 (rate limit) responses with exponential backoff\n5. Implement request queuing system to handle rate limit responses gracefully\n6. Add monitoring for rate limit hits and adjust delays dynamically based on API behavior",
+            "status": "pending",
+            "testStrategy": "1. Monitor API response times and rate limit occurrences at 100ms delays\n2. Test adaptive rate limiting by intentionally triggering rate limits\n3. Validate that exponential backoff prevents cascading rate limit violations\n4. Measure overall processing time improvement from reduced delays\n5. Ensure no increase in API errors or failures with faster request rates"
+          },
+          {
+            "id": 4,
+            "title": "Streamline Prompts and Reduce Token Overhead",
+            "description": "Optimize AI prompts to reduce token usage while maintaining data extraction accuracy by removing redundant instructions and consolidating operations where possible.",
+            "dependencies": [
+              "41.2"
+            ],
+            "details": "1. Audit existing prompts in the V2 data extraction agent for redundant or verbose instructions\n2. Compress prompt language while maintaining clarity and accuracy requirements\n3. Remove duplicate instructions and consolidate similar operations into single prompts\n4. Optimize JSON schemas to be more concise while preserving required data structure\n5. Implement prompt templates that reuse common instruction patterns\n6. Test prompt changes against existing opportunities to ensure extraction accuracy is maintained",
+            "status": "pending",
+            "testStrategy": "1. Compare token usage per opportunity before and after prompt optimization\n2. Run accuracy tests on a sample set of opportunities to ensure data quality is maintained\n3. Validate that compressed prompts still handle edge cases and complex opportunity structures\n4. Measure impact on processing time from reduced token overhead\n5. Test with various opportunity types to ensure prompt optimization works across all funding sources"
+          },
+          {
+            "id": 5,
+            "title": "Optimize Two-Step API Sequential Calls and Implement Performance Monitoring",
+            "description": "Streamline the two-step API architecture by combining sequential calls where possible and implement comprehensive performance monitoring to track optimization results.",
+            "dependencies": [
+              "41.1",
+              "41.2",
+              "41.3",
+              "41.4"
+            ],
+            "details": "1. Analyze current two-step API call patterns in the V2 data extraction pipeline\n2. Identify opportunities to combine sequential API calls into single optimized requests\n3. Implement request batching for operations that can be processed together\n4. Add caching for frequently accessed data points to reduce redundant API calls\n5. Implement real-time performance tracking with millisecond precision timing\n6. Add performance benchmarks and alerting for regression detection\n7. Create dashboard view for monitoring token usage, processing times, and API efficiency metrics",
+            "status": "pending",
+            "testStrategy": "1. Measure end-to-end processing time for 100 opportunities with all optimizations applied\n2. Validate target performance of 3.6-4.8 seconds per opportunity (vs current 27 seconds)\n3. Test total processing time achieves 6-8 minute target for 100 opportunities\n4. Monitor token usage efficiency and cost optimization\n5. Validate all performance monitoring metrics are accurately captured and reported\n6. Run regression tests to ensure optimizations don't impact data extraction accuracy"
+          }
+        ]
       }
     ],
     "metadata": {
       "created": "2025-06-17T23:54:58.582Z",
-      "updated": "2025-08-05T05:59:49.371Z",
+      "updated": "2025-08-05T07:42:59.731Z",
       "description": "Tasks for master context"
     }
   },
