@@ -2066,7 +2066,7 @@
             "description": "Upgrade the V2 data extraction system to support parallel processing by increasing maxConcurrency from 1 to 4 concurrent opportunities, implementing proper semaphore-based concurrency control to prevent API rate limit violations.",
             "dependencies": [],
             "details": "1. Modify the V2 processing pipeline in app/lib/agents-v2/ to increase maxConcurrency parameter from 1 to 4\n2. Implement semaphore-based concurrency control using a semaphore pattern to manage concurrent API requests\n3. Add proper queue management for opportunities waiting to be processed\n4. Implement error handling for concurrent operations with proper cleanup on failures\n5. Add logging to track concurrent processing performance metrics\n6. Test with small batches first to validate stability before scaling",
-            "status": "pending",
+            "status": "in-progress",
             "testStrategy": "1. Run baseline performance test with 10 opportunities at concurrency=1\n2. Test with concurrency=4 on same 10 opportunities and measure time reduction\n3. Validate no API rate limit violations occur during concurrent processing\n4. Monitor memory usage during concurrent operations\n5. Test error scenarios with concurrent failures to ensure proper cleanup"
           },
           {
@@ -2121,7 +2121,7 @@
     ],
     "metadata": {
       "created": "2025-06-17T23:54:58.582Z",
-      "updated": "2025-08-05T07:42:59.731Z",
+      "updated": "2025-08-05T07:45:35.923Z",
       "description": "Tasks for master context"
     }
   },
