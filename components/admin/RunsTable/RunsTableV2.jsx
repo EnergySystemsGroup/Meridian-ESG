@@ -1,7 +1,8 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
+import { useDebounce } from '@/hooks/useDebounce';
 import PropTypes from 'prop-types';
 import {
 	Table,
@@ -15,18 +16,28 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Progress } from '@/components/ui/progress';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
 	Tooltip,
 	TooltipContent,
 	TooltipProvider,
 	TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { Zap, Clock, TrendingUp, Target, DollarSign, Shield, AlertTriangle } from 'lucide-react';
+import { Zap, Clock, TrendingUp, Target, DollarSign, Shield, AlertTriangle, Filter, Search } from 'lucide-react';
 import { getSLAComplianceColor, getSLAComplianceBadgeColor } from '@/lib/utils/metricsCalculator';
 
 // Time conversion constants
 const MS_PER_SECOND = 1000;
 const MS_PER_MINUTE = 60000;
+
+// Success rate filtering thresholds
+const SUCCESS_RATE_THRESHOLDS = {
+	HIGH: 95,
+	MEDIUM_LOW: 80,
+	VALID_MIN: 0,
+	VALID_MAX: 100
+};
 
 function getStatusBadgeColor(status) {
 	switch (status) {
@@ -58,6 +69,70 @@ function formatDuration(ms) {
 
 function RunsTableV2Component({ runs, loading }) {
 	const router = useRouter();
+	
+	// Filter state
+	const [searchTerm, setSearchTerm] = useState('');
+	const [statusFilter, setStatusFilter] = useState('all');
+	const [versionFilter, setVersionFilter] = useState('all');
+	const [successRateFilter, setSuccessRateFilter] = useState('all');
+	
+	// Debounce search term to improve performance
+	const debouncedSearchTerm = useDebounce(searchTerm, 300);
+	
+	// Memoize lowercase search term for performance
+	const lowerSearchTerm = useMemo(() => 
+		debouncedSearchTerm.toLowerCase(), 
+		[debouncedSearchTerm]
+	);
+
+	// Filter the runs based on current filters
+	const filteredRuns = useMemo(() => {
+		if (!runs) return [];
+		
+		return runs.filter(run => {
+			// Search filter (source name if available) - optimized with memoized lowercase term
+			const searchMatch = debouncedSearchTerm === '' || 
+				(run.api_sources?.name || '').toLowerCase().includes(lowerSearchTerm) ||
+				(run.display_id || run.id || '').toString().includes(debouncedSearchTerm);
+			
+			// Status filter
+			const statusMatch = statusFilter === 'all' || run.status === statusFilter;
+			
+			// Version filter  
+			const versionMatch = versionFilter === 'all' || run.version === versionFilter;
+			
+			// Success rate filter
+			let successRateMatch = true;
+			if (successRateFilter !== 'all') {
+				const successRate = run.success_rate_percentage;
+				
+				// Only filter runs that have valid success rate data
+				if (typeof successRate === 'number' && !isNaN(successRate) && 
+					successRate >= SUCCESS_RATE_THRESHOLDS.VALID_MIN && 
+					successRate <= SUCCESS_RATE_THRESHOLDS.VALID_MAX) {
+					switch (successRateFilter) {
+						case 'high':
+							successRateMatch = successRate >= SUCCESS_RATE_THRESHOLDS.HIGH;
+							break;
+						case 'medium':
+							successRateMatch = successRate >= SUCCESS_RATE_THRESHOLDS.MEDIUM_LOW && 
+											   successRate < SUCCESS_RATE_THRESHOLDS.HIGH;
+							break;
+						case 'low':
+							successRateMatch = successRate < SUCCESS_RATE_THRESHOLDS.MEDIUM_LOW;
+							break;
+						default:
+							successRateMatch = true;
+					}
+				} else {
+					// For runs without valid success rate data, exclude them from success rate filtering
+					successRateMatch = false;
+				}
+			}
+			
+			return searchMatch && statusMatch && versionMatch && successRateMatch;
+		});
+	}, [runs, debouncedSearchTerm, lowerSearchTerm, statusFilter, versionFilter, successRateFilter]);
 
 	if (loading) {
 		return (
@@ -78,8 +153,76 @@ function RunsTableV2Component({ runs, loading }) {
 	}
 
 	return (
-		<TooltipProvider>
-			<Table role="table" aria-label="Pipeline runs table">
+		<div className="space-y-4">
+			{/* Filter Controls */}
+			<div className="flex flex-col md:flex-row gap-4 p-4 bg-gray-50 rounded-lg">
+				<div className="flex-1">
+					<div className="relative">
+						<Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+						<Input
+							placeholder="Search by source name or run ID..."
+							value={searchTerm}
+							onChange={(e) => setSearchTerm(e.target.value)}
+							className="pl-10"
+						/>
+					</div>
+				</div>
+				
+				<div className="flex gap-2">
+					<Select value={statusFilter} onValueChange={setStatusFilter}>
+						<SelectTrigger className="w-32">
+							<SelectValue placeholder="Status" />
+						</SelectTrigger>
+						<SelectContent>
+							<SelectItem value="all">All Status</SelectItem>
+							<SelectItem value="completed">Completed</SelectItem>
+							<SelectItem value="failed">Failed</SelectItem>
+							<SelectItem value="processing">Processing</SelectItem>
+						</SelectContent>
+					</Select>
+					
+					<Select value={versionFilter} onValueChange={setVersionFilter}>
+						<SelectTrigger className="w-28">
+							<SelectValue placeholder="Version" />
+						</SelectTrigger>
+						<SelectContent>
+							<SelectItem value="all">All</SelectItem>
+							<SelectItem value="v1">V1</SelectItem>
+							<SelectItem value="v2">V2</SelectItem>
+						</SelectContent>
+					</Select>
+					
+					<Select value={successRateFilter} onValueChange={setSuccessRateFilter}>
+						<SelectTrigger className="w-36">
+							<SelectValue placeholder="Success Rate" />
+						</SelectTrigger>
+						<SelectContent>
+							<SelectItem value="all">All Rates</SelectItem>
+							<SelectItem value="high">High (≥{SUCCESS_RATE_THRESHOLDS.HIGH}%)</SelectItem>
+							<SelectItem value="medium">Medium ({SUCCESS_RATE_THRESHOLDS.MEDIUM_LOW}-{SUCCESS_RATE_THRESHOLDS.HIGH - 1}%)</SelectItem>
+							<SelectItem value="low">Low (&lt;{SUCCESS_RATE_THRESHOLDS.MEDIUM_LOW}%)</SelectItem>
+						</SelectContent>
+					</Select>
+				</div>
+			</div>
+			
+			{/* Results Summary */}
+			{(debouncedSearchTerm || statusFilter !== 'all' || versionFilter !== 'all' || successRateFilter !== 'all') && (
+				<div className="text-sm text-gray-600 px-1">
+					Showing {filteredRuns.length} of {runs.length} runs
+					{filteredRuns.length === 0 && <span className="text-orange-600 ml-2">No runs match your filters</span>}
+				</div>
+			)}
+			
+			{filteredRuns.length === 0 ? (
+				<div className='text-center py-6 text-muted-foreground'>
+					{(debouncedSearchTerm || statusFilter !== 'all' || versionFilter !== 'all' || successRateFilter !== 'all') 
+						? 'No runs match your current filters.' 
+						: 'No runs found for this source.'}
+				</div>
+			) : (
+				<TooltipProvider>
+					<Table role="table" aria-label="Pipeline runs table">
 				<TableHeader>
 					<TableRow>
 					<TableHead>Version</TableHead>
@@ -94,7 +237,7 @@ function RunsTableV2Component({ runs, loading }) {
 				</TableRow>
 			</TableHeader>
 			<TableBody>
-				{runs.map((run) => (
+				{filteredRuns.map((run) => (
 					<TableRow key={run.id}>
 						<TableCell>
 							<Badge className={getVersionBadgeColor(run.version)}>
@@ -153,10 +296,10 @@ function RunsTableV2Component({ runs, loading }) {
 										<Tooltip>
 											<TooltipTrigger asChild>
 												<div className='flex items-center gap-2 cursor-help'>
-													{run.success_rate_percentage < 95 && (
+													{run.success_rate_percentage < SUCCESS_RATE_THRESHOLDS.HIGH && (
 														<AlertTriangle className='h-3 w-3 text-yellow-500' />
 													)}
-													<span className={`text-xs ${run.success_rate_percentage >= 95 ? 'text-green-600' : 'text-yellow-600'}`}>
+													<span className={`text-xs ${run.success_rate_percentage >= SUCCESS_RATE_THRESHOLDS.HIGH ? 'text-green-600' : 'text-yellow-600'}`}>
 														{run.success_rate_percentage.toFixed(1)}% success
 													</span>
 												</div>
@@ -296,6 +439,8 @@ function RunsTableV2Component({ runs, loading }) {
 			</TableBody>
 		</Table>
 		</TooltipProvider>
+			)}
+		</div>
 	);
 }
 

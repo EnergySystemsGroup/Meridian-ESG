@@ -16,9 +16,10 @@ import {
 import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
-import { ArrowLeft, Edit, Trash2, Play, Zap, TrendingUp, Clock, Target } from 'lucide-react';
+import { ArrowLeft, Edit, Trash2, Play, Zap, TrendingUp, Clock, Target, BarChart3 } from 'lucide-react';
 import Link from 'next/link';
 import { RunsTable } from '@/components/admin/RunsTable';
+import { TrendChart } from '@/components/admin/charts';
 
 export default function FundingSourceDetailV2() {
 	const params = useParams();
@@ -32,11 +33,13 @@ export default function FundingSourceDetailV2() {
 	const [v2Runs, setV2Runs] = useState([]);
 	const [loadingRuns, setLoadingRuns] = useState(true);
 	const [v2Metrics, setV2Metrics] = useState(null);
+	const [historicalData, setHistoricalData] = useState([]);
 
 	useEffect(() => {
 		fetchSource();
 		fetchRuns();
 		fetchV2Metrics();
+		fetchHistoricalData();
 
 		// Subscribe to changes in both V1 and V2 runs tables
 		const runsChannel = supabase
@@ -182,6 +185,49 @@ export default function FundingSourceDetailV2() {
 			}
 		} catch (error) {
 			console.error('Error fetching V2 metrics:', error);
+		}
+	}
+
+	async function fetchHistoricalData() {
+		try {
+			// Fetch last 30 completed runs for historical trends
+			const { data: historicalRuns, error } = await supabase
+				.from('pipeline_runs')
+				.select(`
+					id,
+					started_at,
+					completed_at,
+					total_opportunities_processed,
+					opportunities_per_minute,
+					tokens_per_opportunity,
+					success_rate_percentage,
+					total_execution_time_ms,
+					estimated_cost_usd
+				`)
+				.eq('api_source_id', params.id)
+				.eq('status', 'completed')
+				.order('started_at', { ascending: true })
+				.limit(30);
+
+			if (error) throw error;
+
+			if (historicalRuns && historicalRuns.length > 0) {
+				// Format data for charts
+				const formattedData = historicalRuns.map((run, index) => ({
+					name: `Run ${index + 1}`,
+					date: new Date(run.started_at).toLocaleDateString(),
+					opportunities: run.total_opportunities_processed || 0,
+					throughput: run.opportunities_per_minute || 0,
+					efficiency: run.tokens_per_opportunity || 0,
+					successRate: run.success_rate_percentage || 0,
+					processingTime: run.total_execution_time_ms ? Math.round(run.total_execution_time_ms / 1000 / 60) : 0, // Convert to minutes
+					cost: run.estimated_cost_usd || 0
+				}));
+				
+				setHistoricalData(formattedData);
+			}
+		} catch (error) {
+			console.error('Error fetching historical data:', error);
 		}
 	}
 
@@ -420,6 +466,57 @@ export default function FundingSourceDetailV2() {
 									${v2Metrics.totalCost.toFixed(4)} total cost
 								</p>
 							</div>
+						</div>
+					</CardContent>
+				</Card>
+			)}
+
+			{/* Historical Performance Trends */}
+			{v2Metrics && historicalData.length >= 2 && (
+				<Card className='mb-6'>
+					<CardHeader>
+						<CardTitle className='flex items-center gap-2'>
+							<BarChart3 className='h-5 w-5 text-blue-500' />
+							Performance Trends
+						</CardTitle>
+						<CardDescription>
+							Historical performance trends over the last {historicalData.length} completed runs
+						</CardDescription>
+					</CardHeader>
+					<CardContent>
+						<div className='grid grid-cols-1 lg:grid-cols-2 gap-6'>
+							<TrendChart
+								data={historicalData}
+								dataKey="throughput"
+								title="Opportunities per Minute"
+								yAxisLabel="Opp/Min"
+								color="#22c55e"
+								formatValue={(value) => `${value}/min`}
+							/>
+							<TrendChart
+								data={historicalData}
+								dataKey="successRate"
+								title="Success Rate"
+								yAxisLabel="Success %"
+								color="#3b82f6"
+								formatValue={(value) => `${value}%`}
+							/>
+							<TrendChart
+								data={historicalData}
+								dataKey="efficiency"
+								title="Token Efficiency"
+								yAxisLabel="Tokens/Opp"
+								color="#8b5cf6"
+								formatValue={(value) => `${value} tokens`}
+							/>
+							<TrendChart
+								data={historicalData}
+								dataKey="processingTime"
+								title="Processing Time"
+								yAxisLabel="Minutes"
+								color="#f59e0b"
+								formatValue={(value) => `${value} min`}
+							/>
 						</div>
 					</CardContent>
 				</Card>

@@ -7,8 +7,9 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
-import { ArrowLeft, ChevronDown, ChevronUp, Clock, Zap, Target, Database, Filter, Brain, Shuffle } from 'lucide-react';
+import { ArrowLeft, ChevronDown, ChevronUp, Clock, Zap, Target, Database, Filter, Brain, Shuffle, BarChart3, PieChart } from 'lucide-react';
 import Link from 'next/link';
+import { StagePerformanceChart, OpportunityFlowChart } from '@/components/admin/charts';
 
 export default function RunDetailPageV2() {
 	const supabase = createClientComponentClient();
@@ -550,16 +551,86 @@ export default function RunDetailPageV2() {
 									</CardContent>
 								</Card>
 								
-								<Card>
-									<CardHeader>
-										<CardTitle>Duplicate Detection Analytics</CardTitle>
-									</CardHeader>
-									<CardContent>
-										<p className='text-gray-500'>
-											Detailed duplicate detection metrics will be displayed here when available.
-										</p>
-									</CardContent>
-								</Card>
+								{/* Opportunity Flow Visualization */}
+								<div className='grid grid-cols-1 lg:grid-cols-2 gap-6'>
+									<Card>
+										<CardHeader>
+											<CardTitle className='flex items-center gap-2'>
+												<PieChart className='h-5 w-5 text-purple-500' />
+												Opportunity Flow Distribution
+											</CardTitle>
+										</CardHeader>
+										<CardContent>
+											<OpportunityFlowChart
+												data={[
+													{
+														name: 'New Opportunities',
+														value: optimizationMetrics.totalOpportunities - optimizationMetrics.bypassedLLM,
+														total: optimizationMetrics.totalOpportunities
+													},
+													{
+														name: 'Bypassed LLM',
+														value: optimizationMetrics.bypassedLLM,
+														total: optimizationMetrics.totalOpportunities
+													}
+												].filter(item => item.value > 0)}
+												height={300}
+												colors={['#22c55e', '#f59e0b']}
+											/>
+										</CardContent>
+									</Card>
+
+									<Card>
+										<CardHeader>
+											<CardTitle>Processing Efficiency</CardTitle>
+										</CardHeader>
+										<CardContent>
+											<div className='space-y-4'>
+												<div className='bg-green-50 p-4 rounded-lg'>
+													<div className='flex items-center justify-between'>
+														<span className='text-sm font-medium text-green-800'>LLM Bypass Rate</span>
+														<span className='text-2xl font-bold text-green-600'>
+															{optimizationMetrics.totalOpportunities > 0 
+																? Math.round((optimizationMetrics.bypassedLLM / optimizationMetrics.totalOpportunities) * 100)
+																: 0}%
+														</span>
+													</div>
+													<p className='text-xs text-green-600 mt-1'>
+														{optimizationMetrics.bypassedLLM} out of {optimizationMetrics.totalOpportunities} opportunities
+													</p>
+												</div>
+												
+												{run?.tokens_per_opportunity && (
+													<div className='bg-blue-50 p-4 rounded-lg'>
+														<div className='flex items-center justify-between'>
+															<span className='text-sm font-medium text-blue-800'>Avg Tokens/Opportunity</span>
+															<span className='text-2xl font-bold text-blue-600'>
+																{Math.round(run.tokens_per_opportunity)}
+															</span>
+														</div>
+														<p className='text-xs text-blue-600 mt-1'>
+															Token efficiency measure
+														</p>
+													</div>
+												)}
+												
+												{run?.success_rate_percentage && (
+													<div className='bg-purple-50 p-4 rounded-lg'>
+														<div className='flex items-center justify-between'>
+															<span className='text-sm font-medium text-purple-800'>Success Rate</span>
+															<span className='text-2xl font-bold text-purple-600'>
+																{Math.round(run.success_rate_percentage)}%
+															</span>
+														</div>
+														<p className='text-xs text-purple-600 mt-1'>
+															Overall processing success
+														</p>
+													</div>
+												)}
+											</div>
+										</CardContent>
+									</Card>
+								</div>
 							</>
 						) : (
 							<Card>
@@ -578,6 +649,60 @@ export default function RunDetailPageV2() {
 
 				{activeTab === 'stages' && (
 					<div className='space-y-6'>
+						{/* Stage Performance Charts */}
+						{isV2Run && stages.length > 0 && (
+							<div className='grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8'>
+								<Card>
+									<CardHeader>
+										<CardTitle className='flex items-center gap-2'>
+											<BarChart3 className='h-5 w-5 text-blue-500' />
+											Execution Time by Stage
+										</CardTitle>
+									</CardHeader>
+									<CardContent>
+										<StagePerformanceChart
+											data={stages.map(stage => ({
+												name: stage.stage_name.split('_').map(word => 
+													word.charAt(0).toUpperCase() + word.slice(1)
+												).join(' '),
+												value: stage.execution_time_ms || 0
+											}))}
+											dataKey="value"
+											yAxisLabel="Milliseconds"
+											color="#3b82f6"
+											formatValue={(value) => `${value}ms`}
+											height={250}
+										/>
+									</CardContent>
+								</Card>
+
+								<Card>
+									<CardHeader>
+										<CardTitle className='flex items-center gap-2'>
+											<BarChart3 className='h-5 w-5 text-green-500' />
+											Token Usage by Stage
+										</CardTitle>
+									</CardHeader>
+									<CardContent>
+										<StagePerformanceChart
+											data={stages.map(stage => ({
+												name: stage.stage_name.split('_').map(word => 
+													word.charAt(0).toUpperCase() + word.slice(1)
+												).join(' '),
+												value: stage.tokens_used || 0
+											}))}
+											dataKey="value"
+											yAxisLabel="Tokens"
+											color="#22c55e"
+											formatValue={(value) => `${value.toLocaleString()} tokens`}
+											height={250}
+										/>
+									</CardContent>
+								</Card>
+							</div>
+						)}
+
+						{/* Individual Stage Details */}
 						{isV2Run && stages.length > 0 ? (
 							stages.map((stage, index) => (
 								<Card key={stage.id}>

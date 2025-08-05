@@ -1672,7 +1672,7 @@
             "id": 10,
             "title": "Update RunManagerV2 Service - Remove Comparison Calculations",
             "description": "Update /lib/services/runManagerV2.js to remove all V1 vs V2 comparison metric calculations. Replace with absolute performance metric calculations for opportunities_per_minute, tokens_per_opportunity, cost_per_opportunity_usd, success_rate_percentage, and sla_compliance_percentage. Update calculateMetrics functions and remove comparison baseline lookups.",
-            "status": "pending",
+            "status": "done",
             "dependencies": [
               4,
               "38.4"
@@ -1684,7 +1684,7 @@
             "id": 11,
             "title": "Update API Routes - Remove Comparison Data Endpoints",
             "description": "Review and update all API routes that serve comparison data. Remove endpoints or response fields related to V1 vs V2 comparisons (token_savings_percentage, time_savings_percentage, efficiency_score, etc.). Update API responses to include new absolute performance fields. Focus on routes under /api/admin/ that serve dashboard and runs data.",
-            "status": "pending",
+            "status": "done",
             "dependencies": [
               10,
               "38.10"
@@ -1696,7 +1696,7 @@
             "id": 12,
             "title": "Create Performance Calculation Functions and Triggers",
             "description": "Create database functions and triggers to automatically calculate absolute performance metrics. Implement functions for: calculating opportunities_per_minute from run duration, computing tokens_per_opportunity averages, determining cost_per_opportunity_usd, calculating success_rate_percentage from processed vs failed opportunities, and computing sla_compliance_percentage against target benchmarks. Add triggers to update metrics on data changes.",
-            "status": "pending",
+            "status": "done",
             "dependencies": [
               4,
               "38.4"
@@ -1709,7 +1709,7 @@
             "title": "Build Advanced Analytics Dashboard from final_results Data",
             "description": "Create sophisticated data visualizations and monitoring capabilities from the rich analytics data stored in pipeline_runs.final_results JSONB field.",
             "details": "<info added on 2025-08-02T19:23:28.306Z>\nLooking at the user request and the context, I'll generate the new content that should be added to subtask 38.13's details.**Problem Statement:**\nWe have Netflix-level analytics stored in the final_results JSONB field of the pipeline_runs table, but we're only displaying McDonald's-level dashboards (basic summary numbers and raw JSON dumps). We're sitting on a goldmine of detailed performance data that could power sophisticated monitoring and optimization dashboards.\n\n**Rich Data Currently Unused:**\n\nStage Performance Analytics:\n- Individual stage execution times, token usage, API calls\n- Stage-by-stage success/failure rates  \n- Resource utilization per stage (memory, processing time)\n\nOpportunity Path Analytics:\n- Individual opportunity journeys through the pipeline\n- Path type distribution (NEW vs UPDATE vs SKIP)\n- Token savings per opportunity, processing time per opportunity\n\nAdvanced Duplicate Detection Analytics:\n- Detection method breakdown (ID matches vs title matches)\n- Detection accuracy scores and confidence levels\n- False positive/negative rates\n\nQuality Metrics:\n- Data quality scores per stage\n- Processing accuracy rates\n- Error breakdown by type and stage\n\n**Technical Implementation:**\n- Parse and display data from final_results.enhancedMetrics.stageMetrics\n- Visualize final_results.enhancedMetrics.opportunityPaths data\n- Create charts from final_results.enhancedMetrics.duplicateDetectionMetrics\n- Add stage performance comparison widgets\n- Build pipeline efficiency trending over time\n\n**Files to Update:**\n- /app/admin/funding-sources/runs/[id]/pageV2.jsx - Replace raw JSON with rich visualizations\n- /app/admin/funding-sources/[id]/pageV2.jsx - Add advanced performance analytics\n- /components/admin/RunsTable/RunsTableV2.jsx - Enhance with detailed metrics\n- Create new components for stage analytics, opportunity path tracking\n\n**Priority**: MEDIUM-HIGH (significant value unlock from existing data)\n\nThis subtask leverages the comprehensive final_results data documented in our PRD to create actionable insights and monitoring capabilities.\n</info added on 2025-08-02T19:23:28.306Z>",
-            "status": "pending",
+            "status": "done",
             "dependencies": [
               "38.4",
               "38.7",
@@ -2034,7 +2034,7 @@
     ],
     "metadata": {
       "created": "2025-06-17T23:54:58.582Z",
-      "updated": "2025-08-05T03:12:33.840Z",
+      "updated": "2025-08-05T05:59:49.371Z",
       "description": "Tasks for master context"
     }
   },
