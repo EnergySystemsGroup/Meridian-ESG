@@ -184,14 +184,76 @@ export default function RunDetailPageV2() {
 		);
 	}
 
+	// Extract opportunity flow from pipeline stages
+	function extractOpportunityFlow(stages) {
+		const dataExtractionStage = stages.find(stage => stage.stage_name === 'data_extraction');
+		const duplicateDetectorStage = stages.find(stage => stage.stage_name === 'early_duplicate_detector');
+		const analysisStage = stages.find(stage => stage.stage_name === 'analysis');
+		const directUpdateStage = stages.find(stage => stage.stage_name === 'direct_update');
+		
+		// Get input count from Data Extraction output (actual opportunities, not raw records)
+		const opportunityInput = dataExtractionStage?.output_count || 0;
+		
+		// Extract breakdown from Early Duplicate Detector results
+		let opportunitiesNew = 0;
+		let opportunitiesSkipped = 0;
+		let opportunitiesUpdated = 0;
+		let opportunitiesStored = 0;
+		
+		if (duplicateDetectorStage?.stage_results) {
+			try {
+				const results = typeof duplicateDetectorStage.stage_results === 'string' 
+					? JSON.parse(duplicateDetectorStage.stage_results)
+					: duplicateDetectorStage.stage_results;
+				
+				// Extract metrics from the detector results
+				if (results.metrics) {
+					opportunitiesNew = results.metrics.newOpportunities || 0;
+					opportunitiesSkipped = results.metrics.opportunitiesToSkip || 0;
+					opportunitiesUpdated = results.metrics.opportunitiesToUpdate || 0;
+				}
+			} catch (error) {
+				console.warn('Failed to parse duplicate detector results:', error);
+			}
+		}
+		
+		// Get stored count from final storage stages
+		if (directUpdateStage?.output_count) {
+			opportunitiesStored += directUpdateStage.output_count;
+		}
+		
+		// For failed runs, we may not have stored anything but still have processed some
+		const totalProcessed = opportunitiesNew + opportunitiesSkipped + opportunitiesUpdated;
+		const successfullyProcessed = opportunitiesStored + opportunitiesSkipped + opportunitiesUpdated;
+		
+		return {
+			opportunityInput,
+			opportunitiesNew,
+			opportunitiesSkipped, 
+			opportunitiesUpdated,
+			opportunitiesStored,
+			totalProcessed,
+			successfullyProcessed,
+			successRate: opportunityInput > 0 ? Math.round((successfullyProcessed / opportunityInput) * 100) : 0
+		};
+	}
+
 	// V2 Enhanced metrics
 	const isV2Run = run?.pipeline_version === 'v2.0' || stages.length > 0;
+	const opportunityFlow = extractOpportunityFlow(stages);
+	
 	const optimizationMetrics = {
-		totalOpportunities: run?.total_opportunities_processed || 0,
-		bypassedLLM: run?.opportunities_bypassed_llm || 0,
-		opportunitiesPerMinute: run?.opportunities_per_minute || 0,
-		tokensPerOpportunity: run?.tokens_per_opportunity || 0,
-		successRate: run?.success_rate_percentage || 0
+		// Use opportunity-based metrics instead of misleading output-based ones
+		opportunityInput: opportunityFlow.opportunityInput,
+		opportunitiesSkipped: opportunityFlow.opportunitiesSkipped,
+		opportunitiesUpdated: opportunityFlow.opportunitiesUpdated, 
+		opportunitiesStored: opportunityFlow.opportunitiesStored,
+		// Calculate meaningful rates even during failures
+		opportunitiesPerMinute: run?.opportunities_per_minute || 'N/A',
+		tokensPerOpportunity: opportunityFlow.opportunityInput > 0 && run?.total_tokens_used 
+			? Math.round(run.total_tokens_used / opportunityFlow.opportunityInput) 
+			: 'N/A',
+		successRate: opportunityFlow.successRate
 	};
 
 	return (
@@ -222,24 +284,36 @@ export default function RunDetailPageV2() {
 					<CardContent>
 						<div className='grid grid-cols-2 md:grid-cols-5 gap-4'>
 							<div className='text-center'>
-								<p className='text-2xl font-bold text-blue-600'>{optimizationMetrics.totalOpportunities}</p>
-								<p className='text-sm text-gray-500'>Total Opportunities</p>
+								<p className='text-2xl font-bold text-blue-600'>{optimizationMetrics.opportunityInput}</p>
+								<p className='text-sm text-gray-500'>Opportunity Input</p>
 							</div>
 							<div className='text-center'>
-								<p className='text-2xl font-bold text-green-600'>{optimizationMetrics.bypassedLLM}</p>
-								<p className='text-sm text-gray-500'>Bypassed LLM</p>
+								<p className='text-2xl font-bold text-gray-600'>{optimizationMetrics.opportunitiesSkipped}</p>
+								<p className='text-sm text-gray-500'>Opportunities Skipped</p>
 							</div>
 							<div className='text-center'>
-								<p className='text-2xl font-bold text-purple-600'>{optimizationMetrics.opportunitiesPerMinute || 'N/A'}</p>
+								<p className='text-2xl font-bold text-yellow-600'>{optimizationMetrics.opportunitiesUpdated}</p>
+								<p className='text-sm text-gray-500'>Opportunities Updated</p>
+							</div>
+							<div className='text-center'>
+								<p className='text-2xl font-bold text-green-600'>{optimizationMetrics.opportunitiesStored}</p>
+								<p className='text-sm text-gray-500'>Opportunities Stored</p>
+							</div>
+							<div className='text-center'>
+								<p className='text-2xl font-bold text-indigo-600'>{optimizationMetrics.successRate}%</p>
+								<p className='text-sm text-gray-500'>Success Rate</p>
+							</div>
+						</div>
+						
+						{/* Secondary metrics row */}
+						<div className='grid grid-cols-2 md:grid-cols-2 gap-4 mt-4 pt-4 border-t'>
+							<div className='text-center'>
+								<p className='text-lg font-bold text-purple-600'>{optimizationMetrics.opportunitiesPerMinute}</p>
 								<p className='text-sm text-gray-500'>Opportunities/Min</p>
 							</div>
 							<div className='text-center'>
-								<p className='text-2xl font-bold text-orange-600'>{optimizationMetrics.tokensPerOpportunity || 'N/A'}</p>
+								<p className='text-lg font-bold text-orange-600'>{optimizationMetrics.tokensPerOpportunity}</p>
 								<p className='text-sm text-gray-500'>Tokens/Opportunity</p>
-							</div>
-							<div className='text-center'>
-								<p className='text-2xl font-bold text-indigo-600'>{optimizationMetrics.successRate || 'N/A'}%</p>
-								<p className='text-sm text-gray-500'>Success Rate</p>
 							</div>
 						</div>
 					</CardContent>

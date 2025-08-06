@@ -329,10 +329,24 @@ function RunsTableV2Component({ runs, loading }) {
 											</TooltipContent>
 										</Tooltip>
 									) : run.opportunities_per_minute != null ? (
-										<div className='text-xs text-gray-400'>Success rate N/A</div>
+										run.status === 'failed' ? (
+											<div className='flex items-center gap-2'>
+												<AlertTriangle className='h-3 w-3 text-red-500' />
+												<span className='text-xs text-red-600'>0% success (failed)</span>
+											</div>
+										) : (
+											<div className='text-xs text-gray-400'>Success rate N/A</div>
+										)
 									) : null}
 									{run.opportunities_per_minute == null && run.success_rate_percentage == null && (
-										<span className='text-xs text-gray-400'>-</span>
+										run.status === 'failed' ? (
+											<div className='flex items-center gap-2'>
+												<AlertTriangle className='h-3 w-3 text-red-500' />
+												<span className='text-xs text-red-600'>0% success (failed)</span>
+											</div>
+										) : (
+											<span className='text-xs text-gray-400'>-</span>
+										)
 									)}
 								</div>
 							) : (
@@ -416,6 +430,21 @@ function RunsTableV2Component({ runs, loading }) {
 												</div>
 											</TooltipContent>
 										</Tooltip>
+									) : run.status === 'failed' ? (
+										<div className='cursor-help space-y-1'>
+											<div className='flex items-center gap-2'>
+												<Shield className='h-3 w-3 text-red-500' />
+												<span className='text-sm font-medium text-red-600'>0% SLA</span>
+												<Badge className='text-xs px-1.5 py-0.5 bg-red-100 text-red-800 border-red-200'>
+													F
+												</Badge>
+											</div>
+											<Progress 
+												value={0} 
+												className='h-1.5 w-16'
+												aria-label='SLA compliance: 0% (failed)'
+											/>
+										</div>
 									) : (
 										<span className='text-xs text-gray-400'>-</span>
 									)}

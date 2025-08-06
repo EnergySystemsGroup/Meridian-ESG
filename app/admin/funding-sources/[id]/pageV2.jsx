@@ -16,7 +16,7 @@ import {
 import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
-import { ArrowLeft, Edit, Trash2, Play, Zap, TrendingUp, Clock, Target, BarChart3 } from 'lucide-react';
+import { ArrowLeft, Edit, Trash2, Play, Zap, TrendingUp, Clock, Target, BarChart3, AlertTriangle, Shield } from 'lucide-react';
 import Link from 'next/link';
 import { RunsTable } from '@/components/admin/RunsTable';
 import { TrendChart } from '@/components/admin/charts';
@@ -142,22 +142,38 @@ export default function FundingSourceDetailV2() {
 					success_rate_percentage,
 					total_tokens_used,
 					estimated_cost_usd,
+					total_execution_time_ms,
 					status
 				`)
 				.eq('api_source_id', params.id)
-				.eq('status', 'completed');
+				.eq('pipeline_version', 'v2.0');
 
 			if (error) throw error;
 
 			if (v2RunsData && v2RunsData.length > 0) {
 				const metrics = v2RunsData.reduce((acc, run) => {
-					acc.totalOpportunities += run.total_opportunities_processed || 0;
-					acc.totalBypassedLLM += run.opportunities_bypassed_llm || 0;
-					acc.totalTokens += run.total_tokens_used || 0;
-					acc.totalCost += run.estimated_cost_usd || 0;
-					acc.opportunitiesPerMinute.push(run.opportunities_per_minute || 0);
-					acc.tokensPerOpportunity.push(run.tokens_per_opportunity || 0);
-					acc.successRates.push(run.success_rate_percentage || 0);
+					// Track all runs for comprehensive analysis
+					if (run.status === 'completed') {
+						acc.totalOpportunities += run.total_opportunities_processed || 0;
+						acc.totalBypassedLLM += run.opportunities_bypassed_llm || 0;
+						acc.totalTokens += run.total_tokens_used || 0;
+						acc.totalCost += run.estimated_cost_usd || 0;
+						acc.opportunitiesPerMinute.push(run.opportunities_per_minute || 0);
+						acc.tokensPerOpportunity.push(run.tokens_per_opportunity || 0);
+						acc.successRates.push(run.success_rate_percentage || 0);
+						acc.completedRuns++;
+					} else if (run.status === 'failed') {
+						// Track failure costs and waste
+						acc.failedRuns++;
+						acc.wastedTokens += run.total_tokens_used || 0;
+						acc.wastedCost += run.estimated_cost_usd || 0;
+						acc.wastedTime += run.total_execution_time_ms || 0;
+						// Track compliance failures
+						acc.complianceFailures++;
+						if (run.sla_grade) {
+							acc.worstSLAGrade = acc.worstSLAGrade === 'F' ? 'F' : run.sla_grade;
+						}
+					}
 					return acc;
 				}, {
 					totalOpportunities: 0,
@@ -166,7 +182,14 @@ export default function FundingSourceDetailV2() {
 					totalCost: 0,
 					opportunitiesPerMinute: [],
 					tokensPerOpportunity: [],
-					successRates: []
+					successRates: [],
+					completedRuns: 0,
+					failedRuns: 0,
+					wastedTokens: 0,
+					wastedCost: 0,
+					wastedTime: 0,
+					complianceFailures: 0,
+					worstSLAGrade: null
 				});
 
 				setV2Metrics({
@@ -180,7 +203,16 @@ export default function FundingSourceDetailV2() {
 					avgSuccessRate: metrics.successRates.length > 0 ? 
 						Math.round(metrics.successRates.reduce((a, b) => a + b, 0) / metrics.successRates.length) : 0,
 					totalTokens: metrics.totalTokens,
-					totalCost: metrics.totalCost
+					totalCost: metrics.totalCost,
+					// Failure analysis metrics
+					completedRuns: metrics.completedRuns,
+					failedRuns: metrics.failedRuns,
+					wastedTokens: metrics.wastedTokens,
+					wastedCost: metrics.wastedCost,
+					wastedTime: metrics.wastedTime,
+					runSuccessRate: v2RunsData.length > 0 ? Math.round((metrics.completedRuns / v2RunsData.length) * 100) : 0,
+					complianceFailures: metrics.complianceFailures,
+					worstSLAGrade: metrics.worstSLAGrade || (metrics.failedRuns > 0 ? 'F' : null)
 				});
 			}
 		} catch (error) {
@@ -190,7 +222,7 @@ export default function FundingSourceDetailV2() {
 
 	async function fetchHistoricalData() {
 		try {
-			// Fetch last 30 completed runs for historical trends
+			// Fetch last 30 runs (completed and failed) for historical trends
 			const { data: historicalRuns, error } = await supabase
 				.from('pipeline_runs')
 				.select(`
@@ -202,26 +234,33 @@ export default function FundingSourceDetailV2() {
 					tokens_per_opportunity,
 					success_rate_percentage,
 					total_execution_time_ms,
-					estimated_cost_usd
+					estimated_cost_usd,
+					status,
+					sla_compliance_percentage,
+					sla_grade
 				`)
 				.eq('api_source_id', params.id)
-				.eq('status', 'completed')
+				.in('status', ['completed', 'failed'])
 				.order('started_at', { ascending: true })
 				.limit(30);
 
 			if (error) throw error;
 
 			if (historicalRuns && historicalRuns.length > 0) {
-				// Format data for charts
+				// Format data for charts, including failed runs
 				const formattedData = historicalRuns.map((run, index) => ({
 					name: `Run ${index + 1}`,
 					date: new Date(run.started_at).toLocaleDateString(),
 					opportunities: run.total_opportunities_processed || 0,
 					throughput: run.opportunities_per_minute || 0,
 					efficiency: run.tokens_per_opportunity || 0,
-					successRate: run.success_rate_percentage || 0,
+					successRate: run.success_rate_percentage !== null ? run.success_rate_percentage : (run.status === 'failed' ? 0 : 0),
 					processingTime: run.total_execution_time_ms ? Math.round(run.total_execution_time_ms / 1000 / 60) : 0, // Convert to minutes
-					cost: run.estimated_cost_usd || 0
+					cost: run.estimated_cost_usd || 0,
+					status: run.status,
+					isFailed: run.status === 'failed',
+					compliance: run.sla_compliance_percentage !== null ? run.sla_compliance_percentage : (run.status === 'failed' ? 0 : null),
+					slaGrade: run.sla_grade || (run.status === 'failed' ? 'F' : null)
 				}));
 				
 				setHistoricalData(formattedData);
@@ -420,11 +459,11 @@ export default function FundingSourceDetailV2() {
 							Pipeline Performance Dashboard
 						</CardTitle>
 						<CardDescription>
-							Aggregate metrics from {v2Metrics.totalRuns} completed processing runs
+							Aggregate metrics from {v2Metrics.totalRuns} processing runs ({v2Metrics.completedRuns} completed, {v2Metrics.failedRuns} failed)
 						</CardDescription>
 					</CardHeader>
 					<CardContent>
-						<div className='grid grid-cols-2 md:grid-cols-4 gap-4'>
+						<div className={`grid gap-4 ${v2Metrics.failedRuns > 0 ? 'grid-cols-2 md:grid-cols-5' : 'grid-cols-2 md:grid-cols-4'}`}>
 							<div className='text-center p-4 bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg'>
 								<div className='flex items-center justify-center mb-2'>
 									<Target className='h-5 w-5 text-blue-600 mr-1' />
@@ -466,6 +505,30 @@ export default function FundingSourceDetailV2() {
 									${v2Metrics.totalCost.toFixed(4)} total cost
 								</p>
 							</div>
+							
+							{/* Failure Cost Analysis Card - Only show when there are failed runs */}
+							{v2Metrics.failedRuns > 0 && (
+								<div className='text-center p-4 bg-gradient-to-br from-red-50 to-red-100 rounded-lg border border-red-200'>
+									<div className='flex items-center justify-center mb-2'>
+										<AlertTriangle className='h-5 w-5 text-red-600 mr-1' />
+										<p className='text-sm font-medium text-red-800'>Failure Cost Analysis</p>
+									</div>
+									<p className='text-2xl font-bold text-red-600'>{v2Metrics.failedRuns}</p>
+									<p className='text-xs text-red-500'>
+										failed runs ({v2Metrics.runSuccessRate}% run success)
+									</p>
+									<div className='mt-2 text-xs text-red-600 space-y-1'>
+										<div>${v2Metrics.wastedCost.toFixed(4)} wasted</div>
+										<div>{v2Metrics.wastedTokens.toLocaleString()} wasted tokens</div>
+										{v2Metrics.worstSLAGrade && (
+											<div className='flex items-center justify-center gap-1 mt-1'>
+												<Shield className='h-3 w-3 text-red-500' />
+												<span>SLA Grade: {v2Metrics.worstSLAGrade}</span>
+											</div>
+										)}
+									</div>
+								</div>
+							)}
 						</div>
 					</CardContent>
 				</Card>
