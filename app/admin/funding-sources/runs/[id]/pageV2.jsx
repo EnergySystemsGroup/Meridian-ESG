@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import { Button } from '@/components/ui/button';
@@ -167,32 +167,48 @@ export default function RunDetailPageV2() {
 		return `${(ms / 60000).toFixed(1)}m`;
 	};
 
-	if (loading) {
-		return (
-			<div className='container py-8'>
-				<div className='flex items-center mb-6'>
-					<Button variant='ghost' size='sm' disabled>
-						<ArrowLeft className='mr-2 h-4 w-4' />
-						Back to Source
-					</Button>
-				</div>
-				<div className='space-y-4'>
-					<div className='h-8 w-1/3 bg-gray-200 animate-pulse rounded' />
-					<div className='h-4 w-1/4 bg-gray-200 animate-pulse rounded' />
-				</div>
-			</div>
-		);
-	}
-
-	// Extract opportunity flow from pipeline stages
-	function extractOpportunityFlow(stages) {
+	// Extract opportunity flow from pipeline stages - defined early to be used in useMemo
+	const extractOpportunityFlow = (stages) => {
 		const dataExtractionStage = stages.find(stage => stage.stage_name === 'data_extraction');
 		const duplicateDetectorStage = stages.find(stage => stage.stage_name === 'early_duplicate_detector');
 		const analysisStage = stages.find(stage => stage.stage_name === 'analysis');
 		const directUpdateStage = stages.find(stage => stage.stage_name === 'direct_update');
 		
-		// Get input count from Data Extraction output (actual opportunities, not raw records)
-		const opportunityInput = dataExtractionStage?.output_count || 0;
+		// Get API fetched results, total available, and extracted opportunities from Data Extraction stage
+		let apiFetchedResults = 0;  // What we actually fetched from the API
+		let totalAvailable = 0;      // Total available according to API
+		let opportunityInput = dataExtractionStage?.output_count || 0;  // Successfully extracted opportunities
+		
+		// Try to extract API metrics from stage_results
+		if (dataExtractionStage?.stage_results) {
+			try {
+				const results = typeof dataExtractionStage.stage_results === 'string' 
+					? JSON.parse(dataExtractionStage.stage_results)
+					: dataExtractionStage.stage_results;
+				
+				// Debug logging to see what's in the results
+				console.log('[DEBUG] Data Extraction Stage Results:', {
+					hasResults: !!results,
+					resultKeys: Object.keys(results || {}),
+					totalAvailable: results.totalAvailable,
+					totalFound: results.totalFound,
+					apiFetchedResults: results.apiFetchedResults,
+					totalRetrieved: results.totalRetrieved,
+					extractedOpportunities: results.extractedOpportunities,
+					// Check if the data is nested in extractionMetrics
+					extractionMetrics: results.extractionMetrics
+				});
+				
+				// Extract the different counts from the metrics (check both locations for backward compatibility)
+				totalAvailable = results.totalAvailable || results.totalFound || 
+				                results.extractionMetrics?.totalFound || 0;  // Total available from API
+				apiFetchedResults = results.apiFetchedResults || results.totalRetrieved || 
+				                   results.extractionMetrics?.totalRetrieved ||
+				                   results.extractedOpportunities || opportunityInput;  // What we fetched
+			} catch (error) {
+				console.warn('Failed to parse data extraction results:', error);
+			}
+		}
 		
 		// Extract breakdown from Early Duplicate Detector results
 		let opportunitiesNew = 0;
@@ -227,6 +243,8 @@ export default function RunDetailPageV2() {
 		const successfullyProcessed = opportunitiesStored + opportunitiesSkipped + opportunitiesUpdated;
 		
 		return {
+			apiFetchedResults,
+			totalAvailable,
 			opportunityInput,
 			opportunitiesNew,
 			opportunitiesSkipped, 
@@ -234,17 +252,30 @@ export default function RunDetailPageV2() {
 			opportunitiesStored,
 			totalProcessed,
 			successfullyProcessed,
-			successRate: opportunityInput > 0 ? Math.round((successfullyProcessed / opportunityInput) * 100) : 0
+			successRate: opportunityInput > 0 && !isNaN(successfullyProcessed) && isFinite(successfullyProcessed / opportunityInput) 
+				? Math.round((successfullyProcessed / opportunityInput) * 100) 
+				: 0,
+			extractionRate: apiFetchedResults > 0 && !isNaN(opportunityInput) && isFinite(opportunityInput / apiFetchedResults) 
+				? Math.round((opportunityInput / apiFetchedResults) * 100) 
+				: 0
 		};
-	}
+	};
 
-	// V2 Enhanced metrics
-	const isV2Run = run?.pipeline_version === 'v2.0' || stages.length > 0;
-	const opportunityFlow = extractOpportunityFlow(stages);
+	// Constants for UI magic numbers
+	const MAX_PERCENTAGE = 100;
+	const DEFAULT_ZERO = 0;
 	
-	const optimizationMetrics = {
-		// Use opportunity-based metrics instead of misleading output-based ones
+	// Memoize expensive opportunity flow calculations - hooks must be called before any returns
+	const opportunityFlow = useMemo(() => extractOpportunityFlow(stages), [stages]);
+	
+	// Memoize optimization metrics to avoid recalculation on every render
+	const optimizationMetrics = useMemo(() => ({
+		// API and extraction metrics
+		apiFetchedResults: opportunityFlow.apiFetchedResults,
+		totalAvailable: opportunityFlow.totalAvailable,
 		opportunityInput: opportunityFlow.opportunityInput,
+		extractionRate: opportunityFlow.extractionRate,
+		// Processing breakdown
 		opportunitiesSkipped: opportunityFlow.opportunitiesSkipped,
 		opportunitiesUpdated: opportunityFlow.opportunitiesUpdated, 
 		opportunitiesStored: opportunityFlow.opportunitiesStored,
@@ -254,7 +285,27 @@ export default function RunDetailPageV2() {
 			? Math.round(run.total_tokens_used / opportunityFlow.opportunityInput) 
 			: 'N/A',
 		successRate: opportunityFlow.successRate
-	};
+	}), [opportunityFlow, run?.opportunities_per_minute, run?.total_tokens_used]);
+	
+	// V2 Enhanced metrics - moved after hooks to avoid conditional hook calls
+	const isV2Run = run?.pipeline_version === 'v2.0' || stages.length > 0;
+
+	if (loading) {
+		return (
+			<div className='container py-8'>
+				<div className='flex items-center mb-6'>
+					<Button variant='ghost' size='sm' disabled>
+						<ArrowLeft className='mr-2 h-4 w-4' />
+						Back to Source
+					</Button>
+				</div>
+				<div className='space-y-4'>
+					<div className='h-8 w-1/3 bg-gray-200 animate-pulse rounded' />
+					<div className='h-4 w-1/4 bg-gray-200 animate-pulse rounded' />
+				</div>
+			</div>
+		);
+	}
 
 	return (
 		<div className='container mx-auto py-8'>
@@ -282,22 +333,32 @@ export default function RunDetailPageV2() {
 						</CardTitle>
 					</CardHeader>
 					<CardContent>
-						<div className='grid grid-cols-2 md:grid-cols-5 gap-4'>
+						{/* First row - Input and Processing */}
+						<div className='grid grid-cols-3 md:grid-cols-6 gap-4'>
+							<div className='text-center'>
+								<p className='text-2xl font-bold text-purple-600'>{optimizationMetrics.apiFetchedResults || 0}</p>
+								<p className='text-sm text-gray-500'>
+									API Results
+									<span className='block text-xs text-gray-400'>
+										({optimizationMetrics.totalAvailable || 0} total available)
+									</span>
+								</p>
+							</div>
 							<div className='text-center'>
 								<p className='text-2xl font-bold text-blue-600'>{optimizationMetrics.opportunityInput}</p>
-								<p className='text-sm text-gray-500'>Opportunity Input</p>
+								<p className='text-sm text-gray-500'>Extracted</p>
 							</div>
 							<div className='text-center'>
 								<p className='text-2xl font-bold text-gray-600'>{optimizationMetrics.opportunitiesSkipped}</p>
-								<p className='text-sm text-gray-500'>Opportunities Skipped</p>
+								<p className='text-sm text-gray-500'>Skipped</p>
 							</div>
 							<div className='text-center'>
 								<p className='text-2xl font-bold text-yellow-600'>{optimizationMetrics.opportunitiesUpdated}</p>
-								<p className='text-sm text-gray-500'>Opportunities Updated</p>
+								<p className='text-sm text-gray-500'>Updated</p>
 							</div>
 							<div className='text-center'>
 								<p className='text-2xl font-bold text-green-600'>{optimizationMetrics.opportunitiesStored}</p>
-								<p className='text-sm text-gray-500'>Opportunities Stored</p>
+								<p className='text-sm text-gray-500'>Stored</p>
 							</div>
 							<div className='text-center'>
 								<p className='text-2xl font-bold text-indigo-600'>{optimizationMetrics.successRate}%</p>
@@ -305,15 +366,19 @@ export default function RunDetailPageV2() {
 							</div>
 						</div>
 						
-						{/* Secondary metrics row */}
-						<div className='grid grid-cols-2 md:grid-cols-2 gap-4 mt-4 pt-4 border-t'>
+						{/* Second row - Performance Metrics */}
+						<div className='grid grid-cols-2 md:grid-cols-3 gap-4 mt-4 pt-4 border-t'>
 							<div className='text-center'>
-								<p className='text-lg font-bold text-purple-600'>{optimizationMetrics.opportunitiesPerMinute}</p>
+								<p className='text-xl font-bold text-orange-600'>{optimizationMetrics.opportunitiesPerMinute}</p>
 								<p className='text-sm text-gray-500'>Opportunities/Min</p>
 							</div>
 							<div className='text-center'>
-								<p className='text-lg font-bold text-orange-600'>{optimizationMetrics.tokensPerOpportunity}</p>
+								<p className='text-xl font-bold text-cyan-600'>{optimizationMetrics.tokensPerOpportunity}</p>
 								<p className='text-sm text-gray-500'>Tokens/Opportunity</p>
+							</div>
+							<div className='text-center'>
+								<p className='text-xl font-bold text-teal-600'>{optimizationMetrics.extractionRate}%</p>
+								<p className='text-sm text-gray-500'>Extraction Rate</p>
 							</div>
 						</div>
 					</CardContent>
@@ -580,7 +645,7 @@ export default function RunDetailPageV2() {
 															<div className='w-32 bg-gray-200 rounded-full h-2'>
 																<div 
 																	className='bg-indigo-600 h-2 rounded-full'
-																	style={{ width: `${Math.min(optimizationMetrics.successRate || 0, 100)}%` }}
+																	style={{ width: `${Math.min(optimizationMetrics.successRate || DEFAULT_ZERO, MAX_PERCENTAGE)}%` }}
 																/>
 															</div>
 															<span className='text-sm font-medium'>{optimizationMetrics.successRate || 'N/A'}%</span>
