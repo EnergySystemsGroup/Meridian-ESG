@@ -240,7 +240,8 @@ export default function RunDetailPageV2() {
 		
 		// For failed runs, we may not have stored anything but still have processed some
 		const totalProcessed = opportunitiesNew + opportunitiesSkipped + opportunitiesUpdated;
-		const successfullyProcessed = opportunitiesStored + opportunitiesSkipped + opportunitiesUpdated;
+		// Successfully processed should be the number of opportunities that were handled (stored includes both new and updated)
+		const successfullyProcessed = opportunitiesStored;
 		
 		return {
 			apiFetchedResults,
@@ -254,9 +255,6 @@ export default function RunDetailPageV2() {
 			successfullyProcessed,
 			successRate: opportunityInput > 0 && !isNaN(successfullyProcessed) && isFinite(successfullyProcessed / opportunityInput) 
 				? Math.round((successfullyProcessed / opportunityInput) * 100) 
-				: 0,
-			extractionRate: apiFetchedResults > 0 && !isNaN(opportunityInput) && isFinite(opportunityInput / apiFetchedResults) 
-				? Math.round((opportunityInput / apiFetchedResults) * 100) 
 				: 0
 		};
 	};
@@ -274,7 +272,6 @@ export default function RunDetailPageV2() {
 		apiFetchedResults: opportunityFlow.apiFetchedResults,
 		totalAvailable: opportunityFlow.totalAvailable,
 		opportunityInput: opportunityFlow.opportunityInput,
-		extractionRate: opportunityFlow.extractionRate,
 		// Processing breakdown
 		opportunitiesSkipped: opportunityFlow.opportunitiesSkipped,
 		opportunitiesUpdated: opportunityFlow.opportunitiesUpdated, 
@@ -334,40 +331,36 @@ export default function RunDetailPageV2() {
 					</CardHeader>
 					<CardContent>
 						{/* First row - Input and Processing */}
-						<div className='grid grid-cols-3 md:grid-cols-6 gap-4'>
-							<div className='text-center'>
-								<p className='text-2xl font-bold text-purple-600'>{optimizationMetrics.apiFetchedResults || 0}</p>
-								<p className='text-sm text-gray-500'>
-									API Results
-									<span className='block text-xs text-gray-400'>
-										({optimizationMetrics.totalAvailable || 0} total available)
-									</span>
-								</p>
-							</div>
-							<div className='text-center'>
-								<p className='text-2xl font-bold text-blue-600'>{optimizationMetrics.opportunityInput}</p>
-								<p className='text-sm text-gray-500'>Extracted</p>
-							</div>
-							<div className='text-center'>
-								<p className='text-2xl font-bold text-gray-600'>{optimizationMetrics.opportunitiesSkipped}</p>
-								<p className='text-sm text-gray-500'>Skipped</p>
-							</div>
-							<div className='text-center'>
-								<p className='text-2xl font-bold text-yellow-600'>{optimizationMetrics.opportunitiesUpdated}</p>
-								<p className='text-sm text-gray-500'>Updated</p>
-							</div>
-							<div className='text-center'>
-								<p className='text-2xl font-bold text-green-600'>{optimizationMetrics.opportunitiesStored}</p>
-								<p className='text-sm text-gray-500'>Stored</p>
-							</div>
-							<div className='text-center'>
-								<p className='text-2xl font-bold text-indigo-600'>{optimizationMetrics.successRate}%</p>
-								<p className='text-sm text-gray-500'>Success Rate</p>
-							</div>
+						<div className='grid grid-cols-5 gap-6 max-w-6xl mx-auto'>
+								<div className='text-center'>
+									<p className='text-2xl font-bold text-purple-600'>{optimizationMetrics.apiFetchedResults || 0}</p>
+									<p className='text-sm text-gray-500'>
+										API Results
+										<span className='block text-xs text-gray-400'>
+											({optimizationMetrics.totalAvailable || 0} total available)
+										</span>
+									</p>
+								</div>
+								<div className='text-center'>
+									<p className='text-2xl font-bold text-blue-600'>{optimizationMetrics.opportunityInput}</p>
+									<p className='text-sm text-gray-500'>Extracted</p>
+								</div>
+								<div className='text-center'>
+									<p className='text-2xl font-bold text-gray-600'>{optimizationMetrics.opportunitiesSkipped}</p>
+									<p className='text-sm text-gray-500'>Skipped</p>
+								</div>
+								<div className='text-center'>
+									<p className='text-2xl font-bold text-yellow-600'>{optimizationMetrics.opportunitiesUpdated}</p>
+									<p className='text-sm text-gray-500'>Updated</p>
+								</div>
+								<div className='text-center'>
+									<p className='text-2xl font-bold text-green-600'>{optimizationMetrics.opportunitiesStored}</p>
+									<p className='text-sm text-gray-500'>Stored</p>
+								</div>
 						</div>
 						
 						{/* Second row - Performance Metrics */}
-						<div className='grid grid-cols-2 md:grid-cols-3 gap-4 mt-4 pt-4 border-t'>
+						<div className='grid grid-cols-3 gap-4 max-w-2xl mx-auto mt-4 pt-4 border-t'>
 							<div className='text-center'>
 								<p className='text-xl font-bold text-orange-600'>{optimizationMetrics.opportunitiesPerMinute}</p>
 								<p className='text-sm text-gray-500'>Opportunities/Min</p>
@@ -377,8 +370,8 @@ export default function RunDetailPageV2() {
 								<p className='text-sm text-gray-500'>Tokens/Opportunity</p>
 							</div>
 							<div className='text-center'>
-								<p className='text-xl font-bold text-teal-600'>{optimizationMetrics.extractionRate}%</p>
-								<p className='text-sm text-gray-500'>Extraction Rate</p>
+								<p className='text-xl font-bold text-indigo-600'>{optimizationMetrics.successRate}%</p>
+								<p className='text-sm text-gray-500'>Success Rate</p>
 							</div>
 						</div>
 					</CardContent>
@@ -856,7 +849,7 @@ export default function RunDetailPageV2() {
 										</CardTitle>
 									</CardHeader>
 									<CardContent>
-										<div className='grid grid-cols-2 md:grid-cols-4 gap-4'>
+										<div className='grid grid-cols-3 gap-4'>
 											<div className='text-center p-3 bg-gray-50 rounded-lg'>
 												<p className='text-sm text-gray-500'>Status</p>
 												<Badge variant={stage.status === 'completed' ? 'default' : 
