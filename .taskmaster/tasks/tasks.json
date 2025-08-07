@@ -2155,7 +2155,7 @@
             "title": "Add upsert capability to storage agent for force full reprocessing",
             "description": "Modify lib/agents-v2/core/storageAgent/index.js to handle overwrites when force full reprocessing is active. Implementation: 1) Add forceFullProcessing parameter to storeOpportunities() function. 2) Pass this flag through to processBatch() and insertOpportunity() functions. 3) In insertOpportunity(), when forceFullProcessing is true, use Supabase upsert() instead of insert() with onConflict set to ['api_opportunity_id', 'api_source_id'] to overwrite existing records. 4) This ensures all fields get updated with newly extracted/analyzed data from the full pipeline while preventing duplicates. 5) Log when upsert mode is active for debugging. Location: lib/agents-v2/core/storageAgent/index.js lines 56, 225, 281-296",
             "details": "",
-            "status": "pending",
+            "status": "done",
             "dependencies": [],
             "parentTaskId": 42
           },
@@ -2164,7 +2164,7 @@
             "title": "Add global force full reprocessing flag to system configuration",
             "description": "Create a global force full reprocessing flag that affects all sources at once. Implementation: 1) Add system_config table if it doesn't exist with global_force_reprocessing boolean column. 2) Create admin UI in app/admin/ to toggle this global flag with a master switch. 3) When global flag is enabled, it overrides individual source flags. 4) Global flag does NOT auto-disable - must be manually turned off by admin. 5) Add clear warning in UI that enabling this will force full reprocessing for ALL sources on their next run. Location: supabase/migrations/, app/admin/settings/",
             "details": "",
-            "status": "pending",
+            "status": "in-progress",
             "dependencies": [],
             "parentTaskId": 42
           }
@@ -2188,7 +2188,7 @@
     ],
     "metadata": {
       "created": "2025-06-17T23:54:58.582Z",
-      "updated": "2025-08-07T02:43:33.031Z",
+      "updated": "2025-08-07T03:57:41.989Z",
       "description": "Tasks for master context"
     }
   },
