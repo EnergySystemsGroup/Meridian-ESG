@@ -111,23 +111,26 @@ export async function PUT(request, { params }) {
 		const { id } = await params;
 		const body = await request.json();
 
+		// Build update object - only include fields that are provided
+		const updateData = {};
+		if (body.name !== undefined) updateData.name = body.name;
+		if (body.organization !== undefined) updateData.organization = body.organization;
+		if (body.type !== undefined) updateData.type = body.type;
+		if (body.url !== undefined) updateData.url = body.url;
+		if (body.api_endpoint !== undefined) updateData.api_endpoint = body.api_endpoint;
+		if (body.api_documentation_url !== undefined) updateData.api_documentation_url = body.api_documentation_url;
+		if (body.auth_type !== undefined) updateData.auth_type = body.auth_type;
+		if (body.auth_details !== undefined) updateData.auth_details = body.auth_details;
+		if (body.update_frequency !== undefined) updateData.update_frequency = body.update_frequency;
+		if (body.handler_type !== undefined) updateData.handler_type = body.handler_type || 'standard';
+		if (body.notes !== undefined) updateData.notes = body.notes;
+		if (body.active !== undefined) updateData.active = body.active;
+		if (body.force_full_reprocessing !== undefined) updateData.force_full_reprocessing = body.force_full_reprocessing;
+
 		// Update the source
 		const { data: source, error: sourceError } = await supabase
 			.from('api_sources')
-			.update({
-				name: body.name,
-				organization: body.organization,
-				type: body.type,
-				url: body.url,
-				api_endpoint: body.api_endpoint,
-				api_documentation_url: body.api_documentation_url,
-				auth_type: body.auth_type,
-				auth_details: body.auth_details,
-				update_frequency: body.update_frequency,
-				handler_type: body.handler_type || 'standard',
-				notes: body.notes,
-				active: body.active,
-			})
+			.update(updateData)
 			.eq('id', id)
 			.select()
 			.single();
@@ -142,27 +145,17 @@ export async function PUT(request, { params }) {
 			throw sourceError;
 		}
 
-		// If configurations are provided, update them
+		// If configurations are provided, update them transactionally
 		if (body.configurations && Object.keys(body.configurations).length > 0) {
-			// Delete existing configurations
-			await supabase
-				.from('api_source_configurations')
-				.delete()
-				.eq('source_id', id);
-
-			// Insert new configurations
-			const configInserts = [];
+			// Prepare configurations object for the stored procedure
+			const configurationsToUpdate = {};
 
 			// Process query_params if provided
 			if (
 				body.configurations.query_params &&
 				Object.keys(body.configurations.query_params).length > 0
 			) {
-				configInserts.push({
-					source_id: id,
-					config_type: 'query_params',
-					configuration: body.configurations.query_params,
-				});
+				configurationsToUpdate.query_params = body.configurations.query_params;
 			}
 
 			// Process request_body if provided
@@ -170,20 +163,12 @@ export async function PUT(request, { params }) {
 				body.configurations.request_body &&
 				Object.keys(body.configurations.request_body).length > 0
 			) {
-				configInserts.push({
-					source_id: id,
-					config_type: 'request_body',
-					configuration: body.configurations.request_body,
-				});
+				configurationsToUpdate.request_body = body.configurations.request_body;
 			}
 
 			// Process request_config if provided
 			if (body.configurations.request_config) {
-				configInserts.push({
-					source_id: id,
-					config_type: 'request_config',
-					configuration: body.configurations.request_config,
-				});
+				configurationsToUpdate.request_config = body.configurations.request_config;
 			}
 
 			// Process pagination_config if provided
@@ -191,11 +176,7 @@ export async function PUT(request, { params }) {
 				body.configurations.pagination_config &&
 				body.configurations.pagination_config.enabled
 			) {
-				configInserts.push({
-					source_id: id,
-					config_type: 'pagination_config',
-					configuration: body.configurations.pagination_config,
-				});
+				configurationsToUpdate.pagination_config = body.configurations.pagination_config;
 			}
 
 			// Process detail_config if provided
@@ -203,20 +184,12 @@ export async function PUT(request, { params }) {
 				body.configurations.detail_config &&
 				body.configurations.detail_config.enabled
 			) {
-				configInserts.push({
-					source_id: id,
-					config_type: 'detail_config',
-					configuration: body.configurations.detail_config,
-				});
+				configurationsToUpdate.detail_config = body.configurations.detail_config;
 			}
 
 			// Process response_config if provided
 			if (body.configurations.response_config) {
-				configInserts.push({
-					source_id: id,
-					config_type: 'response_config',
-					configuration: body.configurations.response_config,
-				});
+				configurationsToUpdate.response_config = body.configurations.response_config;
 			}
 
 			// Process response_mapping if provided
@@ -229,16 +202,21 @@ export async function PUT(request, { params }) {
 				);
 
 				if (Object.keys(filteredMapping).length > 0) {
-					configInserts.push({
-						source_id: id,
-						config_type: 'response_mapping',
-						configuration: filteredMapping,
-					});
+					configurationsToUpdate.response_mapping = filteredMapping;
 				}
 			}
 
-			if (configInserts.length > 0) {
-				await supabase.from('api_source_configurations').insert(configInserts);
+			// Use the transactional stored procedure to update configurations
+			if (Object.keys(configurationsToUpdate).length > 0) {
+				const { error: configError } = await supabase.rpc('update_source_configurations', {
+					p_source_id: id,
+					p_configurations: configurationsToUpdate
+				});
+
+				if (configError) {
+					console.error('Error updating configurations:', configError);
+					throw configError;
+				}
 			}
 		}
 

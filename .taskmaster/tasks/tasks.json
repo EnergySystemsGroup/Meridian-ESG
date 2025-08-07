@@ -1787,7 +1787,7 @@
             "title": "Clarify stage_results vs performance_metrics separation",
             "description": "Priority: LOW\nProblem: Inconsistent data placement between stage_results and performance_metrics\nSolution:\n- Document clear guidelines: stage_results for business outcomes, performance_metrics for resource usage\n- Audit all agents to ensure consistent data placement\n- Move misplaced data to correct JSONB field\n- Update agent templates with correct patterns",
             "details": "",
-            "status": "in-progress",
+            "status": "done",
             "dependencies": [],
             "parentTaskId": 38
           },
@@ -2117,11 +2117,78 @@
             "testStrategy": "1. Measure end-to-end processing time for 100 opportunities with all optimizations applied\n2. Validate target performance of 3.6-4.8 seconds per opportunity (vs current 27 seconds)\n3. Test total processing time achieves 6-8 minute target for 100 opportunities\n4. Monitor token usage efficiency and cost optimization\n5. Validate all performance monitoring metrics are accurately captured and reported\n6. Run regression tests to ensure optimizations don't impact data extraction accuracy"
           }
         ]
+      },
+      {
+        "id": 42,
+        "title": "Implement Force Full Reprocessing System for V2 Pipeline",
+        "description": "Develop a force full reprocessing system that bypasses duplicate detection to ensure all opportunities are processed through the complete V2 pipeline when schema changes occur in the funding_opportunities table.",
+        "details": "1. Create force_reprocess_flags table with columns: id, source_id (nullable), global_flag, enabled, created_at, disabled_at, reason\n2. Add force_reprocess logic to EarlyDuplicateDetector:\n   - Check for active global or source-specific flags before duplicate detection\n   - Skip duplicate detection when flags are active\n   - Log forced reprocessing events for audit trail\n3. Modify Data Extraction Agent to respect force reprocess flags:\n   - Query force_reprocess_flags table at pipeline start\n   - Pass flag status to EarlyDuplicateDetector\n   - Ensure all opportunities proceed to Analysis and Filter stages\n4. Implement flag management API endpoints:\n   - POST /api/admin/force-reprocess/global (enable/disable global flag)\n   - POST /api/admin/force-reprocess/source/:sourceId (per-source control)\n   - GET /api/admin/force-reprocess/status (view active flags)\n5. Add auto-disable functionality:\n   - Monitor run completion events\n   - Auto-disable flags after successful run completion\n   - Send notification to administrators when flags are disabled\n6. Create admin interface components:\n   - Force reprocess toggle switches with confirmation dialogs\n   - Active flag status display with disable timestamps\n   - Audit log view for reprocessing events\n7. Implement safety measures:\n   - Rate limiting to prevent accidental mass reprocessing\n   - Confirmation dialogs for global flag activation\n   - Maximum duration limits for active flags (24-48 hours)\n8. Add monitoring and alerting:\n   - Track token usage increase during forced reprocessing\n   - Alert when flags remain active beyond expected duration\n   - Monitor processing performance impact",
+        "testStrategy": "1. Test flag management functionality:\n   - Verify global and source-specific flag creation/deletion\n   - Test flag status queries and admin interface display\n   - Validate auto-disable functionality after run completion\n2. Test duplicate detection bypass:\n   - Verify EarlyDuplicateDetector skips detection when flags are active\n   - Confirm all opportunities proceed to full pipeline processing\n   - Test with known duplicate opportunities to ensure reprocessing\n3. Test integration with V2 pipeline:\n   - Verify Data Extraction Agent correctly queries and passes flag status\n   - Test end-to-end processing with force flags enabled\n   - Validate new field population in existing opportunities\n4. Test admin interface:\n   - Verify toggle functionality and confirmation dialogs\n   - Test status displays and audit log views\n   - Validate rate limiting and safety measures\n5. Test performance and monitoring:\n   - Measure token usage increase during forced reprocessing\n   - Verify alerting functionality for long-running flags\n   - Test system stability under increased processing load\n6. Test edge cases:\n   - Flag activation during active runs\n   - Multiple source flags with global flag interactions\n   - System recovery after unexpected flag state corruption",
+        "status": "pending",
+        "dependencies": [
+          1,
+          6,
+          36
+        ],
+        "priority": "high",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Add force_full_reprocessing flags to api_sources table",
+            "description": "Add two new boolean columns to the api_sources table: 1) force_full_reprocessing - per-source flag that can be set via UI to force full pipeline processing for that specific source. 2) Ensure this flag is exposed in the admin UI with a checkbox for each source. When enabled, the source will bypass duplicate detection on its next run and process all opportunities through the full pipeline (including AI extraction/analysis). The flag must auto-disable after the processing run completes. Location: supabase/migrations/, app/admin/funding-sources/",
+            "details": "",
+            "status": "done",
+            "dependencies": [],
+            "parentTaskId": 42
+          },
+          {
+            "id": 2,
+            "title": "Implement force full reprocessing check in processCoordinatorV2",
+            "description": "Modify lib/services/processCoordinatorV2.js to check for force full reprocessing flags before duplicate detection. Implementation: 1) Create shouldForceFullProcessing() function that checks both global config (system_config table) and source-specific flag (api_sources.force_full_reprocessing). 2) If either flag is true, skip the detectDuplicates() call entirely and treat all opportunities as new by creating a mock duplicateDetection result with all opportunities in newOpportunities array. 3) After successful processing, auto-disable the source-specific flag by updating api_sources.force_full_reprocessing = false. 4) Pass a forceFullProcessing flag through the pipeline to the storage agent. Location: lib/services/processCoordinatorV2.js lines 320-340",
+            "details": "",
+            "status": "done",
+            "dependencies": [],
+            "parentTaskId": 42
+          },
+          {
+            "id": 3,
+            "title": "Add upsert capability to storage agent for force full reprocessing",
+            "description": "Modify lib/agents-v2/core/storageAgent/index.js to handle overwrites when force full reprocessing is active. Implementation: 1) Add forceFullProcessing parameter to storeOpportunities() function. 2) Pass this flag through to processBatch() and insertOpportunity() functions. 3) In insertOpportunity(), when forceFullProcessing is true, use Supabase upsert() instead of insert() with onConflict set to ['api_opportunity_id', 'api_source_id'] to overwrite existing records. 4) This ensures all fields get updated with newly extracted/analyzed data from the full pipeline while preventing duplicates. 5) Log when upsert mode is active for debugging. Location: lib/agents-v2/core/storageAgent/index.js lines 56, 225, 281-296",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 42
+          },
+          {
+            "id": 4,
+            "title": "Add global force full reprocessing flag to system configuration",
+            "description": "Create a global force full reprocessing flag that affects all sources at once. Implementation: 1) Add system_config table if it doesn't exist with global_force_reprocessing boolean column. 2) Create admin UI in app/admin/ to toggle this global flag with a master switch. 3) When global flag is enabled, it overrides individual source flags. 4) Global flag does NOT auto-disable - must be manually turned off by admin. 5) Add clear warning in UI that enabling this will force full reprocessing for ALL sources on their next run. Location: supabase/migrations/, app/admin/settings/",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 42
+          }
+        ]
+      },
+      {
+        "id": 43,
+        "title": "Remove Freshness Check from Early Duplicate Detector and Simplify Critical Field Logic",
+        "description": "Eliminate freshness check logic from duplicate detection system and simplify to only check critical field changes, ensuring valid updates are never blocked.",
+        "details": "1. **Remove Freshness Check Components:**\n   - Delete performFreshnessCheck function from EarlyDuplicateDetector\n   - Remove 90-day stale review logic and all associated constants\n   - Eliminate api_updated_at comparison logic throughout duplicate detection\n   - Remove freshness-related configuration flags and parameters\n   - Clean up any freshness-related imports and dependencies\n\n2. **Implement Simplified Critical Field Change Detection:**\n   - Define the 6 critical fields: title, minimum_award, maximum_award, total_funding_available, close_date, open_date\n   - Create comparison function that checks only these fields for changes\n   - Implement field-by-field comparison logic with proper null/undefined handling\n   - Add date comparison logic for close_date and open_date fields\n   - Implement numeric comparison for award and funding amount fields\n   - Add string comparison for title field with trimming and normalization\n\n3. **Update Duplicate Detection Logic:**\n   - Modify main duplicate detection flow to: find duplicate → check critical fields → update if changed, skip if unchanged\n   - Remove all freshness-related conditional branches\n   - Simplify decision tree to binary logic: update or skip based only on critical field changes\n   - Update logging to reflect simplified logic (remove freshness-related log messages)\n   - Ensure error handling covers field comparison edge cases\n\n4. **Code Cleanup and Optimization:**\n   - Remove unused variables, imports, and helper functions related to freshness\n   - Update function signatures to remove freshness parameters\n   - Simplify unit tests to remove freshness test cases\n   - Update documentation and comments to reflect simplified logic\n   - Optimize performance by removing unnecessary date calculations and API timestamp queries",
+        "testStrategy": "1. **Verify Freshness Logic Removal:**\n   - Confirm performFreshnessCheck function is completely removed\n   - Test that 90-day stale review logic no longer executes\n   - Validate api_updated_at comparisons are eliminated from all code paths\n   - Verify no freshness-related errors or warnings appear in logs\n\n2. **Test Critical Field Change Detection:**\n   - Test each of the 6 critical fields individually for change detection accuracy\n   - Verify proper handling of null/undefined values in field comparisons\n   - Test date comparison logic with various date formats and edge cases\n   - Validate numeric comparison handles decimal places and currency formatting correctly\n   - Test string comparison with whitespace, case sensitivity, and special characters\n\n3. **Integration Testing:**\n   - Run duplicate detection with known duplicates that have critical field changes\n   - Test with duplicates that have no critical field changes (should skip)\n   - Verify opportunities with only non-critical field changes are properly skipped\n   - Test mixed scenarios with some critical and some non-critical changes\n   - Validate performance improvement from removing freshness calculations\n\n4. **Regression Testing:**\n   - Ensure existing duplicate detection accuracy is maintained\n   - Verify no valid updates are blocked by the simplified logic\n   - Test that the system still prevents true duplicate creation\n   - Validate all existing unit tests pass with updated logic\n   - Confirm integration with Storage Agent continues to work correctly",
+        "status": "pending",
+        "dependencies": [
+          42,
+          39,
+          38
+        ],
+        "priority": "high",
+        "subtasks": []
       }
     ],
     "metadata": {
       "created": "2025-06-17T23:54:58.582Z",
-      "updated": "2025-08-05T07:45:35.923Z",
+      "updated": "2025-08-07T02:43:33.031Z",
       "description": "Tasks for master context"
     }
   },
