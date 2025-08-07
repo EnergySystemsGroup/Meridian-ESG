@@ -172,6 +172,7 @@ export default function RunDetailPageV2() {
 		const dataExtractionStage = stages.find(stage => stage.stage_name === 'data_extraction');
 		const duplicateDetectorStage = stages.find(stage => stage.stage_name === 'early_duplicate_detector');
 		const analysisStage = stages.find(stage => stage.stage_name === 'analysis');
+		const storageStage = stages.find(stage => stage.stage_name === 'storage');
 		const directUpdateStage = stages.find(stage => stage.stage_name === 'direct_update');
 		
 		// Get API fetched results, total available, and extracted opportunities from Data Extraction stage
@@ -233,15 +234,31 @@ export default function RunDetailPageV2() {
 			}
 		}
 		
-		// Get stored count from final storage stages
-		if (directUpdateStage?.output_count) {
-			opportunitiesStored += directUpdateStage.output_count;
+		// Get newly stored count from storage agent stage (not updates)
+		if (storageStage?.stage_results) {
+			try {
+				const results = typeof storageStage.stage_results === 'string' 
+					? JSON.parse(storageStage.stage_results)
+					: storageStage.stage_results;
+				
+				// Get the count of newly stored opportunities
+				if (results.metrics) {
+					opportunitiesStored = results.metrics.newOpportunities || 0;
+				} else if (results.newOpportunities !== undefined) {
+					opportunitiesStored = results.newOpportunities || 0;
+				}
+			} catch (error) {
+				console.warn('Failed to parse storage stage results:', error);
+			}
+		} else if (storageStage?.output_count) {
+			// Fallback to output_count if stage_results not available
+			opportunitiesStored = storageStage.output_count || 0;
 		}
 		
 		// For failed runs, we may not have stored anything but still have processed some
 		const totalProcessed = opportunitiesNew + opportunitiesSkipped + opportunitiesUpdated;
-		// Successfully processed should be the number of opportunities that were handled (stored includes both new and updated)
-		const successfullyProcessed = opportunitiesStored;
+		// Successfully processed includes all opportunities that were handled (new stored + updates + skipped)
+		const successfullyProcessed = opportunitiesStored + opportunitiesUpdated + opportunitiesSkipped;
 		
 		return {
 			apiFetchedResults,
@@ -253,8 +270,9 @@ export default function RunDetailPageV2() {
 			opportunitiesStored,
 			totalProcessed,
 			successfullyProcessed,
-			successRate: opportunityInput > 0 && !isNaN(successfullyProcessed) && isFinite(successfullyProcessed / opportunityInput) 
-				? Math.round((successfullyProcessed / opportunityInput) * 100) 
+			// Success rate: (successfullyProcessed / API results) * 100
+			successRate: apiFetchedResults > 0 && !isNaN(successfullyProcessed) && isFinite(successfullyProcessed / apiFetchedResults) 
+				? Math.round((successfullyProcessed / apiFetchedResults) * 100) 
 				: 0
 		};
 	};
@@ -355,7 +373,7 @@ export default function RunDetailPageV2() {
 								</div>
 								<div className='text-center'>
 									<p className='text-2xl font-bold text-green-600'>{optimizationMetrics.opportunitiesStored}</p>
-									<p className='text-sm text-gray-500'>Stored</p>
+									<p className='text-sm text-gray-500'>New Stored</p>
 								</div>
 						</div>
 						
