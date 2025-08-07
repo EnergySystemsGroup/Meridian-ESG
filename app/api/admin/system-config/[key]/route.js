@@ -10,7 +10,7 @@ const supabase = createClient(
 // GET /api/admin/system-config/[key] - Get a system config value
 export async function GET(request, { params }) {
 	try {
-		const { key } = params;
+		const { key } = await params;
 
 		// Fetch the config value
 		const { data, error } = await supabase
@@ -43,7 +43,7 @@ export async function GET(request, { params }) {
 // PUT /api/admin/system-config/[key] - Update a system config value
 export async function PUT(request, { params }) {
 	try {
-		const { key } = params;
+		const { key } = await params;
 		const body = await request.json();
 		const { value } = body;
 
