@@ -21,10 +21,7 @@ export async function GET(request, { params }) {
 
 		if (error) {
 			if (error.code === 'PGRST116') {
-				// Not found - return default value for known keys
-				if (key === 'global_force_full_reprocessing') {
-					return NextResponse.json({ value: false, description: 'Global force full reprocessing flag' });
-				}
+				// Not found
 				return NextResponse.json({ error: 'Configuration key not found' }, { status: 404 });
 			}
 			throw error;
@@ -45,16 +42,7 @@ export async function PUT(request, { params }) {
 	try {
 		const { key } = await params;
 		const body = await request.json();
-		const { value } = body;
-
-		// Validate the key
-		const allowedKeys = ['global_force_full_reprocessing'];
-		if (!allowedKeys.includes(key)) {
-			return NextResponse.json(
-				{ error: 'Invalid configuration key' },
-				{ status: 400 }
-			);
-		}
+		const { value, description } = body;
 
 		// Check if the config exists
 		const { data: existing } = await supabase
@@ -66,12 +54,19 @@ export async function PUT(request, { params }) {
 		let result;
 		if (existing) {
 			// Update existing config
+			const updateData = { 
+				value: JSON.stringify(value),
+				updated_at: new Date().toISOString()
+			};
+			
+			// Only update description if provided
+			if (description !== undefined) {
+				updateData.description = description;
+			}
+			
 			result = await supabase
 				.from('system_config')
-				.update({ 
-					value: JSON.stringify(value),
-					updated_at: new Date().toISOString()
-				})
+				.update(updateData)
 				.eq('key', key)
 				.select()
 				.single();
@@ -82,9 +77,7 @@ export async function PUT(request, { params }) {
 				.insert({
 					key,
 					value: JSON.stringify(value),
-					description: key === 'global_force_full_reprocessing' 
-						? 'When true, forces all sources to do full reprocessing on next run'
-						: `Configuration for ${key}`
+					description: description || `Configuration for ${key}`
 				})
 				.select()
 				.single();
@@ -97,16 +90,44 @@ export async function PUT(request, { params }) {
 		// Log the change for audit purposes
 		console.log(`[SystemConfig] Updated ${key} to ${JSON.stringify(value)}`);
 
-		return NextResponse.json({ 
-			success: true, 
-			key, 
-			value,
-			message: `Configuration ${key} updated successfully`
+		return NextResponse.json({
+			success: true,
+			data: result.data
 		});
 	} catch (error) {
 		console.error('Error updating system config:', error);
 		return NextResponse.json(
 			{ error: 'Failed to update system configuration' },
+			{ status: 500 }
+		);
+	}
+}
+
+// DELETE /api/admin/system-config/[key] - Delete a system config value
+export async function DELETE(request, { params }) {
+	try {
+		const { key } = await params;
+
+		const { error } = await supabase
+			.from('system_config')
+			.delete()
+			.eq('key', key);
+
+		if (error) {
+			throw error;
+		}
+
+		// Log the deletion for audit purposes
+		console.log(`[SystemConfig] Deleted config key: ${key}`);
+
+		return NextResponse.json({
+			success: true,
+			message: `Configuration key '${key}' deleted successfully`
+		});
+	} catch (error) {
+		console.error('Error deleting system config:', error);
+		return NextResponse.json(
+			{ error: 'Failed to delete system configuration' },
 			{ status: 500 }
 		);
 	}

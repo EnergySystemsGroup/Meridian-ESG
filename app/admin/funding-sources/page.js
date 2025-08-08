@@ -3,13 +3,18 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 
+// Constants
+const REFRESH_INTERVAL = 30000; // 30 seconds
+
 export default function FundingSourcesPage() {
 	const [sources, setSources] = useState([]);
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState(null);
-	const [globalForceReprocessing, setGlobalForceReprocessing] = useState(false);
 	const [notifications, setNotifications] = useState([]);
 	const [processingStates, setProcessingStates] = useState({});
+	
+	// Global FFR is now computed from sources, not stored
+	const globalForceReprocessing = sources.length > 0 && sources.every(s => s.force_full_reprocessing === true);
 
 	// Add notification helper
 	const addNotification = (message, type = 'info') => {
@@ -21,35 +26,59 @@ export default function FundingSourcesPage() {
 		}, 5000);
 	};
 
-	// Fetch sources and global config on component mount
-	useEffect(() => {
-		async function fetchData() {
-			try {
+	// Fetch sources and global config
+	const fetchData = async (showLoading = true) => {
+		try {
+			if (showLoading) {
 				setLoading(true);
-				
-				// Fetch sources
-				const sourcesResponse = await fetch('/api/funding/sources');
-				if (!sourcesResponse.ok) {
-					throw new Error('Failed to fetch sources');
-				}
-				const sourcesData = await sourcesResponse.json();
-				setSources(sourcesData.sources || []);
-
-				// Fetch global force reprocessing flag
-				const configResponse = await fetch('/api/admin/system-config/global_force_full_reprocessing');
-				if (configResponse.ok) {
-					const configData = await configResponse.json();
-					setGlobalForceReprocessing(configData.value === true);
-				}
-			} catch (err) {
-				console.error('Error fetching data:', err);
-				setError(err.message);
-			} finally {
+			}
+			
+			// Fetch sources
+			const sourcesResponse = await fetch('/api/funding/sources');
+			if (!sourcesResponse.ok) {
+				throw new Error('Failed to fetch sources');
+			}
+			const sourcesData = await sourcesResponse.json();
+			setSources(sourcesData.sources || []);
+			
+			// Global state is now derived from sources, no need to fetch separately
+		} catch (err) {
+			console.error('Error fetching data:', err);
+			setError(err.message);
+		} finally {
+			if (showLoading) {
 				setLoading(false);
 			}
 		}
+	};
 
+	// Fetch on mount
+	useEffect(() => {
 		fetchData();
+	}, []);
+
+	// Refresh when page becomes visible (in case processing happened elsewhere)
+	useEffect(() => {
+		const handleVisibilityChange = () => {
+			if (document.visibilityState === 'visible') {
+				// Refresh data when tab becomes visible (no loading spinner)
+				fetchData(false);
+			}
+		};
+		
+		document.addEventListener('visibilitychange', handleVisibilityChange);
+		
+		// Also refresh periodically if page is visible
+		const interval = setInterval(() => {
+			if (document.visibilityState === 'visible') {
+				fetchData(false);
+			}
+		}, REFRESH_INTERVAL);
+		
+		return () => {
+			document.removeEventListener('visibilitychange', handleVisibilityChange);
+			clearInterval(interval);
+		};
 	}, []);
 
 	// Process a source
@@ -126,19 +155,18 @@ export default function FundingSourcesPage() {
 			}
 
 			// Update the sources list
-			setSources(
-				sources.map((source) =>
-					source.id === id ? { ...source, force_full_reprocessing: !currentValue } : source
-				)
+			const updatedSources = sources.map((source) =>
+				source.id === id ? { ...source, force_full_reprocessing: !currentValue } : source
 			);
+			setSources(updatedSources);
+			
+			// Global state automatically updates since it's derived from sources
 
+			// Clear notifications - the UI already shows the state
 			if (!currentValue) {
-				addNotification(
-					'Force full reprocessing enabled. This source will bypass duplicate detection on its next run.',
-					'warning'
-				);
+				addNotification('Force Full Reprocessing enabled', 'warning');
 			} else {
-				addNotification('Force full reprocessing disabled.', 'success');
+				addNotification('Force Full Reprocessing disabled', 'success');
 			}
 		} catch (err) {
 			console.error('Error updating force reprocessing flag:', err);
@@ -146,40 +174,58 @@ export default function FundingSourcesPage() {
 		}
 	}
 
-	// Toggle global force full reprocessing flag
+	// Toggle global force full reprocessing flag - now a batch operation with proper error handling
 	async function toggleGlobalForceReprocessing() {
+		// Determine the new value based on current state
+		// If any source is OFF, turn all ON. If all are ON, turn all OFF.
 		const newValue = !globalForceReprocessing;
-		
-		if (newValue && !confirm('Are you sure you want to enable force full reprocessing for ALL sources? This will bypass duplicate detection for all sources on their next run.')) {
-			return;
-		}
+		const originalSources = [...sources]; // Backup for rollback
 
 		try {
-			const response = await fetch('/api/admin/system-config/global_force_full_reprocessing', {
-				method: 'PUT',
-				headers: {
-					'Content-Type': 'application/json',
-				},
-				body: JSON.stringify({ value: newValue }),
-			});
+			// Update all sources in parallel
+			const updatePromises = sources.map(source => 
+				fetch(`/api/funding/sources/${source.id}`, {
+					method: 'PUT',
+					headers: {
+						'Content-Type': 'application/json',
+					},
+					body: JSON.stringify({ force_full_reprocessing: newValue }),
+				})
+			);
 
-			if (!response.ok) {
-				throw new Error('Failed to update global force reprocessing flag');
+			// Use allSettled to handle partial failures
+			const results = await Promise.allSettled(updatePromises);
+			
+			// Check for failures
+			const failures = results.filter(r => 
+				r.status === 'rejected' || (r.status === 'fulfilled' && !r.value?.ok)
+			);
+			
+			if (failures.length > 0) {
+				// Partial failure - rollback UI state
+				setSources(originalSources);
+				const successCount = sources.length - failures.length;
+				throw new Error(`Updated ${successCount} of ${sources.length} sources. Some failed to update.`);
 			}
 
-			setGlobalForceReprocessing(newValue);
+			// All succeeded - update local state for all sources
+			const updatedSources = sources.map(source => ({
+				...source,
+				force_full_reprocessing: newValue
+			}));
+			setSources(updatedSources);
 			
+			// User-friendly notifications
 			if (newValue) {
-				addNotification(
-					'Global force full reprocessing enabled. ALL sources will bypass duplicate detection on their next run.',
-					'warning'
-				);
+				addNotification('Force Full Reprocessing enabled for all sources', 'warning');
 			} else {
-				addNotification('Global force full reprocessing disabled.', 'success');
+				addNotification('Force Full Reprocessing disabled for all sources', 'success');
 			}
 		} catch (err) {
 			console.error('Error updating global force reprocessing flag:', err);
-			addNotification(`Error updating global force reprocessing flag: ${err.message}`, 'error');
+			addNotification(`Error: ${err.message}`, 'error');
+			// Refresh data from server to ensure consistency
+			fetchData(false);
 		}
 	}
 
