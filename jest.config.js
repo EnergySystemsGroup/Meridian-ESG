@@ -10,6 +10,11 @@ const customJestConfig = {
   // Add more setup options before each test is run
   setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
   testEnvironment: 'jest-environment-jsdom',
+  // Handle ESM packages like MSW v2
+  extensionsToTreatAsEsm: ['.ts', '.tsx'],
+  testEnvironmentOptions: {
+    customExportConditions: ['node', 'node-addons'],
+  },
   testPathIgnorePatterns: [
     '<rootDir>/.next/',
     '<rootDir>/node_modules/',
@@ -43,7 +48,7 @@ const customJestConfig = {
     '^.+\\.(js|jsx|ts|tsx)$': ['babel-jest', { presets: ['next/babel'] }],
   },
   transformIgnorePatterns: [
-    '/node_modules/(?!(msw|@mswjs)/)',
+    '/node_modules/(?!(msw|@mswjs|@bundled-es-modules)/)',
     '^.+\\.module\\.(css|sass|scss)$',
   ],
   moduleNameMapper: {
@@ -52,8 +57,6 @@ const customJestConfig = {
     '^@/components/(.*)$': '<rootDir>/components/$1',
     '^@/lib/(.*)$': '<rootDir>/lib/$1',
     '^@/hooks/(.*)$': '<rootDir>/hooks/$1',
-    // Add MSW module mapping
-    '^msw/node$': '<rootDir>/node_modules/msw/lib/node/index.js',
   },
   // Speed up tests by using workers
   maxWorkers: '50%',
