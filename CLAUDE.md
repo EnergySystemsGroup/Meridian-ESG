@@ -162,3 +162,7 @@ When working with agents:
 - Use `/api/debug/funding-values` for data validation
 - Check Supabase logs for query performance
 - Verify RLS policies for data access issues
+
+## Task Master AI Instructions
+**Import Task Master's development workflow commands and guidelines, treat as if import is in the main CLAUDE.md file.**
+@./.taskmaster/CLAUDE.md

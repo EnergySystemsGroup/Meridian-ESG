@@ -2184,11 +2184,322 @@
         ],
         "priority": "high",
         "subtasks": []
+      },
+      {
+        "id": 44,
+        "title": "Setup Jest testing framework for Next.js application",
+        "description": "Remove Vitest, install Jest with React Testing Library, configure for Next.js, and create comprehensive test directory structure following the established testing strategy document.",
+        "details": "1. **Remove Vitest Configuration:**\n   - Uninstall vitest and @vitest/ui packages\n   - Remove vite.config.js test configuration\n   - Delete vitest-related scripts from package.json\n   - Clean up any vitest imports in existing test files\n\n2. **Install Jest and React Testing Library:**\n   - Install jest, @testing-library/react, @testing-library/jest-dom\n   - Install jest-environment-jsdom for DOM testing\n   - Install @next/jest for Next.js integration\n   - Add babel-jest for TypeScript/JSX transformation\n\n3. **Configure Jest for Next.js:**\n   - Create jest.config.js with Next.js preset\n   - Set up setupTests.js for global test configuration\n   - Configure module path mapping for Next.js aliases\n   - Add test environment setup for jsdom\n   - Configure coverage collection from relevant directories\n\n4. **Create Test Directory Structure:**\n   - Establish __tests__ directories following Next.js conventions\n   - Create tests for components, pages, API routes, and utilities\n   - Set up integration test structure for agent testing\n   - Create mock directories for external dependencies\n   - Establish test data fixtures and helpers\n\n5. **Update Package.json Scripts:**\n   - Replace vitest scripts with jest equivalents\n   - Add test:watch, test:coverage, and test:ci scripts\n   - Configure test environment variables\n\n6. **Migrate Existing Tests:**\n   - Convert existing vitest test files to Jest format\n   - Update import statements and test syntax\n   - Ensure all agent tests work with new framework\n   - Verify performance benchmarking tests function correctly",
+        "testStrategy": "1. **Verify Jest Installation and Configuration:**\n   - Run npm test to ensure Jest executes successfully\n   - Validate jest.config.js loads Next.js configuration correctly\n   - Test module resolution for Next.js aliases and imports\n   - Confirm test environment setup works with jsdom\n\n2. **Test Framework Functionality:**\n   - Run existing migrated tests to ensure they pass\n   - Verify React component testing works with @testing-library/react\n   - Test API route testing capabilities\n   - Validate coverage reporting generates correctly\n\n3. **Integration with Development Workflow:**\n   - Test watch mode functionality during development\n   - Verify CI/CD pipeline integration with new test scripts\n   - Ensure test performance meets or exceeds Vitest benchmarks\n   - Validate that all existing agent tests continue to function\n\n4. **Directory Structure Validation:**\n   - Confirm test discovery works across all directories\n   - Verify mock files and fixtures load correctly\n   - Test that test helpers and utilities are accessible\n   - Ensure coverage collection includes all intended files",
+        "status": "pending",
+        "dependencies": [
+          4
+        ],
+        "priority": "medium",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Remove Vitest configuration and dependencies",
+            "description": "Uninstall Vitest packages, remove vitest.config.js, and clean up vitest-related scripts from package.json",
+            "dependencies": [],
+            "details": "Run 'npm uninstall vitest @vitest/coverage-v8' to remove Vitest packages. Delete the vitest.config.js file completely. Remove all vitest-related scripts from package.json (test, test:run, test:coverage, test:watch). Clean up any vitest imports from existing test files.",
+            "status": "pending",
+            "testStrategy": "Verify that 'npm test' no longer runs vitest and that vitest.config.js file is deleted. Ensure no vitest-related imports remain in the codebase."
+          },
+          {
+            "id": 2,
+            "title": "Install Jest and React Testing Library dependencies",
+            "description": "Install Jest, React Testing Library, and Next.js integration packages",
+            "dependencies": [
+              "44.1"
+            ],
+            "details": "Install core Jest packages: 'npm install --save-dev jest @testing-library/react @testing-library/jest-dom jest-environment-jsdom @next/jest babel-jest'. These packages provide the full testing framework for unit tests, React component testing, DOM testing environment, Next.js integration, and TypeScript/JSX transformation.",
+            "status": "pending",
+            "testStrategy": "Verify all packages are installed correctly by checking package.json dependencies and ensuring no installation errors occurred."
+          },
+          {
+            "id": 3,
+            "title": "Create Jest configuration for Next.js",
+            "description": "Set up jest.config.js with Next.js preset and proper configuration",
+            "dependencies": [
+              "44.2"
+            ],
+            "details": "Create jest.config.js with Next.js preset from @next/jest. Configure test environment as jsdom for React components. Set up module path mapping to handle Next.js aliases (@/ for app directory). Configure coverage collection from lib/, app/components/, and app/api/ directories. Set coverage thresholds similar to current vitest config (70% global, 80% for agents, 75% for services).",
+            "status": "pending",
+            "testStrategy": "Run 'npm test' to ensure Jest loads the configuration correctly. Verify module resolution works with Next.js aliases and that coverage collection targets the correct directories."
+          },
+          {
+            "id": 4,
+            "title": "Create global test setup and configuration files",
+            "description": "Set up setupTests.js and test environment configuration",
+            "dependencies": [
+              "44.3"
+            ],
+            "details": "Create setupTests.js file to configure @testing-library/jest-dom globally. Set up test environment variables and global mocks. Configure Jest to use this setup file. Create test-specific environment variable handling for database connections and API keys.",
+            "status": "pending",
+            "testStrategy": "Verify that Jest DOM matchers are available globally in tests and that test environment variables are properly loaded."
+          },
+          {
+            "id": 5,
+            "title": "Create comprehensive __tests__ directory structure",
+            "description": "Establish the complete directory structure following the testing strategy document",
+            "dependencies": [
+              "44.4"
+            ],
+            "details": "Create the full __tests__ directory structure as outlined in the testing strategy: __tests__/unit/ (with components/, api/, agents/, services/ subdirectories), __tests__/integration/ (with pipeline/, database/, metrics/ subdirectories), __tests__/fixtures/, __tests__/mocks/, and __tests__/setup/. This mirrors the structure defined in the testing strategy document.",
+            "status": "pending",
+            "testStrategy": "Verify all directories are created with proper structure by listing the __tests__ directory tree and ensuring it matches the testing strategy document exactly."
+          },
+          {
+            "id": 6,
+            "title": "Set up test fixtures and mock data",
+            "description": "Create shared test data fixtures and service mocks in the fixtures and mocks directories",
+            "dependencies": [
+              "44.5"
+            ],
+            "details": "Create fixture files in __tests__/fixtures/: opportunities.js (opportunity data generators), sources.js (source configurations), runs.js (run data fixtures), and metrics.js (metric fixtures). Create mock files in __tests__/mocks/: anthropic.js (LLM service mock), grantsGov.js (API service mock), supabase.js (database mock), and handlers.js (MSW request handlers). Use realistic data patterns that match production structures.",
+            "status": "pending",
+            "testStrategy": "Verify fixtures generate valid data structures and mocks provide consistent responses. Test that mocks can be imported and used in test files."
+          },
+          {
+            "id": 7,
+            "title": "Migrate existing agent tests to Jest format",
+            "description": "Convert all existing Vitest test files in lib/agents-v2/tests/ to Jest format",
+            "dependencies": [
+              "44.6"
+            ],
+            "details": "Update all 14 existing test files: change 'import { describe, test, expect, beforeEach, vi } from vitest' to 'import { describe, test, expect, beforeEach, jest } from '@jest/globals'. Replace 'vi.fn()' with 'jest.fn()' and 'vi.mock()' with 'jest.mock()'. Update any Vitest-specific syntax to Jest equivalents. Ensure all agent performance tests and benchmarking tests work correctly.",
+            "status": "pending",
+            "testStrategy": "Run each migrated test file individually to ensure they pass with Jest. Verify that all mocking functionality works correctly and performance benchmarking tests still execute."
+          },
+          {
+            "id": 8,
+            "title": "Update package.json with Jest scripts",
+            "description": "Replace Vitest scripts with Jest equivalents and add new test commands",
+            "dependencies": [
+              "44.7"
+            ],
+            "details": "Update package.json scripts section: change 'test': 'vitest' to 'test': 'jest', 'test:run': 'vitest run' to 'test:run': 'jest --passWithNoTests', 'test:coverage': 'vitest run --coverage' to 'test:coverage': 'jest --coverage', and 'test:watch': 'vitest --coverage' to 'test:watch': 'jest --watch'. Add 'test:ci': 'jest --ci --coverage --watchAll=false' for CI environments.",
+            "status": "pending",
+            "testStrategy": "Run each new script to verify they execute correctly: npm run test, npm run test:run, npm run test:coverage, npm run test:watch, and npm run test:ci."
+          },
+          {
+            "id": 9,
+            "title": "Configure test database integration strategy",
+            "description": "Set up test database configuration and isolation strategy for integration tests",
+            "dependencies": [
+              "44.5"
+            ],
+            "details": "Create __tests__/setup/testDatabase.js to handle Supabase local development environment for testing. Configure database transaction isolation for test independence. Set up automated cleanup procedures and consistent seed data. Configure Jest to use this setup for integration tests that require database access.",
+            "status": "pending",
+            "testStrategy": "Verify test database connects successfully and that transactions properly isolate test data. Run integration tests to ensure database state is clean between tests."
+          },
+          {
+            "id": 10,
+            "title": "Verify complete Jest setup and run full test suite",
+            "description": "Validate the entire Jest configuration by running all tests and ensuring coverage reports work correctly",
+            "dependencies": [
+              "44.8",
+              "44.9"
+            ],
+            "details": "Run the complete test suite with 'npm run test:coverage' to verify all migrated tests pass and coverage collection works correctly. Verify that Jest integrates properly with Next.js by testing module resolution and import paths. Check that all mocks, fixtures, and setup files function correctly together. Ensure coverage thresholds match the previous Vitest configuration.",
+            "status": "pending",
+            "testStrategy": "Execute full test suite and verify: all tests pass, coverage report generates successfully, coverage meets established thresholds (70% global, 80% for agents, 75% for services), and no configuration errors occur."
+          }
+        ]
+      },
+      {
+        "id": 45,
+        "title": "Implement V2 Pipeline Comprehensive Test Suite",
+        "description": "Create complete unit and integration tests for all V2 pipeline stages including Source Orchestrator, Data Extraction, Early Duplicate Detector, Analysis Agent, Filter Function, Storage Agent, and Direct Update Handler following established test scenarios.",
+        "details": "1. **Create Unit Test Structure:**\n   - Individual test files for each pipeline stage in app/lib/agents-v2/tests/\n   - Mock API responses and database interactions using Jest mocks\n   - Test isolation for each agent's core functionality\n   - Validate input/output schemas and error handling\n\n2. **Implement Integration Tests:**\n   - End-to-end pipeline flow testing with real data scenarios\n   - Test optimized flow: DataExtraction → EarlyDuplicateDetector → [New opportunities only] → Analysis → Filter → Storage\n   - Validate duplicate detection accuracy and bypass logic\n   - Test direct database update handling for duplicates\n\n3. **Performance Testing Suite:**\n   - Token usage measurement and validation of 60-80% reduction\n   - Memory usage profiling for each pipeline stage\n   - Processing time benchmarks compared to V1 baseline\n   - Load testing with varying opportunity volumes\n\n4. **Test Scenario Implementation:**\n   - Follow test scenarios from v2-pipeline-test-plan.md document\n   - Edge case handling (malformed data, API failures, timeout scenarios)\n   - Duplicate detection accuracy with various ID/Title combinations\n   - Critical field update validation with null protection\n\n5. **Automated Test Execution:**\n   - CI/CD integration for automated test runs\n   - Test coverage reporting and thresholds\n   - Regression testing against V1 functionality\n   - Mock data generation for consistent test environments\n\n6. **Agent-Specific Test Coverage:**\n   - Source Orchestrator: Test source configuration and scheduling\n   - Data Extraction Agent: API handling, pagination, field mapping\n   - Early Duplicate Detector: ID+Title validation, critical field comparison\n   - Analysis Agent: Content enhancement, scoring algorithms\n   - Filter Function: Opportunity filtering and classification\n   - Storage Agent: Database operations, conflict resolution\n   - Direct Update Handler: Selective field updates, admin edit preservation",
+        "testStrategy": "1. **Unit Test Validation:**\n   - Achieve 90%+ code coverage for all V2 pipeline agents\n   - Validate each agent's input/output contracts\n   - Test error handling and graceful degradation\n   - Verify mock isolation prevents external dependencies\n\n2. **Integration Test Execution:**\n   - Run full pipeline tests with synthetic opportunity data\n   - Validate optimized flow reduces token usage by 60-80%\n   - Test duplicate detection prevents unnecessary LLM processing\n   - Verify direct update handling preserves data integrity\n\n3. **Performance Benchmarking:**\n   - Compare V2 metrics against V1 baseline performance\n   - Validate token usage reduction through multiple test runs\n   - Measure processing time improvements across pipeline stages\n   - Test memory efficiency under various load conditions\n\n4. **Regression Testing:**\n   - Ensure V2 pipeline maintains functional parity with V1\n   - Validate no data loss or corruption during processing\n   - Test backward compatibility with existing database schema\n   - Verify admin interface integration remains functional\n\n5. **Continuous Integration:**\n   - Set up automated test execution on code changes\n   - Implement test failure notifications and reporting\n   - Create test result dashboards for monitoring\n   - Establish performance regression detection thresholds",
+        "status": "pending",
+        "dependencies": [
+          1,
+          2,
+          3,
+          4,
+          6,
+          36,
+          "44"
+        ],
+        "priority": "high",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Create Test Infrastructure and Mock Setup",
+            "description": "Set up the foundational testing infrastructure including test directories, mock configurations, and test utilities for the V2 pipeline.",
+            "dependencies": [],
+            "details": "Create testing directory structure in lib/agents-v2/tests/ following existing patterns. Set up Vitest configuration for mocking external dependencies (Supabase client, Anthropic client, API responses). Create test utilities for generating mock data, opportunities, and database states. Implement test fixtures for various pipeline scenarios including new opportunities, duplicates, and material changes.",
+            "status": "pending",
+            "testStrategy": "Validate test infrastructure works by running basic mock tests. Ensure all external dependencies can be properly mocked."
+          },
+          {
+            "id": 2,
+            "title": "Implement Source Orchestrator Unit Tests",
+            "description": "Create comprehensive unit tests for the Source Orchestrator component including source configuration, scheduling logic, and error handling.",
+            "dependencies": [
+              "45.1"
+            ],
+            "details": "Test Source Orchestrator's ability to manage funding sources, handle configuration changes, and coordinate pipeline execution. Mock database queries for source configuration. Test error scenarios including invalid configurations and database connection failures. Validate force full reprocessing flag management and auto-disable logic.",
+            "status": "pending",
+            "testStrategy": "Achieve 90%+ code coverage for Source Orchestrator. Test all configuration scenarios and error conditions with proper assertions."
+          },
+          {
+            "id": 3,
+            "title": "Implement Data Extraction Agent Unit Tests",
+            "description": "Create unit tests for Data Extraction Agent covering API handling, pagination management, field mapping, and data processing logic.",
+            "dependencies": [
+              "45.1"
+            ],
+            "details": "Test single-step and two-step API patterns using existing handlers in lib/agents-v2/core/dataExtractionAgent/. Mock axios responses for various API scenarios including successful responses, errors, rate limiting, and pagination. Test field mapping utilities and data sanitization logic. Validate retry mechanisms with exponential backoff.",
+            "status": "pending",
+            "testStrategy": "Test with mock API responses for all supported API patterns. Validate correct handling of pagination, field mapping, and error scenarios."
+          },
+          {
+            "id": 4,
+            "title": "Implement Early Duplicate Detector Unit Tests",
+            "description": "Create unit tests for the Early Duplicate Detector focusing on ID+Title validation logic, critical field comparison, and routing decisions.",
+            "dependencies": [
+              "45.1"
+            ],
+            "details": "Test the core duplicate detection logic using existing earlyDuplicateDetector.js. Mock database queries for existing opportunities. Test various scenarios: exact duplicates, material changes (>5% amount, date changes), minor changes below threshold, and mixed batches. Validate routing decisions (NEW, UPDATE, SKIP) and metrics tracking.",
+            "status": "pending",
+            "testStrategy": "Test duplicate detection accuracy with various ID/Title combinations. Validate critical field change detection and proper routing decisions."
+          },
+          {
+            "id": 5,
+            "title": "Implement Analysis Agent Unit Tests",
+            "description": "Create unit tests for Analysis Agent including content enhancement, scoring algorithms, and parallel processing coordination.",
+            "dependencies": [
+              "45.1"
+            ],
+            "details": "Test Analysis Agent components in lib/agents-v2/core/analysisAgent/ including contentEnhancer.js, scoringAnalyzer.js, and parallelCoordinator.js. Mock Anthropic client calls to avoid token usage. Test scoring algorithms with various opportunity types. Validate content enhancement logic and parallel processing coordination for batch operations.",
+            "status": "pending",
+            "testStrategy": "Mock all LLM calls to test logic without token consumption. Validate scoring accuracy and content enhancement quality with test data."
+          },
+          {
+            "id": 6,
+            "title": "Implement Filter Function Unit Tests",
+            "description": "Create unit tests for the Filter Function covering opportunity classification, eligibility determination, and filtering logic.",
+            "dependencies": [
+              "45.1"
+            ],
+            "details": "Test Filter Function logic using existing filterFunction.js. Create test scenarios for various opportunity types and eligibility criteria. Test geographic eligibility processing using state eligibility components. Validate filtering decisions and metrics tracking for pass/fail outcomes.",
+            "status": "pending",
+            "testStrategy": "Test filter logic with diverse opportunity data. Validate correct classification and eligibility determination with proper metrics."
+          },
+          {
+            "id": 7,
+            "title": "Implement Storage Agent Unit Tests",
+            "description": "Create unit tests for Storage Agent covering database operations, conflict resolution, data sanitization, and state eligibility processing.",
+            "dependencies": [
+              "45.1"
+            ],
+            "details": "Test Storage Agent components including dataSanitizer.js, fundingSourceManager.js, and stateEligibilityProcessor.js. Mock Supabase client for database operations. Test data sanitization logic, conflict resolution, and batch insert operations. Validate location parsing and field mapping utilities.",
+            "status": "pending",
+            "testStrategy": "Mock all database operations to test logic in isolation. Validate data sanitization, conflict resolution, and proper error handling."
+          },
+          {
+            "id": 8,
+            "title": "Implement Direct Update Handler Unit Tests",
+            "description": "Create unit tests for Direct Update Handler covering selective field updates, admin edit preservation, and critical field validation.",
+            "dependencies": [
+              "45.1"
+            ],
+            "details": "Test Direct Update Handler using directUpdateHandler.js. Mock database operations for selective field updates. Test critical field update logic with null protection. Validate admin edit preservation and change tracking. Test batch update operations and error handling.",
+            "status": "pending",
+            "testStrategy": "Test selective update logic with various field change scenarios. Validate admin edit preservation and proper conflict resolution."
+          },
+          {
+            "id": 9,
+            "title": "Implement Integration Tests for Complete Pipeline Flow",
+            "description": "Create end-to-end integration tests covering the complete V2 pipeline flow including all routing scenarios from the test plan.",
+            "dependencies": [
+              "45.2",
+              "45.3",
+              "45.4",
+              "45.5",
+              "45.6",
+              "45.7",
+              "45.8"
+            ],
+            "details": "Implement integration tests following v2-pipeline-test-plan.md scenarios. Test complete pipeline flows: NEW opportunities (Extract → Duplicate Detector → Analysis → Filter → Storage), UPDATE path (Extract → Duplicate Detector → Direct Update), and SKIP path (Extract → Duplicate Detector → End). Use test database with controlled data scenarios.",
+            "status": "pending",
+            "testStrategy": "Run full pipeline flows with test database. Validate correct routing, data integrity, and proper metrics collection for each scenario."
+          },
+          {
+            "id": 10,
+            "title": "Implement Mixed Batch Processing Tests",
+            "description": "Create tests for processing batches containing mixed opportunity types (NEW, UPDATE, SKIP) to validate proper routing and metrics aggregation.",
+            "dependencies": [
+              "45.9"
+            ],
+            "details": "Test mixed batch scenarios from test plan including arrays with new opportunities, material changes, and exact duplicates. Validate that each opportunity follows the correct path and aggregate metrics are accurate. Test token usage optimization ensuring only NEW opportunities consume analysis tokens.",
+            "status": "pending",
+            "testStrategy": "Process mixed batches with known distributions. Validate individual routing decisions and accurate aggregate metrics reporting."
+          },
+          {
+            "id": 11,
+            "title": "Implement Performance and Optimization Tests",
+            "description": "Create performance tests to validate token usage reduction, execution time tracking, and database query optimization claims.",
+            "dependencies": [
+              "45.9",
+              "45.10"
+            ],
+            "details": "Implement performance benchmarks to validate 60-80% token usage reduction vs V1. Test execution time tracking for each pipeline stage. Validate database query optimization with batch operations and no N+1 query issues. Test memory usage profiling and processing time benchmarks with varying opportunity volumes.",
+            "status": "pending",
+            "testStrategy": "Measure and compare performance metrics against V1 baseline. Validate token usage reduction and execution time improvements with statistical significance."
+          },
+          {
+            "id": 12,
+            "title": "Implement Error Recovery and Edge Case Tests",
+            "description": "Create comprehensive error handling tests covering pipeline failures, edge cases, and recovery scenarios from the test plan.",
+            "dependencies": [
+              "45.9",
+              "45.10",
+              "45.11"
+            ],
+            "details": "Test error scenarios including stage failures, database connection loss, API rate limiting, empty responses, and missing critical fields. Implement Force Full Reprocessing (FFR) tests including auto-disable logic and rollback on failure. Test graceful degradation, transaction rollback, and resource cleanup scenarios.",
+            "status": "pending",
+            "testStrategy": "Simulate various failure conditions and validate proper error handling, logging, and recovery. Test FFR functionality with proper flag management and rollback scenarios."
+          }
+        ]
+      },
+      {
+        "id": 46,
+        "title": "Implement React component and API route tests",
+        "description": "Create comprehensive test suites for FundingSourcesPage, Dashboard, RunDetails components, and all API routes under /api/funding and /api/admin using Jest and React Testing Library.",
+        "details": "1. **Component Testing Setup:**\n   - Create test files for FundingSourcesPage component:\n     - Test funding source list rendering and filtering\n     - Test add/edit/delete functionality\n     - Test error states and loading states\n     - Mock Supabase client for component tests\n   \n   2. **Dashboard Component Tests:**\n     - Test opportunity data display and filtering\n     - Test geographic map integration\n     - Test real-time updates and subscriptions\n     - Test responsive design and mobile compatibility\n     - Mock chart libraries and map components\n   \n   3. **RunDetails Component Tests:**\n     - Test run status display and progress tracking\n     - Test run metrics visualization\n     - Test run actions (start, stop, retry)\n     - Test error handling and status updates\n     - Mock WebSocket connections for real-time updates\n   \n   4. **API Route Testing (/api/funding):**\n     - Test GET /api/funding/opportunities endpoint\n     - Test POST /api/funding/sources endpoint\n     - Test PUT/DELETE funding source operations\n     - Test query parameters and filtering\n     - Mock Supabase database operations\n   \n   5. **Admin API Route Testing (/api/admin):**\n     - Test admin authentication and authorization\n     - Test system configuration endpoints\n     - Test user management operations\n     - Test run management and control endpoints\n     - Test audit logging functionality\n   \n   6. **Test Utilities and Mocks:**\n     - Create reusable test utilities for common operations\n     - Set up comprehensive mocks for external services\n     - Create test data factories for consistent test data\n     - Implement custom matchers for domain-specific assertions",
+        "testStrategy": "1. **Component Test Coverage:**\n   - Achieve 90%+ test coverage for all targeted components\n   - Test user interactions with fireEvent and userEvent\n   - Validate accessibility with testing-library/jest-dom matchers\n   - Test component integration with context providers\n   \n   2. **API Route Test Coverage:**\n   - Test all HTTP methods (GET, POST, PUT, DELETE) for each endpoint\n   - Validate request/response schemas and data validation\n   - Test error handling for invalid inputs and server errors\n   - Test authentication and authorization middleware\n   \n   3. **Integration Testing:**\n   - Test component-API integration with MSW (Mock Service Worker)\n   - Validate data flow between components and API routes\n   - Test real-time updates and WebSocket connections\n   - Test error boundaries and fallback states\n   \n   4. **Performance and Reliability:**\n   - Run tests in parallel to ensure test isolation\n   - Set up CI/CD integration for automated test execution\n   - Monitor test execution time and optimize slow tests\n   - Implement snapshot testing for UI consistency\n   \n   5. **Test Documentation:**\n   - Document test setup and configuration\n   - Create testing guidelines for future development\n   - Maintain test data and mock documentation",
+        "status": "pending",
+        "dependencies": [
+          44
+        ],
+        "priority": "medium",
+        "subtasks": []
+      },
+      {
+        "id": 47,
+        "title": "Setup Playwright E2E testing infrastructure",
+        "description": "Install Playwright, create comprehensive e2e directory structure, and implement end-to-end test scenarios for complete user workflows including processing new opportunities, handling duplicates, and force full reprocessing.",
+        "details": "1. **Install Playwright and Dependencies:**\n   - Install @playwright/test as dev dependency\n   - Configure playwright.config.ts with multiple browser support (Chromium, Firefox, WebKit)\n   - Set up test environments for development, staging, and production\n   - Install additional dependencies for database seeding and API mocking\n\n2. **Create E2E Directory Structure:**\n   - Create e2e/ directory in project root\n   - Set up tests/ subdirectory with workflow-based organization\n   - Create fixtures/ for test data and page object models\n   - Set up utils/ for shared test utilities and helpers\n   - Create screenshots/ and videos/ directories for test artifacts\n\n3. **Implement Core User Workflow Tests:**\n   - Admin login and authentication flow\n   - Funding source configuration and management\n   - Processing new opportunities end-to-end workflow\n   - Dashboard interaction and data visualization\n   - Search and filtering functionality across opportunity boards\n\n4. **Implement Duplicate Handling Scenarios:**\n   - Test duplicate detection during processing runs\n   - Verify duplicate update logic with critical field changes\n   - Test duplicate skip scenarios when no changes detected\n   - Validate early duplicate detector performance in pipeline\n\n5. **Implement Force Full Reprocessing Tests:**\n   - Test force full reprocessing trigger from admin interface\n   - Verify advisory lock functionality prevents concurrent runs\n   - Test reprocessing completion and data consistency\n   - Validate run status tracking and error handling\n\n6. **Create Page Object Models:**\n   - AdminPage for admin interface interactions\n   - DashboardPage for main dashboard functionality\n   - ProcessingPage for run monitoring and controls\n   - OpportunityPage for individual opportunity details\n\n7. **Set up Test Data Management:**\n   - Create database seeding scripts for test scenarios\n   - Implement test data cleanup between test runs\n   - Set up mock API responses for external funding sources\n   - Create fixtures for various opportunity types and statuses\n\n8. **Configure CI/CD Integration:**\n   - Set up Playwright GitHub Actions workflow\n   - Configure test execution on pull requests\n   - Set up test result reporting and artifact collection\n   - Configure parallel test execution for faster CI runs",
+        "testStrategy": "1. **Installation and Configuration Validation:**\n   - Verify Playwright installation with npx playwright --version\n   - Test configuration by running basic example test\n   - Validate browser installation with playwright install --with-deps\n   - Confirm test environment setup with configuration file\n\n2. **Directory Structure Validation:**\n   - Verify all required directories are created with proper permissions\n   - Test that fixtures and page objects can be imported correctly\n   - Validate artifact directories are writable and accessible\n   - Confirm test discovery works with the new structure\n\n3. **Core Workflow Test Execution:**\n   - Run admin authentication tests across all browser engines\n   - Execute funding source management workflow tests\n   - Test complete opportunity processing pipeline end-to-end\n   - Validate dashboard functionality with real data scenarios\n\n4. **Duplicate Handling Test Validation:**\n   - Test duplicate detection accuracy with known duplicate datasets\n   - Verify update logic works correctly with critical field changes\n   - Test performance of duplicate detection in pipeline workflow\n   - Validate database consistency after duplicate processing\n\n5. **Force Reprocessing Test Execution:**\n   - Test force reprocessing trigger from admin interface\n   - Verify advisory lock prevents concurrent processing attempts\n   - Test reprocessing completion with large datasets\n   - Validate error handling and recovery scenarios\n\n6. **Page Object Model Testing:**\n   - Test all page object methods work correctly\n   - Verify element locators are stable and reliable\n   - Test page navigation and state management\n   - Validate error handling in page interactions\n\n7. **Performance and Reliability Testing:**\n   - Run full test suite multiple times to verify stability\n   - Test with various data sizes and processing loads\n   - Validate test execution time remains reasonable\n   - Verify test results are consistent across browser engines\n\n8. **CI/CD Integration Testing:**\n   - Test GitHub Actions workflow execution\n   - Verify test results are properly reported\n   - Test artifact collection and storage\n   - Validate parallel execution reduces overall run time",
+        "status": "pending",
+        "dependencies": [
+          44,
+          45,
+          6,
+          36
+        ],
+        "priority": "medium",
+        "subtasks": []
       }
     ],
     "metadata": {
       "created": "2025-06-17T23:54:58.582Z",
-      "updated": "2025-08-07T03:57:41.989Z",
+      "updated": "2025-08-09T06:21:11.764Z",
       "description": "Tasks for master context"
     }
   },
