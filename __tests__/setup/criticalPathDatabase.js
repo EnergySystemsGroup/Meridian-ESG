@@ -4,10 +4,11 @@
 const { createClient } = require('@supabase/supabase-js')
 
 // Test database configuration
+// Default keys are from Supabase local development instance
 const TEST_DB_CONFIG = {
   url: process.env.TEST_SUPABASE_URL || 'http://localhost:54321',
-  anonKey: process.env.TEST_SUPABASE_ANON_KEY || 'test-anon-key',
-  serviceKey: process.env.TEST_SUPABASE_SERVICE_KEY || 'test-service-key'
+  anonKey: process.env.TEST_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0',
+  serviceKey: process.env.TEST_SUPABASE_SERVICE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImV4cCI6MTk4MzgxMjk5Nn0.EGIM96RAZx35lJzdJsyH-qQwv8Hdp7fsn3W0YpN81IU'
 }
 
 // Create test database client
@@ -65,13 +66,11 @@ const insertBaseTestData = async (client) => {
       id: 'test-grants-gov',
       name: 'Test Grants.gov',
       type: 'grants_gov',
-      enabled: true,
+      active: true,
       force_full_reprocessing: false,
-      config: {
-        api_key: 'test-key',
-        base_url: 'https://api.grants.gov',
-        rate_limit: 100
-      }
+      handler_type: 'grants_gov',
+      api_endpoint: 'https://api.grants.gov',
+      auth_type: 'api_key'
     })
     .select()
     .single()
@@ -86,31 +85,31 @@ const insertBaseTestData = async (client) => {
       api_opportunity_id: 'TEST-OPP-001',
       title: 'Test Research Grant',
       description: 'Test grant for research projects',
-      source_id: 'test-grants-gov',
+      api_source_id: 'test-grants-gov',
       close_date: '2024-12-31',
       open_date: '2024-01-01',
       posted_date: '2024-01-01',
       maximum_award: 500000,
       minimum_award: 50000,
-      estimated_total_funding: 5000000,
+      total_funding_available: 5000000,
       agency_name: 'Test Agency',
       status: 'posted',
-      eligibility_score: 85
+      relevance_score: 85
     },
     {
       api_opportunity_id: 'TEST-OPP-002',
       title: 'Test Innovation Grant',
       description: 'Test grant for innovation',
-      source_id: 'test-grants-gov',
+      api_source_id: 'test-grants-gov',
       close_date: '2024-11-30',
       open_date: '2024-01-15',
       posted_date: '2024-01-15',
       maximum_award: 1000000,
       minimum_award: 100000,
-      estimated_total_funding: 10000000,
+      total_funding_available: 10000000,
       agency_name: 'Test Agency',
       status: 'posted',
-      eligibility_score: 75
+      relevance_score: 75
     }
   ]
 
