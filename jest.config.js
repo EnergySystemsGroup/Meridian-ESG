@@ -64,6 +64,10 @@ const customJestConfig = {
     '^\\.\\./\\.\\./utils/anthropicClient\\.js$': '<rootDir>/__mocks__/lib/agents-v2/utils/anthropicClient.js',
     // Map dataExtractionAgent submodule imports to mocks
     '^\\./(apiHandlers|extraction|storage)/index\\.js$': '<rootDir>/__mocks__/lib/agents-v2/core/dataExtractionAgent/$1/index.js',
+    // Map relative imports within parallelCoordinator to mocks
+    '^\\./(contentEnhancer|scoringAnalyzer)\\.js$': '<rootDir>/__mocks__/lib/agents-v2/core/analysisAgent/$1.js',
+    // Map parallelCoordinator import from index.js to mock
+    '^\\./parallelCoordinator\\.js$': '<rootDir>/__mocks__/lib/agents-v2/core/analysisAgent/parallelCoordinator.js',
   },
   // Speed up tests by using workers
   maxWorkers: '50%',
