@@ -59,7 +59,8 @@ const customJestConfig = {
     '^@/hooks/(.*)$': '<rootDir>/hooks/$1',
     // Map relative imports of supabase.js to the mock
     '^\\.\\./\\.\\./supabase\\.js$': '<rootDir>/__mocks__/lib/supabase.js',
-    '^\\.\\./\\.\\./\\.\\./\\.\\./utils/supabase\\.js$': '<rootDir>/__mocks__/lib/supabase.js',
+    '^\\.\\./\\.\\./\\.\\./utils/supabase\\.js$': '<rootDir>/__mocks__/utils/supabase.js',
+    '^\\.\\./\\.\\./\\.\\./\\.\\./utils/supabase\\.js$': '<rootDir>/__mocks__/utils/supabase.js',
     // Map relative imports of anthropicClient to the mock
     '^\\.\\./\\.\\./utils/anthropicClient\\.js$': '<rootDir>/__mocks__/lib/agents-v2/utils/anthropicClient.js',
     // Map dataExtractionAgent submodule imports to mocks
@@ -68,6 +69,17 @@ const customJestConfig = {
     '^\\./(contentEnhancer|scoringAnalyzer)\\.js$': '<rootDir>/__mocks__/lib/agents-v2/core/analysisAgent/$1.js',
     // Map parallelCoordinator import from index.js to mock
     '^\\./parallelCoordinator\\.js$': '<rootDir>/__mocks__/lib/agents-v2/core/analysisAgent/parallelCoordinator.js',
+    // Map storageAgent submodule imports to mocks
+    '^\\./fundingSourceManager\\.js$': '<rootDir>/__mocks__/lib/agents-v2/core/storageAgent/fundingSourceManager.js',
+    '^\\./dataSanitizer\\.js$': '<rootDir>/__mocks__/lib/agents-v2/core/storageAgent/dataSanitizer.js',
+    '^\\./stateEligibilityProcessor\\.js$': '<rootDir>/__mocks__/lib/agents-v2/core/storageAgent/stateEligibilityProcessor.js',
+    // Map absolute imports from tests
+    '^\\.\\./\\.\\./\\.\\./lib/agents-v2/core/storageAgent/fundingSourceManager\\.js$': '<rootDir>/__mocks__/lib/agents-v2/core/storageAgent/fundingSourceManager.js',
+    '^\\.\\./\\.\\./\\.\\./lib/agents-v2/core/storageAgent/dataSanitizer\\.js$': '<rootDir>/__mocks__/lib/agents-v2/core/storageAgent/dataSanitizer.js',
+    '^\\./utils/fieldMapping\\.js$': '<rootDir>/__mocks__/lib/agents-v2/core/storageAgent/utils/fieldMapping.js',
+    // Map locationParsing module to mock
+    '^\\.\\./\\.\\./\\.\\./\\.\\./lib/agents-v2/core/storageAgent/utils/locationParsing\\.js$': '<rootDir>/__mocks__/lib/agents-v2/core/storageAgent/utils/locationParsing.js',
+    '^\\./utils/locationParsing\\.js$': '<rootDir>/__mocks__/lib/agents-v2/core/storageAgent/utils/locationParsing.js',
   },
   // Speed up tests by using workers
   maxWorkers: '50%',
