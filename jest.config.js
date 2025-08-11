@@ -57,6 +57,9 @@ const customJestConfig = {
     '^@/components/(.*)$': '<rootDir>/components/$1',
     '^@/lib/(.*)$': '<rootDir>/lib/$1',
     '^@/hooks/(.*)$': '<rootDir>/hooks/$1',
+    // Map lib/supabase.js imports (both relative and absolute) to use the mock
+    '^.*/lib/supabase\\.js$': '<rootDir>/lib/__mocks__/supabase.js',
+    '^\\.\\./\\.\\./supabase\\.js$': '<rootDir>/lib/__mocks__/supabase.js',
   },
   // Speed up tests by using workers
   maxWorkers: '50%',
