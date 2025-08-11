@@ -57,9 +57,13 @@ const customJestConfig = {
     '^@/components/(.*)$': '<rootDir>/components/$1',
     '^@/lib/(.*)$': '<rootDir>/lib/$1',
     '^@/hooks/(.*)$': '<rootDir>/hooks/$1',
-    // Map lib/supabase.js imports (both relative and absolute) to use the mock
-    '^.*/lib/supabase\\.js$': '<rootDir>/lib/__mocks__/supabase.js',
-    '^\\.\\./\\.\\./supabase\\.js$': '<rootDir>/lib/__mocks__/supabase.js',
+    // Map relative imports of supabase.js to the mock
+    '^\\.\\./\\.\\./supabase\\.js$': '<rootDir>/__mocks__/lib/supabase.js',
+    '^\\.\\./\\.\\./\\.\\./\\.\\./utils/supabase\\.js$': '<rootDir>/__mocks__/lib/supabase.js',
+    // Map relative imports of anthropicClient to the mock
+    '^\\.\\./\\.\\./utils/anthropicClient\\.js$': '<rootDir>/__mocks__/lib/agents-v2/utils/anthropicClient.js',
+    // Map dataExtractionAgent submodule imports to mocks
+    '^\\./(apiHandlers|extraction|storage)/index\\.js$': '<rootDir>/__mocks__/lib/agents-v2/core/dataExtractionAgent/$1/index.js',
   },
   // Speed up tests by using workers
   maxWorkers: '50%',

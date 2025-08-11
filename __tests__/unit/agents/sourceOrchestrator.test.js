@@ -1,7 +1,7 @@
 import { describe, test, expect, beforeAll, afterAll, beforeEach, afterEach, jest } from '@jest/globals'
 
 // First, import from the mock file directly to get the mock objects
-import * as supabaseMocks from '../../../lib/__mocks__/supabase.js'
+import * as supabaseMocks from '../../../__mocks__/lib/supabase.js'
 
 // Mock the actual module to use our manual mock
 jest.mock('../../../lib/supabase.js', () => supabaseMocks)
