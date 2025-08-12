@@ -1,10 +1,4 @@
 // Mock implementation of processCoordinatorV2
-import { detectDuplicates } from '../../lib/agents-v2/optimization/earlyDuplicateDetector.js'
-import { enhanceOpportunities } from '../../lib/agents-v2/core/analysisAgent/index.js'
-import { filterOpportunities } from '../../lib/agents-v2/core/filterFunction.js'
-import { storeOpportunities } from '../../lib/agents-v2/core/storageAgent/index.js'
-import { extractFromSource } from '../../lib/agents-v2/core/dataExtractionAgent/extraction/index.js'
-import { updateDuplicateOpportunities } from '../../lib/agents-v2/optimization/directUpdateHandler.js'
 
 export const processApiSourceV2 = jest.fn().mockImplementation(async (
   sourceId,
@@ -35,13 +29,14 @@ export const processApiSourceV2 = jest.fn().mockImplementation(async (
   
   try {
     // 1. Extraction Stage
-    if (extractFromSource.mock) {
-      const extraction = await extractFromSource(sourceId, supabase)
+    if (stages.extractFromSource?.mock) {
+      const extraction = await stages.extractFromSource(sourceId, supabase)
       opportunities = extraction.opportunities || []
       metrics.totalOpportunities = opportunities.length
       metrics.optimizationImpact.totalOpportunities = opportunities.length
-      metrics.totalTokensUsed += extraction.extractionMetrics?.tokenUsage || 0
+      metrics.totalTokensUsed += extraction.extractionMetrics?.totalTokens || extraction.extractionMetrics?.tokenUsage || 0
       metrics.totalApiCalls += extraction.extractionMetrics?.apiCalls || 0
+      metrics.totalExecutionTime += extraction.extractionMetrics?.executionTime || 0
       metrics.stageMetrics.data_extraction = extraction.extractionMetrics
     }
     
@@ -67,9 +62,9 @@ export const processApiSourceV2 = jest.fn().mockImplementation(async (
       // No duplicate detector metrics when FFR bypasses it
       metrics.optimizationImpact.bypassedLLM = 0
       
-    } else if (detectDuplicates.mock) {
+    } else if (stages.detectDuplicates?.mock) {
       // Normal duplicate detection
-      const detection = await detectDuplicates(opportunities, sourceId, supabase)
+      const detection = await stages.detectDuplicates(opportunities, sourceId, supabase)
       newOpportunities = detection.newOpportunities || []
       opportunitiesToUpdate = detection.opportunitiesToUpdate || []
       opportunitiesToSkip = detection.opportunitiesToSkip || []
@@ -107,16 +102,18 @@ export const processApiSourceV2 = jest.fn().mockImplementation(async (
       })
       
       metrics.optimizationImpact.bypassedLLM = opportunitiesToUpdate.length + opportunitiesToSkip.length
-      metrics.stageMetrics.early_duplicate_detector = detection.detectionMetrics
+      metrics.totalExecutionTime += detection.metrics?.executionTime || 0
+      metrics.stageMetrics.early_duplicate_detector = detection.metrics || detection.detectionMetrics
     }
     
     // 3. Analysis Stage (only for NEW opportunities)
     let enhancedOpportunities = []
-    if (enhanceOpportunities.mock && newOpportunities.length > 0) {
-      const analysis = await enhanceOpportunities(newOpportunities)
+    if (stages.enhanceOpportunities?.mock && newOpportunities.length > 0) {
+      const analysis = await stages.enhanceOpportunities(newOpportunities)
       enhancedOpportunities = analysis.opportunities || analysis.enhancedOpportunities || []
       metrics.totalTokensUsed += (analysis.analysisMetrics?.tokenUsage || analysis.analysisMetrics?.totalTokens) || 0
       metrics.totalApiCalls += (analysis.analysisMetrics?.apiCalls || analysis.analysisMetrics?.totalApiCalls) || 0
+      metrics.totalExecutionTime += analysis.analysisMetrics?.executionTime || 0
       metrics.stageMetrics.analysis = analysis.analysisMetrics
       
       // Update paths
@@ -129,9 +126,10 @@ export const processApiSourceV2 = jest.fn().mockImplementation(async (
     
     // 4. Filter Stage (only for enhanced opportunities)
     let filteredOpportunities = []
-    if (filterOpportunities.mock && enhancedOpportunities.length > 0) {
-      const filterResult = await filterOpportunities(enhancedOpportunities)
+    if (stages.filterOpportunities?.mock && enhancedOpportunities.length > 0) {
+      const filterResult = await stages.filterOpportunities(enhancedOpportunities)
       filteredOpportunities = filterResult.includedOpportunities || []
+      metrics.totalExecutionTime += filterResult.filterMetrics?.executionTime || 0
       metrics.stageMetrics.filter = filterResult.filterMetrics
       
       // Update paths
@@ -149,8 +147,9 @@ export const processApiSourceV2 = jest.fn().mockImplementation(async (
     }
     
     // 5. Storage Stage (only for filtered opportunities)
-    if (storeOpportunities.mock && filteredOpportunities.length > 0) {
-      const storage = await storeOpportunities(filteredOpportunities, sourceId, supabase, options.forceFullProcessing)
+    if (stages.storeOpportunities?.mock && filteredOpportunities.length > 0) {
+      const storage = await stages.storeOpportunities(filteredOpportunities, sourceId, supabase, options.forceFullProcessing)
+      metrics.totalExecutionTime += storage.metrics?.executionTime || 0
       metrics.stageMetrics.storage = storage.metrics
       metrics.optimizationImpact.successfulOpportunities += storage.metrics?.newOpportunities || 0
       
@@ -164,8 +163,9 @@ export const processApiSourceV2 = jest.fn().mockImplementation(async (
     }
     
     // 6. Direct Update Stage (for UPDATE opportunities)
-    if (updateDuplicateOpportunities.mock && opportunitiesToUpdate.length > 0) {
-      const updateResult = await updateDuplicateOpportunities(opportunitiesToUpdate, supabase)
+    if (stages.updateDuplicateOpportunities?.mock && opportunitiesToUpdate.length > 0) {
+      const updateResult = await stages.updateDuplicateOpportunities(opportunitiesToUpdate, supabase)
+      metrics.totalExecutionTime += updateResult.metrics?.executionTime || 0
       metrics.stageMetrics.direct_update = updateResult.metrics
       metrics.optimizationImpact.successfulOpportunities += (updateResult.metrics?.successful || updateResult.metrics?.successfulUpdates || 0)
       
