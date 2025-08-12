@@ -24,7 +24,8 @@ export const processApiSourceV2 = jest.fn().mockImplementation(async (
       bypassedLLM: 0,
       successfulOpportunities: 0
     },
-    opportunityPaths: []
+    opportunityPaths: [],
+    forceFullProcessingUsed: false
   }
   
   let opportunities = []
@@ -44,8 +45,30 @@ export const processApiSourceV2 = jest.fn().mockImplementation(async (
       metrics.stageMetrics.data_extraction = extraction.extractionMetrics
     }
     
-    // 2. Duplicate Detection Stage
-    if (detectDuplicates.mock) {
+    // 2. Duplicate Detection Stage - Check for FFR first
+    if (options.forceFullReprocessing === true) {
+      // FFR enabled - bypass duplicate detection
+      metrics.forceFullProcessingUsed = true
+      newOpportunities = opportunities
+      opportunitiesToUpdate = []
+      opportunitiesToSkip = []
+      
+      // Record NEW paths with FFR reason
+      newOpportunities.forEach(opp => {
+        metrics.opportunityPaths.push({
+          opportunity: opp,
+          pathType: 'NEW',
+          pathReason: 'force_full_processing',
+          stagesProcessed: ['data_extraction', 'early_duplicate_detector'],
+          analytics: { duplicateDetected: false }
+        })
+      })
+      
+      // No duplicate detector metrics when FFR bypasses it
+      metrics.optimizationImpact.bypassedLLM = 0
+      
+    } else if (detectDuplicates.mock) {
+      // Normal duplicate detection
       const detection = await detectDuplicates(opportunities, sourceId, supabase)
       newOpportunities = detection.newOpportunities || []
       opportunitiesToUpdate = detection.opportunitiesToUpdate || []
