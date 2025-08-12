@@ -115,12 +115,27 @@ export function createMockSupabaseClient() {
   
   const mockFrom = (table) => {
     return {
-      select: jest.fn((columns) => ({
-        eq: jest.fn((column, value) => ({
+      select: jest.fn((columns) => {
+        const queryBuilder = {
+          filters: [],
+          eq: jest.fn(function(column, value) {
+            this.filters.push({ column, value })
+            return this
+          }),
           single: jest.fn().mockResolvedValue(() => {
-            // Find matching record
+            // Find matching record with all filters
+            if (!db.tables[table]) {
+              db.tables[table] = new Map()
+            }
             for (const [id, record] of db.tables[table]) {
-              if (record[column] === value) {
+              let matches = true
+              for (const filter of queryBuilder.filters) {
+                if (record[filter.column] !== filter.value) {
+                  matches = false
+                  break
+                }
+              }
+              if (matches) {
                 return { data: record, error: null }
               }
             }
@@ -128,36 +143,51 @@ export function createMockSupabaseClient() {
           }),
           mockResolvedValue: jest.fn().mockResolvedValue(() => {
             const results = []
+            if (!db.tables[table]) {
+              db.tables[table] = new Map()
+            }
             for (const [id, record] of db.tables[table]) {
-              if (record[column] === value) {
+              let matches = true
+              for (const filter of queryBuilder.filters) {
+                if (record[filter.column] !== filter.value) {
+                  matches = false
+                  break
+                }
+              }
+              if (matches) {
                 results.push(record)
               }
             }
             return { data: results, error: null }
           })
-        })),
-        neq: jest.fn((column, value) => ({
-          mockResolvedValue: jest.fn().mockResolvedValue({
-            data: [],
-            error: null
-          })
-        })),
-        mockResolvedValue: jest.fn().mockResolvedValue(() => {
-          return { data: Array.from(db.tables[table].values()), error: null }
+        }
+        queryBuilder.eq = queryBuilder.eq.bind(queryBuilder)
+        return queryBuilder
+      }),
+      neq: jest.fn((column, value) => ({
+        mockResolvedValue: jest.fn().mockResolvedValue({
+          data: [],
+          error: null
         })
       })),
+      mockResolvedValue: jest.fn().mockResolvedValue(() => {
+        if (!db.tables[table]) {
+          db.tables[table] = new Map()
+        }
+        return { data: Array.from(db.tables[table].values()), error: null }
+      }),
       insert: jest.fn((data) => ({
         select: jest.fn(() => ({
-          single: jest.fn().mockResolvedValue(() => {
+          single: jest.fn(() => {
             // Check constraints
             const requiredCheck = db.checkRequiredFields(table, data)
-            if (requiredCheck) return requiredCheck
+            if (requiredCheck) return Promise.resolve(requiredCheck)
             
             const uniqueCheck = db.checkUniqueConstraint(table, data)
-            if (uniqueCheck) return uniqueCheck
+            if (uniqueCheck) return Promise.resolve(uniqueCheck)
             
             const fkCheck = db.checkForeignKeyConstraint(table, data)
-            if (fkCheck) return fkCheck
+            if (fkCheck) return Promise.resolve(fkCheck)
             
             // Generate ID if not provided
             const id = data.id || `${table}-${Date.now()}`
@@ -168,19 +198,37 @@ export function createMockSupabaseClient() {
             }
             
             // Store in database
+            if (!db.tables[table]) {
+              db.tables[table] = new Map()
+            }
             db.tables[table].set(id, record)
             
-            return { data: record, error: null }
+            return Promise.resolve({ data: record, error: null })
           })
         }))
       })),
-      update: jest.fn((data) => ({
-        eq: jest.fn((column, value) => ({
+      update: jest.fn((data) => {
+        const updateBuilder = {
+          filters: [],
+          eq: jest.fn(function(column, value) {
+            this.filters.push({ column, value })
+            return this
+          }),
           select: jest.fn(() => ({
             single: jest.fn().mockResolvedValue(() => {
-              // Find record to update
+              // Find record to update with all filters
+              if (!db.tables[table]) {
+                db.tables[table] = new Map()
+              }
               for (const [id, record] of db.tables[table]) {
-                if (record[column] === value) {
+                let matches = true
+                for (const filter of updateBuilder.filters) {
+                  if (record[filter.column] !== filter.value) {
+                    matches = false
+                    break
+                  }
+                }
+                if (matches) {
                   // Check foreign key constraints on update
                   const fkCheck = db.checkForeignKeyConstraint(table, data)
                   if (fkCheck) return fkCheck
@@ -207,8 +255,18 @@ export function createMockSupabaseClient() {
           })),
           mockResolvedValue: jest.fn().mockResolvedValue(() => {
             const updated = []
+            if (!db.tables[table]) {
+              db.tables[table] = new Map()
+            }
             for (const [id, record] of db.tables[table]) {
-              if (record[column] === value) {
+              let matches = true
+              for (const filter of updateBuilder.filters) {
+                if (record[filter.column] !== filter.value) {
+                  matches = false
+                  break
+                }
+              }
+              if (matches) {
                 const updatedRecord = {
                   ...record,
                   ...data,
@@ -220,8 +278,10 @@ export function createMockSupabaseClient() {
             }
             return { data: updated, error: null }
           })
-        }))
-      })),
+        }
+        updateBuilder.eq = updateBuilder.eq.bind(updateBuilder)
+        return updateBuilder
+      }),
       delete: jest.fn(() => ({
         neq: jest.fn((column, value) => ({
           mockResolvedValue: jest.fn().mockResolvedValue({
@@ -276,6 +336,48 @@ export function createMockSupabaseClient() {
         }
       }
       
+      // Handle runs_v2 table specifically for insert operations
+      if (table === 'runs_v2') {
+        return {
+          insert: jest.fn((data) => ({
+            select: jest.fn(() => ({
+              single: jest.fn(() => {
+                const runId = `run-${Date.now()}-${Math.random()}`
+                const runRecord = {
+                  id: runId,
+                  ...data,
+                  created_at: new Date().toISOString()
+                }
+                // Store in db for later queries
+                if (!db.tables.runs_v2) {
+                  db.tables.runs_v2 = new Map()
+                }
+                db.tables.runs_v2.set(runId, runRecord)
+                return Promise.resolve({ data: runRecord, error: null })
+              })
+            }))
+          })),
+          update: jest.fn((data) => ({
+            eq: jest.fn((column, value) => ({
+              select: jest.fn(() => ({
+                single: jest.fn(() => {
+                  if (db.tables.runs_v2) {
+                    for (const [id, record] of db.tables.runs_v2) {
+                      if (record[column] === value) {
+                        const updated = { ...record, ...data, updated_at: new Date().toISOString() }
+                        db.tables.runs_v2.set(id, updated)
+                        return Promise.resolve({ data: updated, error: null })
+                      }
+                    }
+                  }
+                  return Promise.resolve({ data: null, error: { message: 'No run found' } })
+                })
+              }))
+            }))
+          }))
+        }
+      }
+      
       // All other calls use the generic mock
       return mockFrom(table)
     }),
@@ -294,7 +396,16 @@ export function createMockSupabaseClient() {
     
     // Add mock data setter for testing
     setMockData: (table, data) => {
-      mockData[table] = data
+      if (!db.tables[table]) {
+        db.tables[table] = new Map()
+      }
+      // Clear existing data
+      db.tables[table].clear()
+      // Add new data
+      for (const row of data) {
+        const id = row.id || `${table}-${Date.now()}-${Math.random()}`
+        db.tables[table].set(id, row)
+      }
     }
   }
 }
