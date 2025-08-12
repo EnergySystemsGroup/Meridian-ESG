@@ -3,8 +3,8 @@ import { describe, test, expect, beforeAll, afterAll, beforeEach, afterEach, jes
 // First, import from the mock file directly to get the mock objects
 import * as supabaseMocks from '../../../__mocks__/lib/supabase.js'
 
-// Mock the actual module to use our manual mock
-jest.mock('../../../lib/supabase.js', () => supabaseMocks)
+// Mock the actual module using require() in factory function to avoid scope issues
+jest.mock('../../../lib/supabase.js', () => require('../../../__mocks__/lib/supabase.js'))
 
 // Import everything AFTER mocking  
 import { analyzeSource, getNextSourceToProcess, getSourceById } from '../../../lib/agents-v2/core/sourceOrchestrator.js'

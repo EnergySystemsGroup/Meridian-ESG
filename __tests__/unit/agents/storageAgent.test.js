@@ -1,14 +1,9 @@
 import { describe, test, expect, beforeEach, afterEach, jest } from '@jest/globals'
 
-// Import mock implementations first
-import * as fundingSourceManagerMocks from '../../../__mocks__/lib/agents-v2/core/storageAgent/fundingSourceManager.js'
-import * as stateEligibilityProcessorMocks from '../../../__mocks__/lib/agents-v2/core/storageAgent/stateEligibilityProcessor.js'
-import * as dataSanitizerMocks from '../../../__mocks__/lib/agents-v2/core/storageAgent/dataSanitizer.js'
-
-// Set up the mocks before importing the module under test
-jest.mock('../../../lib/agents-v2/core/storageAgent/fundingSourceManager.js', () => fundingSourceManagerMocks)
-jest.mock('../../../lib/agents-v2/core/storageAgent/stateEligibilityProcessor.js', () => stateEligibilityProcessorMocks)
-jest.mock('../../../lib/agents-v2/core/storageAgent/dataSanitizer.js', () => dataSanitizerMocks)
+// Set up the mocks - Jest will automatically use the __mocks__ directory
+jest.mock('../../../lib/agents-v2/core/storageAgent/fundingSourceManager.js')
+jest.mock('../../../lib/agents-v2/core/storageAgent/stateEligibilityProcessor.js')
+jest.mock('../../../lib/agents-v2/core/storageAgent/dataSanitizer.js')
 jest.mock('../../../utils/supabase.js')
 jest.mock('@supabase/supabase-js')
 
@@ -17,10 +12,10 @@ import { storeOpportunities } from '../../../lib/agents-v2/core/storageAgent/ind
 import { createSupabaseClient, logAgentExecution } from '../../../utils/supabase.js'
 import { createClient } from '@supabase/supabase-js'
 
-// Use the mocks directly
-const { fundingSourceManager } = fundingSourceManagerMocks
-const { stateEligibilityProcessor } = stateEligibilityProcessorMocks
-const { dataSanitizer } = dataSanitizerMocks
+// Import the mocked modules - Jest should automatically use the __mocks__ versions
+import { fundingSourceManager } from '../../../lib/agents-v2/core/storageAgent/fundingSourceManager.js'
+import { stateEligibilityProcessor } from '../../../lib/agents-v2/core/storageAgent/stateEligibilityProcessor.js'
+import { dataSanitizer } from '../../../lib/agents-v2/core/storageAgent/dataSanitizer.js'
 
 // ============================================================================
 // Helper Functions for Proper Supabase Chain Mocking
@@ -120,16 +115,16 @@ describe('Storage Agent Unit Tests', () => {
     ]
     
     // Set up console spies for this test only
-    consoleLogSpy = jest.spyOn(console, 'log').mockImplementation(() => {})
+    // consoleLogSpy = jest.spyOn(console, 'log').mockImplementation(() => {})
     consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {})
     consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {})
   })
 
   afterEach(() => {
     // Restore console methods after each test
-    consoleLogSpy.mockRestore()
-    consoleWarnSpy.mockRestore()
-    consoleErrorSpy.mockRestore()
+    // consoleLogSpy.mockRestore()
+    if (consoleWarnSpy) consoleWarnSpy.mockRestore()
+    if (consoleErrorSpy) consoleErrorSpy.mockRestore()
   })
 
   describe('Batch Insertion Optimization', () => {
@@ -163,7 +158,14 @@ describe('Storage Agent Unit Tests', () => {
       
       stateEligibilityProcessor.processEligibility.mockResolvedValue(true)
       
+      console.log('About to call storeOpportunities')
+      console.log('largeBatch length:', largeBatch.length)
+      console.log('mockSource:', mockSource)
+      
       const result = await storeOpportunities(largeBatch, mockSource, mockSupabaseClient)
+      
+      // Debug: check what we're getting
+      console.log('Result:', JSON.stringify(result, null, 2))
       
       expect(result.results.newOpportunities).toHaveLength(150)
       expect(result.metrics.totalProcessed).toBe(150)
