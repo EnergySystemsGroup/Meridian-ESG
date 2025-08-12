@@ -80,6 +80,27 @@ const customJestConfig = {
     // Map locationParsing module to mock
     '^\\.\\./\\.\\./\\.\\./\\.\\./lib/agents-v2/core/storageAgent/utils/locationParsing\\.js$': '<rootDir>/__mocks__/lib/agents-v2/core/storageAgent/utils/locationParsing.js',
     '^\\./utils/locationParsing\\.js$': '<rootDir>/__mocks__/lib/agents-v2/core/storageAgent/utils/locationParsing.js',
+    // Map agent modules to mocks for integration tests
+    // Map test's relative imports to mocks
+    '^\\.\\./\\.\\./\\.\\./lib/agents-v2/core/sourceOrchestrator\\.js$': '<rootDir>/__mocks__/lib/agents-v2/core/sourceOrchestrator.js',
+    '^\\.\\./\\.\\./\\.\\./lib/agents-v2/core/dataExtractionAgent/index\\.js$': '<rootDir>/__mocks__/lib/agents-v2/core/dataExtractionAgent/index.js',
+    '^\\.\\./\\.\\./\\.\\./lib/agents-v2/optimization/earlyDuplicateDetector\\.js$': '<rootDir>/__mocks__/lib/agents-v2/optimization/earlyDuplicateDetector.js',
+    '^\\.\\./\\.\\./\\.\\./lib/agents-v2/core/analysisAgent/index\\.js$': '<rootDir>/__mocks__/lib/agents-v2/core/analysisAgent/index.js',
+    '^\\.\\./\\.\\./\\.\\./lib/agents-v2/core/filterFunction\\.js$': '<rootDir>/__mocks__/lib/agents-v2/core/filterFunction.js',
+    '^\\.\\./\\.\\./\\.\\./lib/agents-v2/core/storageAgent/index\\.js$': '<rootDir>/__mocks__/lib/agents-v2/core/storageAgent/index.js',
+    '^\\.\\./\\.\\./\\.\\./lib/agents-v2/optimization/directUpdateHandler\\.js$': '<rootDir>/__mocks__/lib/agents-v2/optimization/directUpdateHandler.js',
+    // Map RunManagerV2 to mock
+    '^\./runManagerV2\.js$': '<rootDir>/__mocks__/lib/services/runManagerV2.js',
+    
+    // Map coordinator's relative imports to the same mocks (from lib/services perspective)
+    '^\\.\\./agents-v2/core/sourceOrchestrator\\.js$': '<rootDir>/__mocks__/lib/agents-v2/core/sourceOrchestrator.js',
+    '^\\.\\./agents-v2/core/dataExtractionAgent/index\\.js$': '<rootDir>/__mocks__/lib/agents-v2/core/dataExtractionAgent/index.js',
+    '^\\.\\./agents-v2/optimization/earlyDuplicateDetector\\.js$': '<rootDir>/__mocks__/lib/agents-v2/optimization/earlyDuplicateDetector.js',
+    '^\\.\\./agents-v2/core/analysisAgent/index\\.js$': '<rootDir>/__mocks__/lib/agents-v2/core/analysisAgent/index.js',
+    '^\\.\\./agents-v2/core/filterFunction\\.js$': '<rootDir>/__mocks__/lib/agents-v2/core/filterFunction.js',
+    '^\\.\\./agents-v2/core/storageAgent/index\\.js$': '<rootDir>/__mocks__/lib/agents-v2/core/storageAgent/index.js',
+    '^\\.\\./agents-v2/optimization/directUpdateHandler\\.js$': '<rootDir>/__mocks__/lib/agents-v2/optimization/directUpdateHandler.js',
+    // Map RunManagerV2 to mock
   },
   // Speed up tests by using workers
   maxWorkers: '50%',

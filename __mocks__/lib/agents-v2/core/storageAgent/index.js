@@ -1,4 +1,8 @@
 // Mock implementation of storageAgent
+import { jest } from '@jest/globals';
+
+export const storeOpportunities = jest.fn();
+
 export const storageAgent = {
   storeOpportunities: jest.fn().mockImplementation(async (opportunities, supabase) => {
     return {

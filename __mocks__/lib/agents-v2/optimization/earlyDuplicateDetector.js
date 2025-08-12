@@ -1,4 +1,6 @@
 // Mock implementation of earlyDuplicateDetector
+import { jest } from '@jest/globals';
+
 export const detectDuplicates = jest.fn().mockImplementation(async (
   opportunities,
   sourceId,
