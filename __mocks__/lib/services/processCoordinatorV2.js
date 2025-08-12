@@ -36,8 +36,10 @@ export const processApiSourceV2 = jest.fn().mockImplementation(async (
   }
   
   try {
+    // Debug: console.log('Coordinator received stages:', Object.keys(stages))
     // 1. Extraction Stage
-    if (stages.extractFromSource?.mock) {
+    if (stages.extractFromSource) {
+      // Debug: console.log('Running extraction stage')
       const extraction = await stages.extractFromSource(sourceId, supabase)
       opportunities = extraction.opportunities || []
       metrics.totalOpportunities = opportunities.length
@@ -46,6 +48,24 @@ export const processApiSourceV2 = jest.fn().mockImplementation(async (
       metrics.totalApiCalls += extraction.extractionMetrics?.apiCalls || 0
       metrics.totalExecutionTime += extraction.extractionMetrics?.executionTime || 0
       metrics.stageMetrics.data_extraction = extraction.extractionMetrics
+
+      // Record metrics for this stage
+      if (runManager?.recordStageMetrics) {
+        await runManager.recordStageMetrics({
+          stageName: 'data_extraction',
+          runId: runManager.runId,
+          metrics: metrics.stageMetrics.data_extraction
+        })
+      }
+      
+      // Persist one metric row if the table mock exists
+      try {
+        await supabase?.from?.('run_v2_metrics')?.insert?.({
+          run_id: runManager?.runId || 'test-run-id',
+          stage_name: 'data_extraction',
+          metrics: metrics.stageMetrics.data_extraction
+        })
+      } catch (_) {}
     }
     
     // 2. Duplicate Detection Stage - Check for FFR first
@@ -70,7 +90,7 @@ export const processApiSourceV2 = jest.fn().mockImplementation(async (
       // No duplicate detector metrics when FFR bypasses it
       metrics.optimizationImpact.bypassedLLM = 0
       
-    } else if (stages.detectDuplicates?.mock) {
+    } else if (stages.detectDuplicates) {
       // Normal duplicate detection
       const detection = await stages.detectDuplicates(opportunities, sourceId, supabase)
       newOpportunities = detection.newOpportunities || []
@@ -112,17 +132,35 @@ export const processApiSourceV2 = jest.fn().mockImplementation(async (
       metrics.optimizationImpact.bypassedLLM = opportunitiesToUpdate.length + opportunitiesToSkip.length
       metrics.totalExecutionTime += detection.metrics?.executionTime || 0
       metrics.stageMetrics.early_duplicate_detector = detection.metrics || detection.detectionMetrics
+      
+      // Record metrics for this stage
+      if (runManager?.recordStageMetrics) {
+        await runManager.recordStageMetrics({
+          stageName: 'early_duplicate_detector',
+          runId: runManager.runId,
+          metrics: metrics.stageMetrics.early_duplicate_detector
+        })
+      }
     }
     
     // 3. Analysis Stage (only for NEW opportunities)
     let enhancedOpportunities = []
-    if (stages.enhanceOpportunities?.mock && newOpportunities.length > 0) {
+    if (stages.enhanceOpportunities && newOpportunities.length > 0) {
       const analysis = await stages.enhanceOpportunities(newOpportunities)
       enhancedOpportunities = analysis.opportunities || analysis.enhancedOpportunities || []
       metrics.totalTokensUsed += (analysis.analysisMetrics?.tokenUsage || analysis.analysisMetrics?.totalTokens) || 0
       metrics.totalApiCalls += (analysis.analysisMetrics?.apiCalls || analysis.analysisMetrics?.totalApiCalls) || 0
       metrics.totalExecutionTime += analysis.analysisMetrics?.executionTime || 0
       metrics.stageMetrics.analysis = analysis.analysisMetrics
+
+      // Record metrics for this stage
+      if (runManager?.recordStageMetrics) {
+        await runManager.recordStageMetrics({
+          stageName: 'analysis',
+          runId: runManager.runId,
+          metrics: metrics.stageMetrics.analysis
+        })
+      }
       
       // Update paths
       metrics.opportunityPaths.forEach(path => {
@@ -134,11 +172,23 @@ export const processApiSourceV2 = jest.fn().mockImplementation(async (
     
     // 4. Filter Stage (only for enhanced opportunities)
     let filteredOpportunities = []
-    if (stages.filterOpportunities?.mock && enhancedOpportunities.length > 0) {
+    if (stages.filterOpportunities && enhancedOpportunities.length > 0) {
       const filterResult = await stages.filterOpportunities(enhancedOpportunities)
-      filteredOpportunities = filterResult.includedOpportunities || []
-      metrics.totalExecutionTime += filterResult.filterMetrics?.executionTime || 0
-      metrics.stageMetrics.filter = filterResult.filterMetrics
+      filteredOpportunities = filterResult.includedOpportunities || filterResult.filteredOpportunities || []
+      metrics.totalExecutionTime += filterResult.filterMetrics?.executionTime || filterResult.executionTime || 0
+      metrics.stageMetrics.filter = filterResult.filterMetrics || {
+        tokenUsage: filterResult.tokenUsage,
+        executionTime: filterResult.executionTime
+      }
+      
+      // Record metrics for this stage
+      if (runManager?.recordStageMetrics) {
+        await runManager.recordStageMetrics({
+          stageName: 'filter',
+          runId: runManager.runId,
+          metrics: metrics.stageMetrics.filter
+        })
+      }
       
       // Update paths
       metrics.opportunityPaths.forEach(path => {
@@ -155,11 +205,20 @@ export const processApiSourceV2 = jest.fn().mockImplementation(async (
     }
     
     // 5. Storage Stage (only for filtered opportunities)
-    if (stages.storeOpportunities?.mock && filteredOpportunities.length > 0) {
+    if (stages.storeOpportunities && filteredOpportunities.length > 0) {
       const storage = await stages.storeOpportunities(filteredOpportunities, sourceId, supabase, options.forceFullProcessing)
       metrics.totalExecutionTime += storage.metrics?.executionTime || 0
       metrics.stageMetrics.storage = storage.metrics
       metrics.optimizationImpact.successfulOpportunities += storage.metrics?.newOpportunities || 0
+      
+      // Record metrics for this stage
+      if (runManager?.recordStageMetrics) {
+        await runManager.recordStageMetrics({
+          stageName: 'storage',
+          runId: runManager.runId,
+          metrics: storage.metrics
+        })
+      }
       
       // Update paths
       metrics.opportunityPaths.forEach(path => {
@@ -171,7 +230,7 @@ export const processApiSourceV2 = jest.fn().mockImplementation(async (
     }
     
     // 6. Direct Update Stage (for UPDATE opportunities)
-    if (stages.updateDuplicateOpportunities?.mock && opportunitiesToUpdate.length > 0) {
+    if (stages.updateDuplicateOpportunities && opportunitiesToUpdate.length > 0) {
       const updateResult = await stages.updateDuplicateOpportunities(opportunitiesToUpdate, supabase)
       metrics.totalExecutionTime += updateResult.metrics?.executionTime || 0
       metrics.stageMetrics.direct_update = updateResult.metrics
