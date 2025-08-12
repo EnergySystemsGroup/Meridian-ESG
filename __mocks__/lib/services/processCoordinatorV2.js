@@ -27,6 +27,14 @@ export const processApiSourceV2 = jest.fn().mockImplementation(async (
   let opportunitiesToUpdate = []
   let opportunitiesToSkip = []
   
+  // Try to acquire advisory lock
+  if (supabase?.rpc) {
+    const lockResult = await supabase.rpc('try_advisory_lock')
+    if (lockResult?.data === false) {
+      throw new Error('advisory lock in progress')
+    }
+  }
+  
   try {
     // 1. Extraction Stage
     if (stages.extractFromSource?.mock) {
@@ -192,6 +200,11 @@ export const processApiSourceV2 = jest.fn().mockImplementation(async (
       version: 'v2.0',
       pipeline: 'v2-optimized-with-metrics',
       enhancedMetrics: metrics
+    }
+  } finally {
+    // Release advisory lock
+    if (supabase?.rpc) {
+      await supabase.rpc('release_advisory_lock')
     }
   }
 })
