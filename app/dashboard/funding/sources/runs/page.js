@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { createClient } from '@/utils/supabase/client';
 import {
 	Card,
 	CardContent,
@@ -33,7 +33,7 @@ export default function RunsPage() {
 	const [loading, setLoading] = useState(true);
 	const [selectedRun, setSelectedRun] = useState(null);
 	const [selectedTab, setSelectedTab] = useState('all');
-	const supabase = createClientComponentClient();
+	const supabase = createClient();
 
 	useEffect(() => {
 		fetchRuns();

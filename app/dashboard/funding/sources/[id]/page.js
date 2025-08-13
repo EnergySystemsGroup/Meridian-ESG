@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { createClient } from '@/utils/supabase/client';
 import {
 	Card,
 	CardContent,
@@ -27,7 +27,7 @@ export default function SourceDetailPage({ params }) {
 	const [processing, setProcessing] = useState(false);
 	const [latestRun, setLatestRun] = useState(null);
 	const [loadingRun, setLoadingRun] = useState(true);
-	const supabase = createClientComponentClient();
+	const supabase = createClient();
 
 	useEffect(() => {
 		fetchSource();

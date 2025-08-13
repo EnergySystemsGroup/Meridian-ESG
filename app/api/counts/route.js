@@ -1,8 +1,11 @@
 import { NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
+import { createClient } from '@/utils/supabase/api';
 
 export async function GET(request) {
 	try {
+		// Create Supabase client with request context
+		const { supabase } = createClient(request);
+		
 		// Get URL parameters to determine which counts to fetch
 		const { searchParams } = new URL(request.url);
 		const type = searchParams.get('type');

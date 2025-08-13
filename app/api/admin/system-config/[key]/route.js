@@ -1,15 +1,12 @@
-import { createClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
-
-// Create Supabase client with service role for admin operations
-const supabase = createClient(
-	process.env.NEXT_PUBLIC_SUPABASE_URL,
-	process.env.SUPABASE_SERVICE_ROLE_KEY
-);
+import { createAdminClient } from '@/utils/supabase/api';
 
 // GET /api/admin/system-config/[key] - Get a system config value
 export async function GET(request, { params }) {
 	try {
+		// Create admin Supabase client with service role
+		const { supabase } = createAdminClient(request);
+		
 		const { key } = await params;
 
 		// Fetch the config value
@@ -40,6 +37,9 @@ export async function GET(request, { params }) {
 // PUT /api/admin/system-config/[key] - Update a system config value
 export async function PUT(request, { params }) {
 	try {
+		// Create admin Supabase client with service role
+		const { supabase } = createAdminClient(request);
+		
 		const { key } = await params;
 		const body = await request.json();
 		const { value, description } = body;
@@ -106,6 +106,9 @@ export async function PUT(request, { params }) {
 // DELETE /api/admin/system-config/[key] - Delete a system config value
 export async function DELETE(request, { params }) {
 	try {
+		// Create admin Supabase client with service role
+		const { supabase } = createAdminClient(request);
+		
 		const { key } = await params;
 
 		const { error } = await supabase

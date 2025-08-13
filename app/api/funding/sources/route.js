@@ -1,10 +1,11 @@
 import { NextResponse } from 'next/server';
-import { createSupabaseClient } from '@/lib/supabase';
+import { createClient } from '@/utils/supabase/api';
 
 // GET /api/funding/sources - Get all API sources
 export async function GET(request) {
 	try {
-		const supabase = createSupabaseClient();
+		// Create Supabase client with request context
+		const { supabase } = createClient(request);
 
 		// Get query parameters
 		const { searchParams } = new URL(request.url);
@@ -43,7 +44,8 @@ export async function GET(request) {
 // POST /api/funding/sources - Create a new API source
 export async function POST(request) {
 	try {
-		const supabase = createSupabaseClient();
+		// Create Supabase client with request context
+		const { supabase } = createClient(request);
 		const body = await request.json();
 
 		// Validate required fields

@@ -1,9 +1,12 @@
 import { NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
+import { createClient } from '@/utils/supabase/api';
 
 // Make sure this is exported as a named export for Next.js 15
 export async function GET(request, context) {
 	try {
+		// Create Supabase client with request context
+		const { supabase } = createClient(request);
+		
 		// Properly await the params object before accessing its properties
 		const params = await context.params;
 		const stateCode = params.stateCode;

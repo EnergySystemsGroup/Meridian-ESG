@@ -1,11 +1,11 @@
 import { NextResponse } from 'next/server';
-import { createSupabaseClient } from '@/lib/supabase';
+import { createClient } from '@/utils/supabase/api';
 import axios from 'axios';
 
-export async function GET() {
+export async function GET(request) {
 	try {
 		console.log('Verification API called');
-		const supabase = createSupabaseClient();
+		const { supabase } = createClient(request);
 
 		// Get the funding source
 		const { data: sources, error: sourceError } = await supabase

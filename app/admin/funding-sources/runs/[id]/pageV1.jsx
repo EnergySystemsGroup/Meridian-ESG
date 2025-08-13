@@ -2,13 +2,13 @@
 
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { createClient } from '@/utils/supabase/client';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, ChevronDown, ChevronUp } from 'lucide-react';
 import Link from 'next/link';
 
 export default function RunDetailPageV1() {
-	const supabase = createClientComponentClient();
+	const supabase = createClient();
 	const router = useRouter();
 	const { id } = useParams();
 	const [run, setRun] = useState(null);

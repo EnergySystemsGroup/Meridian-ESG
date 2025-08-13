@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { createClient } from '@/utils/supabase/client';
 import { Button } from '@/components/ui/button';
 import {
 	Card,
@@ -22,7 +22,7 @@ import { RunsTable } from '@/components/admin/RunsTable';
 export default function FundingSourceDetailV1() {
 	const params = useParams();
 	const router = useRouter();
-	const supabase = createClientComponentClient();
+	const supabase = createClient();
 	const [source, setSource] = useState(null);
 	const [loading, setLoading] = useState(true);
 	const [deleting, setDeleting] = useState(false);

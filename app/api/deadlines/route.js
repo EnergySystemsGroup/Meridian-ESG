@@ -1,8 +1,12 @@
 import { NextResponse } from 'next/server';
-import { supabase, calculateDaysLeft } from '@/lib/supabase';
+import { createClient } from '@/utils/supabase/api';
+import { calculateDaysLeft } from '@/lib/services/fundingApi';
 
 export async function GET(request) {
 	try {
+		// Create Supabase client with request context
+		const { supabase } = createClient(request);
+		
 		// Get URL parameters
 		const { searchParams } = new URL(request.url);
 		const type = searchParams.get('type') || 'upcoming'; // 'upcoming' or 'thirty_day_count'

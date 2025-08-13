@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { createSupabaseClient } from '@/lib/supabase';
+import { createClient } from '@/utils/supabase/api';
 import { processApiSource } from '@/lib/services/processCoordinator';
 
 // POST /api/funding/sources/process-next - Process the next API source in the queue

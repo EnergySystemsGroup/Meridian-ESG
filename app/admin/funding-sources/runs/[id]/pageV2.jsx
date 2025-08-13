@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { createClient } from '@/utils/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -12,7 +12,7 @@ import Link from 'next/link';
 import { StagePerformanceChart, OpportunityFlowChart } from '@/components/admin/charts';
 
 export default function RunDetailPageV2() {
-	const supabase = createClientComponentClient();
+	const supabase = createClient();
 	const router = useRouter();
 	const { id } = useParams();
 	const [run, setRun] = useState(null);

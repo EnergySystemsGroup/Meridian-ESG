@@ -1,10 +1,10 @@
 import { NextResponse } from 'next/server';
-import { createSupabaseClient } from '@/lib/supabase';
+import { createClient } from '@/utils/supabase/api';
 
 // GET /api/funding/raw-responses/latest - Get the latest raw API response
 export async function GET(request) {
 	try {
-		const supabase = createSupabaseClient();
+		const { supabase } = createClient(request);
 
 		// Get the source ID from query params
 		const { searchParams } = new URL(request.url);

@@ -15,11 +15,11 @@
 import React from 'react';
 import { render, screen, fireEvent, waitFor, within, act } from '@testing-library/react';
 import RunDetailPageV2 from '@/app/admin/funding-sources/runs/[id]/pageV2';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { createClient } from '@/utils/supabase/client';
 
 // Mock Supabase
-jest.mock('@supabase/auth-helpers-nextjs', () => ({
-  createClientComponentClient: jest.fn(),
+jest.mock('@/utils/supabase/client', () => ({
+  createClient: jest.fn(),
 }));
 
 // Mock Next.js navigation
@@ -108,7 +108,7 @@ describe('RunDetailPageV2', () => {
       }),
     };
 
-    createClientComponentClient.mockReturnValue(mockSupabase);
+    createClient.mockReturnValue(mockSupabase);
 
     // Setup router mock
     mockRouter = {

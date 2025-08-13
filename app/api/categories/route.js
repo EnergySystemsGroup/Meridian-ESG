@@ -1,10 +1,13 @@
 import { NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
+import { createClient } from '@/utils/supabase/api';
 import { TAXONOMIES } from '@/lib/constants/taxonomies';
 import { getNormalizedCategories } from '@/lib/utils/categoryUtils';
 
-export async function GET() {
+export async function GET(request) {
 	try {
+		// Create Supabase client with request context
+		const { supabase } = createClient(request);
+		
 		// Fetch all unique categories from opportunities table
 		const { data, error } = await supabase
 			.from('funding_opportunities_with_geography') // Using the view with geography

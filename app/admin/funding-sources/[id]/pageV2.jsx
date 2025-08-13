@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { createClient } from '@/utils/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -24,7 +24,7 @@ import { TrendChart } from '@/components/admin/charts';
 export default function FundingSourceDetailV2() {
 	const params = useParams();
 	const router = useRouter();
-	const supabase = createClientComponentClient();
+	const supabase = createClient();
 	const [source, setSource] = useState(null);
 	const [loading, setLoading] = useState(true);
 	const [deleting, setDeleting] = useState(false);

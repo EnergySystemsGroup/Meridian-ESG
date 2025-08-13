@@ -1,8 +1,12 @@
 import { NextResponse } from 'next/server';
-import { supabase, fundingApi } from '@/lib/supabase';
+import { createClient } from '@/utils/supabase/api';
+import { fundingApi } from '@/lib/services/fundingApi';
 
 export async function GET(request) {
 	try {
+		// Create Supabase client with request context
+		const { supabase } = createClient(request);
+		
 		// Get URL parameters
 		const { searchParams } = new URL(request.url);
 
@@ -44,7 +48,7 @@ export async function GET(request) {
 		}
 
 		// Fetch opportunities with filters
-		const result = await fundingApi.getOpportunities(filters);
+		const result = await fundingApi.getOpportunities(supabase, filters);
 		const opportunities = result.data;
 		const totalCount = result.count;
 
@@ -70,6 +74,9 @@ export async function GET(request) {
 // Endpoint to get a single opportunity by ID
 export async function POST(request) {
 	try {
+		// Create Supabase client with request context
+		const { supabase } = createClient(request);
+		
 		const body = await request.json();
 
 		if (!body.id) {
@@ -81,7 +88,7 @@ export async function POST(request) {
 
 		let opportunity;
 		try {
-			opportunity = await fundingApi.getOpportunityById(body.id);
+			opportunity = await fundingApi.getOpportunityById(supabase, body.id);
 		} catch (error) {
 			console.error('Error fetching from Supabase:', error);
 			// Fallback to mock data
