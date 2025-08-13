@@ -11,17 +11,26 @@ import { jest } from '@jest/globals';
 import { createConfiguredMockSupabase } from '../../mocks/supabase.js';
 import { createMockAnthropicClient } from '../../setup/testHelpers.js';
 
+// Mock the agents before importing anything else
+jest.mock('../../../lib/agents-v2/core/sourceOrchestrator.js');
+jest.mock('../../../lib/agents-v2/core/dataExtractionAgent/index.js');
+jest.mock('../../../lib/agents-v2/optimization/earlyDuplicateDetector.js');
+jest.mock('../../../lib/agents-v2/core/analysisAgent/index.js');
+jest.mock('../../../lib/agents-v2/core/filterFunction.js');
+jest.mock('../../../lib/agents-v2/core/storageAgent/index.js');
+jest.mock('../../../lib/agents-v2/optimization/directUpdateHandler.js');
+
 // Import the real coordinator (will use mapped mocks via jest.config.js)
 import { processApiSourceV2 } from '../../../lib/services/processCoordinatorV2.js';
 
-// Import the mock agent functions for setup
-import { analyzeSource } from '../../../__mocks__/lib/agents-v2/core/sourceOrchestrator.js';
-import { extractFromSource } from '../../../__mocks__/lib/agents-v2/core/dataExtractionAgent/index.js';
-import { detectDuplicates } from '../../../__mocks__/lib/agents-v2/optimization/earlyDuplicateDetector.js';
-import { enhanceOpportunities } from '../../../__mocks__/lib/agents-v2/core/analysisAgent/index.js';
-import { filterOpportunities } from '../../../__mocks__/lib/agents-v2/core/filterFunction.js';
-import { storeOpportunities } from '../../../__mocks__/lib/agents-v2/core/storageAgent/index.js';
-import { updateDuplicateOpportunities } from '../../../__mocks__/lib/agents-v2/optimization/directUpdateHandler.js';
+// Import the agent functions (now mocked by Jest)
+import { analyzeSource } from '../../../lib/agents-v2/core/sourceOrchestrator.js';
+import { extractFromSource } from '../../../lib/agents-v2/core/dataExtractionAgent/index.js';
+import { detectDuplicates } from '../../../lib/agents-v2/optimization/earlyDuplicateDetector.js';
+import { enhanceOpportunities } from '../../../lib/agents-v2/core/analysisAgent/index.js';
+import { filterOpportunities } from '../../../lib/agents-v2/core/filterFunction.js';
+import { storeOpportunities } from '../../../lib/agents-v2/core/storageAgent/index.js';
+import { updateDuplicateOpportunities } from '../../../lib/agents-v2/optimization/directUpdateHandler.js';
 
 describe('RunManagerV2 Stage Updates Integration', () => {
   let mockSupabase;
