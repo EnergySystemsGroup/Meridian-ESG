@@ -12,8 +12,8 @@ export const mockSupabaseClient = {
 // Mock createSupabaseClient function
 export const createSupabaseClient = jest.fn(() => mockSupabaseClient)
 
-// Mock logAgentExecution function
-export const logAgentExecution = jest.fn()
+// Mock logAgentExecution function - matches the real signature
+export const logAgentExecution = jest.fn().mockResolvedValue({ error: null })
 
 // Export all for easy importing
 export default {

@@ -1,4 +1,6 @@
 // Mock fundingSourceManager module
+import { jest } from '@jest/globals'
+
 const mockGetOrCreate = jest.fn()
 const mockFindByName = jest.fn()
 const mockUpdateIfNeeded = jest.fn()

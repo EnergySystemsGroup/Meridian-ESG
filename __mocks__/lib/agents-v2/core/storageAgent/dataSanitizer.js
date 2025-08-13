@@ -1,4 +1,6 @@
 // Mock dataSanitizer module
+import { jest } from '@jest/globals'
+
 export const dataSanitizer = {
   prepareForInsert: jest.fn(),
   prepareForUpdate: jest.fn(),
