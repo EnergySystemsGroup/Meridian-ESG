@@ -1,0 +1,471 @@
+name: Test Suite
+
+on:
+  push:
+    branches: [main, develop, 'feature/**', 'release/**']
+  pull_request:
+    branches: [main, develop]
+  workflow_dispatch:
+    inputs:
+      debug_enabled:
+        type: boolean
+        description: 'Run the build with tmate debugging enabled'
+        required: false
+        default: false
+
+env:
+  NODE_VERSION: '20.x'
+  CACHE_NAME: test-cache
+  COVERAGE_THRESHOLD_BRANCHES: 50
+  COVERAGE_THRESHOLD_FUNCTIONS: 50
+  COVERAGE_THRESHOLD_LINES: 50
+  COVERAGE_THRESHOLD_STATEMENTS: 50
+
+concurrency:
+  group: test-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  setup:
+    name: Setup Test Environment
+    runs-on: ubuntu-latest
+    outputs:
+      cache-key: ${{ steps.cache-key.outputs.key }}
+      test-matrix: ${{ steps.test-split.outputs.matrix }}
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Generate Cache Key
+        id: cache-key
+        run: |
+          echo "key=${{ runner.os }}-node-${{ env.NODE_VERSION }}-${{ hashFiles('**/package-lock.json') }}" >> $GITHUB_OUTPUT
+
+      - name: Cache Dependencies
+        uses: actions/cache@v4
+        id: cache
+        with:
+          path: |
+            node_modules
+            ~/.npm
+            ~/.cache
+          key: ${{ steps.cache-key.outputs.key }}
+          restore-keys: |
+            ${{ runner.os }}-node-${{ env.NODE_VERSION }}-
+            ${{ runner.os }}-node-
+
+      - name: Install Dependencies
+        if: steps.cache.outputs.cache-hit != 'true'
+        run: |
+          npm ci --prefer-offline --no-audit
+          npm ls --depth=0
+
+      - name: Generate Test Split Strategy
+        id: test-split
+        run: |
+          node scripts/ci/test-split.js
+          echo "matrix=$(cat test-matrix.json)" >> $GITHUB_OUTPUT
+
+  lint:
+    name: Lint Code
+    needs: setup
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Restore Cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            node_modules
+            ~/.npm
+            ~/.cache
+          key: ${{ needs.setup.outputs.cache-key }}
+
+      - name: Run ESLint
+        run: |
+          npm run lint -- --format json --output-file eslint-report.json || true
+          npm run lint -- --format stylish
+
+      - name: Upload ESLint Report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: eslint-report
+          path: eslint-report.json
+
+  unit-tests:
+    name: Unit Tests - ${{ matrix.name }}
+    needs: setup
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Components
+            pattern: '__tests__/unit/components/**/*.test.{js,jsx,ts,tsx}'
+            shard: 1/3
+          - name: API Routes
+            pattern: '__tests__/unit/api/**/*.test.{js,jsx,ts,tsx}'
+            shard: 2/3
+          - name: Libraries
+            pattern: '__tests__/unit/lib/**/*.test.{js,jsx,ts,tsx}'
+            shard: 3/3
+    env:
+      JEST_SHARD: ${{ matrix.shard }}
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Restore Cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            node_modules
+            ~/.npm
+            ~/.cache
+          key: ${{ needs.setup.outputs.cache-key }}
+
+      - name: Setup Test Environment
+        run: |
+          cp .env.example .env.test 2>/dev/null || true
+          echo "NEXT_PUBLIC_SUPABASE_URL=http://localhost:54321" >> .env.test
+          echo "NEXT_PUBLIC_SUPABASE_ANON_KEY=test-anon-key" >> .env.test
+          echo "SUPABASE_SERVICE_ROLE_KEY=test-service-key" >> .env.test
+          echo "ANTHROPIC_API_KEY=test-anthropic-key" >> .env.test
+
+      - name: Run Unit Tests
+        run: |
+          npm test -- \
+            --coverage \
+            --coverageDirectory=coverage-${{ matrix.name }} \
+            --testMatch='${{ matrix.pattern }}' \
+            --shard=${{ matrix.shard }} \
+            --json \
+            --outputFile=test-results-${{ matrix.name }}.json \
+            --testLocationInResults \
+            --ci
+
+      - name: Generate Coverage Report
+        if: always()
+        run: |
+          npx nyc report \
+            --reporter=json-summary \
+            --reporter=lcov \
+            --reporter=text \
+            --report-dir=coverage-${{ matrix.name }}
+
+      - name: Upload Test Results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-unit-${{ matrix.name }}
+          path: |
+            test-results-${{ matrix.name }}.json
+            coverage-${{ matrix.name }}
+
+  integration-tests:
+    name: Integration Tests
+    needs: setup
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: test_db
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Restore Cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            node_modules
+            ~/.npm
+            ~/.cache
+          key: ${{ needs.setup.outputs.cache-key }}
+
+      - name: Setup Database
+        run: |
+          npm install -g supabase
+          supabase init
+          supabase db reset --db-url postgresql://postgres:postgres@localhost:5432/test_db
+
+      - name: Run Integration Tests
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/test_db
+          NEXT_PUBLIC_SUPABASE_URL: http://localhost:54321
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: test-anon-key
+          SUPABASE_SERVICE_ROLE_KEY: test-service-key
+        run: |
+          npm test -- \
+            --coverage \
+            --coverageDirectory=coverage-integration \
+            --testMatch='**/__tests__/integration/**/*.test.{js,jsx,ts,tsx}' \
+            --json \
+            --outputFile=test-results-integration.json \
+            --testLocationInResults \
+            --ci \
+            --maxWorkers=2
+
+      - name: Upload Test Results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-integration
+          path: |
+            test-results-integration.json
+            coverage-integration
+
+  e2e-tests:
+    name: E2E Tests
+    needs: setup
+    runs-on: ubuntu-latest
+    container:
+      image: mcr.microsoft.com/playwright:v1.40.0-focal
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Restore Cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            node_modules
+            ~/.npm
+            ~/.cache
+          key: ${{ needs.setup.outputs.cache-key }}
+
+      - name: Install Playwright
+        run: |
+          npx playwright install --with-deps chromium firefox webkit
+
+      - name: Build Application
+        run: |
+          npm run build
+          
+      - name: Run E2E Tests
+        run: |
+          npm run test:e2e -- --reporter=json --output=e2e-results.json
+
+      - name: Upload E2E Results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-results
+          path: |
+            e2e-results.json
+            playwright-report/
+            test-results/
+
+  coverage-report:
+    name: Coverage Report
+    needs: [unit-tests, integration-tests]
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Download Coverage Reports
+        uses: actions/download-artifact@v4
+        with:
+          pattern: test-results-*
+          path: coverage-reports
+
+      - name: Merge Coverage Reports
+        run: |
+          npm install -g nyc
+          mkdir -p merged-coverage
+          
+          # Merge all coverage files
+          nyc merge coverage-reports merged-coverage/coverage.json
+          
+          # Generate final report
+          nyc report \
+            --reporter=json-summary \
+            --reporter=lcov \
+            --reporter=text \
+            --reporter=html \
+            --report-dir=final-coverage \
+            --temp-dir=merged-coverage
+
+      - name: Check Coverage Thresholds
+        run: |
+          node -e "
+            const coverage = require('./final-coverage/coverage-summary.json');
+            const totals = coverage.total;
+            
+            const thresholds = {
+              branches: ${{ env.COVERAGE_THRESHOLD_BRANCHES }},
+              functions: ${{ env.COVERAGE_THRESHOLD_FUNCTIONS }},
+              lines: ${{ env.COVERAGE_THRESHOLD_LINES }},
+              statements: ${{ env.COVERAGE_THRESHOLD_STATEMENTS }}
+            };
+            
+            let failed = false;
+            for (const [key, threshold] of Object.entries(thresholds)) {
+              const actual = totals[key].pct;
+              if (actual < threshold) {
+                console.error(\`Coverage for \${key} (\${actual}%) is below threshold (\${threshold}%)\`);
+                failed = true;
+              } else {
+                console.log(\`Coverage for \${key}: \${actual}% (threshold: \${threshold}%)\`);
+              }
+            }
+            
+            if (failed) process.exit(1);
+          "
+
+      - name: Upload Coverage to Codecov
+        uses: codecov/codecov-action@v3
+        with:
+          files: ./final-coverage/lcov.info
+          flags: unittests
+          name: meridian-coverage
+          fail_ci_if_error: false
+
+      - name: Comment PR with Coverage
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const coverage = JSON.parse(fs.readFileSync('./final-coverage/coverage-summary.json', 'utf8'));
+            const totals = coverage.total;
+            
+            const comment = `## Test Coverage Report
+            
+            | Type | Coverage | Threshold |
+            |------|----------|-----------|
+            | Branches | ${totals.branches.pct.toFixed(2)}% | ${process.env.COVERAGE_THRESHOLD_BRANCHES}% |
+            | Functions | ${totals.functions.pct.toFixed(2)}% | ${process.env.COVERAGE_THRESHOLD_FUNCTIONS}% |
+            | Lines | ${totals.lines.pct.toFixed(2)}% | ${process.env.COVERAGE_THRESHOLD_LINES}% |
+            | Statements | ${totals.statements.pct.toFixed(2)}% | ${process.env.COVERAGE_THRESHOLD_STATEMENTS}% |
+            
+            View full report in the [Actions artifacts](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})`;
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: comment
+            });
+
+      - name: Upload Final Coverage
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: final-coverage/
+
+  test-report:
+    name: Test Report Summary
+    needs: [lint, unit-tests, integration-tests, e2e-tests, coverage-report]
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - name: Download All Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: test-artifacts
+
+      - name: Generate Test Summary
+        run: |
+          echo "# Test Suite Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          # Check job statuses
+          echo "## Job Status" >> $GITHUB_STEP_SUMMARY
+          echo "| Job | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|-----|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Lint | ${{ needs.lint.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Unit Tests | ${{ needs.unit-tests.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Integration Tests | ${{ needs.integration-tests.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| E2E Tests | ${{ needs.e2e-tests.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Coverage | ${{ needs.coverage-report.result }} |" >> $GITHUB_STEP_SUMMARY
+          
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## Artifacts" >> $GITHUB_STEP_SUMMARY
+          echo "- [Test Results](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})" >> $GITHUB_STEP_SUMMARY
+          echo "- [Coverage Report](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})" >> $GITHUB_STEP_SUMMARY
+
+      - name: Set Final Status
+        if: |
+          needs.lint.result == 'failure' ||
+          needs.unit-tests.result == 'failure' ||
+          needs.integration-tests.result == 'failure' ||
+          needs.coverage-report.result == 'failure'
+        run: exit 1
+
+  notify:
+    name: Send Notifications
+    needs: test-report
+    runs-on: ubuntu-latest
+    if: failure() && (github.event_name == 'push' || github.event_name == 'pull_request')
+    steps:
+      - name: Send Slack Notification
+        if: env.SLACK_WEBHOOK_URL != ''
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        run: |
+          curl -X POST $SLACK_WEBHOOK_URL \
+            -H 'Content-Type: application/json' \
+            -d '{
+              "text": "Test Suite Failed",
+              "blocks": [
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "*Test Suite Failed* :x:\n*Repository:* ${{ github.repository }}\n*Branch:* ${{ github.ref_name }}\n*Commit:* ${{ github.sha }}\n*Author:* ${{ github.actor }}\n*Run:* <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Details>"
+                  }
+                }
+              ]
+            }'
+
+      - name: Send Email Notification
+        if: env.EMAIL_NOTIFICATIONS_ENABLED == 'true'
+        env:
+          EMAIL_NOTIFICATIONS_ENABLED: ${{ secrets.EMAIL_NOTIFICATIONS_ENABLED }}
+        run: |
+          echo "Test suite failed. Check the GitHub Actions run for details." | \
+          mail -s "Test Suite Failed: ${{ github.repository }}" \
+               ${{ secrets.NOTIFICATION_EMAIL }}
