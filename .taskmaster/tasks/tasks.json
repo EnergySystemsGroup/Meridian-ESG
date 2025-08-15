@@ -2957,11 +2957,147 @@
         "dependencies": [],
         "priority": "medium",
         "subtasks": []
+      },
+      {
+        "id": 56,
+        "title": "Restructure Supabase File Architecture",
+        "description": "Clean up mixed client creation and business logic patterns by properly separating concerns between /utils/supabase/ (SSR clients) and /lib/supabase.js (business logic).",
+        "details": "Current /lib/supabase.js contains 448 lines mixing client creation with business logic. The new /utils/supabase/ contains modern SSR client utilities. Multiple files still import from old /lib/supabase.js patterns, creating architectural inconsistency identified by code-sweeper audit.",
+        "testStrategy": "",
+        "status": "pending",
+        "dependencies": [],
+        "priority": "medium",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Extract Business Logic from /lib/supabase.js",
+            "description": "Move fundingApi object (200+ lines), logging functions, helpers, and mock data to separate service files for better separation of concerns.",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 56
+          },
+          {
+            "id": 2,
+            "title": "Update /lib/supabase.js to Use New SSR Clients",
+            "description": "Replace old client creation functions with imports from /utils/supabase/ while keeping business logic that uses the clients.",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 56
+          },
+          {
+            "id": 3,
+            "title": "Update All Import References",
+            "description": "Update files importing from /lib/supabase.js to use appropriate locations. Components should use service files, agents should use SSR clients.",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 56
+          },
+          {
+            "id": 4,
+            "title": "Remove Legacy Utility Files",
+            "description": "Remove /utils/supabase.js, /utils/supabase-client.js, /utils/supabase-server.js and update remaining imports to use /utils/supabase/ instead.",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 56
+          },
+          {
+            "id": 5,
+            "title": "Validate Architecture Consistency",
+            "description": "Verify all imports follow consistent patterns, ensure no mixed client creation approaches remain, and test that all functionality works after restructuring.",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 56
+          }
+        ]
+      },
+      {
+        "id": 57,
+        "title": "Enhance Duplicate Detection Algorithm with Robust API Timestamp Handling",
+        "description": "Modify the performFreshnessCheck function in earlyDuplicateDetector.js to handle missing, null, undefined, or invalid API timestamps, ensuring consistent behavior and preventing missed updates.",
+        "status": "done",
+        "dependencies": [
+          3,
+          27,
+          29
+        ],
+        "priority": "medium",
+        "details": "1. Locate the performFreshnessCheck function in earlyDuplicateDetector.js (lines 400-443)\n\n2. Implement timestamp validation:\n   - Add a helper function to check if a given timestamp is valid:\n     ```javascript\n     function isValidTimestamp(timestamp) {\n       return timestamp && !isNaN(new Date(timestamp).getTime());\n     }\n     ```\n\n3. Modify the performFreshnessCheck function:\n   ```javascript\n   function performFreshnessCheck(opportunity) {\n     if (!isValidTimestamp(opportunity.api_updated_at)) {\n       return {\n         action: 'process',\n         reason: 'no_api_timestamp_check_fields'\n       };\n     }\n     \n     // Existing freshness check logic here\n   }\n   ```\n\n4. Update any related functions or code that rely on the performFreshnessCheck output to handle the new 'no_api_timestamp_check_fields' reason\n\n5. Ensure backwards compatibility:\n   - Review and update any code that expects specific return values from performFreshnessCheck\n   - Add appropriate error handling and logging for the new scenario\n\n6. Optimize performance:\n   - Consider caching the validity check results if the function is called multiple times with the same opportunity\n\n7. Update documentation:\n   - Add comments explaining the new behavior in the performFreshnessCheck function\n   - Update any relevant API or integration documentation to reflect the changes in timestamp handling\n\n8. Refactor related code:\n   - Review other parts of the codebase that handle API timestamps and consider applying similar validation logic for consistency\n\n9. Address current issue:\n   - In performFreshnessCheck function (lines 400-443), update the logic that converts api_updated_at to Date to use the new isValidTimestamp function\n   - Ensure that when api_updated_at is null/undefined/empty/invalid, the function returns the 'process' action with reason 'no_api_timestamp_check_fields'\n   - Verify that this change prevents unpredictable behavior in the freshness check logic, especially for edge cases like Unix epoch (1970) dates",
+        "testStrategy": "1. Unit Tests:\n   - Test performFreshnessCheck with various timestamp scenarios:\n     - Valid timestamp\n     - Null timestamp\n     - Undefined timestamp\n     - Empty string timestamp\n     - Invalid date string\n     - Future timestamp\n     - Very old timestamp (e.g., Unix epoch)\n   - Verify correct return values for each scenario, especially the new 'no_api_timestamp_check_fields' reason\n\n2. Integration Tests:\n   - Test the entire duplicate detection pipeline with opportunities having various timestamp conditions\n   - Ensure opportunities with missing/invalid timestamps proceed to critical field checking\n   - Verify that the new logic correctly handles edge cases like Unix epoch dates\n\n3. Performance Testing:\n   - Measure the impact of the new validation logic on processing time\n   - Ensure the changes don't significantly affect the overall performance of the duplicate detection algorithm\n   - If implemented, test the effectiveness of caching validity check results\n\n4. Regression Testing:\n   - Run existing test suite to ensure no unintended side effects\n   - Verify that opportunities with valid timestamps are processed as before\n\n5. Edge Case Testing:\n   - Test with extremely large or small timestamp values\n   - Test with various timezone representations\n   - Specifically test with Unix epoch (1970) dates to ensure correct handling\n\n6. Compatibility Testing:\n   - Verify that systems or functions consuming the output of performFreshnessCheck handle the new 'no_api_timestamp_check_fields' reason correctly\n\n7. Log Analysis:\n   - After deployment, analyze logs to ensure the new logic is correctly identifying and handling invalid timestamps in production data\n\n8. User Acceptance Testing:\n   - Have relevant team members or stakeholders review the changes and confirm that the new behavior meets business requirements\n\n9. Code Review:\n   - Conduct a thorough code review to ensure the implementation follows best practices and addresses all identified issues",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "",
+            "description": "Implement isValidTimestamp helper function",
+            "status": "done",
+            "dependencies": [],
+            "details": "",
+            "testStrategy": ""
+          },
+          {
+            "id": 2,
+            "title": "",
+            "description": "Update performFreshnessCheck to use isValidTimestamp and handle invalid cases",
+            "status": "done",
+            "dependencies": [],
+            "details": "",
+            "testStrategy": ""
+          },
+          {
+            "id": 3,
+            "title": "",
+            "description": "Update related functions to handle 'no_api_timestamp_check_fields' reason",
+            "status": "done",
+            "dependencies": [],
+            "details": "",
+            "testStrategy": ""
+          },
+          {
+            "id": 4,
+            "title": "",
+            "description": "Implement error handling and logging for new scenarios",
+            "status": "done",
+            "dependencies": [],
+            "details": "",
+            "testStrategy": ""
+          },
+          {
+            "id": 5,
+            "title": "",
+            "description": "Update documentation and comments",
+            "status": "done",
+            "dependencies": [],
+            "details": "",
+            "testStrategy": ""
+          },
+          {
+            "id": 6,
+            "title": "",
+            "description": "Conduct performance optimization and consider caching",
+            "status": "done",
+            "dependencies": [],
+            "details": "",
+            "testStrategy": ""
+          },
+          {
+            "id": 7,
+            "title": "",
+            "description": "Perform comprehensive testing as per updated test strategy",
+            "status": "done",
+            "dependencies": [],
+            "details": "",
+            "testStrategy": ""
+          }
+        ]
       }
     ],
     "metadata": {
       "created": "2025-06-17T23:54:58.582Z",
-      "updated": "2025-08-13T16:44:46.345Z",
+      "updated": "2025-08-15T21:12:33.760Z",
       "description": "Tasks for master context"
     }
   },
