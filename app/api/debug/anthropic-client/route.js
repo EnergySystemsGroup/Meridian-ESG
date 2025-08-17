@@ -1,4 +1,4 @@
-// import { testAnthropicClient, quickTest, testSchemas } from '../../../../lib/agents-v2/tests/anthropicClient.test.js';
+// Test imports disabled for production builds
 
 /**
  * Debug API route to test AnthropicClient performance
