@@ -107,7 +107,7 @@ export async function GET(request, { params }) {
 // PUT /api/funding/sources/[id] - Update a specific API source
 export async function PUT(request, { params }) {
 	try {
-		const supabase = createSupabaseClient();
+		const { supabase } = createClient(request);
 		const { id } = await params;
 		const body = await request.json();
 
@@ -233,7 +233,7 @@ export async function PUT(request, { params }) {
 // DELETE /api/funding/sources/[id] - Delete a specific API source
 export async function DELETE(request, { params }) {
 	try {
-		const supabase = createSupabaseClient();
+		const { supabase } = createClient(request);
 		const { id } = await params;
 
 		// Delete the source (cascade will delete configurations)
