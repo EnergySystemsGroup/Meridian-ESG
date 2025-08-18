@@ -3093,11 +3093,282 @@
             "testStrategy": ""
           }
         ]
+      },
+      {
+        "id": 58,
+        "title": "Create Job Queue Database Infrastructure for V2 Chunk Processing",
+        "description": "Create database schema and JobQueueManager to handle chunked V2 pipeline processing within 60-second Vercel timeout limits. Each job will contain a chunk of 5 opportunities (based on 5 ops/min processing rate) with embedded raw API data for processing through DataExtraction LLM → Duplicate Detection → Analysis LLM → Storage pipeline.",
+        "details": "CONTEXT: We need to solve the V2 pipeline timeout issue where processing 500 opportunities takes 30+ minutes but Vercel has 60s limits. Solution is to chunk raw API data into small jobs that can be processed within timeout.\n\nARCHITECTURE:\n- Each job contains raw API data (not processed opportunities)\n- Jobs store chunks of 5 opportunities max (5 ops/min constraint)\n- Jobs integrate with existing pipeline_runs and pipeline_stages metrics\n- Connects to existing routeV2.js admin route for backward compatibility\n\nDATABASE SCHEMA (processing_jobs table):\n- id (UUID, primary key)\n- source_id (UUID, references api_sources.id) \n- master_run_id (UUID, references pipeline_runs.id)\n- chunk_index (INTEGER, for ordering chunks)\n- total_chunks (INTEGER, for progress tracking)\n- status (TEXT: pending/processing/completed/failed)\n- raw_data (JSONB, contains chunk of 5 raw opportunities)\n- processing_config (JSONB, source config and instructions)\n- retry_count (INTEGER, default 0, max 3)\n- error_details (TEXT, null)\n- created_at (TIMESTAMPTZ)\n- started_at (TIMESTAMPTZ, null)\n- completed_at (TIMESTAMPTZ, null)\n\nINDEXES:\n- idx_processing_jobs_status_created ON (status, created_at)\n- idx_processing_jobs_master_run ON (master_run_id)\n- idx_processing_jobs_source ON (source_id)\n\nJOBQUEUEMANAGER CLASS (lib/services/jobQueueManager.js):\n- Uses existing Supabase client pattern from V2 pipeline\n- Methods: createJob(), getNextPendingJob(), updateJobStatus(), retryFailedJobs()\n- Integrates with existing RunManagerV2 for metrics tracking\n- Handles job lifecycle within Vercel cron 2-minute intervals\n\nINTEGRATION:\n- Works with existing V2 pipeline metrics (pipeline_runs, pipeline_stages)\n- Maintains compatibility with current dashboard and monitoring\n- Supports existing source configurations and processing instructions",
+        "testStrategy": "1. Test database schema creation and constraints\n2. Test JobQueueManager CRUD operations with 5-opportunity chunks\n3. Test integration with existing pipeline_runs tracking\n4. Test job queue with realistic 500-opportunity dataset split into 100 jobs\n5. Test error handling and retry logic with failed jobs\n6. Performance test: verify job creation/retrieval stays under 5 seconds",
+        "status": "pending",
+        "dependencies": [],
+        "priority": "high",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Create processing_jobs table migration",
+            "description": "Create Supabase migration for processing_jobs table with columns optimized for V2 chunk processing (source_id, master_run_id, chunk_index, raw_data JSONB, etc.)",
+            "details": "Create migration file: /supabase/migrations/[timestamp]_create_processing_jobs_table.sql\n\nTable schema:\n```sql\nCREATE TABLE processing_jobs (\n  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),\n  source_id UUID NOT NULL REFERENCES api_sources(id),\n  master_run_id UUID NOT NULL REFERENCES pipeline_runs(id), \n  chunk_index INTEGER NOT NULL,\n  total_chunks INTEGER NOT NULL,\n  status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'processing', 'completed', 'failed')),\n  raw_data JSONB NOT NULL, -- Contains array of 5 raw opportunities\n  processing_config JSONB NOT NULL, -- Source config + instructions from SourceOrchestrator\n  retry_count INTEGER DEFAULT 0,\n  error_details TEXT,\n  created_at TIMESTAMPTZ DEFAULT now(),\n  started_at TIMESTAMPTZ,\n  completed_at TIMESTAMPTZ\n);\n\n-- Indexes for performance\nCREATE INDEX idx_processing_jobs_status_created ON processing_jobs(status, created_at);\nCREATE INDEX idx_processing_jobs_master_run ON processing_jobs(master_run_id);\nCREATE INDEX idx_processing_jobs_source ON processing_jobs(source_id);\n```\n\nCONTEXT: This table will store chunks of raw API data (not processed opportunities) that need to go through the full V2 pipeline: DataExtractionAgent LLM → EarlyDuplicateDetector → AnalysisAgent LLM → FilterFunction → StorageAgent.",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 58
+          },
+          {
+            "id": 2,
+            "title": "Implement JobQueueManager class",
+            "description": "Create JobQueueManager class in /lib/services/jobQueueManager.js with methods for creating, retrieving, and updating jobs for V2 chunk processing",
+            "details": "Create file: /lib/services/jobQueueManager.js\n\nClass structure:\n```javascript\nimport { createSupabaseClient } from '../utils/supabase.js';\n\nexport class JobQueueManager {\n  constructor() {\n    this.supabase = createSupabaseClient();\n  }\n\n  // Create job with chunk of 5 raw opportunities\n  async createJob(sourceId, masterRunId, chunkIndex, totalChunks, rawDataChunk, processingConfig) {\n    // Insert job with raw_data containing chunk of opportunities\n    // Return job ID\n  }\n\n  // Get next pending job (FIFO, oldest first)\n  async getNextPendingJob() {\n    // Query for status='pending', order by created_at\n    // Return job with raw_data chunk ready for processing\n  }\n\n  // Update job status (pending → processing → completed/failed)\n  async updateJobStatus(jobId, status, errorDetails = null) {\n    // Update status, set timestamps appropriately\n    // Handle retry_count increment for failed jobs\n  }\n\n  // Get all jobs for a master run (for progress tracking)\n  async getJobsByMasterRun(masterRunId) {\n    // Return all jobs for tracking overall progress\n  }\n\n  // Retry failed jobs (max 3 attempts)\n  async retryFailedJobs(maxRetries = 3) {\n    // Reset failed jobs with retry_count < maxRetries back to pending\n  }\n}\n```\n\nCONTEXT: This manages jobs that contain raw API data chunks (not processed opportunities). Each job goes through the full V2 pipeline within 60s timeout limits. Integrates with existing Supabase patterns and RunManagerV2 metrics.",
+            "status": "pending",
+            "dependencies": [
+              "58.1"
+            ],
+            "parentTaskId": 58
+          },
+          {
+            "id": 3,
+            "title": "Create unit tests for JobQueueManager",
+            "description": "Write comprehensive unit tests for JobQueueManager methods using Vitest, focusing on job lifecycle and chunk handling",
+            "details": "Create test file: /lib/services/__tests__/jobQueueManager.test.js\n\nTest scenarios:\n1. **Job Creation**: Test createJob() with 5-opportunity chunks\n2. **Job Retrieval**: Test getNextPendingJob() FIFO ordering\n3. **Status Updates**: Test pending → processing → completed flow\n4. **Error Handling**: Test failed jobs and retry logic\n5. **Master Run Tracking**: Test getJobsByMasterRun() for progress\n6. **Chunk Validation**: Test raw_data JSONB structure\n7. **Database Constraints**: Test foreign key relationships\n\nMock Supabase client to isolate JobQueueManager logic.\n\nExample test structure:\n```javascript\nimport { JobQueueManager } from '../jobQueueManager.js';\nimport { vi } from 'vitest';\n\ndescribe('JobQueueManager', () => {\n  test('creates job with 5-opportunity chunk', async () => {\n    // Test chunk creation with raw API data\n  });\n  \n  test('retrieves oldest pending job first', async () => {\n    // Test FIFO ordering\n  });\n  \n  test('handles job status transitions', async () => {\n    // Test pending → processing → completed\n  });\n});\n```\n\nCONTEXT: Tests must validate that jobs contain raw API data chunks (not processed opportunities) and integrate with V2 pipeline flow within 60s timeout constraints.",
+            "status": "pending",
+            "dependencies": [
+              "58.2"
+            ],
+            "parentTaskId": 58
+          },
+          {
+            "id": 4,
+            "title": "Integrate JobQueueManager with existing V2 metrics",
+            "description": "Connect JobQueueManager to existing pipeline_runs and pipeline_stages tables for metrics tracking compatibility",
+            "details": "Integration points:\n1. **Master Run Creation**: Connect to existing RunManagerV2 for pipeline_runs\n2. **Stage Tracking**: Update pipeline_stages for job processing stages\n3. **Metrics Compatibility**: Ensure job metrics roll up to master run totals\n4. **Dashboard Integration**: Maintain compatibility with existing V2 dashboard\n\nModifications needed:\n- Add methods to link jobs to pipeline_runs.id (master_run_id)\n- Update existing metrics collection to aggregate from job chunks\n- Ensure job completion updates overall run progress\n- Maintain existing V2 optimization metrics (60-80% token reduction)\n\nFile locations:\n- Update /lib/services/runManagerV2.js to work with chunked jobs\n- Ensure compatibility with existing pipeline_stages tracking\n- Keep existing dashboard queries working with new job-based data\n\nCONTEXT: V2 pipeline currently tracks detailed metrics in pipeline_runs and pipeline_stages. Jobs must integrate seamlessly so existing dashboard and analytics continue working while processing is now chunked.",
+            "status": "pending",
+            "dependencies": [
+              "58.2",
+              "58.3"
+            ],
+            "parentTaskId": 58
+          },
+          {
+            "id": 5,
+            "title": "Test JobQueueManager with realistic data volumes",
+            "description": "Integration test JobQueueManager with realistic 500-opportunity dataset split into 100 jobs of 5 opportunities each",
+            "details": "Create integration test: /lib/services/__tests__/jobQueueManager.integration.test.js\n\nTest scenarios:\n1. **Large Dataset Processing**: 500 opportunities → 100 jobs of 5 each\n2. **Job Queue Performance**: Test creation/retrieval of 100 jobs stays under 5 seconds\n3. **Master Run Progress**: Track progress as jobs complete (1/100, 2/100, etc.)\n4. **Error Recovery**: Test failed jobs don't block other jobs\n5. **Memory Usage**: Ensure JSONB chunks don't cause memory issues\n6. **Database Performance**: Test with proper indexes on large job queues\n\nReal-world simulation:\n- Use actual API response structure from existing V2 sources\n- Test with California grants (typical large source)\n- Simulate concurrent job processing\n- Validate chunking maintains data integrity\n- Test master run completion when all 100 jobs done\n\nPerformance targets:\n- Job creation: < 100ms per job\n- Job retrieval: < 50ms per call\n- Status updates: < 25ms per update\n- Total queue setup: < 5 seconds for 100 jobs\n\nCONTEXT: This validates that the job queue can handle real V2 pipeline workloads where sources like California grants have 500+ opportunities that need to be processed within timeout constraints.",
+            "status": "pending",
+            "dependencies": [
+              "58.4"
+            ],
+            "parentTaskId": 58
+          }
+        ]
+      },
+      {
+        "id": 59,
+        "title": "Extract API Calling from DataExtractionAgent into Standalone Module",
+        "description": "Separate pure API calling logic from LLM processing in DataExtractionAgent, creating a new apiCaller module that fetches raw data and chunks it for job queue processing. This enables routeV2.js to fetch data quickly (< 10s) and queue chunks without hitting 60s timeout limits.",
+        "details": "CONTEXT: Current DataExtractionAgent does both API fetching AND LLM processing, causing 30+ minute timeouts. We need to separate these so the admin route can quickly fetch all data, chunk it, and queue jobs for processing.\n\nCURRENT PROBLEM:\n- DataExtractionAgent in /lib/agents-v2/core/dataExtractionAgent/index.js calls external APIs AND does LLM extraction\n- This makes the whole pipeline run in one 60s-limited function\n- We need to split: API calling (fast) vs LLM processing (slow, chunked)\n\nNEW ARCHITECTURE:\n1. **apiCaller** (new module): Pure API calling, chunking, job creation - runs in routeV2.js\n2. **DataExtractionAgent** (modified): LLM processing only - runs in job processing\n\nAPICALLER MODULE (/lib/agents-v2/core/apiCaller/index.js):\n- fetchAndChunkData(source, instructions, chunkSize = 5)\n- Calls external APIs using existing patterns from DataExtractionAgent\n- Handles pagination, rate limiting, retries\n- Chunks raw API response into arrays of 5 opportunities\n- Stores raw response using existing storeRawResponse()\n- Returns: { chunks: [[opp1-5], [opp6-10]...], rawResponseId, totalCount }\n\nCHUNKING LOGIC:\n- Split raw API response.opportunities into chunks of 5\n- Each chunk contains raw opportunity data (not processed)\n- Preserve all original data structure for LLM processing\n- Handle edge cases (last chunk < 5 items)\n\nINTEGRATION WITH EXISTING:\n- Use existing API handling patterns from /lib/agents-v2/core/dataExtractionAgent/apiHandlers/\n- Maintain compatibility with existing source configurations\n- Keep existing error handling and logging patterns\n- Preserve existing raw response storage logic",
+        "testStrategy": "1. Test API calling without LLM processing (should be fast < 10s)\n2. Test chunking of 500 opportunities into 100 chunks of 5 each\n3. Test integration with existing source configurations and auth\n4. Test error handling for API failures and timeouts\n5. Verify raw response storage still works correctly\n6. Performance test: API fetch + chunking should complete in < 10 seconds",
+        "status": "pending",
+        "dependencies": [
+          58
+        ],
+        "priority": "high",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Create new /lib/services/apiCaller.js module",
+            "description": "Extract API calling logic from DataExtractionAgent into standalone module for reuse in job queue system. This module handles pure API operations without LLM processing.",
+            "details": "Create new file /lib/services/apiCaller.js that exports callApiSource(source, processingInstructions) function. This should extract the API calling logic from /lib/agents-v2/core/dataExtractionAgent/apiHandlers/index.js (both handleSingleApi and handleTwoStepApi functions). The module should return raw API response data without any LLM processing, enabling fast data fetching for chunking. Focus on extracting clean API calling functionality that can be called independently from the job queue processor.",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 59
+          },
+          {
+            "id": 2,
+            "title": "Refactor DataExtractionAgent to use apiCaller module",
+            "description": "Update DataExtractionAgent to import and use the new apiCaller module instead of inline API handling. Remove LLM processing from API calling phase to enable pure data fetching.",
+            "details": "Modify /lib/agents-v2/core/dataExtractionAgent/index.js to import callApiSource from /lib/services/apiCaller.js and replace the current API handling logic (lines 48-53). Update the extractFromSource function to use the separated API calling module. This separation allows the job queue system to fetch API data quickly without triggering LLM processing, which will happen later in the pipeline when processing individual chunks. Ensure the refactored agent maintains the same interface and behavior.",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 59
+          },
+          {
+            "id": 3,
+            "title": "Create data chunking utility with 5-opportunity chunks",
+            "description": "Build utility function to split raw API data into 5-opportunity chunks for job queue processing, based on our 5 ops/min processing constraint.",
+            "details": "Create /lib/utils/dataChunker.js with chunkRawApiData(rawData, chunkSize = 5) function. This utility takes raw API response data and splits it into arrays of 5 opportunities each, preparing data for job queue insertion. The 5-opportunity chunk size is based on our discussion about processing 5 opportunities per minute to stay within Vercel's 60-second timeout limits. Include validation to ensure chunks contain valid opportunity data and handle edge cases like partial chunks at the end.",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 59
+          },
+          {
+            "id": 4,
+            "title": "Update routeV2.js to use separated API calling and chunking",
+            "description": "Modify the API route to call apiCaller, chunk the data, and queue jobs instead of running the full 30+ minute pipeline directly.",
+            "details": "Update /app/api/admin/funding-sources/[id]/process/routeV2.js to replace the direct processApiSourceV2 call (line 31) with the new separated workflow: 1) Call apiCaller.callApiSource() to fetch raw data quickly, 2) Use dataChunker.chunkRawApiData() to split into 5-opportunity chunks, 3) Insert chunks as jobs into processing_jobs table with master_run_id linking, 4) Return success response immediately. This eliminates the 30+ minute processing time that causes Vercel timeouts, replacing it with quick data fetching and job queuing that completes in seconds.",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 59
+          },
+          {
+            "id": 5,
+            "title": "Add tests for API calling separation",
+            "description": "Create unit tests to verify the separated API calling module works correctly and maintains compatibility with existing DataExtractionAgent interface.",
+            "details": "Create test files for the new apiCaller module and updated DataExtractionAgent to ensure: 1) apiCaller.callApiSource() returns same raw data structure as before, 2) DataExtractionAgent still works with the separated API calling, 3) Chunking utility correctly splits data into 5-opportunity arrays, 4) No regression in existing functionality. Use existing test patterns from /app/lib/agents-v2/tests/ directory. These tests ensure the separation doesn't break existing pipeline functionality while enabling the new job queue architecture.",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 59
+          }
+        ]
+      },
+      {
+        "id": 60,
+        "title": "Create Job Queue Processor for V2 Pipeline Chunks",
+        "description": "Build the core job processing system that picks up 5-opportunity chunks from the processing_jobs table and runs them through the full V2 pipeline, triggered by Vercel cron every 2 minutes within the 60-second timeout limit.",
+        "details": "1. Set up Vercel cron job:\n   - Configure a new Vercel cron job to run every 2 minutes\n   - Create an API route (e.g., /api/cron/process-v2-chunks) to handle the cron job\n\n2. Implement the job processor function:\n   - Query the processing_jobs table for the next available job\n   - Fetch the 5-opportunity chunk data\n   - Initialize pipeline components: DataExtraction, EarlyDuplicateDetector, AnalysisAgent, FilterFunction, StorageAgent\n   - Process each opportunity through the pipeline stages\n   - Update job status and handle errors\n   - Integrate with existing pipeline_runs and pipeline_stages metrics tables\n\n3. Implement job status tracking:\n   - Add status fields to the processing_jobs table (e.g., 'pending', 'processing', 'completed', 'failed')\n   - Update job status at the start and end of processing\n   - Include error information for failed jobs\n\n4. Implement error recovery:\n   - Create a retry mechanism for failed jobs\n   - Implement exponential backoff for retries\n   - Set a maximum retry limit\n\n5. Optimize for 60-second timeout:\n   - Implement careful timing checks throughout the processing\n   - Gracefully stop processing if approaching the timeout limit\n   - Ensure all database updates are committed before timeout\n\n6. Integration with existing metrics:\n   - Update pipeline_runs table with new run information\n   - Log individual stage metrics in pipeline_stages table\n   - Ensure compatibility with existing admin monitoring tools\n\n7. Implement logging and monitoring:\n   - Add detailed logging throughout the process\n   - Create alerts for critical failures or persistent errors\n   - Implement performance monitoring to track processing times\n\n8. Database optimizations:\n   - Add appropriate indexes to the processing_jobs table\n   - Implement row-level locking to prevent concurrent processing of the same job\n\n9. Testing and validation:\n   - Create unit tests for each component of the job processor\n   - Implement integration tests simulating full job processing cycles\n   - Perform load testing to ensure system can handle expected job volumes",
+        "testStrategy": "1. Unit Testing:\n   - Test each pipeline stage component in isolation\n   - Verify correct handling of various opportunity data scenarios\n   - Test error handling and recovery mechanisms\n   - Validate job status updates and metrics logging\n\n2. Integration Testing:\n   - Set up a test database with sample processing_jobs\n   - Run the job processor through multiple complete cycles\n   - Verify correct pipeline stage execution order\n   - Confirm proper updates to job statuses and metrics tables\n\n3. Performance Testing:\n   - Measure processing time for various chunk sizes\n   - Verify that processing completes within the 60-second limit\n   - Test with simulated high load to ensure scalability\n\n4. Error Handling and Recovery Testing:\n   - Simulate failures at different pipeline stages\n   - Verify retry mechanism and exponential backoff\n   - Test maximum retry limit functionality\n\n5. Cron Job Testing:\n   - Verify that the Vercel cron job triggers correctly every 2 minutes\n   - Test cron job behavior when previous job is still running\n\n6. Database Interaction Testing:\n   - Verify correct locking and unlocking of jobs\n   - Test concurrent access scenarios to ensure data integrity\n\n7. Metrics and Logging Validation:\n   - Confirm accurate updates to pipeline_runs and pipeline_stages tables\n   - Verify that all expected log entries are created\n   - Test alert mechanisms for critical failures\n\n8. Timeout Handling:\n   - Simulate long-running jobs approaching the 60-second limit\n   - Verify graceful shutdown and state preservation\n\n9. End-to-End Testing:\n   - Process a large batch of real or realistic opportunity data\n   - Verify correct end results in the opportunity database\n   - Confirm all metrics and logs are correctly generated\n\n10. Security Testing:\n    - Ensure that the cron job endpoint is properly secured\n    - Verify that no sensitive data is exposed in logs or error messages",
+        "status": "pending",
+        "dependencies": [
+          58,
+          33,
+          19
+        ],
+        "priority": "medium",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Create /lib/services/jobQueueProcessor.js",
+            "description": "Build the main job queue processor that picks up pending jobs and runs them through the V2 pipeline, designed to process 5-opportunity chunks within 60-second timeout.",
+            "details": "Create /lib/services/jobQueueProcessor.js with processNextJob() function that: 1) Queries processing_jobs table for next pending job ordered by created_at, 2) Updates job status to 'processing', 3) Extracts raw_data JSONB containing 5 opportunities, 4) Runs through V2 pipeline: DataExtractionAgent (LLM) → EarlyDuplicateDetector → AnalysisAgent (LLM) → FilterFunction → StorageAgent, 5) Updates job status to 'completed' or 'failed', 6) Updates master_run metrics in pipeline_runs table. Process only 1 job per call to stay within 60-second Vercel timeout, with proper error handling and job status tracking.",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 60
+          },
+          {
+            "id": 2,
+            "title": "Create API route for cron job processing",
+            "description": "Build API endpoint that Vercel cron will call every 2 minutes to process job queue chunks, designed to work within serverless constraints.",
+            "details": "Create /app/api/cron/process-jobs/route.js that exports POST function for Vercel cron. This endpoint: 1) Validates cron authorization header, 2) Calls jobQueueProcessor.processNextJob(), 3) Returns status indicating if job was processed or queue is empty, 4) Includes timeout safety with 50-second limit, 5) Handles errors gracefully without breaking cron schedule. This endpoint will be called by Vercel cron every 2 minutes to continuously process the job queue, with each call processing exactly 1 chunk of 5 opportunities to stay within the 60-second serverless limit.",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 60
+          },
+          {
+            "id": 3,
+            "title": "Integrate V2 pipeline stages for chunk processing",
+            "description": "Adapt the existing V2 pipeline components to work with pre-chunked raw data from job queue instead of handling API calls and chunking internally.",
+            "details": "Modify the V2 pipeline flow to accept pre-chunked raw data: 1) Update DataExtractionAgent to accept raw data directly (skip API calling phase), 2) Ensure EarlyDuplicateDetector works with 5-opportunity chunks, 3) Verify AnalysisAgent can process small chunks efficiently, 4) Confirm FilterFunction handles chunk-sized data, 5) Update StorageAgent to track job_id for chunk traceability. The pipeline should process exactly 5 opportunities per job, maintaining the same quality and metrics as the original V2 pipeline but operating on pre-fetched, chunked data from the job queue.",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 60
+          },
+          {
+            "id": 4,
+            "title": "Add job status tracking and error recovery",
+            "description": "Implement comprehensive job status management with retry logic and error recovery to ensure reliable processing of all chunks.",
+            "details": "Add robust job management to jobQueueProcessor: 1) Job status tracking (pending → processing → completed/failed), 2) Retry mechanism for failed jobs (max 3 retries with exponential backoff), 3) Dead letter handling for permanently failed jobs, 4) Job timeout detection (mark as failed if processing > 90 seconds), 5) Progress reporting to master_run in pipeline_runs table, 6) Error logging with job context for debugging. Include cleanup for stale jobs and monitoring endpoints to track job queue health. This ensures no chunks are lost and provides visibility into processing progress.",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 60
+          },
+          {
+            "id": 5,
+            "title": "Create tests for job queue processor",
+            "description": "Build comprehensive test suite for job queue processing system to ensure reliability and proper integration with V2 pipeline components.",
+            "details": "Create test files for job queue processor covering: 1) Job pickup and status management, 2) V2 pipeline integration with chunked data, 3) Error handling and retry mechanisms, 4) Timeout detection and recovery, 5) Metrics integration with pipeline_runs, 6) Cron endpoint functionality, 7) End-to-end testing with 5-opportunity chunks. Include mock data for testing various scenarios (successful processing, failures, retries, timeouts). Use existing test patterns from /app/lib/agents-v2/tests/ directory. Tests should verify the job queue system processes chunks correctly within timeout constraints.",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 60
+          }
+        ]
+      },
+      {
+        "id": 61,
+        "title": "Configure Vercel Cron for Job Queue Processing",
+        "description": "Set up Vercel cron configuration to automatically trigger job processing every 2 minutes, including creating the vercel.json cron configuration, setting up proper authentication for cron endpoints, and configuring monitoring to track cron execution.",
+        "details": "1. Create vercel.json file in the project root with cron job configuration:\n   ```json\n   {\n     \"crons\": [{\n       \"path\": \"/api/process-job-queue\",\n       \"schedule\": \"*/2 * * * *\"\n     }]\n   }\n   ```\n\n2. Implement the /api/process-job-queue.js endpoint:\n   - Use API Routes in Next.js to create the endpoint\n   - Implement logic to process the next 5-opportunity chunk from the job queue\n   - Ensure the processing completes within Vercel's 60-second timeout limit\n\n3. Set up authentication for the cron endpoint:\n   - Generate a secure API key for cron job authentication\n   - Store the API key securely (e.g., using Vercel Environment Variables)\n   - Implement middleware to verify the API key in the cron endpoint\n\n4. Optimize job queue processing:\n   - Implement a locking mechanism to prevent concurrent processing of the same jobs\n   - Use efficient database queries to fetch and update job statuses\n\n5. Configure error handling and logging:\n   - Implement comprehensive error handling in the cron job\n   - Set up logging to capture processing details and errors\n   - Integrate with existing error tracking systems (e.g., Sentry)\n\n6. Implement monitoring for cron execution:\n   - Set up Vercel Analytics to track cron job executions\n   - Create custom metrics to monitor job processing performance\n   - Implement alerts for failed cron executions or processing errors\n\n7. Update existing job queue management system:\n   - Modify job insertion logic to work with the new cron-based processing\n   - Implement a mechanism to track partially processed job chunks\n\n8. Create a dashboard for monitoring cron job performance:\n   - Develop a UI to display cron job execution history\n   - Show metrics such as jobs processed, success rate, and processing time\n\n9. Implement retry logic for failed job processing:\n   - Create a system to retry failed jobs with exponential backoff\n   - Set up a separate process for handling consistently failing jobs\n\n10. Document the cron job setup and monitoring procedures for the development team",
+        "testStrategy": "1. Verify cron job configuration:\n   - Deploy the application to Vercel and confirm the cron job is set up correctly\n   - Check Vercel logs to ensure the cron job is triggering every 2 minutes\n\n2. Test authentication mechanism:\n   - Attempt to access the cron endpoint without authentication and verify it fails\n   - Test the endpoint with the correct API key and ensure it succeeds\n\n3. Validate job queue processing:\n   - Create a test job queue with known data\n   - Run the cron job and verify it processes the correct number of jobs (5 per execution)\n   - Check that job statuses are updated correctly in the database\n\n4. Performance testing:\n   - Simulate a large job queue and monitor processing time\n   - Verify that each cron execution completes within the 60-second Vercel timeout\n\n5. Concurrency testing:\n   - Manually trigger multiple cron job executions simultaneously\n   - Verify that the locking mechanism prevents duplicate job processing\n\n6. Error handling and logging:\n   - Intentionally introduce errors in job processing\n   - Verify that errors are logged correctly and don't crash the cron job\n   - Check that error notifications are sent to the appropriate channels\n\n7. Monitoring and metrics:\n   - Verify that custom metrics are being recorded in Vercel Analytics\n   - Test the alerting system by simulating cron job failures\n\n8. Dashboard testing:\n   - Verify that the monitoring dashboard accurately displays cron job execution history\n   - Check that all relevant metrics are displayed correctly\n\n9. Retry mechanism:\n   - Simulate job failures and verify the retry logic works as expected\n   - Test the handling of consistently failing jobs\n\n10. Integration testing:\n    - Verify that the new cron-based system integrates correctly with existing job insertion mechanisms\n    - Ensure that partially processed job chunks are handled correctly in subsequent cron executions\n\n11. Long-running test:\n    - Set up a test environment to run for 24 hours\n    - Verify consistent operation and identify any potential memory leaks or performance degradation",
+        "status": "pending",
+        "dependencies": [
+          36,
+          42
+        ],
+        "priority": "medium",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Create vercel.json cron configuration",
+            "description": "Set up Vercel cron configuration to trigger job processing every 2 minutes, ensuring continuous processing of the job queue.",
+            "details": "Create or update vercel.json in project root to include cron configuration: {\"crons\": [{\"path\": \"/api/cron/process-jobs\", \"schedule\": \"*/2 * * * *\"}]}. This schedules the job processing endpoint to run every 2 minutes, providing steady progress through the job queue. The 2-minute interval ensures reasonable processing throughput (30 jobs per hour = 150 opportunities per hour) while avoiding overwhelming the system. Include proper timezone configuration and ensure cron is enabled for production deployment.",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 61
+          },
+          {
+            "id": 2,
+            "title": "Add cron authentication and security",
+            "description": "Implement authentication for cron endpoints to prevent unauthorized access while allowing Vercel's cron system to execute properly.",
+            "details": "Add security to /app/api/cron/process-jobs/route.js: 1) Validate Vercel cron secret header (Authorization: Bearer CRON_SECRET), 2) Add CRON_SECRET environment variable to project, 3) Implement IP allowlist for Vercel's cron infrastructure if needed, 4) Add rate limiting to prevent abuse, 5) Log all cron executions for audit trail. This ensures only legitimate Vercel cron calls can trigger job processing while maintaining security. Include error responses for unauthorized requests and proper HTTP status codes.",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 61
+          },
+          {
+            "id": 3,
+            "title": "Create cron monitoring and alerting",
+            "description": "Build monitoring system to track cron execution health, job queue progress, and alert on failures or bottlenecks.",
+            "details": "Create monitoring for cron job health: 1) Add /api/admin/monitoring/cron-status endpoint to show recent cron executions and job queue status, 2) Track metrics: successful/failed cron runs, jobs processed per hour, queue depth, processing time trends, 3) Create alerts for: cron failures, queue buildup (>100 pending jobs), processing slowdowns, 4) Log structured data to enable dashboard creation, 5) Add manual trigger endpoint for testing (/api/admin/trigger-job-processing). This provides visibility into job queue health and enables proactive issue resolution.",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 61
+          }
+        ]
+      },
+      {
+        "id": 62,
+        "title": "Test and Deploy Job Queue System",
+        "description": "Comprehensive testing and deployment of the complete job queue system to replace the timeout-prone V2 pipeline, including end-to-end testing, performance validation, integration testing, and production deployment with monitoring.",
+        "details": "1. Set up a staging environment that mirrors production:\n   - Configure identical hardware and software specifications\n   - Replicate database schema and seed with anonymized production data\n   - Set up monitoring tools (e.g., Prometheus, Grafana) for performance metrics\n\n2. Implement end-to-end testing suite:\n   - Create test cases covering the full workflow: API calling → chunking → job queuing → cron processing → V2 pipeline execution\n   - Use Jest (v29.5.0) for test framework and Supertest (v6.3.3) for API testing\n   - Implement mocking for external services and APIs using Nock (v13.3.1)\n   - Create test data generators for various opportunity types and edge cases\n\n3. Develop performance validation tests:\n   - Create a test script to simulate processing of 5 opportunities concurrently\n   - Use k6 (v0.44.0) for load testing and performance benchmarking\n   - Implement custom metrics to track processing time for each stage of the pipeline\n\n4. Conduct integration testing:\n   - Test integration with existing metrics systems (e.g., Prometheus, Grafana)\n   - Verify correct data flow between all components of the job queue system\n   - Test error handling and recovery scenarios (e.g., job failures, system restarts)\n\n5. Implement canary deployment strategy:\n   - Configure gradual rollout using feature flags (LaunchDarkly v2.25.1)\n   - Set up A/B testing to compare performance between old and new systems\n\n6. Prepare production deployment:\n   - Create detailed deployment runbook including rollback procedures\n   - Set up automated deployment pipeline using CI/CD tool (e.g., Jenkins, GitLab CI)\n   - Configure alerts and monitoring dashboards for key performance indicators\n\n7. Post-deployment verification:\n   - Implement automated smoke tests to run immediately after deployment\n   - Create a checklist for manual verification of critical functionality\n   - Set up log aggregation and analysis (e.g., ELK stack) for troubleshooting\n\n8. Documentation and knowledge transfer:\n   - Update system architecture diagrams to reflect new job queue system\n   - Create runbooks for common operational tasks and troubleshooting\n   - Conduct training sessions for operations team on new system management",
+        "testStrategy": "1. Execute end-to-end test suite in staging environment:\n   - Verify successful processing of various opportunity types through entire workflow\n   - Confirm correct chunking, job queuing, and execution of V2 pipeline for each test case\n   - Validate data integrity and consistency throughout the process\n\n2. Perform performance validation:\n   - Run load test simulating concurrent processing of 5 opportunities\n   - Measure and verify that total processing time is within 60 seconds\n   - Analyze performance metrics for each stage of the pipeline to identify bottlenecks\n\n3. Conduct integration tests:\n   - Verify correct data flow to existing metrics systems\n   - Confirm accurate reporting of job statuses, processing times, and error rates\n   - Test failure scenarios and verify proper error handling and reporting\n\n4. Execute canary deployment:\n   - Gradually increase traffic to new system using feature flags\n   - Monitor performance and error rates, comparing old and new systems\n   - Verify no regression in data quality or processing reliability\n\n5. Perform production deployment:\n   - Follow deployment runbook, including pre and post-deployment checklists\n   - Execute automated smoke tests immediately after deployment\n   - Conduct manual verification of critical functionality\n\n6. Monitor post-deployment performance:\n   - Analyze logs and performance metrics for any anomalies\n   - Verify resolution of original Vercel timeout problem\n   - Conduct A/B comparison of data quality and processing reliability between old and new systems\n\n7. Long-term monitoring and optimization:\n   - Set up ongoing performance benchmarking and trend analysis\n   - Regularly review and optimize job queue system based on production metrics\n   - Conduct periodic load testing to ensure system can handle increasing data volumes",
+        "status": "pending",
+        "dependencies": [
+          8,
+          33,
+          37
+        ],
+        "priority": "medium",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Create end-to-end integration tests",
+            "description": "Build comprehensive end-to-end tests that verify the complete job queue workflow from API calling through final storage, ensuring the system solves the timeout problem.",
+            "details": "Create integration tests covering the full workflow: 1) Test routeV2.js API calling → data chunking → job creation, 2) Test cron job pickup → V2 pipeline processing → storage, 3) Verify 5-opportunity chunks process within 60 seconds, 4) Test error handling and job retry mechanisms, 5) Validate metrics integration with pipeline_runs and pipeline_stages, 6) Test with realistic data volumes (100+ opportunities), 7) Verify no data loss during chunking and processing. Include performance benchmarks to confirm timeout resolution and data quality validation to ensure chunked processing maintains the same results as original V2 pipeline.",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 62
+          },
+          {
+            "id": 2,
+            "title": "Validate performance and timeout resolution",
+            "description": "Conduct performance testing to confirm the job queue system resolves the original Vercel timeout issues while maintaining processing quality.",
+            "details": "Performance validation testing: 1) Benchmark routeV2.js response time (should be <10 seconds vs original 30+ minutes), 2) Time individual job processing (should be <60 seconds for 5 opportunities), 3) Test with large datasets (500+ opportunities) to verify chunking scales properly, 4) Compare data quality between original V2 pipeline and chunked processing, 5) Monitor memory usage during job processing, 6) Validate cron execution stays within timeout limits, 7) Test concurrent job processing scenarios. Include load testing to ensure system handles multiple sources being processed simultaneously without degrading performance.",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 62
+          },
+          {
+            "id": 3,
+            "title": "Deploy to production with monitoring",
+            "description": "Deploy the job queue system to production environment with comprehensive monitoring and rollback capabilities.",
+            "details": "Production deployment plan: 1) Deploy database migrations for processing_jobs table, 2) Deploy updated routeV2.js with job queue integration, 3) Deploy job queue processor and cron endpoint, 4) Configure vercel.json cron settings, 5) Set up CRON_SECRET environment variable, 6) Enable monitoring dashboards for job queue health, 7) Create rollback plan to revert to original V2 pipeline if needed, 8) Gradual rollout: test with 1-2 sources before full deployment. Include post-deployment validation to confirm job queue is processing correctly and timeout issues are resolved.",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 62
+          }
+        ]
       }
     ],
     "metadata": {
       "created": "2025-06-17T23:54:58.582Z",
-      "updated": "2025-08-15T21:12:33.760Z",
+      "updated": "2025-08-18T03:01:08.329Z",
       "description": "Tasks for master context"
     }
   },
