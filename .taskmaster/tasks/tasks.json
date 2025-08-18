@@ -3118,7 +3118,7 @@
             "title": "Implement JobQueueManager class",
             "description": "Create JobQueueManager class in /lib/services/jobQueueManager.js with methods for creating, retrieving, and updating jobs for V2 chunk processing",
             "details": "Create file: /lib/services/jobQueueManager.js\n\nClass structure:\n```javascript\nimport { createSupabaseClient } from '../utils/supabase.js';\n\nexport class JobQueueManager {\n  constructor() {\n    this.supabase = createSupabaseClient();\n  }\n\n  // Create job with chunk of 5 raw opportunities\n  async createJob(sourceId, masterRunId, chunkIndex, totalChunks, rawDataChunk, processingConfig) {\n    // Insert job with raw_data containing chunk of opportunities\n    // Return job ID\n  }\n\n  // Get next pending job (FIFO, oldest first)\n  async getNextPendingJob() {\n    // Query for status='pending', order by created_at\n    // Return job with raw_data chunk ready for processing\n  }\n\n  // Update job status (pending → processing → completed/failed)\n  async updateJobStatus(jobId, status, errorDetails = null) {\n    // Update status, set timestamps appropriately\n    // Handle retry_count increment for failed jobs\n  }\n\n  // Get all jobs for a master run (for progress tracking)\n  async getJobsByMasterRun(masterRunId) {\n    // Return all jobs for tracking overall progress\n  }\n\n  // Retry failed jobs (max 3 attempts)\n  async retryFailedJobs(maxRetries = 3) {\n    // Reset failed jobs with retry_count < maxRetries back to pending\n  }\n}\n```\n\nCONTEXT: This manages jobs that contain raw API data chunks (not processed opportunities). Each job goes through the full V2 pipeline within 60s timeout limits. Integrates with existing Supabase patterns and RunManagerV2 metrics.",
-            "status": "pending",
+            "status": "done",
             "dependencies": [
               "58.1"
             ],
@@ -3368,7 +3368,7 @@
     ],
     "metadata": {
       "created": "2025-06-17T23:54:58.582Z",
-      "updated": "2025-08-18T03:37:02.043Z",
+      "updated": "2025-08-18T04:22:54.042Z",
       "description": "Tasks for master context"
     }
   },
