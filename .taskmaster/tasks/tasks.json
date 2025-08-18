@@ -3109,7 +3109,7 @@
             "title": "Create processing_jobs table migration",
             "description": "Create Supabase migration for processing_jobs table with columns optimized for V2 chunk processing (source_id, master_run_id, chunk_index, raw_data JSONB, etc.)",
             "details": "Create migration file: /supabase/migrations/[timestamp]_create_processing_jobs_table.sql\n\nTable schema:\n```sql\nCREATE TABLE processing_jobs (\n  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),\n  source_id UUID NOT NULL REFERENCES api_sources(id),\n  master_run_id UUID NOT NULL REFERENCES pipeline_runs(id), \n  chunk_index INTEGER NOT NULL,\n  total_chunks INTEGER NOT NULL,\n  status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'processing', 'completed', 'failed')),\n  raw_data JSONB NOT NULL, -- Contains array of 5 raw opportunities\n  processing_config JSONB NOT NULL, -- Source config + instructions from SourceOrchestrator\n  retry_count INTEGER DEFAULT 0,\n  error_details TEXT,\n  created_at TIMESTAMPTZ DEFAULT now(),\n  started_at TIMESTAMPTZ,\n  completed_at TIMESTAMPTZ\n);\n\n-- Indexes for performance\nCREATE INDEX idx_processing_jobs_status_created ON processing_jobs(status, created_at);\nCREATE INDEX idx_processing_jobs_master_run ON processing_jobs(master_run_id);\nCREATE INDEX idx_processing_jobs_source ON processing_jobs(source_id);\n```\n\nCONTEXT: This table will store chunks of raw API data (not processed opportunities) that need to go through the full V2 pipeline: DataExtractionAgent LLM → EarlyDuplicateDetector → AnalysisAgent LLM → FilterFunction → StorageAgent.",
-            "status": "pending",
+            "status": "done",
             "dependencies": [],
             "parentTaskId": 58
           },
@@ -3368,7 +3368,7 @@
     ],
     "metadata": {
       "created": "2025-06-17T23:54:58.582Z",
-      "updated": "2025-08-18T03:01:08.329Z",
+      "updated": "2025-08-18T03:37:02.043Z",
       "description": "Tasks for master context"
     }
   },
