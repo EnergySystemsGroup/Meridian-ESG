@@ -2,89 +2,64 @@ name: Staging Job Queue Processor
 
 on:
   schedule:
-    # Run every 2 minutes (same as Vercel cron)
-    - cron: '*/2 * * * *'
+    - cron: '*/2 * * * *'  # UTC
   workflow_dispatch:
-    # Allow manual triggering
     inputs:
       action:
-        description: 'Action to perform'
-        required: false
-        default: 'process'
+        description: Action to perform
         type: choice
-        options:
-          - process
-          - status
+        options: [process, status]
+        default: process
+
+permissions:
+  contents: read
+
+concurrency:
+  group: staging-job-queue
+  cancel-in-progress: true   # avoid overlapping runs
 
 jobs:
   process-jobs:
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/job_queue_implementation' || github.ref == 'refs/heads/staging'
-    
-    steps:
-      - name: Set Staging URL
-        run: |
-          if [ "${{ github.ref }}" = "refs/heads/job_queue_implementation" ]; then
-            echo "API_URL=https://meridian-esg-git-jobqueueimplementation-development-bf4f2e8a.vercel.app" >> $GITHUB_ENV
-            echo "ENVIRONMENT=job_queue_implementation branch" >> $GITHUB_ENV
-          elif [ "${{ github.ref }}" = "refs/heads/staging" ]; then
-            echo "API_URL=https://meridian-esg-env-staging-development-bf4f2e8a.vercel.app" >> $GITHUB_ENV
-            echo "ENVIRONMENT=staging branch" >> $GITHUB_ENV
-          else
-            echo "API_URL=https://meridian-esg-git-jobqueueimplementation-development-bf4f2e8a.vercel.app" >> $GITHUB_ENV
-            echo "ENVIRONMENT=fallback" >> $GITHUB_ENV
-          fi
+    timeout-minutes: 2
+    env:
+      API_URL: 'https://meridian-esg-env-staging-development-bf4f2e8a.vercel.app'
+      ACTION:  ${{ github.event_name == 'workflow_dispatch' && inputs.action  || 'process' }}
 
+    steps:
       - name: Process Job Queue
+        shell: bash
         run: |
+          set -euo pipefail
           echo "🕐 GitHub Actions Job Processor - $(date)"
-          echo "🌐 Targeting: ${{ env.ENVIRONMENT }}"
-          echo "🔗 URL: ${{ env.API_URL }}"
-          
-          if [ "${{ github.event.inputs.action }}" = "status" ]; then
+          echo "🌐 URL: $API_URL"
+          echo "⚙️  Action: $ACTION"
+
+          if [ "$ACTION" = "status" ]; then
             echo "📊 Checking queue status..."
-            response=$(curl -s -X POST \
-              "${{ env.API_URL }}/api/cron/test-processor" \
+            response=$(curl -fsS --retry 3 --max-time 30 \
+              -X POST "$API_URL/api/cron/test-processor" \
               -H "Content-Type: application/json" \
-              -d '{"action": "status"}')
+              -d '{"action":"status"}')
           else
             echo "🚀 Processing next job..."
-            response=$(curl -s \
-              "${{ env.API_URL }}/api/cron/test-processor")
+            response=$(curl -fsS --retry 3 --max-time 30 \
+              "$API_URL/api/cron/test-processor")
           fi
-          
+
           echo "📋 Response:"
           echo "$response" | jq . || echo "$response"
-          
-          # Check if job was processed
-          if echo "$response" | jq -e '.result.processed == true' > /dev/null 2>&1; then
+
+          # Parse result if JSON shape matches
+          if echo "$response" | jq -e '.result.processed == true' >/dev/null 2>&1; then
             job_id=$(echo "$response" | jq -r '.result.jobId')
             chunk=$(echo "$response" | jq -r '.result.chunkIndex')
             total=$(echo "$response" | jq -r '.result.totalChunks')
             items=$(echo "$response" | jq -r '.result.itemsProcessed')
-            echo "✅ Successfully processed job $job_id"
+            echo "✅ Processed job $job_id"
             echo "📊 Chunk: $((chunk + 1))/$total, Items: $items"
-          elif echo "$response" | jq -e '.result.processed == false' > /dev/null 2>&1; then
+          elif echo "$response" | jq -e '.result.processed == false' >/dev/null 2>&1; then
             echo "📭 No jobs in queue"
           else
             echo "⚠️ Unexpected response format"
           fi
-          
-          # Show queue status if available
-          if echo "$response" | jq -e '.queueStatus' > /dev/null 2>&1; then
-            echo ""
-            echo "📈 Queue Status:"
-            echo "$response" | jq -r '.queueStatus[] | "   \(.status): \(.count) jobs"'
-          fi
-
-  notify-completion:
-    runs-on: ubuntu-latest
-    needs: process-jobs
-    if: always() && github.event_name == 'workflow_dispatch'
-    
-    steps:
-      - name: Job Summary
-        run: |
-          echo "🎯 Manual job processing completed"
-          echo "📊 Check the logs above for processing results"
-          echo "🔄 Automatic processing continues every 2 minutes"
