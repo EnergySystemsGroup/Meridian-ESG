@@ -3129,7 +3129,7 @@
             "title": "Create unit tests for JobQueueManager",
             "description": "Write comprehensive unit tests for JobQueueManager methods using Vitest, focusing on job lifecycle and chunk handling",
             "details": "Create test file: /lib/services/__tests__/jobQueueManager.test.js\n\nTest scenarios:\n1. **Job Creation**: Test createJob() with 5-opportunity chunks\n2. **Job Retrieval**: Test getNextPendingJob() FIFO ordering\n3. **Status Updates**: Test pending → processing → completed flow\n4. **Error Handling**: Test failed jobs and retry logic\n5. **Master Run Tracking**: Test getJobsByMasterRun() for progress\n6. **Chunk Validation**: Test raw_data JSONB structure\n7. **Database Constraints**: Test foreign key relationships\n\nMock Supabase client to isolate JobQueueManager logic.\n\nExample test structure:\n```javascript\nimport { JobQueueManager } from '../jobQueueManager.js';\nimport { vi } from 'vitest';\n\ndescribe('JobQueueManager', () => {\n  test('creates job with 5-opportunity chunk', async () => {\n    // Test chunk creation with raw API data\n  });\n  \n  test('retrieves oldest pending job first', async () => {\n    // Test FIFO ordering\n  });\n  \n  test('handles job status transitions', async () => {\n    // Test pending → processing → completed\n  });\n});\n```\n\nCONTEXT: Tests must validate that jobs contain raw API data chunks (not processed opportunities) and integrate with V2 pipeline flow within 60s timeout constraints.",
-            "status": "pending",
+            "status": "done",
             "dependencies": [
               "58.2"
             ],
@@ -3368,7 +3368,7 @@
     ],
     "metadata": {
       "created": "2025-06-17T23:54:58.582Z",
-      "updated": "2025-08-18T04:22:54.042Z",
+      "updated": "2025-08-18T04:42:42.312Z",
       "description": "Tasks for master context"
     }
   },
