@@ -1,8 +1,9 @@
 name: Staging Job Queue Processor
 
+# Job queue processor for staging environment
 on:
-  schedule:
-    - cron: '*/2 * * * *'  # UTC
+  # schedule:
+  #   - cron: '*/2 * * * *'  # UTC - DISABLED to avoid conflict with Vercel cron
   workflow_dispatch:
     inputs:
       action:
