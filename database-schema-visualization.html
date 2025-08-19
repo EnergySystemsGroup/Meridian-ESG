@@ -1,0 +1,1898 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Meridian ESG Database Schema</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            font-weight: 300;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            opacity: 0.8;
+            font-size: 1.1rem;
+        }
+
+        .stats {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            margin-top: 20px;
+            flex-wrap: wrap;
+        }
+
+        .stat {
+            text-align: center;
+        }
+
+        .stat-number {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #3498db;
+        }
+
+        .stat-label {
+            font-size: 0.9rem;
+            opacity: 0.8;
+        }
+
+        .controls {
+            padding: 20px 30px;
+            background: #f8f9fa;
+            border-bottom: 1px solid #e9ecef;
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .main-content {
+            display: flex;
+            min-height: 600px;
+        }
+
+        .relationships-panel {
+            width: 300px;
+            background: #f8f9fa;
+            border-right: 1px solid #e9ecef;
+            padding: 20px;
+            overflow-y: auto;
+            max-height: calc(100vh - 200px);
+        }
+
+        .relationships-panel h3 {
+            margin-bottom: 15px;
+            color: #2c3e50;
+            font-size: 1.1rem;
+        }
+
+        .relationship-item {
+            background: white;
+            border-radius: 6px;
+            padding: 12px;
+            margin-bottom: 10px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border-left: 4px solid #e9ecef;
+        }
+
+        .relationship-item:hover {
+            background: #f0f7ff;
+            border-left-color: #007bff;
+            transform: translateX(5px);
+        }
+
+        .relationship-item.active {
+            background: #e3f2fd;
+            border-left-color: #1976d2;
+        }
+
+        .relationship-from {
+            font-weight: 600;
+            color: #2c3e50;
+            font-size: 0.9rem;
+        }
+
+        .relationship-arrow {
+            color: #007bff;
+            margin: 5px 0;
+            font-size: 0.8rem;
+        }
+
+        .relationship-to {
+            color: #6c757d;
+            font-size: 0.9rem;
+        }
+
+        .relationship-type {
+            font-size: 0.7rem;
+            background: #e9ecef;
+            padding: 2px 6px;
+            border-radius: 10px;
+            display: inline-block;
+            margin-top: 5px;
+        }
+
+        .filter-btn {
+            padding: 8px 16px;
+            border: 1px solid #ddd;
+            background: white;
+            border-radius: 20px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 0.9rem;
+        }
+
+        .filter-btn:hover {
+            background: #007bff;
+            color: white;
+            border-color: #007bff;
+        }
+
+        .filter-btn.active {
+            background: #007bff;
+            color: white;
+            border-color: #007bff;
+        }
+
+        .search-box {
+            padding: 8px 16px;
+            border: 1px solid #ddd;
+            border-radius: 20px;
+            outline: none;
+            flex: 1;
+            min-width: 200px;
+        }
+
+        .schema-container {
+            flex: 1;
+            padding: 30px;
+            position: relative;
+            overflow-x: auto;
+        }
+
+        .connection-line {
+            position: absolute;
+            z-index: 10;
+            pointer-events: none;
+        }
+
+        .connection-svg {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 5;
+        }
+
+        .connection-path {
+            stroke: #007bff;
+            stroke-width: 2;
+            fill: none;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .connection-path.active {
+            opacity: 0.7;
+            stroke-dasharray: 5,3;
+            animation: dash 2s linear infinite;
+        }
+
+        @keyframes dash {
+            to {
+                stroke-dashoffset: -16;
+            }
+        }
+
+        .table-group {
+            margin-bottom: 40px;
+            opacity: 1;
+            transition: opacity 0.3s ease;
+        }
+
+        .table-group.hidden {
+            opacity: 0.3;
+        }
+
+        .group-header {
+            font-size: 1.3rem;
+            font-weight: 600;
+            margin-bottom: 20px;
+            padding: 10px 15px;
+            border-radius: 8px;
+            color: white;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .v2-pipeline { background: linear-gradient(135deg, #3498db, #2980b9); }
+        .api-sources { background: linear-gradient(135deg, #27ae60, #229954); }
+        .funding-data { background: linear-gradient(135deg, #e67e22, #d35400); }
+        .geographic { background: linear-gradient(135deg, #9b59b6, #8e44ad); }
+        .agent-analytics { background: linear-gradient(135deg, #f39c12, #e67e22); }
+        .v1-legacy { background: linear-gradient(135deg, #95a5a6, #7f8c8d); }
+
+        .tables-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 20px;
+        }
+
+        .table-card {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            transition: all 0.3s ease;
+            cursor: pointer;
+            border: 2px solid transparent;
+        }
+
+        .table-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+        }
+
+        .table-card.highlighted {
+            border-color: #007bff;
+            box-shadow: 0 8px 25px rgba(0,123,255,0.3);
+        }
+
+        .table-header {
+            padding: 15px 20px;
+            border-bottom: 1px solid #e9ecef;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .table-name {
+            font-weight: 600;
+            font-size: 1.1rem;
+            color: #2c3e50;
+        }
+
+        .table-type {
+            font-size: 0.8rem;
+            padding: 4px 8px;
+            border-radius: 12px;
+            background: #e9ecef;
+            color: #6c757d;
+        }
+
+        .table-fields {
+            padding: 20px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .field {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 6px 0;
+            border-bottom: 1px solid #f8f9fa;
+            font-size: 0.9rem;
+        }
+
+        .field:last-child {
+            border-bottom: none;
+        }
+
+        .field-name {
+            font-weight: 500;
+            color: #2c3e50;
+        }
+
+        .field-type {
+            color: #6c757d;
+            font-size: 0.8rem;
+        }
+
+        .field.primary-key .field-name {
+            color: #e74c3c;
+            font-weight: 600;
+        }
+
+        .field.foreign-key .field-name {
+            color: #3498db;
+            font-weight: 600;
+        }
+
+        .relationships {
+            margin-top: 20px;
+            padding-top: 15px;
+            border-top: 1px solid #e9ecef;
+        }
+
+        .relationship {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.8rem;
+            color: #6c757d;
+            margin: 5px 0;
+        }
+
+        .relationship-arrow {
+            color: #3498db;
+            font-weight: bold;
+        }
+
+        .legend {
+            position: sticky;
+            bottom: 20px;
+            right: 20px;
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            max-width: 250px;
+            margin-left: auto;
+        }
+
+        .legend h4 {
+            margin-bottom: 10px;
+            color: #2c3e50;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin: 5px 0;
+            font-size: 0.8rem;
+        }
+
+        .legend-color {
+            width: 12px;
+            height: 12px;
+            border-radius: 2px;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            max-width: 600px;
+            max-height: 80vh;
+            overflow-y: auto;
+            position: relative;
+        }
+
+        .close {
+            position: absolute;
+            top: 15px;
+            right: 20px;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+            color: #aaa;
+        }
+
+        .close:hover {
+            color: #000;
+        }
+
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 2rem;
+            }
+            
+            .stats {
+                gap: 20px;
+            }
+            
+            .tables-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .controls {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            
+            .search-box {
+                min-width: auto;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Meridian ESG Database Schema</h1>
+            <p>Interactive visualization of the funding intelligence platform database architecture</p>
+            <div class="stats">
+                <div class="stat">
+                    <div class="stat-number">20</div>
+                    <div class="stat-label">Base Tables</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-number">8</div>
+                    <div class="stat-label">Views</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-number">10</div>
+                    <div class="stat-label">Custom Types</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-number">80%</div>
+                    <div class="stat-label">Max Efficiency Gain</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="controls">
+            <button class="filter-btn active" data-group="all">All Tables</button>
+            <button class="filter-btn" data-group="v2-pipeline">V2 Pipeline</button>
+            <button class="filter-btn" data-group="api-sources">API Sources</button>
+            <button class="filter-btn" data-group="funding-data">Funding Data</button>
+            <button class="filter-btn" data-group="geographic">Geographic</button>
+            <button class="filter-btn" data-group="agent-analytics">Agent Analytics</button>
+            <button class="filter-btn" data-group="v1-legacy">V1 Legacy</button>
+            <input type="text" class="search-box" placeholder="Search tables..." id="searchBox">
+        </div>
+
+        <div class="main-content">
+            <div class="relationships-panel">
+                <h3>🔗 Database Relationships</h3>
+                <div id="relationshipsList">
+                    <!-- Relationships will be populated by JavaScript -->
+                </div>
+            </div>
+
+            <div class="schema-container">
+                <svg class="connection-svg" id="connectionSvg">
+                    <!-- Connection lines will be drawn here -->
+                </svg>
+            <!-- V2 Pipeline Tables -->
+            <div class="table-group" data-group="v2-pipeline">
+                <div class="group-header v2-pipeline">
+                    <span>🚀</span>
+                    <span>V2 Pipeline Architecture</span>
+                    <span style="margin-left: auto; font-size: 0.9rem; opacity: 0.8;">Optimized processing with 60-80% efficiency gains</span>
+                </div>
+                <div class="tables-grid">
+                    <div class="table-card" data-table="pipeline_runs">
+                        <div class="table-header">
+                            <span class="table-name">pipeline_runs</span>
+                            <span class="table-type">Core</span>
+                        </div>
+                        <div class="table-fields">
+                            <div class="field primary-key">
+                                <span class="field-name">id</span>
+                                <span class="field-type">uuid PK</span>
+                            </div>
+                            <div class="field foreign-key">
+                                <span class="field-name">api_source_id</span>
+                                <span class="field-type">uuid FK</span>
+                            </div>
+                            <div class="field">
+                                <span class="field-name">status</span>
+                                <span class="field-type">text</span>
+                            </div>
+                            <div class="field">
+                                <span class="field-name">pipeline_version</span>
+                                <span class="field-type">text</span>
+                            </div>
+                            <div class="field">
+                                <span class="field-name">total_opportunities_processed</span>
+                                <span class="field-type">integer</span>
+                            </div>
+                            <div class="field">
+                                <span class="field-name">opportunities_bypassed_llm</span>
+                                <span class="field-type">integer</span>
+                            </div>
+                            <div class="field">
+                                <span class="field-name">token_savings_percentage</span>
+                                <span class="field-type">numeric</span>
+                            </div>
+                            <div class="field">
+                                <span class="field-name">time_savings_percentage</span>
+                                <span class="field-type">numeric</span>
+                            </div>
+                            <div class="field">
+                                <span class="field-name">efficiency_score</span>
+                                <span class="field-type">numeric</span>
+                            </div>
+                            <div class="field">
+                                <span class="field-name">run_configuration</span>
+                                <span class="field-type">jsonb</span>
+                            </div>
+                        </div>
+                        <div class="relationships">
+                            <div class="relationship">
+                                <span class="relationship-arrow">→</span>
+                                <span>pipeline_stages (1:many)</span>
+                            </div>
+                            <div class="relationship">
+                                <span class="relationship-arrow">→</span>
+                                <span>duplicate_detection_sessions (1:1)</span>
+                            </div>
+                            <div class="relationship">
+                                <span class="relationship-arrow">←</span>
+                                <span>api_sources</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="table-card" data-table="pipeline_stages">
+                        <div class="table-header">
+                            <span class="table-name">pipeline_stages</span>
+                            <span class="table-type">Detail</span>
+                        </div>
+                        <div class="table-fields">
+                            <div class="field primary-key">
+                                <span class="field-name">id</span>
+                                <span class="field-type">uuid PK</span>
+                            </div>
+                            <div class="field foreign-key">
+                                <span class="field-name">run_id</span>
+                                <span class="field-type">uuid FK</span>
+                            </div>
+                            <div class="field">
+                                <span class="field-name">stage_name</span>
+                                <span class="field-type">text</span>
+                            </div>
+                            <div class="field">
+                                <span class="field-name">stage_order</span>
+                                <span class="field-type">integer</span>
+                            </div>
+                            <div class="field">
+                                <span class="field-name">status</span>
+                                <span class="field-type">text</span>
+                            </div>
+                            <div class="field">
+                                <span class="field-name">execution_time_ms</span>
+                                <span class="field-type">integer</span>
+                            </div>
+                            <div class="field">
+                                <span class="field-name">tokens_used</span>
+                                <span class="field-type">integer</span>
+                            </div>
+                            <div class="field">
+                                <span class="field-name">api_calls_made</span>
+                                <span class="field-type">integer</span>
+                            </div>
+                            <div class="field">
+                                <span class="field-name">stage_results</span>
+                                <span class="field-type">jsonb</span>
+                            </div>
+                            <div class="field">
+                                <span class="field-name">performance_metrics</span>
+                                <span class="field-type">jsonb</span>
+                            </div>
+                        </div>
+                        <div class="relationships">
+                            <div class="relationship">
+                                <span class="relationship-arrow">←</span>
+                                <span>pipeline_runs</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="table-card" data-table="duplicate_detection_sessions">
+                        <div class="table-header">
+                            <span class="table-name">duplicate_detection_sessions</span>
+                            <span class="table-type">Optimization</span>
+                        </div>
+                        <div class="table-fields">
+                            <div class="field primary-key">
+                                <span class="field-name">id</span>
+                                <span class="field-type">uuid PK</span>
+                            </div>
+                            <div class="field foreign-key">
+                                <span class="field-name">run_id</span>
+                                <span class="field-type">uuid FK</span>
+                            </div>
+                            <div class="field foreign-key">
+                                <span class="field-name">api_source_id</span>
+                                <span class="field-type">uuid FK</span>
+                            </div>
+                            <div class="field">
+                                <span class="field-name">total_opportunities_checked</span>
+                                <span class="field-type">integer</span>
+                            </div>
+                            <div class="field">
+                                <span class="field-name">duplicates_to_skip</span>
+                                <span class="field-type">integer</span>
+                            </div>
+                            <div class="field">
+                                <span class="field-name">llm_processing_bypassed</span>
+                                <span class="field-type">integer</span>
+                            </div>
+                            <div class="field">
+                                <span class="field-name">estimated_tokens_saved</span>
+                                <span class="field-type">integer</span>
+                            </div>
+                            <div class="field">
+                                <span class="field-name">efficiency_improvement_percentage</span>
+                                <span class="field-type">numeric</span>
+                            </div>
+                        </div>
+                        <div class="relationships">
+                            <div class="relationship">
+                                <span class="relationship-arrow">←</span>
+                                <span>pipeline_runs</span>
+                            </div>
+                            <div class="relationship">
+                                <span class="relationship-arrow">←</span>
+                                <span>api_sources</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="table-card" data-table="opportunity_processing_paths">
+                        <div class="table-header">
+                            <span class="table-name">opportunity_processing_paths</span>
+                            <span class="table-type">Tracking</span>
+                        </div>
+                        <div class="table-fields">
+                            <div class="field primary-key">
+                                <span class="field-name">id</span>
+                                <span class="field-type">uuid PK</span>
+                            </div>
+                            <div class="field foreign-key">
+                                <span class="field-name">run_id</span>
+                                <span class="field-type">uuid FK</span>
+                            </div>
+                            <div class="field">
+                                <span class="field-name">api_opportunity_id</span>
+                                <span class="field-type">text</span>
+                            </div>
+                            <div class="field">
+                                <span class="field-name">path_type</span>
+                                <span class="field-type">text</span>
+                            </div>
+                            <div class="field">
+                                <span class="field-name">path_reason</span>
+                                <span class="field-type">text</span>
+                            </div>
+                            <div class="field">
+                                <span class="field-name">duplicate_detected</span>
+                                <span class="field-type">boolean</span>
+                            </div>
+                            <div class="field">
+                                <span class="field-name">tokens_used</span>
+                                <span class="field-type">integer</span>
+                            </div>
+                            <div class="field">
+                                <span class="field-name">processing_time_ms</span>
+                                <span class="field-type">integer</span>
+                            </div>
+                        </div>
+                        <div class="relationships">
+                            <div class="relationship">
+                                <span class="relationship-arrow">←</span>
+                                <span>pipeline_runs</span>
+                            </div>
+                            <div class="relationship">
+                                <span class="relationship-arrow">←</span>
+                                <span>funding_opportunities (existing)</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="table-card" data-table="pipeline_performance_baselines">
+                        <div class="table-header">
+                            <span class="table-name">pipeline_performance_baselines</span>
+                            <span class="table-type">Metrics</span>
+                        </div>
+                        <div class="table-fields">
+                            <div class="field primary-key">
+                                <span class="field-name">id</span>
+                                <span class="field-type">uuid PK</span>
+                            </div>
+                            <div class="field foreign-key">
+                                <span class="field-name">api_source_id</span>
+                                <span class="field-type">uuid FK</span>
+                            </div>
+                            <div class="field">
+                                <span class="field-name">baseline_type</span>
+                                <span class="field-type">text</span>
+                            </div>
+                            <div class="field">
+                                <span class="field-name">baseline_execution_time_ms</span>
+                                <span class="field-type">integer</span>
+                            </div>
+                            <div class="field">
+                                <span class="field-name">baseline_tokens_used</span>
+                                <span class="field-type">integer</span>
+                            </div>
+                            <div class="field">
+                                <span class="field-name">baseline_api_calls</span>
+                                <span class="field-type">integer</span>
+                            </div>
+                            <div class="field">
+                                <span class="field-name">baseline_cost_estimate</span>
+                                <span class="field-type">numeric</span>
+                            </div>
+                            <div class="field">
+                                <span class="field-name">performance_metrics</span>
+                                <span class="field-type">jsonb</span>
+                            </div>
+                        </div>
+                        <div class="relationships">
+                            <div class="relationship">
+                                <span class="relationship-arrow">←</span>
+                                <span>api_sources</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- API Sources -->
+            <div class="table-group" data-group="api-sources">
+                <div class="group-header api-sources">
+                    <span>🔌</span>
+                    <span>API Data Sources</span>
+                    <span style="margin-left: auto; font-size: 0.9rem; opacity: 0.8;">External funding API management</span>
+                </div>
+                <div class="tables-grid">
+                    <div class="table-card" data-table="api_sources">
+                        <div class="table-header">
+                            <span class="table-name">api_sources</span>
+                            <span class="table-type">Core</span>
+                        </div>
+                        <div class="table-fields">
+                            <div class="field primary-key">
+                                <span class="field-name">id</span>
+                                <span class="field-type">uuid PK</span>
+                            </div>
+                            <div class="field">
+                                <span class="field-name">name</span>
+                                <span class="field-type">text NOT NULL</span>
+                            </div>
+                            <div class="field">
+                                <span class="field-name">organization</span>
+                                <span class="field-type">text</span>
+                            </div>
+                            <div class="field">
+                                <span class="field-name">type</span>
+                                <span class="field-type">text NOT NULL</span>
+                            </div>
+                            <div class="field">
+                                <span class="field-name">url</span>
+                                <span class="field-type">text NOT NULL</span>
+                            </div>
+                            <div class="field">
+                                <span class="field-name">api_endpoint</span>
+                                <span class="field-type">text</span>
+                            </div>
+                            <div class="field">
+                                <span class="field-name">api_documentation_url</span>
+                                <span class="field-type">text</span>
+                            </div>
+                            <div class="field">
+                                <span class="field-name">auth_type</span>
+                                <span class="field-type">enum</span>
+                            </div>
+                            <div class="field">
+                                <span class="field-name">auth_details</span>
+                                <span class="field-type">jsonb</span>
+                            </div>
+                            <div class="field">
+                                <span class="field-name">update_frequency</span>
+                                <span class="field-type">text</span>
+                            </div>
+                            <div class="field">
+                                <span class="field-name">last_checked</span>
+                                <span class="field-type">timestamp</span>
+                            </div>
+                            <div class="field">
+                                <span class="field-name">active</span>
+                                <span class="field-type">boolean</span>
+                            </div>
+                            <div class="field">
+                                <span class="field-name">priority</span>
+                                <span class="field-type">integer</span>
+                            </div>
+                            <div class="field">
+                                <span class="field-name">notes</span>
+                                <span class="field-type">text</span>
+                            </div>
+                            <div class="field">
+                                <span class="field-name">handler_type</span>
+                                <span class="field-type">enum</span>
+                            </div>
+                            <div class="field">
+                                <span class="field-name">created_at</span>
+                                <span class="field-type">timestamp</span>
+                            </div>
+                            <div class="field">
+                                <span class="field-name">updated_at</span>
+                                <span class="field-type">timestamp</span>
+                            </div>
+                        </div>
+                        <div class="relationships">
+                            <div class="relationship">
+                                <span class="relationship-arrow">→</span>
+                                <span>pipeline_runs (1:many)</span>
+                            </div>
+                            <div class="relationship">
+                                <span class="relationship-arrow">→</span>
+                                <span>api_raw_responses (1:many)</span>
+                            </div>
+                            <div class="relationship">
+                                <span class="relationship-arrow">→</span>
+                                <span>funding_opportunities (1:many)</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="table-card" data-table="api_raw_responses">
+                        <div class="table-header">
+                            <span class="table-name">api_raw_responses</span>
+                            <span class="table-type">Data</span>
+                        </div>
+                        <div class="table-fields">
+                            <div class="field primary-key">
+                                <span class="field-name">id</span>
+                                <span class="field-type">uuid PK</span>
+                            </div>
+                            <div class="field foreign-key">
+                                <span class="field-name">api_source_id</span>
+                                <span class="field-type">uuid FK</span>
+                            </div>
+                            <div class="field">
+                                <span class="field-name">content</span>
+                                <span class="field-type">jsonb</span>
+                            </div>
+                            <div class="field">
+                                <span class="field-name">request_details</span>
+                                <span class="field-type">jsonb</span>
+                            </div>
+                            <div class="field">
+                                <span class="field-name">content_hash</span>
+                                <span class="field-type">text</span>
+                            </div>
+                            <div class="field">
+                                <span class="field-name">api_endpoint</span>
+                                <span class="field-type">text</span>
+                            </div>
+                            <div class="field">
+                                <span class="field-name">call_type</span>
+                                <span class="field-type">text</span>
+                            </div>
+                            <div class="field">
+                                <span class="field-name">execution_time_ms</span>
+                                <span class="field-type">integer</span>
+                            </div>
+                            <div class="field">
+                                <span class="field-name">opportunity_count</span>
+                                <span class="field-type">integer</span>
+                            </div>
+                            <div class="field">
+                                <span class="field-name">call_count</span>
+                                <span class="field-type">integer</span>
+                            </div>
+                            <div class="field">
+                                <span class="field-name">processed</span>
+                                <span class="field-type">boolean</span>
+                            </div>
+                            <div class="field">
+                                <span class="field-name">processing_errors</span>
+                                <span class="field-type">text</span>
+                            </div>
+                            <div class="field">
+                                <span class="field-name">created_at</span>
+                                <span class="field-type">timestamptz</span>
+                            </div>
+                            <div class="field">
+                                <span class="field-name">last_seen_at</span>
+                                <span class="field-type">timestamptz</span>
+                            </div>
+                        </div>
+                        <div class="relationships">
+                            <div class="relationship">
+                                <span class="relationship-arrow">←</span>
+                                <span>api_sources</span>
+                            </div>
+                            <div class="relationship">
+                                <span class="relationship-arrow">→</span>
+                                <span>funding_opportunities (1:many)</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="table-card" data-table="api_extracted_opportunities" style="opacity: 0.6; border: 2px dashed #e74c3c;">
+                        <div class="table-header">
+                            <span class="table-name">api_extracted_opportunities</span>
+                            <span class="table-type" style="background: #e74c3c; color: white;">⚠️ DEPRECATED</span>
+                        </div>
+                        <div class="table-fields">
+                            <div class="field primary-key">
+                                <span class="field-name">id</span>
+                                <span class="field-type">uuid PK</span>
+                            </div>
+                            <div class="field foreign-key">
+                                <span class="field-name">raw_response_id</span>
+                                <span class="field-type">uuid FK</span>
+                            </div>
+                            <div class="field foreign-key">
+                                <span class="field-name">source_id</span>
+                                <span class="field-type">uuid FK</span>
+                            </div>
+                            <div class="field">
+                                <span class="field-name">data</span>
+                                <span class="field-type">jsonb</span>
+                            </div>
+                            <div class="field">
+                                <span class="field-name">confidence_score</span>
+                                <span class="field-type">numeric</span>
+                            </div>
+                            <div class="field">
+                                <span class="field-name">processed</span>
+                                <span class="field-type">boolean</span>
+                            </div>
+                        </div>
+                        <div class="relationships">
+                            <div class="relationship">
+                                <span class="relationship-arrow">←</span>
+                                <span>api_raw_responses</span>
+                            </div>
+                            <div class="relationship">
+                                <span class="relationship-arrow">←</span>
+                                <span>api_sources</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="table-card" data-table="api_source_configurations">
+                        <div class="table-header">
+                            <span class="table-name">api_source_configurations</span>
+                            <span class="table-type">Config</span>
+                        </div>
+                        <div class="table-fields">
+                            <div class="field primary-key">
+                                <span class="field-name">id</span>
+                                <span class="field-type">uuid PK</span>
+                            </div>
+                            <div class="field foreign-key">
+                                <span class="field-name">source_id</span>
+                                <span class="field-type">uuid FK</span>
+                            </div>
+                            <div class="field">
+                                <span class="field-name">config_type</span>
+                                <span class="field-type">text</span>
+                            </div>
+                            <div class="field">
+                                <span class="field-name">configuration</span>
+                                <span class="field-type">jsonb</span>
+                            </div>
+                            <div class="field">
+                                <span class="field-name">created_at</span>
+                                <span class="field-type">timestamptz</span>
+                            </div>
+                            <div class="field">
+                                <span class="field-name">updated_at</span>
+                                <span class="field-type">timestamptz</span>
+                            </div>
+                        </div>
+                        <div class="relationships">
+                            <div class="relationship">
+                                <span class="relationship-arrow">←</span>
+                                <span>api_sources</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="table-card" data-table="active_api_sources_with_config" style="border: 2px solid #3498db; background: linear-gradient(135deg, #f8f9ff, #ffffff);">
+                        <div class="table-header">
+                            <span class="table-name">active_api_sources_with_config</span>
+                            <span class="table-type" style="background: #3498db; color: white;">VIEW</span>
+                        </div>
+                        <div class="table-fields">
+                            <div class="field primary-key">
+                                <span class="field-name">id</span>
+                                <span class="field-type">uuid PK</span>
+                            </div>
+                            <div class="field">
+                                <span class="field-name">name</span>
+                                <span class="field-type">text NOT NULL</span>
+                            </div>
+                            <div class="field">
+                                <span class="field-name">organization</span>
+                                <span class="field-type">text</span>
+                            </div>
+                            <div class="field">
+                                <span class="field-name">type</span>
+                                <span class="field-type">text NOT NULL</span>
+                            </div>
+                            <div class="field">
+                                <span class="field-name">url</span>
+                                <span class="field-type">text NOT NULL</span>
+                            </div>
+                            <div class="field">
+                                <span class="field-name">api_endpoint</span>
+                                <span class="field-type">text</span>
+                            </div>
+                            <div class="field">
+                                <span class="field-name">api_documentation_url</span>
+                                <span class="field-type">text</span>
+                            </div>
+                            <div class="field">
+                                <span class="field-name">auth_type</span>
+                                <span class="field-type">enum</span>
+                            </div>
+                            <div class="field">
+                                <span class="field-name">auth_details</span>
+                                <span class="field-type">jsonb</span>
+                            </div>
+                            <div class="field">
+                                <span class="field-name">update_frequency</span>
+                                <span class="field-type">text</span>
+                            </div>
+                            <div class="field">
+                                <span class="field-name">last_checked</span>
+                                <span class="field-type">timestamp</span>
+                            </div>
+                            <div class="field">
+                                <span class="field-name">active</span>
+                                <span class="field-type">boolean</span>
+                            </div>
+                            <div class="field">
+                                <span class="field-name">priority</span>
+                                <span class="field-type">integer</span>
+                            </div>
+                            <div class="field">
+                                <span class="field-name">notes</span>
+                                <span class="field-type">text</span>
+                            </div>
+                            <div class="field">
+                                <span class="field-name">handler_type</span>
+                                <span class="field-type">enum</span>
+                            </div>
+                            <div class="field">
+                                <span class="field-name">created_at</span>
+                                <span class="field-type">timestamp</span>
+                            </div>
+                            <div class="field">
+                                <span class="field-name">updated_at</span>
+                                <span class="field-type">timestamp</span>
+                            </div>
+                            <div class="field" style="background: #e8f4f8;">
+                                <span class="field-name">configurations</span>
+                                <span class="field-type">jsonb (aggregated)</span>
+                            </div>
+                        </div>
+                        <div class="relationships">
+                            <div class="relationship">
+                                <span class="relationship-arrow">←</span>
+                                <span>api_sources (active only)</span>
+                            </div>
+                            <div class="relationship">
+                                <span class="relationship-arrow">←</span>
+                                <span>api_source_configurations</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="table-card" data-table="api_activity_logs">
+                        <div class="table-header">
+                            <span class="table-name">api_activity_logs</span>
+                            <span class="table-type">Logging</span>
+                        </div>
+                        <div class="table-fields">
+                            <div class="field primary-key">
+                                <span class="field-name">id</span>
+                                <span class="field-type">uuid PK</span>
+                            </div>
+                            <div class="field foreign-key">
+                                <span class="field-name">api_source_id</span>
+                                <span class="field-type">uuid FK</span>
+                            </div>
+                            <div class="field">
+                                <span class="field-name">action_type</span>
+                                <span class="field-type">enum</span>
+                            </div>
+                            <div class="field">
+                                <span class="field-name">action_details</span>
+                                <span class="field-type">jsonb</span>
+                            </div>
+                            <div class="field">
+                                <span class="field-name">timestamp</span>
+                                <span class="field-type">timestamp</span>
+                            </div>
+                        </div>
+                        <div class="relationships">
+                            <div class="relationship">
+                                <span class="relationship-arrow">←</span>
+                                <span>api_sources</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Funding Data -->
+            <div class="table-group" data-group="funding-data">
+                <div class="group-header funding-data">
+                    <span>💰</span>
+                    <span>Funding Data</span>
+                    <span style="margin-left: auto; font-size: 0.9rem; opacity: 0.8;">Core opportunity and source information</span>
+                </div>
+                <div class="tables-grid">
+                    <div class="table-card" data-table="funding_opportunities">
+                        <div class="table-header">
+                            <span class="table-name">funding_opportunities</span>
+                            <span class="table-type">Core</span>
+                        </div>
+                        <div class="table-fields">
+                            <div class="field primary-key">
+                                <span class="field-name">id</span>
+                                <span class="field-type">uuid PK</span>
+                            </div>
+                            <div class="field">
+                                <span class="field-name">title</span>
+                                <span class="field-type">text</span>
+                            </div>
+                            <div class="field">
+                                <span class="field-name">minimum_award</span>
+                                <span class="field-type">numeric</span>
+                            </div>
+                            <div class="field">
+                                <span class="field-name">maximum_award</span>
+                                <span class="field-type">numeric</span>
+                            </div>
+                            <div class="field">
+                                <span class="field-name">close_date</span>
+                                <span class="field-type">timestamp</span>
+                            </div>
+                            <div class="field">
+                                <span class="field-name">description</span>
+                                <span class="field-type">text</span>
+                            </div>
+                            <div class="field foreign-key">
+                                <span class="field-name">funding_source_id</span>
+                                <span class="field-type">uuid FK</span>
+                            </div>
+                            <div class="field foreign-key">
+                                <span class="field-name">api_source_id</span>
+                                <span class="field-type">uuid FK</span>
+                            </div>
+                            <div class="field">
+                                <span class="field-name">api_opportunity_id</span>
+                                <span class="field-type">text</span>
+                            </div>
+                            <div class="field">
+                                <span class="field-name">relevance_score</span>
+                                <span class="field-type">numeric</span>
+                            </div>
+                        </div>
+                        <div class="relationships">
+                            <div class="relationship">
+                                <span class="relationship-arrow">←</span>
+                                <span>funding_sources</span>
+                            </div>
+                            <div class="relationship">
+                                <span class="relationship-arrow">←</span>
+                                <span>api_sources</span>
+                            </div>
+                            <div class="relationship">
+                                <span class="relationship-arrow">→</span>
+                                <span>opportunity_state_eligibility (1:many)</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="table-card" data-table="funding_sources">
+                        <div class="table-header">
+                            <span class="table-name">funding_sources</span>
+                            <span class="table-type">Reference</span>
+                        </div>
+                        <div class="table-fields">
+                            <div class="field primary-key">
+                                <span class="field-name">id</span>
+                                <span class="field-type">uuid PK</span>
+                            </div>
+                            <div class="field">
+                                <span class="field-name">name</span>
+                                <span class="field-type">text NOT NULL</span>
+                            </div>
+                            <div class="field">
+                                <span class="field-name">agency_type</span>
+                                <span class="field-type">enum</span>
+                            </div>
+                            <div class="field">
+                                <span class="field-name">type</span>
+                                <span class="field-type">text</span>
+                            </div>
+                            <div class="field">
+                                <span class="field-name">description</span>
+                                <span class="field-type">text</span>
+                            </div>
+                            <div class="field">
+                                <span class="field-name">website</span>
+                                <span class="field-type">text</span>
+                            </div>
+                            <div class="field">
+                                <span class="field-name">contact_email</span>
+                                <span class="field-type">text</span>
+                            </div>
+                            <div class="field">
+                                <span class="field-name">contact_phone</span>
+                                <span class="field-type">text</span>
+                            </div>
+                            <div class="field">
+                                <span class="field-name">created_at</span>
+                                <span class="field-type">timestamptz NOT NULL</span>
+                            </div>
+                            <div class="field">
+                                <span class="field-name">updated_at</span>
+                                <span class="field-type">timestamptz NOT NULL</span>
+                            </div>
+                        </div>
+                        <div class="relationships">
+                            <div class="relationship">
+                                <span class="relationship-arrow">→</span>
+                                <span>funding_opportunities (1:many)</span>
+                            </div>
+                            <div class="relationship" style="opacity: 0.5; text-decoration: line-through;">
+                                <span class="relationship-arrow">→</span>
+                                <span>funding_programs (1:many) [DEPRECATED]</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="table-card" data-table="funding_programs" style="opacity: 0.6; border: 2px dashed #e74c3c;">
+                        <div class="table-header">
+                            <span class="table-name">funding_programs</span>
+                            <span class="table-type" style="background: #e74c3c; color: white;">⚠️ DEPRECATED</span>
+                        </div>
+                        <div class="table-fields">
+                            <div class="field primary-key">
+                                <span class="field-name">id</span>
+                                <span class="field-type">uuid PK</span>
+                            </div>
+                            <div class="field foreign-key">
+                                <span class="field-name">funding_source_id</span>
+                                <span class="field-type">uuid FK</span>
+                            </div>
+                            <div class="field">
+                                <span class="field-name">name</span>
+                                <span class="field-type">text</span>
+                            </div>
+                            <div class="field">
+                                <span class="field-name">description</span>
+                                <span class="field-type">text</span>
+                            </div>
+                            <div class="field">
+                                <span class="field-name">website</span>
+                                <span class="field-type">text</span>
+                            </div>
+                        </div>
+                        <div class="relationships">
+                            <div class="relationship">
+                                <span class="relationship-arrow">←</span>
+                                <span>funding_sources</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Geographic -->
+            <div class="table-group" data-group="geographic">
+                <div class="group-header geographic">
+                    <span>🌍</span>
+                    <span>Geographic Data</span>
+                    <span style="margin-left: auto; font-size: 0.9rem; opacity: 0.8;">State and county eligibility mapping</span>
+                </div>
+                <div class="tables-grid">
+                    <div class="table-card" data-table="states">
+                        <div class="table-header">
+                            <span class="table-name">states</span>
+                            <span class="table-type">Reference</span>
+                        </div>
+                        <div class="table-fields">
+                            <div class="field primary-key">
+                                <span class="field-name">id</span>
+                                <span class="field-type">integer PK</span>
+                            </div>
+                            <div class="field">
+                                <span class="field-name">name</span>
+                                <span class="field-type">text</span>
+                            </div>
+                            <div class="field">
+                                <span class="field-name">code</span>
+                                <span class="field-type">text</span>
+                            </div>
+                        </div>
+                        <div class="relationships">
+                            <div class="relationship">
+                                <span class="relationship-arrow">→</span>
+                                <span>counties (1:many)</span>
+                            </div>
+                            <div class="relationship">
+                                <span class="relationship-arrow">→</span>
+                                <span>opportunity_state_eligibility (1:many)</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="table-card" data-table="counties">
+                        <div class="table-header">
+                            <span class="table-name">counties</span>
+                            <span class="table-type">Reference</span>
+                        </div>
+                        <div class="table-fields">
+                            <div class="field primary-key">
+                                <span class="field-name">id</span>
+                                <span class="field-type">integer PK</span>
+                            </div>
+                            <div class="field foreign-key">
+                                <span class="field-name">state_id</span>
+                                <span class="field-type">integer FK</span>
+                            </div>
+                            <div class="field">
+                                <span class="field-name">name</span>
+                                <span class="field-type">text</span>
+                            </div>
+                        </div>
+                        <div class="relationships">
+                            <div class="relationship">
+                                <span class="relationship-arrow">←</span>
+                                <span>states</span>
+                            </div>
+                            <div class="relationship">
+                                <span class="relationship-arrow">→</span>
+                                <span>opportunity_county_eligibility (1:many)</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="table-card" data-table="opportunity_state_eligibility">
+                        <div class="table-header">
+                            <span class="table-name">opportunity_state_eligibility</span>
+                            <span class="table-type">Junction</span>
+                        </div>
+                        <div class="table-fields">
+                            <div class="field foreign-key">
+                                <span class="field-name">opportunity_id</span>
+                                <span class="field-type">uuid FK</span>
+                            </div>
+                            <div class="field foreign-key">
+                                <span class="field-name">state_id</span>
+                                <span class="field-type">integer FK</span>
+                            </div>
+                        </div>
+                        <div class="relationships">
+                            <div class="relationship">
+                                <span class="relationship-arrow">←</span>
+                                <span>funding_opportunities</span>
+                            </div>
+                            <div class="relationship">
+                                <span class="relationship-arrow">←</span>
+                                <span>states</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="table-card" data-table="opportunity_county_eligibility">
+                        <div class="table-header">
+                            <span class="table-name">opportunity_county_eligibility</span>
+                            <span class="table-type">Junction</span>
+                        </div>
+                        <div class="table-fields">
+                            <div class="field foreign-key">
+                                <span class="field-name">opportunity_id</span>
+                                <span class="field-type">uuid FK</span>
+                            </div>
+                            <div class="field foreign-key">
+                                <span class="field-name">county_id</span>
+                                <span class="field-type">integer FK</span>
+                            </div>
+                        </div>
+                        <div class="relationships">
+                            <div class="relationship">
+                                <span class="relationship-arrow">←</span>
+                                <span>funding_opportunities</span>
+                            </div>
+                            <div class="relationship">
+                                <span class="relationship-arrow">←</span>
+                                <span>counties</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Agent Analytics -->            
+            <div class="table-group" data-group="agent-analytics">
+                <div class="group-header agent-analytics">
+                    <span>🤖</span>
+                    <span>Agent Analytics</span>
+                    <span style="margin-left: auto; font-size: 0.9rem; opacity: 0.8;">AI agent performance tracking and execution analytics</span>
+                </div>
+                <div class="tables-grid">
+                    <div class="table-card" data-table="agent_executions">
+                        <div class="table-header">
+                            <span class="table-name">agent_executions</span>
+                            <span class="table-type">Analytics</span>
+                        </div>
+                        <div class="table-fields">
+                            <div class="field primary-key">
+                                <span class="field-name">id</span>
+                                <span class="field-type">uuid PK</span>
+                            </div>
+                            <div class="field">
+                                <span class="field-name">agent_name</span>
+                                <span class="field-type">text</span>
+                            </div>
+                            <div class="field">
+                                <span class="field-name">execution_time_ms</span>
+                                <span class="field-type">integer</span>
+                            </div>
+                            <div class="field">
+                                <span class="field-name">tokens_used</span>
+                                <span class="field-type">integer</span>
+                            </div>
+                            <div class="field">
+                                <span class="field-name">cost_estimate</span>
+                                <span class="field-type">numeric</span>
+                            </div>
+                            <div class="field">
+                                <span class="field-name">performance_metrics</span>
+                                <span class="field-type">jsonb</span>
+                            </div>
+                            <div class="field">
+                                <span class="field-name">success</span>
+                                <span class="field-type">boolean</span>
+                            </div>
+                        </div>
+                        <div class="relationships">
+                            <div class="relationship">
+                                <span class="relationship-arrow">→</span>
+                                <span>Referenced by pipeline_stages</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- V1 Legacy -->
+            <div class="table-group" data-group="v1-legacy">
+                <div class="group-header v1-legacy">
+                    <span>📦</span>
+                    <span>V1 Legacy Tables</span>
+                    <span style="margin-left: auto; font-size: 0.9rem; opacity: 0.8;">Being phased out in favor of V2 pipeline</span>
+                </div>
+                <div class="tables-grid">
+                    <div class="table-card" data-table="api_source_runs">
+                        <div class="table-header">
+                            <span class="table-name">api_source_runs</span>
+                            <span class="table-type">Legacy</span>
+                        </div>
+                        <div class="table-fields">
+                            <div class="field primary-key">
+                                <span class="field-name">id</span>
+                                <span class="field-type">uuid PK</span>
+                            </div>
+                            <div class="field foreign-key">
+                                <span class="field-name">source_id</span>
+                                <span class="field-type">uuid FK</span>
+                            </div>
+                            <div class="field">
+                                <span class="field-name">status</span>
+                                <span class="field-type">enum</span>
+                            </div>
+                            <div class="field">
+                                <span class="field-name">initial_api_call</span>
+                                <span class="field-type">jsonb</span>
+                            </div>
+                            <div class="field">
+                                <span class="field-name">first_stage_filter</span>
+                                <span class="field-type">jsonb</span>
+                            </div>
+                            <div class="field">
+                                <span class="field-name">detail_api_calls</span>
+                                <span class="field-type">jsonb</span>
+                            </div>
+                            <div class="field">
+                                <span class="field-name">storage_results</span>
+                                <span class="field-type">jsonb</span>
+                            </div>
+                        </div>
+                        <div class="relationships">
+                            <div class="relationship">
+                                <span class="relationship-arrow">←</span>
+                                <span>api_sources</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="table-card" data-table="process_runs">
+                        <div class="table-header">
+                            <span class="table-name">process_runs</span>
+                            <span class="table-type">Legacy</span>
+                        </div>
+                        <div class="table-fields">
+                            <div class="field primary-key">
+                                <span class="field-name">id</span>
+                                <span class="field-type">uuid PK</span>
+                            </div>
+                            <div class="field foreign-key">
+                                <span class="field-name">source_id</span>
+                                <span class="field-type">uuid FK</span>
+                            </div>
+                            <div class="field">
+                                <span class="field-name">source_manager_status</span>
+                                <span class="field-type">enum</span>
+                            </div>
+                            <div class="field">
+                                <span class="field-name">api_handler_status</span>
+                                <span class="field-type">enum</span>
+                            </div>
+                            <div class="field">
+                                <span class="field-name">processing_details</span>
+                                <span class="field-type">jsonb</span>
+                            </div>
+                        </div>
+                        <div class="relationships">
+                            <div class="relationship">
+                                <span class="relationship-arrow">←</span>
+                                <span>api_sources</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            </div>
+        </div>
+
+        <div class="legend">
+            <h4>Legend</h4>
+            <div class="legend-item">
+                <div class="legend-color" style="background: #e74c3c;"></div>
+                <span>Primary Key (PK)</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background: #3498db;"></div>
+                <span>Foreign Key (FK)</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background: #95a5a6;"></div>
+                <span>Regular Field</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal for detailed table view -->
+    <div id="tableModal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <div id="modalContent"></div>
+        </div>
+    </div>
+
+    <script>
+        // Database relationships data
+        const relationships = [
+            { from: 'api_sources', to: 'pipeline_runs', type: 'One-to-Many', description: 'API sources trigger pipeline runs' },
+            { from: 'pipeline_runs', to: 'pipeline_stages', type: 'One-to-Many', description: 'Each run has multiple stages' },
+            { from: 'pipeline_runs', to: 'duplicate_detection_sessions', type: 'One-to-One', description: 'Each run has duplicate detection' },
+            { from: 'pipeline_runs', to: 'opportunity_processing_paths', type: 'One-to-Many', description: 'Tracks processing decisions' },
+            { from: 'api_sources', to: 'api_raw_responses', type: 'One-to-Many', description: 'Sources generate raw responses' },
+            { from: 'api_raw_responses', to: 'api_extracted_opportunities', type: 'One-to-Many', description: 'Raw responses extracted [DEPRECATED]' },
+            { from: 'api_raw_responses', to: 'funding_opportunities', type: 'One-to-Many', description: 'Creates funding opportunities' },
+            { from: 'funding_sources', to: 'funding_opportunities', type: 'One-to-Many', description: 'Sources provide opportunities' },
+            { from: 'funding_sources', to: 'funding_programs', type: 'One-to-Many', description: 'Sources have programs [DEPRECATED]' },
+            { from: 'api_sources', to: 'funding_opportunities', type: 'One-to-Many', description: 'API sources create opportunities' },
+            { from: 'api_sources', to: 'api_source_configurations', type: 'One-to-Many', description: 'API configuration settings' },
+            { from: 'api_sources', to: 'api_activity_logs', type: 'One-to-Many', description: 'Activity logging' },
+            { from: 'api_sources', to: 'pipeline_performance_baselines', type: 'One-to-Many', description: 'Performance benchmarking' },
+            { from: 'funding_opportunities', to: 'opportunity_state_eligibility', type: 'One-to-Many', description: 'State eligibility mapping' },
+            { from: 'funding_opportunities', to: 'opportunity_county_eligibility', type: 'One-to-Many', description: 'County eligibility mapping' },
+            { from: 'states', to: 'counties', type: 'One-to-Many', description: 'States contain counties' },
+            { from: 'states', to: 'opportunity_state_eligibility', type: 'One-to-Many', description: 'State eligibility reference' },
+            { from: 'counties', to: 'opportunity_county_eligibility', type: 'One-to-Many', description: 'County eligibility reference' },
+            { from: 'api_sources', to: 'api_source_runs', type: 'One-to-Many', description: 'Legacy V1 runs' },
+            { from: 'api_sources', to: 'process_runs', type: 'One-to-Many', description: 'Legacy V1 processes' },
+            { from: 'funding_opportunities', to: 'opportunity_processing_paths', type: 'One-to-Many', description: 'Processing path reference' }
+        ];
+
+        // Filter functionality
+        const filterButtons = document.querySelectorAll('.filter-btn');
+        const tableGroups = document.querySelectorAll('.table-group');
+        const searchBox = document.getElementById('searchBox');
+        const relationshipsList = document.getElementById('relationshipsList');
+        const connectionSvg = document.getElementById('connectionSvg');
+
+        // Initialize relationships panel
+        function initializeRelationshipsPanel() {
+            relationshipsList.innerHTML = relationships.map((rel, index) => `
+                <div class="relationship-item" data-relationship="${index}" data-from="${rel.from}" data-to="${rel.to}">
+                    <div class="relationship-from">${rel.from}</div>
+                    <div class="relationship-arrow">→ ${rel.type}</div>
+                    <div class="relationship-to">${rel.to}</div>
+                    <div class="relationship-type">${rel.description}</div>
+                </div>
+            `).join('');
+
+            // Add click handlers for relationship items
+            document.querySelectorAll('.relationship-item').forEach(item => {
+                item.addEventListener('click', () => {
+                    // Clear previous highlights
+                    document.querySelectorAll('.relationship-item').forEach(r => r.classList.remove('active'));
+                    clearHighlights();
+                    clearConnections();
+                    
+                    // Highlight clicked relationship
+                    item.classList.add('active');
+                    
+                    const fromTable = item.dataset.from;
+                    const toTable = item.dataset.to;
+                    
+                    // Highlight related tables
+                    highlightSpecificTables([fromTable, toTable]);
+                    
+                    // Draw connection line
+                    drawConnection(fromTable, toTable);
+                });
+            });
+        }
+
+        function drawConnection(fromTable, toTable) {
+            const fromCard = document.querySelector(`[data-table="${fromTable}"]`);
+            const toCard = document.querySelector(`[data-table="${toTable}"]`);
+            
+            if (!fromCard || !toCard) return;
+            
+            const schemaContainer = document.querySelector('.schema-container');
+            const containerRect = schemaContainer.getBoundingClientRect();
+            const fromRect = fromCard.getBoundingClientRect();
+            const toRect = toCard.getBoundingClientRect();
+            
+            // Calculate relative positions
+            const fromX = fromRect.left + fromRect.width / 2 - containerRect.left + schemaContainer.scrollLeft;
+            const fromY = fromRect.top + fromRect.height / 2 - containerRect.top + schemaContainer.scrollTop;
+            const toX = toRect.left + toRect.width / 2 - containerRect.left + schemaContainer.scrollLeft;
+            const toY = toRect.top + toRect.height / 2 - containerRect.top + schemaContainer.scrollTop;
+            
+            // Create curved path
+            const midX = (fromX + toX) / 2;
+            const midY = (fromY + toY) / 2;
+            const controlX = midX + (fromY - toY) * 0.3;
+            const controlY = midY + (toX - fromX) * 0.3;
+            
+            const pathData = `M ${fromX} ${fromY} Q ${controlX} ${controlY} ${toX} ${toY}`;
+            
+            // Create or update SVG path
+            let path = connectionSvg.querySelector('.connection-path');
+            if (!path) {
+                path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                path.classList.add('connection-path');
+                connectionSvg.appendChild(path);
+            }
+            
+            path.setAttribute('d', pathData);
+            path.classList.add('active');
+        }
+
+        function clearConnections() {
+            const paths = connectionSvg.querySelectorAll('.connection-path');
+            paths.forEach(path => path.classList.remove('active'));
+        }
+
+        function highlightSpecificTables(tableNames) {
+            const tableCards = document.querySelectorAll('.table-card');
+            tableCards.forEach(card => {
+                if (tableNames.includes(card.dataset.table)) {
+                    card.classList.add('highlighted');
+                }
+            });
+        }
+
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            initializeRelationshipsPanel();
+        });
+
+        filterButtons.forEach(btn => {
+            btn.addEventListener('click', () => {
+                // Remove active class from all buttons
+                filterButtons.forEach(b => b.classList.remove('active'));
+                // Add active class to clicked button
+                btn.classList.add('active');
+
+                const group = btn.dataset.group;
+                
+                tableGroups.forEach(tableGroup => {
+                    if (group === 'all' || tableGroup.dataset.group === group) {
+                        tableGroup.classList.remove('hidden');
+                    } else {
+                        tableGroup.classList.add('hidden');
+                    }
+                });
+            });
+        });
+
+        // Search functionality
+        searchBox.addEventListener('input', (e) => {
+            const searchTerm = e.target.value.toLowerCase();
+            const tableCards = document.querySelectorAll('.table-card');
+
+            tableCards.forEach(card => {
+                const tableName = card.dataset.table.toLowerCase();
+                const fields = Array.from(card.querySelectorAll('.field-name'))
+                    .map(el => el.textContent.toLowerCase());
+                
+                const matches = tableName.includes(searchTerm) || 
+                    fields.some(field => field.includes(searchTerm));
+
+                if (matches) {
+                    card.style.display = 'block';
+                } else {
+                    card.style.display = 'none';
+                }
+            });
+        });
+
+        // Table card hover effects for relationships
+        const tableCards = document.querySelectorAll('.table-card');
+        
+        tableCards.forEach(card => {
+            card.addEventListener('mouseenter', () => {
+                const tableName = card.dataset.table;
+                highlightRelatedTables(tableName);
+            });
+
+            card.addEventListener('mouseleave', () => {
+                clearHighlights();
+            });
+
+            // Modal functionality
+            card.addEventListener('click', () => {
+                showTableModal(card);
+            });
+        });
+
+        function highlightRelatedTables(tableName) {
+            // Find all relationships involving this table
+            const relatedTables = new Set([tableName]);
+            relationships.forEach(rel => {
+                if (rel.from === tableName) relatedTables.add(rel.to);
+                if (rel.to === tableName) relatedTables.add(rel.from);
+            });
+            
+            // Highlight all related tables
+            highlightSpecificTables(Array.from(relatedTables));
+        }
+
+        function clearHighlights() {
+            document.querySelectorAll('.table-card').forEach(card => {
+                card.classList.remove('highlighted');
+            });
+            document.querySelectorAll('.relationship-item').forEach(item => {
+                item.classList.remove('active');
+            });
+            clearConnections();
+        }
+
+        // Modal functionality
+        const modal = document.getElementById('tableModal');
+        const modalContent = document.getElementById('modalContent');
+        const closeBtn = document.querySelector('.close');
+
+        function showTableModal(card) {
+            const tableName = card.dataset.table;
+            const tableData = getTableDetails(tableName);
+            
+            modalContent.innerHTML = `
+                <h2>${tableName}</h2>
+                <p><strong>Type:</strong> ${tableData.type}</p>
+                <p><strong>Description:</strong> ${tableData.description}</p>
+                <h3>Key Relationships:</h3>
+                <ul>
+                    ${tableData.relationships.map(rel => `<li>${rel}</li>`).join('')}
+                </ul>
+            `;
+            
+            modal.style.display = 'flex';
+        }
+
+        function getTableDetails(tableName) {
+            const tableDetails = {
+                'pipeline_runs': {
+                    type: 'V2 Core Table',
+                    description: 'Main tracking table for V2 pipeline executions with optimization metrics showing 60-80% efficiency improvements.',
+                    relationships: [
+                        'Has many pipeline_stages (detailed stage execution)',
+                        'Has one duplicate_detection_session (optimization tracking)',
+                        'Belongs to api_sources (triggered by external APIs)',
+                        'Has many opportunity_processing_paths (processing decisions)'
+                    ]
+                },
+                'pipeline_stages': {
+                    type: 'V2 Detail Table',
+                    description: 'Tracks individual stage execution in the V2 pipeline (source_orchestrator → data_extraction → early_duplicate_detector → analysis → filter → storage → direct_update).',
+                    relationships: [
+                        'Belongs to pipeline_runs (part of a specific run)',
+                        'Tracks 7 distinct processing stages',
+                        'Records performance metrics and token usage per stage'
+                    ]
+                },
+                'funding_opportunities': {
+                    type: 'Core Data Table',
+                    description: 'Central table storing all funding opportunities with enhanced descriptions and relevance scoring.',
+                    relationships: [
+                        'Belongs to funding_sources (funding agency)',
+                        'Belongs to api_sources (data source)',
+                        'Has many opportunity_state_eligibility (geographic eligibility)',
+                        'Referenced by opportunity_processing_paths (processing tracking)'
+                    ]
+                }
+                // Add more table details as needed
+            };
+
+            return tableDetails[tableName] || {
+                type: 'Database Table',
+                description: 'Part of the Meridian ESG Intelligence Platform database schema.',
+                relationships: ['See relationships panel for connections']
+            };
+        }
+
+        closeBtn.addEventListener('click', () => {
+            modal.style.display = 'none';
+        });
+
+        window.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                modal.style.display = 'none';
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,16 +1,16 @@
 import { NextResponse } from 'next/server';
-import { processNextSourceWithHandler } from '@/app/lib/agents/apiHandlerAgent';
-import { createSupabaseClient } from '@/app/lib/supabase';
+import { processNextSourceWithHandler } from '@/lib/agents/apiHandlerAgent';
+import { createClient } from '@/utils/supabase/api';
 
 /**
  * Process the next API source in the queue
  * @route POST /api/funding/process-next-source
  * @returns {Object} The processing result
  */
-export async function POST() {
+export async function POST(request) {
 	try {
 		// Check if the request is authorized
-		const supabase = createSupabaseClient();
+		const { supabase } = createClient(request);
 		const {
 			data: { session },
 		} = await supabase.auth.getSession();

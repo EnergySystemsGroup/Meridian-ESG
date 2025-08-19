@@ -1,10 +1,11 @@
-import { createAdminSupabaseClient } from '@/app/lib/supabase';
 import { NextResponse } from 'next/server';
-import { TAXONOMIES } from '@/app/lib/constants/taxonomies';
-import { getNormalizedCategories } from '@/app/lib/utils/categoryUtils';
+import { createAdminClient } from '@/utils/supabase/api';
+import { TAXONOMIES } from '@/lib/constants/taxonomies';
+import { getNormalizedCategories } from '@/lib/utils/categoryUtils';
 
-export async function GET() {
-	const supabase = createAdminSupabaseClient();
+export async function GET(request) {
+	// Create admin Supabase client with service role
+	const { supabase } = createAdminClient(request);
 
 	try {
 		// 1. Fetch raw data (category, total_funding, opportunity_count) from the database function

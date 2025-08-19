@@ -1,20 +1,20 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { createClient } from '@/utils/supabase/client';
 import {
 	Card,
 	CardContent,
 	CardDescription,
 	CardHeader,
 	CardTitle,
-} from '@/app/components/ui/card';
+} from '@/components/ui/card';
 import {
 	Tabs,
 	TabsContent,
 	TabsList,
 	TabsTrigger,
-} from '@/app/components/ui/tabs';
+} from '@/components/ui/tabs';
 import {
 	Table,
 	TableBody,
@@ -22,10 +22,10 @@ import {
 	TableHead,
 	TableHeader,
 	TableRow,
-} from '@/app/components/ui/table';
-import { Badge } from '@/app/components/ui/badge';
-import { Button } from '@/app/components/ui/button';
-import { Skeleton } from '@/app/components/ui/skeleton';
+} from '@/components/ui/table';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
 import { formatDistanceToNow } from 'date-fns';
 
 export default function RunsPage() {
@@ -33,7 +33,7 @@ export default function RunsPage() {
 	const [loading, setLoading] = useState(true);
 	const [selectedRun, setSelectedRun] = useState(null);
 	const [selectedTab, setSelectedTab] = useState('all');
-	const supabase = createClientComponentClient();
+	const supabase = createClient();
 
 	useEffect(() => {
 		fetchRuns();

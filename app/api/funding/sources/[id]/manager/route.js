@@ -1,11 +1,11 @@
 import { NextResponse } from 'next/server';
-import { createSupabaseClient } from '@/app/lib/supabase';
-import { sourceManagerAgent } from '@/app/lib/agents/sourceManagerAgent';
+import { createClient } from '@/utils/supabase/api';
+import { sourceManagerAgent } from '@/lib/agents/sourceManagerAgent';
 
 // POST /api/funding/sources/[id]/manager - Get the source manager agent output for a specific API source
 export async function POST(request, context) {
 	try {
-		const supabase = createSupabaseClient();
+		const { supabase } = createClient(request);
 		const { id } = await context.params;
 
 		// Get the source with configurations

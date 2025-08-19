@@ -2,15 +2,15 @@
 
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import MainLayout from '@/app/components/layout/main-layout';
-import { Button } from '@/app/components/ui/button';
+import MainLayout from '@/components/layout/main-layout';
+import { Button } from '@/components/ui/button';
 import {
 	Card,
 	CardContent,
 	CardDescription,
 	CardHeader,
 	CardTitle,
-} from '@/app/components/ui/card';
+} from '@/components/ui/card';
 import {
 	ArrowLeft,
 	Calendar,
@@ -28,21 +28,21 @@ import {
 	Info,
 	Star,
 } from 'lucide-react';
-import { calculateDaysLeft, determineStatus } from '@/app/lib/supabase';
-import { Badge } from '@/app/components/ui/badge';
-import { Progress } from '@/app/components/ui/progress';
+import { calculateDaysLeft, determineStatus } from '@/lib/supabase';
+import { Badge } from '@/components/ui/badge';
+import { Progress } from '@/components/ui/progress';
 import {
 	Tabs,
 	TabsContent,
 	TabsList,
 	TabsTrigger,
-} from '@/app/components/ui/tabs';
-import { Separator } from '@/app/components/ui/separator';
-import { useTrackedOpportunities } from '@/app/hooks/useTrackedOpportunities';
+} from '@/components/ui/tabs';
+import { Separator } from '@/components/ui/separator';
+import { useTrackedOpportunities } from '@/hooks/useTrackedOpportunities';
 import {
 	getCategoryColor,
 	formatCategoryForDisplay,
-} from '@/app/lib/utils/uiHelpers';
+} from '@/lib/utils/uiHelpers';
 
 export default function OpportunityDetailPage() {
 	const params = useParams();

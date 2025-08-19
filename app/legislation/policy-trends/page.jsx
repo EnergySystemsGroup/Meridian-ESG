@@ -1,4 +1,4 @@
-import MainLayout from '@/app/components/layout/main-layout';
+import MainLayout from '@/components/layout/main-layout';
 import { TrendingUp } from 'lucide-react';
 import {
 	Card,
@@ -6,8 +6,8 @@ import {
 	CardDescription,
 	CardHeader,
 	CardTitle,
-} from '@/app/components/ui/card';
-import { Button } from '@/app/components/ui/button';
+} from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 
 export default function PolicyTrendsPage() {

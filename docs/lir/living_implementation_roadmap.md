@@ -6,6 +6,236 @@ This document tracks the implementation status of all features in the Funding In
 
 This section highlights the highest priority tasks to be completed next:
 
+### PHASE 1: Agent Architecture V2 Refactoring + Supabase Edge Functions (HIGHEST PRIORITY)
+
+**🚨 UPDATED DEPLOYMENT STRATEGY: Supabase Edge Functions**
+
+**Analysis Result:** Current ProcessCoordinator analysis confirms that Supabase Edge Functions is the optimal deployment strategy for V2 architecture due to:
+- ✅ **No timeout constraints** (15+ minute execution vs Vercel's 60s limit)
+- ✅ **Same ecosystem** (already using Supabase for database)
+- ✅ **Direct port feasible** (all current dependencies work in Edge Functions)
+- ✅ **Cost effective** (included in Supabase pricing)
+- ✅ **Handles large datasets** (can process 1000+ opportunities without timeout)
+
+**Critical Infrastructure (Must Complete First):**
+1. **✅ Supabase Edge Function Setup** - Core infrastructure for V2 processing **COMPLETED** ✨
+   - ✅ Initialize `supabase/functions/process-source/` structure
+   - ✅ Configure import maps for dependencies (Anthropic SDK, Supabase client)
+   - ✅ Set up local development with `supabase functions serve`
+   - ✅ Configure environment variables and basic testing
+   - ✅ Verified Edge Function works with test requests
+2. **🔥 ProcessCoordinatorV2 (Edge Function)** - Port current coordinator to Edge Function
+   - [ ] Migrate processApiSource logic to Edge Function format
+   - [ ] Maintain exact same agent orchestration flow
+   - [ ] Preserve all error handling and logging
+   - [ ] Add Edge Function-specific monitoring
+3. **🔥 RunManagerV2** - Updated run tracking compatible with Edge Functions
+   - [ ] Same tracking logic as V1, updated stage names for V2 pipeline
+   - [ ] Enhanced metrics collection for new agent performance
+   - [ ] Real-time status updates via Supabase subscriptions
+4. **✅ AnthropicClient** - Direct SDK implementation (no LangChain/Zod overhead) **COMPLETED** ✨
+   - ✅ Complete schema mapping from current Zod schemas
+   - ✅ sourceAnalysis schema (maps sourceProcessingSchema) 
+   - ✅ opportunityExtraction schema (maps apiResponseProcessingSchema)
+   - ✅ opportunityScoring schema (for micro-agents)
+   - ✅ dataProcessing schema (for deduplication)
+   - ✅ Performance tracking and error handling
+   - ✅ Comprehensive test coverage
+
+**🎉 MILESTONE ACHIEVED: All 5 Core V2 Agents Complete! Ready for Edge Function Integration**
+
+**Core Agent Development (Priority Order):**
+5. **✅ SourceOrchestrator** - Replaces sourceManagerAgent **COMPLETED** ✨
+   - ✅ Streamlined source analysis with improved performance
+   - ✅ Direct Anthropic SDK integration
+   - ✅ Input validation for required fields (name, api_endpoint)
+   - ✅ Proper error handling and execution time tracking
+   - ✅ Comprehensive test coverage (all 7 tests passing)
+   - ✅ Architecture cleanup: consolidated to `app/lib/agents-v2/core/`
+   - ✅ Tests updated to import from correct location
+   - ✅ Ready for Edge Function integration
+6. **✅ DataExtractionAgent** - Collection + field mapping + taxonomy standardization **COMPLETED** ✨
+   - ✅ Complete API handling (single and two-step workflows)
+   - ✅ AI-powered data extraction and field mapping
+   - ✅ Comprehensive taxonomy standardization (applicants, projects, locations)
+   - ✅ Robust error handling and execution tracking
+   - ✅ Architecture cleanup: moved to `app/lib/agents-v2/core/`
+   - ✅ Comprehensive test coverage (all 8 tests passing)
+   - ✅ Ready for Edge Function integration
+7. **✅ AnalysisAgent** - Content enhancement + systematic scoring (replaces detailProcessorAgent) **COMPLETED** ✨
+   - ✅ Professional content enhancement with 2-3 paragraph descriptions
+   - ✅ Systematic 10-point scoring framework with objective criteria
+   - ✅ Batch processing (5 opportunities per batch) for efficiency
+   - ✅ Robust error handling with graceful degradation
+   - ✅ Score constraint enforcement and comprehensive metrics calculation
+   - ✅ Comprehensive test coverage (all 8 tests passing)
+   - ✅ Ready for Edge Function integration
+8. **✅ Filter Function** - Simple threshold logic (no AI needed, replaces FilteringAgent) **COMPLETED** ✨
+   - ✅ Implement score-based filtering with configurable thresholds
+   - ✅ Apply funding threshold requirements ($1M+ preference)
+   - ✅ Grant vs loan/tax credit filtering logic with compensatory scoring
+   - ✅ Performance-optimized with minimal overhead (pure JavaScript logic)
+   - ✅ Comprehensive test coverage (all 13 tests passing)
+   - ✅ Configurable filtering with strict/lenient/custom modes
+   - ✅ Detailed exclusion reason tracking for debugging
+   - ✅ Moved to `app/lib/agents-v2/core/` with other pipeline agents
+   - ✅ Ready for Edge Function integration
+9. **✅ StorageAgent** - Enhanced storage with deduplication (replaces dataProcessorAgent) **COMPLETED** ✨
+   - ✅ Modular replacement of 553-line monolith into 7 focused components (~1200 lines total)
+   - ✅ Enhanced duplicate detection (ID-based + title fallback)
+   - ✅ Funding source management with normalization
+   - ✅ State eligibility processing and mapping
+   - ✅ Material change detection to prevent spam updates
+   - ✅ Batch processing with comprehensive metrics
+   - ✅ Moved to `app/lib/agents-v2/core/storageAgent/` with modular structure:
+     - ✅ index.js (185 lines) - main orchestrator
+     - ✅ fundingSourceManager.js (120 lines) - agency CRUD
+     - ✅ duplicateDetector.js (80 lines) - find existing opportunities
+     - ✅ changeDetector.js (150 lines) - material change detection
+     - ✅ dataSanitizer.js (200 lines) - data cleaning
+     - ✅ stateEligibilityProcessor.js (150 lines) - location parsing
+     - ✅ utils/fieldMapping.js (100 lines) - field conversion
+     - ✅ utils/locationParsing.js (200 lines) - location string parsing
+   - ✅ Comprehensive test coverage (all 13 tests passing)
+   - ✅ Ready for Edge Function integration
+
+**Edge Function Integration:**
+10. **✅ ProcessCoordinatorV2 (Service)** - Port current coordinator to services with Edge Function wrapper **COMPLETED** ✨
+    - ✅ Migrated processApiSource logic to `app/lib/services/processCoordinatorV2.js`
+    - ✅ Maintained exact same agent orchestration flow (all 5 V2 agents working together)
+    - ✅ Preserved all error handling and logging
+    - ✅ Added proper RunManagerV2 for V2 pipeline tracking
+    - ✅ Import agents from `app/lib/agents-v2/core/` structure
+    - ✅ Created thin Edge Function wrapper at `supabase/functions/process-source/index.js`
+    - ✅ Built comprehensive test suite at `app/lib/services/tests/processCoordinatorV2.test.js` (7/7 tests passing)
+    - ✅ Service-oriented architecture with proper separation of concerns
+    - ✅ Full error handling including database errors and agent failures
+    - ✅ V1-compatible metrics format for seamless integration
+11. **✅ RunManagerV2** - Updated run tracking compatible with Edge Functions **COMPLETED** ✨
+    - ✅ Same tracking logic as V1, updated stage names for V2 pipeline
+    - ✅ Enhanced metrics collection for new agent performance  
+    - ✅ Maps V2 stages to existing V1 database columns for compatibility
+    - ✅ Track modular StorageAgent component performance
+    - ✅ Integrated into ProcessCoordinatorV2 service
+    - ✅ Comprehensive test coverage for initialization and error handling
+12. **Vercel API Trigger** - Lightweight endpoint to trigger Edge Function processing
+    - [x] Create `/api/funding/process-source-v2/` endpoint (organized under funding namespace)
+    - [x] Return immediate response with job status tracking
+    - [x] Preserve all existing API contracts for frontend compatibility
+    - [x] Maintain consistency with existing `/api/funding/` organization pattern
+13. **Real-time Status Updates** - Live progress tracking during Edge Function execution
+    - [ ] Supabase real-time subscriptions for run status
+    - [ ] Progress indicators for each processing stage
+    - [ ] Error notifications and recovery handling
+
+**🔥 CURRENT PRIORITY: Edge Function Testing & Issues Resolution**
+
+**Testing & Validation:**
+14. **✅ DataExtractionAgent Testing** - Comprehensive testing with real API data **COMPLETED** ✨
+    - ✅ Local Edge Function testing with `supabase functions serve` - **COMPLETED**
+    - ✅ Basic connectivity and error handling validation - **COMPLETED**
+    - ✅ Authorization header configuration - **COMPLETED**
+    - ✅ Real API source testing with California Grants Portal and Grants.gov - **COMPLETED**
+    - ✅ Single API workflow validation (California: 3 opportunities extracted) - **COMPLETED**
+    - ✅ Two-step API workflow validation (Grants.gov: 10 opportunities extracted) - **COMPLETED**
+    - ✅ Raw data storage and comparison validation - **COMPLETED**
+    - ✅ LLM funding extraction accuracy validation with response mapping - **COMPLETED**
+    - ✅ Response mapping validation: LLM correctly follows JSON path guidance - **COMPLETED**
+    - ✅ Historical data confusion resolution: Improved prompts handle complex nested JSON - **COMPLETED**
+    - ✅ Modular architecture functionality confirmed - **COMPLETED**
+    - [ ] Performance validation with large datasets (100+ opportunities)
+    - [ ] Timeout stress testing (ensure no 15-minute limit issues)
+
+**🚨 CRITICAL ISSUES DISCOVERED:**
+
+**Database Schema Issues (RunManagerV2):**
+- ❌ Missing database columns: `source_manager_data`, `api_handler_data`, `ended_at`, `final_results`
+- ❌ UUID format errors: RunManagerV2 using string IDs instead of UUIDs
+- ❌ Schema cache issues: Columns not found in Supabase schema
+
+**API Data Issues:**
+- ❌ California Grants Portal: `409 Conflict` error (external API rate limiting)
+- ❌ Grants.gov: Returns empty array `[]` (no current opportunities or query issue)
+- ❌ AI JSON parsing failures: Non-JSON responses from Anthropic
+
+**Next Steps (Stage-by-Stage Testing):**
+15. **🔄 Individual Agent Testing with Real Data** - **IN PROGRESS** 
+    - ✅ Create `scripts/test/` directory structure for systematic testing - **COMPLETED**
+    - ✅ Test SourceOrchestrator with real California Grants Portal & Grants.gov sources - **COMPLETED**
+    - ✅ Test DataExtractionAgent with real API responses - **COMPLETED**
+    - ✅ Test AnalysisAgent with extracted opportunities from previous stage - **COMPLETED**
+    - 🔥 Test FilterFunction with scored opportunities - **CURRENT PRIORITY**
+    - [ ] Test StorageAgent with filtered opportunities
+    - [ ] Chain outputs from each stage to next stage for validation
+
+**Agent Execution Tracking Enhancement:**
+15.5. **✅ V2 Agent Execution Tracking** - Add missing execution tracking to match V1 capabilities **COMPLETED** ✨
+    - ✅ Add `logAgentExecution` calls to DataExtractionAgent for token usage and execution metrics - **COMPLETED**
+    - ✅ Add `logAgentExecution` calls to AnalysisAgent for LLM performance tracking - **COMPLETED**
+    - ✅ Add `logAgentExecution` calls to StorageAgent for database operation metrics - **COMPLETED**
+    - ✅ Verify `agent_executions` table receives records from V2 pipeline - **COMPLETED**
+    - [ ] Add token usage tracking to all V2 agents using Anthropic SDK
+    - [ ] Update V2 agents to match V1 tracking granularity for performance comparison
+
+**V2 Logging Gaps Analysis & Implementation:**
+15.6. **🔧 V2 API Activity Logging** - Add missing API activity logging to match V1 capabilities
+    - [ ] **FINDING**: V1 agents log API activity via `logApiActivity()` but V2 agents do not
+    - [ ] **ANALYSIS**: V1 logs to `api_activity_logs` table for actions: 'api_check', 'processing', 'detail_processing'
+    - [ ] Add `logApiActivity` calls to DataExtractionAgent for API request tracking
+    - [ ] Add `logApiActivity` calls to SourceOrchestrator for source analysis tracking  
+    - [ ] Add `logApiActivity` calls to StorageAgent for database operation tracking
+    - [ ] Verify `api_activity_logs` table receives records from V2 pipeline
+    - [ ] Match V1 activity logging patterns: success/failure status, action types, details payload
+
+15.7. **🔧 V2 Raw Response Storage Verification** - Ensure raw API responses are properly stored
+    - [ ] **FINDING**: V2 has raw response storage implementation but test didn't create new records
+    - [ ] **ANALYSIS**: Recent raw responses in database are from California Grants Portal, not Grants.gov test
+    - [ ] Investigate why test didn't store raw responses (cached data vs storage failure)
+    - [ ] Verify raw response deduplication logic is working correctly
+    - [ ] Ensure raw responses are linked to correct source IDs
+    - [ ] Test raw response storage with fresh API calls (not cached data)
+
+15.8. **🔧 V1 vs V2 Logging Audit** - Comprehensive comparison of all logging mechanisms
+    - [ ] **AUDIT V1 LOGGING**: Document all logging mechanisms used in V1 agents
+      - [ ] Agent execution logging (`agent_executions` table)
+      - [ ] API activity logging (`api_activity_logs` table) 
+      - [ ] Raw response storage (`api_raw_responses` table)
+      - [ ] Run tracking (`api_source_runs` table)
+      - [ ] Any other logging mechanisms in V1 pipeline
+    - [ ] **AUDIT V2 LOGGING**: Document current V2 logging implementation
+      - [ ] Compare V2 logging coverage against V1 baseline
+      - [ ] Identify missing logging mechanisms in V2
+      - [ ] Document logging format/schema differences between V1 and V2
+    - [ ] **IMPLEMENT MISSING V2 LOGGING**: Add any missing logging to achieve V1 parity
+      - [ ] Ensure V2 logs same level of detail as V1 for performance comparison
+      - [ ] Maintain consistent logging schemas for dashboard compatibility
+      - [ ] Add any V1 logging mechanisms not yet implemented in V2
+
+16. **🔧 Database Schema Fixes** - **HIGH PRIORITY**
+    - [ ] Add missing V2 columns to `api_source_runs` table
+    - [ ] Fix RunManagerV2 UUID generation and validation
+    - [ ] Update Supabase schema cache for new columns
+
+17. **🔥 Migration Comparison** - Validate V2 output matches V1 quality **AFTER FIXES**
+    - [ ] Side-by-side processing comparison with working pipeline
+    - [ ] Accuracy metrics and performance benchmarks
+    - [ ] Token usage and cost analysis
+
+**Database Updates:**
+16. **api_source_runs_v2 Table** - Enhanced run tracking for Edge Functions
+17. **New Stage Columns** - Support for V2 pipeline stages
+18. **Edge Function Monitoring** - Metrics collection for Edge Function performance
+
+**Success Criteria for Phase 1:**
+- [ ] Edge Function processes sources without timeout constraints
+- [ ] All V2 agents work seamlessly in Edge Function environment
+- [ ] Real-time status updates work correctly
+- [ ] Performance shows 60-80% improvement over V1
+- [ ] Can handle large datasets (200+ opportunities) successfully
+- [ ] Zero impact on production system (V1 continues running via Vercel)
+
+### EXISTING PRIORITY TASKS (AFTER PHASE 1):
+
 1. **Database - Opportunity Notes Field**: Add notes field to the opportunities table, mainly for explanations about min, max and total funding amounts.
 2. **Backend - Amount Estimation**: Update the Zod schema for min and max amount to have the LLM estimate these values if they're not explicitly provided in the source data.
 3. **Backend - Agent Schema Documentation**: Add explanatory notes to the two agent Zod schemas to improve understanding and maintainability.
@@ -25,11 +255,15 @@ This section highlights the highest priority tasks to be completed next:
 
 ## Recently Completed Tasks
 
-1. **Frontend - Opportunity Detail Page UI/UX Enhancements**: Implemented numerous styling and layout improvements to the opportunity detail page, including refined card designs, tab navigation, content sections, and consistent status/category visuals.
-2. **Frontend - Application Resources Update**: Refined the Application Resources section on the detail page with improved icons and added a functional 'Data Source' link dynamically pulling the correct URL from the associated API Source.
-3. **Frontend - Funding Opportunities Filtering Enhancements**: Replaced tag filtering with robust category filtering system, added location-based filtering using the state eligibility data, improved status filtering with better visual indicators, and added comprehensive sorting options.
-4. **Frontend - Pagination Improvements**: Fixed pagination issues by moving controls to both top and bottom of results, improved search behavior, added "Showing X-Y of Z results" display, and preserved pagination state during filtering operations.
-5. **Frontend - Active Filters UI**: Implemented comprehensive active filters display with pill-based indicators, consistent color coding, and easy clear functionality, improving the overall filtering UX.
+1. **✨ V2 Agent Architecture - Edge Function Basic Testing**: Successfully validated Edge Function connectivity, error handling, and authorization in local environment. Confirmed all V2 agents load correctly in Edge Function environment and ProcessCoordinatorV2 service integration works. Identified critical database schema and API data issues requiring resolution before full validation.
+2. **✨ V2 Agent Architecture - ProcessCoordinatorV2 Service Migration**: Successfully extracted ProcessCoordinatorV2 from Edge Function to `app/lib/services/` with comprehensive test suite (7/7 tests passing). Implemented service-oriented architecture with proper separation of concerns, complete error handling, and V1-compatible metrics format.
+3. **✨ V2 Agent Architecture - Edge Function Simplification**: Converted `supabase/functions/process-source/index.js` to thin HTTP wrapper that delegates to ProcessCoordinatorV2 service, maintaining clean architecture and testability.
+4. **✨ V2 Agent Architecture - RunManagerV2 Integration**: Fully integrated RunManagerV2 with ProcessCoordinatorV2 service, providing V2 pipeline tracking with V1 database compatibility and comprehensive error handling.
+4. **Frontend - Opportunity Detail Page UI/UX Enhancements**: Implemented numerous styling and layout improvements to the opportunity detail page, including refined card designs, tab navigation, content sections, and consistent status/category visuals.
+5. **Frontend - Application Resources Update**: Refined the Application Resources section on the detail page with improved icons and added a functional 'Data Source' link dynamically pulling the correct URL from the associated API Source.
+6. **Frontend - Funding Opportunities Filtering Enhancements**: Replaced tag filtering with robust category filtering system, added location-based filtering using the state eligibility data, improved status filtering with better visual indicators, and added comprehensive sorting options.
+7. **Frontend - Pagination Improvements**: Fixed pagination issues by moving controls to both top and bottom of results, improved search behavior, added "Showing X-Y of Z results" display, and preserved pagination state during filtering operations.
+8. **Frontend - Active Filters UI**: Implemented comprehensive active filters display with pill-based indicators, consistent color coding, and easy clear functionality, improving the overall filtering UX.
 
 ## Dynamic Source Prioritization Implementation
 

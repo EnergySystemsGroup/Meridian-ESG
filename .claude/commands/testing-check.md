@@ -1,0 +1,1 @@
+double check this test to ensure that we are testing for the right things and that we have amazing coverage.  Make sure we are not being lazy and taking short cuts. Makes sure we are testing for things that are actually in the module files. All the tests must pass. Make sure you pay attention to our file architecture. 

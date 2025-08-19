@@ -1,24 +1,24 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { createClient } from '@/utils/supabase/client';
 import {
 	Card,
 	CardContent,
 	CardDescription,
 	CardHeader,
 	CardTitle,
-} from '@/app/components/ui/card';
+} from '@/components/ui/card';
 import {
 	Tabs,
 	TabsContent,
 	TabsList,
 	TabsTrigger,
-} from '@/app/components/ui/tabs';
-import { Button } from '@/app/components/ui/button';
-import { Skeleton } from '@/app/components/ui/skeleton';
-import { RunMetricsCard } from '@/app/components/funding/RunMetricsCard';
-import { toast } from '@/app/components/ui/use-toast';
+} from '@/components/ui/tabs';
+import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
+import { RunMetricsCard } from '@/components/funding/RunMetricsCard';
+import { toast } from '@/components/ui/use-toast';
 
 export default function SourceDetailPage({ params }) {
 	const { id } = params;
@@ -27,7 +27,7 @@ export default function SourceDetailPage({ params }) {
 	const [processing, setProcessing] = useState(false);
 	const [latestRun, setLatestRun] = useState(null);
 	const [loadingRun, setLoadingRun] = useState(true);
-	const supabase = createClientComponentClient();
+	const supabase = createClient();
 
 	useEffect(() => {
 		fetchSource();

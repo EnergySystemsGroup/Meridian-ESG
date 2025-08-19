@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
-import { createSupabaseClient } from '@/app/lib/supabase';
-import { processApiSource } from '@/app/lib/services/processCoordinator';
+import { createClient } from '@/utils/supabase/api';
+import { processApiSource } from '@/lib/services/processCoordinator';
 
 // POST /api/funding/sources/[id]/process - Process a specific API source
 export async function POST(request, context) {

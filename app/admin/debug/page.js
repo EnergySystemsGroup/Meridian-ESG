@@ -1,8 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
-import { Button } from '@/app/components/ui/button';
+import { createClient } from '@/utils/supabase/client';
+import { Button } from '@/components/ui/button';
 import {
 	Card,
 	CardContent,
@@ -10,13 +10,13 @@ import {
 	CardHeader,
 	CardTitle,
 	CardFooter,
-} from '@/app/components/ui/card';
+} from '@/components/ui/card';
 import {
 	Tabs,
 	TabsContent,
 	TabsList,
 	TabsTrigger,
-} from '@/app/components/ui/tabs';
+} from '@/components/ui/tabs';
 import { toast } from 'sonner';
 
 // Component descriptions and expected outputs
@@ -265,7 +265,7 @@ const componentInfo = {
 };
 
 export default function DebugPage() {
-	const supabase = createClientComponentClient();
+	const supabase = createClient();
 	const [sources, setSources] = useState([]);
 	const [selectedSource, setSelectedSource] = useState(null);
 	const [activeTab, setActiveTab] = useState('initial-route');

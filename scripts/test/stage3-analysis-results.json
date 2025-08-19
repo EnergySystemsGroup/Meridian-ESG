@@ -1,0 +1,213 @@
+{
+  "timestamp": "2025-01-17T12:00:00.000Z",
+  "description": "Minimal stage 3 analysis results for filter function testing - no LLM calls needed",
+  "results": {
+    "california": {
+      "opportunities": [
+        {
+          "id": "test-001",
+          "title": "High Relevance Environmental Grant",
+          "status": "open",
+          "totalFundingAvailable": 5000000,
+          "maximumAward": 500000,
+          "scoring": {
+            "clientRelevance": 3,
+            "projectRelevance": 3,
+            "fundingAttractiveness": 3,
+            "fundingType": 1,
+            "overallScore": 10
+          },
+          "enhancedDescription": "This is a high-relevance opportunity that should be included",
+          "actionableSummary": "Strong match for our clients",
+          "relevanceReasoning": "High scores across all categories",
+          "concerns": []
+        },
+        {
+          "id": "test-002", 
+          "title": "Medium Relevance Infrastructure Loan",
+          "status": "open",
+          "totalFundingAvailable": 2000000,
+          "maximumAward": 200000,
+          "scoring": {
+            "clientRelevance": 2,
+            "projectRelevance": 2,
+            "fundingAttractiveness": 0,
+            "fundingType": 0,
+            "overallScore": 4
+          },
+          "enhancedDescription": "Medium relevance but low funding attractiveness - should be included (only 1 zero)",
+          "actionableSummary": "Moderate match, requires evaluation",
+          "relevanceReasoning": "Good client and project match, but funding concerns",
+          "concerns": ["Loan mechanism", "Low funding attractiveness"]
+        },
+        {
+          "id": "test-003",
+          "title": "Low Relevance Research Grant", 
+          "status": "open",
+          "totalFundingAvailable": 500000,
+          "maximumAward": 50000,
+          "scoring": {
+            "clientRelevance": 0,
+            "projectRelevance": 0,
+            "fundingAttractiveness": 1,
+            "fundingType": 1,
+            "overallScore": 2
+          },
+          "enhancedDescription": "Low relevance opportunity that should be excluded (2 zeros)",
+          "actionableSummary": "Poor match for our clients",
+          "relevanceReasoning": "Fails on both client and project relevance",
+          "concerns": ["Research only", "Poor client/project match"]
+        },
+        {
+          "id": "test-004",
+          "title": "Closed High-Value Grant",
+          "status": "closed",
+          "totalFundingAvailable": 10000000,
+          "maximumAward": 1000000,
+          "scoring": {
+            "clientRelevance": 3,
+            "projectRelevance": 2,
+            "fundingAttractiveness": 3,
+            "fundingType": 1,
+            "overallScore": 9
+          },
+          "enhancedDescription": "High-value opportunity but deadline has passed - should be excluded (closed)",
+          "actionableSummary": "Excellent match but no longer available",
+          "relevanceReasoning": "Good relevance but opportunity is closed",
+          "concerns": ["Deadline passed"]
+        },
+        {
+          "id": "test-005",
+          "title": "Edge Case - One Zero Category",
+          "status": "open",
+          "totalFundingAvailable": 1000000,
+          "maximumAward": 100000,
+          "scoring": {
+            "clientRelevance": 2,
+            "projectRelevance": 0,
+            "fundingAttractiveness": 2,
+            "fundingType": 1,
+            "overallScore": 5
+          },
+          "enhancedDescription": "One zero category - should be included (only 1 zero)",
+          "actionableSummary": "Good client match and funding, but project mismatch",
+          "relevanceReasoning": "Strong client and funding match compensates for project concerns",
+          "concerns": ["Project type mismatch"]
+        },
+        {
+          "id": "test-006",
+          "title": "Two Zero Categories - Should Exclude",
+          "status": "open", 
+          "totalFundingAvailable": 25000,
+          "maximumAward": 10000,
+          "scoring": {
+            "clientRelevance": 0,
+            "projectRelevance": 2,
+            "fundingAttractiveness": 0,
+            "fundingType": 1,
+            "overallScore": 3
+          },
+          "enhancedDescription": "Two zero categories - should be excluded",
+          "actionableSummary": "Poor client match and insufficient funding",
+          "relevanceReasoning": "Fails on both client relevance and funding attractiveness",
+          "concerns": ["Poor client match", "Very small funding amounts"]
+        }
+      ],
+      "source": {
+        "id": "test-source-ca",
+        "name": "California Test Source"
+      },
+      "analysisMetrics": {
+        "totalAnalyzed": 6,
+        "averageScore": 5.5,
+        "scoreDistribution": {
+          "high": 2,
+          "medium": 2,
+          "low": 2
+        }
+      }
+    },
+    "grants_gov": {
+      "opportunities": [
+        {
+          "id": "test-101",
+          "title": "Federal Perfect Match Grant",
+          "status": "open",
+          "totalFundingAvailable": 50000000,
+          "maximumAward": 5000000,
+          "scoring": {
+            "clientRelevance": 3,
+            "projectRelevance": 3,
+            "fundingAttractiveness": 3,
+            "fundingType": 1,
+            "overallScore": 10
+          },
+          "enhancedDescription": "Perfect match federal grant - should be included",
+          "actionableSummary": "Excellent opportunity for our clients",
+          "relevanceReasoning": "Maximum relevance scores across all criteria",
+          "concerns": []
+        },
+        {
+          "id": "test-102",
+          "title": "Federal Medium Match",
+          "status": "open",
+          "totalFundingAvailable": 15000000,
+          "maximumAward": 750000,
+          "scoring": {
+            "clientRelevance": 2,
+            "projectRelevance": 1,
+            "fundingAttractiveness": 3,
+            "fundingType": 1,
+            "overallScore": 7
+          },
+          "enhancedDescription": "Good federal opportunity - should be included (only 0 zeros)",
+          "actionableSummary": "Solid match with excellent funding",
+          "relevanceReasoning": "Strong funding makes up for moderate relevance",
+          "concerns": ["Competitive process"]
+        },
+        {
+          "id": "test-103",
+          "title": "Federal Research Only - Should Exclude",
+          "status": "open",
+          "totalFundingAvailable": 5000000,
+          "maximumAward": 250000,
+          "scoring": {
+            "clientRelevance": 0,
+            "projectRelevance": 0,
+            "fundingAttractiveness": 2,
+            "fundingType": 1,
+            "overallScore": 3
+          },
+          "enhancedDescription": "Research-only opportunity not suitable for our clients - should be excluded (2 zeros)",
+          "actionableSummary": "Poor match - research focus only",
+          "relevanceReasoning": "Fails on both client and project relevance",
+          "concerns": ["Research only", "No implementation component"]
+        },
+        {
+          "id": "test-104",
+          "title": "Missing Scoring Data",
+          "status": "open",
+          "totalFundingAvailable": 2000000,
+          "maximumAward": 200000,
+          "enhancedDescription": "Opportunity with missing scoring data to test validation - should be excluded",
+          "actionableSummary": "Cannot evaluate due to missing data",
+          "relevanceReasoning": "Unable to score due to missing analysis",
+          "concerns": ["Incomplete analysis"]
+        }
+      ],
+      "source": {
+        "id": "test-source-fed",
+        "name": "Federal Test Source"
+      },
+      "analysisMetrics": {
+        "totalAnalyzed": 4,
+        "averageScore": 5.7,
+        "scoreDistribution": {
+          "high": 2,
+          "medium": 1,
+          "low": 1
+        }
+      }
+    }
+  }
+} 

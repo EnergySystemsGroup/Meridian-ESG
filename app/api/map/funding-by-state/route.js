@@ -1,9 +1,12 @@
 import { NextResponse } from 'next/server';
-import { supabase } from '@/app/lib/supabase';
+import { createClient } from '@/utils/supabase/api';
 
 // Make sure this is exported as a named export for Next.js 15
 export async function GET(request) {
 	try {
+		// Create Supabase client with request context
+		const { supabase } = createClient(request);
+		
 		// Get URL parameters
 		const { searchParams } = new URL(request.url);
 

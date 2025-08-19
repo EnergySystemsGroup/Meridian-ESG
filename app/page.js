@@ -1,18 +1,18 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import MainLayout from '@/app/components/layout/main-layout';
+import MainLayout from '@/components/layout/main-layout';
 import {
 	Card,
 	CardContent,
 	CardDescription,
 	CardHeader,
 	CardTitle,
-} from '@/app/components/ui/card';
-import { Button } from '@/app/components/ui/button';
+} from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { AlertTriangle } from 'lucide-react';
 import Link from 'next/link';
-import FundingCategoryChart from '@/app/components/dashboard/FundingCategoryChart';
+import FundingCategoryChart from '@/components/dashboard/FundingCategoryChart';
 
 export default function Home() {
 	//======================================

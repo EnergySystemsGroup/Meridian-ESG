@@ -1,8 +1,11 @@
 import { NextResponse } from 'next/server';
-import { supabase } from '@/app/lib/supabase';
+import { createClient } from '@/utils/supabase/api';
 
-export async function GET() {
+export async function GET(request) {
 	try {
+		// Create Supabase client with request context
+		const { supabase } = createClient(request);
+		
 		// Call our debug function
 		const { data, error } = await supabase.rpc('debug_funding_values');
 

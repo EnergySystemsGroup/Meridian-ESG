@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import FundingCategoryChart from '@/app/components/dashboard/FundingCategoryChart';
+import FundingCategoryChart from '@/components/dashboard/FundingCategoryChart';
 import { Container } from '@radix-ui/themes';
 
 export default function FundingCategoryPage() {
