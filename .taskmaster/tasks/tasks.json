@@ -3140,7 +3140,7 @@
             "title": "Integrate JobQueueManager with existing V2 metrics",
             "description": "Connect JobQueueManager to existing pipeline_runs and pipeline_stages tables for metrics tracking compatibility",
             "details": "Integration points:\n1. **Master Run Creation**: Connect to existing RunManagerV2 for pipeline_runs\n2. **Stage Tracking**: Update pipeline_stages for job processing stages\n3. **Metrics Compatibility**: Ensure job metrics roll up to master run totals\n4. **Dashboard Integration**: Maintain compatibility with existing V2 dashboard\n\nModifications needed:\n- Add methods to link jobs to pipeline_runs.id (master_run_id)\n- Update existing metrics collection to aggregate from job chunks\n- Ensure job completion updates overall run progress\n- Maintain existing V2 optimization metrics (60-80% token reduction)\n\nFile locations:\n- Update /lib/services/runManagerV2.js to work with chunked jobs\n- Ensure compatibility with existing pipeline_stages tracking\n- Keep existing dashboard queries working with new job-based data\n\nCONTEXT: V2 pipeline currently tracks detailed metrics in pipeline_runs and pipeline_stages. Jobs must integrate seamlessly so existing dashboard and analytics continue working while processing is now chunked.\n<info added on 2025-08-19T20:26:55.035Z>\nCreate processJob function in /lib/services/jobProcessor.js:\n\n- Input: job object from queue (contains chunked raw data for 5 opportunities)\n- Initialize pipeline components: DataExtractionAgent, DuplicateDetector, AnalysisAgent, StorageAgent\n- For each opportunity in job.rawData:\n  1. Run DataExtractionAgent LLM processing\n  2. Pass through DuplicateDetector\n  3. If not duplicate, run AnalysisAgent\n  4. Store processed opportunity via StorageAgent\n- Track metrics for each stage, rolling up to master run\n- Update job status and progress in database\n- Handle errors:\n  - Log detailed error information\n  - Mark job for retry if recoverable\n  - Update job status to 'failed' if max retries reached\n- On completion:\n  - Update master run progress\n  - Trigger next job processing if queue not empty\n\nEnsure processJob maintains all existing V2 metrics, including:\n- Token usage per stage\n- Processing time per stage and total\n- Opportunity counts (processed, duplicates, errors)\n- Overall token reduction (60-80% target)\n\nModify /lib/services/runManagerV2.js to work with job-based processing:\n- Add methods to link jobs to master runs\n- Update metrics aggregation to combine job-level data\n- Ensure dashboard queries remain compatible with new job structure\n</info added on 2025-08-19T20:26:55.035Z>",
-            "status": "pending",
+            "status": "done",
             "dependencies": [
               "58.2",
               "58.3"
@@ -3414,7 +3414,7 @@
     ],
     "metadata": {
       "created": "2025-06-17T23:54:58.582Z",
-      "updated": "2025-08-19T21:07:05.896Z",
+      "updated": "2025-08-19T22:08:16.826Z",
       "description": "Tasks for master context"
     }
   },

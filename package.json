@@ -94,6 +94,7 @@
   "devDependencies": {
     "@bundled-es-modules/cookie": "^2.0.1",
     "@mswjs/interceptors": "^0.39.5",
+    "@testcontainers/postgresql": "^11.5.1",
     "@testing-library/jest-dom": "^6.6.3",
     "@testing-library/react": "^16.0.1",
     "@types/react": "^18.3.17",
@@ -106,6 +107,7 @@
     "msw": "^2.10.4",
     "postcss": "^8.4.49",
     "tailwindcss": "^3.4.17",
+    "testcontainers": "^11.5.1",
     "whatwg-fetch": "^3.6.20"
   }
 }
