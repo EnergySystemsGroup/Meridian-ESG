@@ -194,7 +194,7 @@ async function createTestJobs() {
     console.log('\n🚀 Ready to test job processing!');
     console.log('Next steps:');
     console.log('1. Test locally: node scripts/testCronLocal.js');
-    console.log('2. Test API: curl http://localhost:3000/api/cron/test-processor');
+    console.log('2. Test API: curl http://localhost:3000/api/cron/process-jobs');
     console.log('3. Deploy to Vercel to test cron automation');
     
     return {

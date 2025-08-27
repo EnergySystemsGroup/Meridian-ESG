@@ -199,8 +199,8 @@ export async function POST(request) {
       },
       queueStatus,
       nextSteps: [
-        `GET /api/cron/test-processor - Process jobs manually`,
-        `POST /api/cron/test-processor {"action": "status"} - Check queue status`,
+        `GET /api/cron/process-jobs - Process jobs manually`,
+        `POST /api/cron/process-jobs {"action": "status"} - Check queue status`,
         `Wait 2 minutes for automatic Vercel cron processing`
       ]
     });
@@ -234,8 +234,8 @@ export async function GET() {
       body: '{"numJobs": 5}'
     },
     relatedEndpoints: {
-      processJobs: 'GET /api/cron/test-processor',
-      checkStatus: 'POST /api/cron/test-processor {"action": "status"}'
+      processJobs: 'GET /api/cron/process-jobs',
+      checkStatus: 'POST /api/cron/process-jobs {"action": "status"}'
     }
   });
 }

@@ -1,12 +1,12 @@
 {
   "crons": [
     {
-      "path": "/api/cron/test-processor",
+      "path": "/api/cron/process-jobs",
       "schedule": "*/2 * * * *"
     }
   ],
   "functions": {
-    "app/api/cron/test-processor/route.js": {
+    "app/api/cron/process-jobs/route.js": {
       "maxDuration": 60
     }
   }

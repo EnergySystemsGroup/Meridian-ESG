@@ -428,15 +428,79 @@
       {
         "id": 9,
         "title": "Develop Migration Strategy",
-        "description": "Implement a migration strategy for gradual transition from v1 to v2, including comparison tracking and rollback capability.",
-        "details": "1. Implement Strangler Fig pattern as outlined in the architecture guide\n2. Start with 5% traffic routing to v2\n3. Implement comparison logging between v1 and v2 results\n4. Monitor performance and accuracy metrics\n5. Implement automated rollback triggers\n6. Create dashboard for migration progress monitoring\n7. Implement database schema migrations (use Prisma Migrate)\n8. Develop data consistency checks between v1 and v2\n9. Create detailed rollback procedures\n10. Implement blue-green deployment strategy\n11. Use Terraform v1.5.0 for infrastructure as code",
-        "testStrategy": "1. Test gradual traffic routing mechanism\n2. Validate comparison logging accuracy\n3. Verify automated rollback functionality\n4. Test data consistency between v1 and v2\n5. Perform mock migration scenarios\n6. Validate monitoring and alerting systems\n7. Conduct full rollback test\n8. Review migration dashboard effectiveness",
-        "priority": "high",
+        "description": "Implement a migration strategy for gradual transition from v1 to v2, focusing on job processing, result aggregation, and master run completion detection.",
+        "status": "pending",
         "dependencies": [
           8
         ],
-        "status": "pending",
-        "subtasks": []
+        "priority": "high",
+        "details": "1. Replace simpleJobProcessor with real jobProcessor.processJob function in /app/api/cron/process-jobs/route.js\n2. Implement master run aggregation logic with checkAndCompleteMasterRun() function\n3. Rename endpoint from test-processor to process-jobs for production use\n4. Add comprehensive metrics tracking and aggregation\n5. Implement full V2 pipeline processing for each job:\n   - LLM extraction, duplicate detection, analysis, filtering, storage\n   - Full RunManagerV2 integration with stage-by-stage tracking\n6. Enhance master run aggregation:\n   - Aggregate metrics from all jobs\n   - Change master run status from \"processing\" to \"completed\" when all jobs complete\n   - Include total opportunities, tokens, processing time, duplicates, storage stats\n   - Calculate job success rate and efficiency metrics\n7. Capture comprehensive metrics:\n   - Per-job metrics: processingTimeMs, opportunitiesProcessed, tokensUsed, duplicatesFound, newStored, updatesApplied\n   - Aggregated metrics: jobs_processed, jobs_successful, total_opportunities_processed, total_tokens_used, etc.\n   - Efficiency metrics: duplicate_detection_efficiency, job_success_rate, average_processing_time_per_job_ms\n8. Implement production-ready features:\n   - Proper error handling with job failure tracking\n   - Auth check for cron endpoint security\n   - Queue status monitoring\n   - Vercel/local environment detection\n   - Comprehensive logging and debugging\n9. Update all references throughout codebase\n10. Implement Strangler Fig pattern as outlined in the architecture guide\n11. Start with 5% traffic routing to v2\n12. Implement comparison logging between v1 and v2 results\n13. Monitor performance and accuracy metrics\n14. Implement automated rollback triggers\n15. Create dashboard for migration progress monitoring\n16. Implement database schema migrations (use Prisma Migrate)\n17. Develop data consistency checks between v1 and v2\n18. Create detailed rollback procedures\n19. Implement blue-green deployment strategy\n20. Use Terraform v1.5.0 for infrastructure as code",
+        "testStrategy": "1. Test job processing with jobProcessor.processJob function in /app/api/cron/process-jobs/route.js\n2. Validate master run aggregation logic using checkAndCompleteMasterRun() function\n3. Verify master run completion detection and status change\n4. Test job status tracking accuracy\n5. Validate cron processor functionality:\n   - Test job retrieval and processing\n   - Verify result aggregation\n   - Check master run completion marking\n   - Test error handling\n6. Test full V2 pipeline processing for jobs\n7. Verify comprehensive metrics capture and aggregation\n8. Test production-ready features:\n   - Error handling and job failure tracking\n   - Auth check for cron endpoint\n   - Queue status monitoring\n   - Environment detection\n   - Logging and debugging\n9. Test gradual traffic routing mechanism\n10. Validate comparison logging accuracy\n11. Verify automated rollback functionality\n12. Test data consistency between v1 and v2\n13. Perform mock migration scenarios\n14. Validate monitoring and alerting systems\n15. Conduct full rollback test\n16. Review migration dashboard effectiveness",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Replace simpleJobProcessor",
+            "description": "Replace simpleJobProcessor with real jobProcessor.processJob function in the V2 pipeline",
+            "status": "done",
+            "dependencies": [],
+            "details": "Implemented in /app/api/cron/process-jobs/route.js",
+            "testStrategy": "Verify correct implementation and integration of jobProcessor.processJob function"
+          },
+          {
+            "id": 2,
+            "title": "Implement master run aggregation",
+            "description": "Add master run aggregation logic to consolidate results when individual jobs complete",
+            "status": "done",
+            "dependencies": [],
+            "details": "Implemented checkAndCompleteMasterRun() function for aggregation",
+            "testStrategy": "Test aggregation of metrics and status change upon all jobs completion"
+          },
+          {
+            "id": 3,
+            "title": "Develop master run completion detection",
+            "description": "Implement logic to detect when all jobs for a master run are completed",
+            "status": "done",
+            "dependencies": [],
+            "details": "Integrated with checkAndCompleteMasterRun() function",
+            "testStrategy": "Verify accurate detection of all jobs completion and master run status update"
+          },
+          {
+            "id": 4,
+            "title": "Update job status tracking",
+            "description": "Enhance job status tracking to properly reflect current state throughout processing",
+            "status": "done",
+            "dependencies": [],
+            "details": "Implemented comprehensive job status tracking in RunManagerV2",
+            "testStrategy": "Test accuracy of job status updates throughout processing stages"
+          },
+          {
+            "id": 5,
+            "title": "Implement cron processor",
+            "description": "Develop cron processor to handle job retrieval, processing, result aggregation, and master run completion",
+            "status": "done",
+            "dependencies": [],
+            "details": "Implemented in /app/api/cron/process-jobs/route.js with full V2 pipeline integration",
+            "testStrategy": "Validate end-to-end functionality of cron processor including job retrieval, processing, and result aggregation"
+          },
+          {
+            "id": 6,
+            "title": "Implement comprehensive metrics tracking",
+            "description": "Add detailed metrics tracking for jobs and master runs",
+            "status": "pending",
+            "dependencies": [],
+            "details": "Implement tracking for per-job and aggregated metrics including processing time, opportunities processed, tokens used, etc.",
+            "testStrategy": "Verify accuracy and completeness of metrics capture and aggregation"
+          },
+          {
+            "id": 7,
+            "title": "Enhance production readiness",
+            "description": "Implement additional features for production deployment",
+            "status": "pending",
+            "dependencies": [],
+            "details": "Add auth checks, error handling, queue monitoring, and environment detection",
+            "testStrategy": "Test all production-ready features for reliability and security"
+          }
+        ]
       },
       {
         "id": 10,
@@ -3202,6 +3266,15 @@
             "dependencies": [
               "58.4"
             ],
+            "parentTaskId": 58
+          },
+          {
+            "id": 10,
+            "title": "Update dashboard display for job queue runs",
+            "description": "Add minimal display updates to show aggregated metrics for job-queue-based runs in the admin dashboard",
+            "details": "Update RunsTableV2 and run detail views to:\n1. Show job queue progress (e.g., \"8/12 jobs complete\")  \n2. Display aggregated metrics from completed jobs\n3. Add job queue indicator badge\n4. Keep changes minimal - no full v3 dashboard rewrite\n5. Focus on aggregate view, not individual chunk details",
+            "status": "pending",
+            "dependencies": [],
             "parentTaskId": 58
           }
         ]

@@ -219,7 +219,15 @@ export async function POST(request, { params }) {
 			chunking_efficiency: ((fetchResult.apiMetrics.opportunityCount / options.chunkSize) / createdJobs.length * 100).toFixed(1) + '%'
 		};
 		
-		await runManager.completeRun(totalTime, finalResults);
+		// Update run status to 'processing' instead of 'completed' since jobs need to be processed
+		await supabase
+			.from('pipeline_runs')
+			.update({ 
+				status: 'processing',
+				final_results: finalResults,
+				updated_at: new Date().toISOString()
+			})
+			.eq('id', runId);
 		
 		console.log(`[RouteV3] ✅ Job creation completed - ${createdJobs.length} jobs ready for processing`);
 
@@ -231,7 +239,7 @@ export async function POST(request, { params }) {
 			sourceId: id,
 			sourceName: source.name,
 			runId,
-			status: 'jobs_created',
+			status: 'processing',
 			createdAt: new Date().toISOString(),
 			summary: {
 				totalOpportunities: fetchResult.apiMetrics.opportunityCount,
