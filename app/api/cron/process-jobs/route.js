@@ -193,6 +193,7 @@ export async function GET(request) {
  * POST allows manual testing of the job processor
  */
 export async function POST(request) {
+  const startTime = Date.now();
   console.log('[CronProcessor] 🔧 Manual trigger requested');
   
   try {
@@ -281,6 +282,14 @@ export async function POST(request) {
     // Check if all jobs for this master run are complete
     await checkAndCompleteMasterRun(job.master_run_id, supabase);
     
+    // Get queue status for monitoring consistency with GET endpoint
+    let queueStatus = null;
+    try {
+      queueStatus = await jobQueueManager.getQueueStatus();
+    } catch (statusError) {
+      console.warn('[CronProcessor] ⚠️ Could not get queue status:', statusError.message);
+    }
+
     return Response.json({
       success: true,
       action: 'process',
@@ -288,18 +297,30 @@ export async function POST(request) {
       jobId: job.id,
       chunkIndex: job.chunk_index,
       totalChunks: job.total_chunks,
+      masterRunId: job.master_run_id,
+      processingTimeMs: jobProcessingTime,
       opportunitiesProcessed: result.totalProcessed || 0,
-      timestamp: new Date().toISOString()
+      duplicatesFound: result.duplicateDetection?.skipCount || 0,
+      newStored: result.storage?.newStored || 0,
+      updatesApplied: result.storage?.updated || 0,
+      tokensUsed: result.totalTokensUsed || 0,
+      timestamp: new Date().toISOString(),
+      executionTimeMs: Date.now() - startTime,
+      environment: process.env.VERCEL === '1' ? 'vercel' : 'local',
+      queueStatus
     });
     
   } catch (error) {
+    const executionTime = Date.now() - startTime;
     console.error('[CronProcessor] ❌ Manual trigger failed:', error);
     
     return Response.json({
       success: false,
       action: 'process',
       error: error.message,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
+      executionTimeMs: executionTime,
+      environment: process.env.VERCEL === '1' ? 'vercel' : 'local'
     }, { status: 500 });
   }
 }
