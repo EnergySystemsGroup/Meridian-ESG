@@ -53,6 +53,19 @@ export async function GET(request) {
     let runManagerForQueue = null;
     const jobQueueManager = new JobQueueManager(runManagerForQueue); // Will be set when we have a job
     
+    // Check for stuck jobs and recover them
+    await recoverStuckJobs(jobQueueManager);
+    
+    // Retry failed jobs that haven't exceeded max retry limit
+    try {
+      const retriedJobs = await jobQueueManager.retryFailedJobs();
+      if (retriedJobs.length > 0) {
+        console.log(`[CronProcessor] 🔄 Reset ${retriedJobs.length} failed jobs for retry`);
+      }
+    } catch (retryError) {
+      console.warn('[CronProcessor] ⚠️ Error retrying failed jobs:', retryError.message);
+    }
+    
     // Get next pending job
     console.log('[CronProcessor] 🔍 Looking for next job...');
     const job = await jobQueueManager.getNextPendingJob();
@@ -288,6 +301,81 @@ export async function POST(request) {
       error: error.message,
       timestamp: new Date().toISOString()
     }, { status: 500 });
+  }
+}
+
+/**
+ * Recover jobs that are stuck in processing status
+ * @param {JobQueueManager} jobQueueManager - The job queue manager instance
+ */
+async function recoverStuckJobs(jobQueueManager) {
+  try {
+    console.log('[CronProcessor] 🔍 Checking for stuck jobs...');
+    
+    const timeoutMinutes = 5; // Jobs stuck for more than 5 minutes
+    const timeoutThreshold = new Date(Date.now() - timeoutMinutes * 60 * 1000).toISOString();
+    
+    // Find jobs stuck in processing status
+    const { data: stuckJobs, error } = await jobQueueManager.supabase
+      .from('processing_jobs')
+      .select('id, chunk_index, total_chunks, started_at, master_run_id')
+      .eq('status', 'processing')
+      .lt('started_at', timeoutThreshold);
+    
+    if (error) {
+      console.warn('[CronProcessor] ⚠️ Error checking for stuck jobs:', error.message);
+      return;
+    }
+    
+    if (!stuckJobs || stuckJobs.length === 0) {
+      console.log('[CronProcessor] ✅ No stuck jobs found');
+      return;
+    }
+    
+    console.log(`[CronProcessor] 🚨 Found ${stuckJobs.length} stuck jobs, resetting to pending status`);
+    
+    for (const job of stuckJobs) {
+      console.log(`[CronProcessor] 🔄 Recovering stuck job ${job.id} (chunk ${job.chunk_index + 1}/${job.total_chunks})`);
+      
+      // Reset job to pending status
+      await jobQueueManager.updateJobStatus(job.id, 'failed', {
+        errorDetails: `Job timed out after ${timeoutMinutes} minutes in processing status`,
+        processingTimeMs: null
+      });
+      
+      // Increment retry count and reset to pending if under retry limit
+      const { data: currentJob } = await jobQueueManager.supabase
+        .from('processing_jobs')
+        .select('retry_count')
+        .eq('id', job.id)
+        .single();
+      
+      const retryCount = currentJob?.retry_count || 0;
+      
+      if (retryCount < 3) {
+        // Reset to pending for retry
+        await jobQueueManager.supabase
+          .from('processing_jobs')
+          .update({
+            status: 'pending',
+            started_at: null,
+            completed_at: null,
+            retry_count: retryCount + 1,
+            error_details: `Timeout recovery - attempt ${retryCount + 2}/3`
+          })
+          .eq('id', job.id);
+        
+        console.log(`[CronProcessor] ♻️  Reset job ${job.id} to pending (retry ${retryCount + 1}/3)`);
+      } else {
+        console.log(`[CronProcessor] ❌ Job ${job.id} exceeded max retries, keeping as failed`);
+      }
+    }
+    
+    console.log('[CronProcessor] ✅ Stuck job recovery completed');
+    
+  } catch (error) {
+    console.error('[CronProcessor] ❌ Error in stuck job recovery:', error);
+    // Don't throw - this shouldn't fail the main cron processing
   }
 }
 
