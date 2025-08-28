@@ -201,37 +201,57 @@ export default function RunDetailPageV3() {
 		const analysisStages = stages.filter(stage => stage.stage_name === 'analysis');
 		const storageStages = stages.filter(stage => stage.stage_name === 'storage');
 		const directUpdateStages = stages.filter(stage => stage.stage_name === 'direct_update');
+		const apiFetchStages = stages.filter(stage => stage.stage_name === 'api_fetch');
 		
-		// Get API fetched results, total available, and extracted opportunities from ALL Data Extraction stages
-		let apiFetchedResults = 0;  // What we actually fetched from the API
+		// Get total available from api_fetch stage (V3) or data_extraction stages (V2/V1)
 		let totalAvailable = 0;      // Total available according to API
+		let apiFetchedResults = 0;   // What we actually fetched from the API
 		let opportunityInput = dataExtractionStages.reduce((sum, stage) => sum + (stage.output_count || 0), 0);  // Successfully extracted opportunities
 		
-		// Aggregate API metrics from all data extraction stages
-		dataExtractionStages.forEach(stage => {
-			if (!stage?.stage_results) return;
-			
+		// For V3: Get total available from api_fetch stage's performance_metrics
+		if (apiFetchStages.length > 0) {
+			const apiFetchStage = apiFetchStages[0]; // Should only be one api_fetch stage per run
 			try {
-				const results = typeof stage.stage_results === 'string' 
-					? JSON.parse(stage.stage_results)
-					: stage.stage_results;
+				const metrics = typeof apiFetchStage.performance_metrics === 'string' 
+					? JSON.parse(apiFetchStage.performance_metrics)
+					: apiFetchStage.performance_metrics;
 				
-				if (!results || typeof results !== 'object') return;
-					
-				// Extract the different counts from the metrics (using optional chaining for safety)
-				totalAvailable += results?.totalAvailable ?? 
-				                results?.totalFound ?? 
-				                results?.extractionMetrics?.totalFound ?? 0;
-				                
-				apiFetchedResults += results?.apiFetchedResults ?? 
-				                   results?.totalRetrieved ?? 
-				                   results?.extractionMetrics?.totalRetrieved ??
-				                   results?.extractedOpportunities ?? 
-				                   stage?.output_count ?? 0;
+				if (metrics && typeof metrics === 'object') {
+					totalAvailable = metrics.totalFound || 0; // Total opportunities available from API
+					apiFetchedResults = metrics.totalRetrieved || 0; // Actual opportunities fetched
+				}
 			} catch (error) {
-				console.warn(`Failed to parse data extraction stage ${stage?.id || 'unknown'} results:`, error);
+				console.warn(`Failed to parse api_fetch stage performance_metrics:`, error);
 			}
-		});
+		}
+		
+		// Fallback: If no api_fetch stage or missing data, aggregate from data extraction stages (V2/V1 behavior)
+		if (totalAvailable === 0 && apiFetchedResults === 0) {
+			dataExtractionStages.forEach(stage => {
+				if (!stage?.stage_results) return;
+				
+				try {
+					const results = typeof stage.stage_results === 'string' 
+						? JSON.parse(stage.stage_results)
+						: stage.stage_results;
+					
+					if (!results || typeof results !== 'object') return;
+						
+					// For V2/V1: Extract from data extraction stage results
+					totalAvailable += results?.totalAvailable ?? 
+					                results?.totalFound ?? 
+					                results?.extractionMetrics?.totalFound ?? 0;
+					                
+					apiFetchedResults += results?.apiFetchedResults ?? 
+					                   results?.totalRetrieved ?? 
+					                   results?.extractionMetrics?.totalRetrieved ??
+					                   results?.extractedOpportunities ?? 
+					                   stage?.output_count ?? 0;
+				} catch (error) {
+					console.warn(`Failed to parse data extraction stage ${stage?.id || 'unknown'} results:`, error);
+				}
+			});
+		}
 		
 		// Extract breakdown from ALL Early Duplicate Detector stages and aggregate
 		let opportunitiesNew = 0;
