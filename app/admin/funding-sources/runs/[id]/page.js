@@ -1,5 +1,5 @@
-// Simple hardcoded V2 switcher - no feature flags
-import RunDetailPageV2 from './pageV2';
+// Simple hardcoded V3 switcher - no feature flags
+import RunDetailPageV3 from './pageV3';
 
 export default async function RunDetailPage(props) {
 	// Await params if needed for Next.js 15 compatibility
@@ -9,5 +9,5 @@ export default async function RunDetailPage(props) {
 		searchParams: props.searchParams ? await props.searchParams : {}
 	};
 	
-	return <RunDetailPageV2 {...resolvedProps} />;
+	return <RunDetailPageV3 {...resolvedProps} />;
 }
