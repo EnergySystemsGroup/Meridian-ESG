@@ -94,12 +94,23 @@ export default function FundingSourcesPage() {
 			}
 
 			const result = await response.json();
-			addNotification(
-				`Successfully processed source. Found ${
-					result.handlerResult?.opportunitiesCount || 0
-				} opportunities.`,
-				'success'
-			);
+			
+			// Handle V3 job queue response structure
+			if (result.summary) {
+				// V3 response with job queue
+				addNotification(
+					`Queued ${result.summary.totalOpportunities} opportunities in ${result.summary.jobsCreated} jobs for processing. Jobs will be processed by background workers.`,
+					'success'
+				);
+			} else {
+				// Legacy V1/V2 response structure
+				addNotification(
+					`Successfully processed source. Found ${
+						result.handlerResult?.opportunitiesCount || 0
+					} opportunities.`,
+					'success'
+				);
+			}
 		} catch (err) {
 			console.error('Error processing source:', err);
 			addNotification(`Error processing source: ${err.message}`, 'error');

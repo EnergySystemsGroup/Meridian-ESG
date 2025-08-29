@@ -190,6 +190,13 @@ export async function POST(request, { params }) {
 		const jobCreationTime = Date.now() - jobCreationStart;
 		console.log(`[RouteV3] ✅ Created ${createdJobs.length} jobs in ${jobCreationTime}ms`);
 
+		// Update last_checked timestamp to indicate processing has been initiated
+		await supabase
+			.from('api_sources')
+			.update({ last_checked: new Date().toISOString() })
+			.eq('id', id);
+		console.log(`[RouteV3] ✅ Updated last_checked timestamp for source ${id}`);
+
 		const totalTime = Date.now() - apiStartTime; // Total time from API start
 		
 		// Complete the run using RunManagerV2
