@@ -85,7 +85,7 @@ export default function FundingSourcesPage() {
 	async function processSource(id) {
 		setProcessingStates(prev => ({ ...prev, [id]: true }));
 		try {
-			const response = await fetch(`/api/funding/sources/${id}/process`, {
+			const response = await fetch(`/api/admin/funding-sources/${id}/process`, {
 				method: 'POST',
 			});
 
