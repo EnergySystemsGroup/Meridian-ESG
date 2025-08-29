@@ -55,9 +55,14 @@ function getStatusBadgeColor(status) {
 }
 
 function getVersionBadgeColor(version) {
-	return version === 'v2' 
-		? 'bg-purple-100 text-purple-800' 
-		: 'bg-gray-100 text-gray-600';
+	switch (version) {
+		case 'v2':
+			return 'bg-purple-100 text-purple-800';
+		case 'v3':
+			return 'bg-gradient-to-r from-blue-100 to-purple-100 text-blue-800 border border-blue-200';
+		default:
+			return 'bg-gray-100 text-gray-600';
+	}
 }
 
 function formatDuration(ms) {
@@ -189,6 +194,7 @@ function RunsTableV2Component({ runs, loading }) {
 							<SelectItem value="all">All</SelectItem>
 							<SelectItem value="v1">V1</SelectItem>
 							<SelectItem value="v2">V2</SelectItem>
+							<SelectItem value="v3">V3</SelectItem>
 						</SelectContent>
 					</Select>
 					
@@ -273,7 +279,7 @@ function RunsTableV2Component({ runs, loading }) {
 									<Target className='h-3 w-3 text-green-600' />
 									<span>{run.storage_results?.storedCount || run.total_opportunities_processed || 0} processed</span>
 								</div>
-								{run.version === 'v2' && run.opportunities_bypassed_llm > 0 && (
+								{(run.version === 'v2' || run.version === 'v3') && run.opportunities_bypassed_llm > 0 && (
 									<div className='flex items-center gap-2 text-xs text-purple-600'>
 										<Zap className='h-3 w-3' />
 										<span>{run.opportunities_bypassed_llm} bypassed</span>
@@ -282,7 +288,7 @@ function RunsTableV2Component({ runs, loading }) {
 							</div>
 						</TableCell>
 						<TableCell>
-							{run.version === 'v2' ? (
+							{(run.version === 'v2' || run.version === 'v3') ? (
 								<div className='space-y-1'>
 									{run.opportunities_per_minute != null && (
 										<div className='flex items-center gap-2'>
@@ -354,7 +360,7 @@ function RunsTableV2Component({ runs, loading }) {
 							)}
 						</TableCell>
 						<TableCell>
-							{run.version === 'v2' ? (
+							{(run.version === 'v2' || run.version === 'v3') ? (
 								<div className='space-y-1'>
 									{run.cost_per_opportunity_usd != null && (
 										<div className='flex items-center gap-2'>
@@ -378,7 +384,7 @@ function RunsTableV2Component({ runs, loading }) {
 							)}
 						</TableCell>
 						<TableCell>
-							{run.version === 'v2' ? (
+							{(run.version === 'v2' || run.version === 'v3') ? (
 								<div className='space-y-1'>
 									{run.sla_compliance_percentage != null ? (
 										<Tooltip>

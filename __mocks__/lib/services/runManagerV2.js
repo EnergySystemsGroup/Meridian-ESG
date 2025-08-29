@@ -2,7 +2,7 @@
 export class RunManagerV2 {
   constructor(existingRunId = null, supabaseClient = null) {
     this.supabase = supabaseClient
-    this.runId = existingRunId || 'test-run-id'
+    this.runId = existingRunId || `test-run-${Math.random().toString(36).substring(7)}`
     this.v2RunId = null
     this.startTime = Date.now()
     this.isCompleted = false
