@@ -424,51 +424,12 @@ async function checkAndCompleteMasterRun(masterRunId, supabase) {
     if (allJobsComplete) {
       console.log(`[CronProcessor] 🎉 All jobs complete for run ${masterRunId} - aggregating results`);
       
-      // Atomic check to prevent concurrent aggregation attempts
-      const { data: currentRun, error: fetchError } = await supabase
-        .from('pipeline_runs')
-        .select('status')
-        .eq('id', masterRunId)
-        .single();
-
-      if (fetchError) {
-        console.error(`[CronProcessor] ❌ Error checking run status:`, fetchError);
-        return;
-      }
-
-      if (currentRun?.status === 'completed') {
-        console.log(`[CronProcessor] ℹ️ Run ${masterRunId} already completed by another process`);
-        return;
-      }
-
-      // Atomically set to aggregating status to prevent race conditions
-      const { error: lockError } = await supabase
-        .from('pipeline_runs')
-        .update({ 
-          status: 'aggregating',
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', masterRunId)
-        .eq('status', 'processing'); // Only update if still processing
-
-      if (lockError) {
-        console.warn(`[CronProcessor] ⚠️ Could not acquire lock for aggregation:`, lockError);
-        return;
-      }
-
-      console.log(`[CronProcessor] 🔒 Acquired aggregation lock for run ${masterRunId}`);
-      
       // Get all completed jobs to aggregate metrics using RunManagerV2
       let jobs;
       try {
         jobs = await runManager.getJobMetrics(masterRunId);
       } catch (jobMetricsError) {
         console.error(`[CronProcessor] ❌ Failed to get job metrics:`, jobMetricsError);
-        // Reset status back to processing if we can't get metrics
-        await supabase
-          .from('pipeline_runs')
-          .update({ status: 'processing', updated_at: new Date().toISOString() })
-          .eq('id', masterRunId);
         return;
       }
       
