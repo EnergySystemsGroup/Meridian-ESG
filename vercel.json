@@ -4,10 +4,5 @@
       "path": "/api/cron/process-jobs",
       "schedule": "*/2 * * * *"
     }
-  ],
-  "functions": {
-    "app/api/cron/process-jobs/route.js": {
-      "maxDuration": 60
-    }
-  }
+  ]
 }
