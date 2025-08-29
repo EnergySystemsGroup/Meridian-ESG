@@ -16,7 +16,7 @@ export async function POST(request, { params }) {
 		// Parse request body for options
 		const body = await request.json().catch(() => ({}));
 		const options = {
-			chunkSize: body.chunkSize || 5,
+			chunkSize: body.chunkSize || 20,
 			forceFullProcessing: body.forceFullProcessing || false,
 			...body
 		};
