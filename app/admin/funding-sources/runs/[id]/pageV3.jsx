@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ArrowLeft, ChevronDown, ChevronUp, Clock, Zap, Target, Database, Filter, Brain, Shuffle, BarChart3, PieChart } from 'lucide-react';
+import { ArrowLeft, ChevronDown, ChevronUp, Clock, Zap, Target, Database, Filter, Brain, Shuffle, BarChart3, PieChart, Download, FileText } from 'lucide-react';
 import Link from 'next/link';
 import { StagePerformanceChart, OpportunityFlowChart } from '@/components/admin/charts';
 import { JobSelector } from '@/components/admin/JobSelector';
@@ -159,7 +159,8 @@ export default function RunDetailPageV3() {
 	const getStageIcon = (stageName) => {
 		const icons = {
 			'source_orchestrator': Target,
-			'data_extraction': Database,
+			'api_fetch': Download,
+			'data_extraction': FileText,
 			'early_duplicate_detector': Shuffle,
 			'analysis': Brain,
 			'filter': Filter,
@@ -169,9 +170,35 @@ export default function RunDetailPageV3() {
 		return icons[stageName] || Target;
 	};
 
-	const getStageStatus = (stage) => {
-		if (!stage) return 'pending';
-		return stage.status;
+	const getStageStatus = (stageName, stage, opportunityFlow) => {
+		// Run-level stages in per-job view always inherit from run
+		const runLevelStages = ['source_orchestrator', 'api_fetch'];
+		if (viewMode === 'per-job' && runLevelStages.includes(stageName)) {
+			// Find the run-level stage (no job_id)
+			const runStage = stages.find(s => s.stage_name === stageName && !s.job_id);
+			if (runStage) return runStage.status;
+		}
+		
+		// If stage exists, return its actual status
+		if (stage) return stage.status;
+		
+		// Smart bypassed status based on pipeline logic
+		const isCompleted = (viewMode === 'per-job' && selectedJob?.status === 'completed') || 
+		                   (viewMode === 'aggregated' && run?.status === 'completed');
+		const allDuplicates = opportunityFlow?.opportunitiesNew === 0;
+		const noUpdatesNeeded = opportunityFlow?.opportunitiesUpdated === 0;
+		
+		// Analysis, filter, storage - bypassed when all duplicates
+		if (['analysis', 'filter', 'storage'].includes(stageName)) {
+			if (isCompleted && allDuplicates) return 'bypassed';
+		}
+		
+		// Direct_update - bypassed when no updates needed
+		if (stageName === 'direct_update') {
+			if (isCompleted && noUpdatesNeeded) return 'bypassed';
+		}
+		
+		return 'pending';
 	};
 
 	const getStageProgress = () => {
@@ -392,6 +419,10 @@ export default function RunDetailPageV3() {
 
 	// V3 Job-based processing - moved here to be available for calculateJobMetrics
 	const availableJobs = useMemo(() => extractJobList(stages), [stages]);
+	const selectedJob = useMemo(() => 
+		availableJobs.find(job => job.jobId === selectedJobId), 
+		[availableJobs, selectedJobId]
+	);
 	const currentStages = useMemo(() => {
 		if (viewMode === 'per-job' && selectedJobId) {
 			return filterStagesByJob(stages, selectedJobId);
@@ -632,9 +663,10 @@ export default function RunDetailPageV3() {
 						</div>
 					</CardHeader>
 					<CardContent>
-						<div className='grid grid-cols-1 md:grid-cols-7 gap-4'>
+						<div className='grid grid-cols-1 md:grid-cols-8 gap-3'>
 							{[
 								'source_orchestrator',
+								'api_fetch',
 								'data_extraction', 
 								'early_duplicate_detector',
 								'analysis',
@@ -643,7 +675,7 @@ export default function RunDetailPageV3() {
 								'direct_update'
 							].map((stageName, index) => {
 								const stage = currentStages.find(s => s.stage_name === stageName);
-								const status = getStageStatus(stage);
+								const status = getStageStatus(stageName, stage, currentOpportunityFlow);
 								const Icon = getStageIcon(stageName);
 								
 								return (
@@ -653,6 +685,7 @@ export default function RunDetailPageV3() {
 											${status === 'completed' ? 'bg-green-100 text-green-600' : 
 											  status === 'processing' ? 'bg-blue-100 text-blue-600' : 
 											  status === 'failed' ? 'bg-red-100 text-red-600' :
+											  status === 'bypassed' ? 'bg-amber-100 text-amber-600' :
 											  'bg-gray-100 text-gray-400'}
 										`}>
 											<Icon className='h-6 w-6' />
@@ -665,7 +698,8 @@ export default function RunDetailPageV3() {
 										<Badge 
 											variant={status === 'completed' ? 'default' : 
 													status === 'processing' ? 'secondary' : 
-													status === 'failed' ? 'destructive' : 'outline'}
+													status === 'failed' ? 'destructive' :
+													status === 'bypassed' ? 'warning' : 'outline'}
 											className='text-xs'
 										>
 											{status}
@@ -766,7 +800,8 @@ export default function RunDetailPageV3() {
 										).join(' ')}
 										<Badge variant={stage.status === 'completed' ? 'default' : 
 												stage.status === 'processing' ? 'secondary' : 
-												stage.status === 'failed' ? 'destructive' : 'outline'}>
+												stage.status === 'failed' ? 'destructive' :
+												stage.status === 'bypassed' ? 'warning' : 'outline'}>
 											{stage.status}
 										</Badge>
 										{/* Show job info for master view */}
@@ -1106,7 +1141,8 @@ export default function RunDetailPageV3() {
 												<p className='text-sm text-gray-500'>Status</p>
 												<Badge variant={stage.status === 'completed' ? 'default' : 
 														stage.status === 'processing' ? 'secondary' : 
-														stage.status === 'failed' ? 'destructive' : 'outline'}>
+														stage.status === 'failed' ? 'destructive' :
+														stage.status === 'bypassed' ? 'warning' : 'outline'}>
 													{stage.status}
 												</Badge>
 											</div>

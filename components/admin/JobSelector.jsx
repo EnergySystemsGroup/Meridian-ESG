@@ -134,12 +134,13 @@ export function JobSelector({
 // PropTypes validation for JobSelector
 JobSelector.propTypes = {
   jobs: PropTypes.arrayOf(PropTypes.shape({
-    id: PropTypes.string.isRequired,
+    jobId: PropTypes.string.isRequired,
     status: PropTypes.oneOf(['pending', 'processing', 'completed', 'failed']).isRequired,
-    chunk_index: PropTypes.number,
-    createdAt: PropTypes.string,
-    completedAt: PropTypes.string,
-    progress: PropTypes.object
+    chunkIndex: PropTypes.number,
+    totalChunks: PropTypes.number,
+    stageCount: PropTypes.number,
+    createdAt: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+    completedAt: PropTypes.oneOfType([PropTypes.string, PropTypes.number, PropTypes.instanceOf(Date)])
   })).isRequired,
   selectedJobId: PropTypes.string,
   onJobChange: PropTypes.func.isRequired,
