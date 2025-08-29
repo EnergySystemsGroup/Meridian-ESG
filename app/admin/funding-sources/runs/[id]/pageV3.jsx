@@ -20,6 +20,7 @@ export default function RunDetailPageV3() {
 	const { id } = useParams();
 	const [run, setRun] = useState(null);
 	const [stages, setStages] = useState([]);
+	const [jobs, setJobs] = useState([]);
 	const [loading, setLoading] = useState(true);
 	const [activeTab, setActiveTab] = useState('optimization');
 	const [expandedSamples, setExpandedSamples] = useState({});
@@ -67,6 +68,19 @@ export default function RunDetailPageV3() {
 
 				if (!stagesError && isMountedRef.current) {
 					setStages(v2Stages || []);
+				}
+
+				// Fetch V3 processing jobs data if this is a job-based run
+				if (v2Run?.pipeline_version?.includes('job-queue')) {
+					const { data: processingJobs, error: jobsError } = await supabase
+						.from('processing_jobs')
+						.select('id, chunk_index, total_chunks, status, created_at, completed_at')
+						.eq('master_run_id', id)
+						.order('chunk_index');
+
+					if (!jobsError && isMountedRef.current) {
+						setJobs(processingJobs || []);
+					}
 				}
 			} else {
 				// Fallback to V1 data if V2 not found
@@ -418,7 +432,7 @@ export default function RunDetailPageV3() {
 	const isV3JobBasedRun = run ? isJobBasedRun(run) : false;
 
 	// V3 Job-based processing - moved here to be available for calculateJobMetrics
-	const availableJobs = useMemo(() => extractJobList(stages), [stages]);
+	const availableJobs = useMemo(() => extractJobList(stages, jobs), [stages, jobs]);
 	const selectedJob = useMemo(() => 
 		availableJobs.find(job => job.jobId === selectedJobId), 
 		[availableJobs, selectedJobId]
