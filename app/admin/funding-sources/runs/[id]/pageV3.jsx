@@ -485,6 +485,9 @@ export default function RunDetailPageV3() {
 		opportunitiesUpdated: currentOpportunityFlow?.opportunitiesUpdated || 0, 
 		opportunitiesStored: currentOpportunityFlow?.opportunitiesStored || 0,
 		opportunitiesDuplicates: currentOpportunityFlow?.opportunitiesDuplicates || 0,  // Add duplicates
+		// Bypass metrics - use run-level data for both aggregated and per-job modes
+		bypassedLLM: run?.opportunities_bypassed_llm || 0,
+		totalOpportunities: run?.total_opportunities_processed || currentOpportunityFlow?.opportunityInput || 0,
 		// Use job-specific metrics when in per-job mode, otherwise use run-level metrics
 		opportunitiesPerMinute: viewMode === 'per-job' && calculateJobMetrics
 			? calculateJobMetrics.opportunitiesPerMinute || 'N/A'

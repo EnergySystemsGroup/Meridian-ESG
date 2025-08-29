@@ -536,7 +536,9 @@ async function checkAndCompleteMasterRun(masterRunId, supabase) {
         totalOpportunitiesProcessed = stageMetrics.data_extraction.output_count;
       }
       if (stageMetrics.early_duplicate_detector) {
-        opportunitiesBypassed = stageMetrics.early_duplicate_detector.input_count - stageMetrics.early_duplicate_detector.output_count;
+        // Only NEW opportunities go to analysis stage, so bypassed = total - new
+        // This correctly calculates opportunities that bypassed expensive LLM stages
+        opportunitiesBypassed = stageMetrics.data_extraction.output_count - (stageMetrics.analysis?.input_count || 0);
       }
       
       // Also calculate aggregated metrics from job results for comparison/backup
