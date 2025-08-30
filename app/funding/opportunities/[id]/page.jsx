@@ -245,11 +245,18 @@ export default function OpportunityDetailPage() {
 										)}
 
 										<div className='mb-6 bg-white dark:bg-neutral-900/30 p-5 rounded-lg border border-neutral-200/70 dark:border-neutral-800/30 shadow-sm'>
-											<h3 className='text-lg font-medium mb-3 text-neutral-900 dark:text-neutral-200'>
-												Description
-											</h3>
+											<div className='flex items-center justify-between mb-3'>
+												<h3 className='text-lg font-medium text-neutral-900 dark:text-neutral-200'>
+													Description
+												</h3>
+												{opportunity.enhanced_description && (
+													<Badge variant='secondary' className='text-xs bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400'>
+														Enhanced
+													</Badge>
+												)}
+											</div>
 											<p className='text-neutral-700 dark:text-neutral-300 whitespace-pre-line leading-relaxed'>
-												{opportunity.description || 'No description available.'}
+												{opportunity.enhanced_description || opportunity.description || 'No description available.'}
 											</p>
 										</div>
 

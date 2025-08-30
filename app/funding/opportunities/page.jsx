@@ -236,12 +236,7 @@ function OpportunitiesContent() {
 		const handler = setTimeout(() => {
 			setDebouncedSearchQuery(searchQuery);
 			// Reset page to 1 when the actual search query changes
-			setFilters((prev) => {
-				const newFilters = { ...prev, page: 1 };
-				// Update URL with new search and reset page
-				updateUrlParams(newFilters, sortOption, sortDirection, searchQuery);
-				return newFilters;
-			});
+			setFilters((prev) => ({ ...prev, page: 1 }));
 		}, 500); // 500ms delay
 
 		// Cleanup function to clear the timeout if the user types again quickly
@@ -449,6 +444,13 @@ function OpportunitiesContent() {
 		router.replace(newUrl, { scroll: false });
 	};
 
+	// Sync URL when filters, sort, or search change
+	useEffect(() => {
+		if (isInitialized) {
+			updateUrlParams();
+		}
+	}, [filters, sortOption, sortDirection, searchQuery, isInitialized]);
+
 	// Toggle filter section
 	const toggleFilterSection = (section) => {
 		setOpenFilterSection(openFilterSection === section ? null : section);
@@ -472,9 +474,6 @@ function OpportunitiesContent() {
 
 			// Reset page when changing filters
 			newFilters.page = 1;
-
-			// Update URL with new filters
-			setTimeout(() => updateUrlParams(newFilters), 0);
 
 			return newFilters;
 		});
