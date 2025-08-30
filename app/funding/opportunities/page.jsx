@@ -90,9 +90,6 @@ function OpportunitiesContent() {
 	const [isPageLoading, setIsPageLoading] = useState(true); // Overall page load state
 	const [error, setError] = useState(null);
 	const [totalCount, setTotalCount] = useState(0);
-	const [searchQuery, setSearchQuery] = useState('');
-	const [debouncedSearchQuery, setDebouncedSearchQuery] = useState(searchQuery);
-	const [openFilterSection, setOpenFilterSection] = useState(null);
 	const searchParams = useSearchParams();
 	const router = useRouter();
 	const pathname = usePathname();
@@ -101,14 +98,17 @@ function OpportunitiesContent() {
 	// This avoids a useEffect and potential extra render
 	const initialFilters = {
 		status: searchParams.get('status') || null,
-		categories: [],
-		states: [],
-		page: 1,
+		categories: searchParams.get('categories') ? searchParams.get('categories').split(',') : [],
+		states: searchParams.get('states') ? searchParams.get('states').split(',') : [],
+		page: parseInt(searchParams.get('page')) || 1,
 		page_size: 9,
 		tracked: searchParams.get('tracked') === 'true',
 	};
 
 	const [filters, setFilters] = useState(initialFilters);
+	const [searchQuery, setSearchQuery] = useState(searchParams.get('search') || '');
+	const [debouncedSearchQuery, setDebouncedSearchQuery] = useState(searchParams.get('search') || '');
+	const [openFilterSection, setOpenFilterSection] = useState(null);
 
 	const [availableTags, setAvailableTags] = useState([]);
 	const [categoriesApiResponse, setCategoriesApiResponse] = useState(null);
@@ -236,14 +236,19 @@ function OpportunitiesContent() {
 		const handler = setTimeout(() => {
 			setDebouncedSearchQuery(searchQuery);
 			// Reset page to 1 when the actual search query changes
-			setFilters((prev) => ({ ...prev, page: 1 }));
+			setFilters((prev) => {
+				const newFilters = { ...prev, page: 1 };
+				// Update URL with new search and reset page
+				updateUrlParams(newFilters, sortOption, sortDirection, searchQuery);
+				return newFilters;
+			});
 		}, 500); // 500ms delay
 
 		// Cleanup function to clear the timeout if the user types again quickly
 		return () => {
 			clearTimeout(handler);
 		};
-	}, [searchQuery]); // Only re-run the effect if searchQuery changes
+	}, [searchQuery, sortOption, sortDirection]); // Only re-run the effect if searchQuery changes
 
 	// Log whenever filters change
 	useEffect(() => {
@@ -397,6 +402,53 @@ function OpportunitiesContent() {
 		categoryMapping,
 	]);
 
+	// Update URL parameters based on current filters and sort
+	const updateUrlParams = (newFilters = filters, newSort = sortOption, newSortDirection = sortDirection, newSearchQuery = searchQuery) => {
+		const params = new URLSearchParams();
+		
+		// Add search query
+		if (newSearchQuery && newSearchQuery.trim()) {
+			params.set('search', newSearchQuery.trim());
+		}
+		
+		// Add status filter
+		if (newFilters.status) {
+			params.set('status', newFilters.status);
+		}
+		
+		// Add categories filter
+		if (newFilters.categories && newFilters.categories.length > 0) {
+			params.set('categories', newFilters.categories.join(','));
+		}
+		
+		// Add states filter
+		if (newFilters.states && newFilters.states.length > 0) {
+			params.set('states', newFilters.states.join(','));
+		}
+		
+		// Add tracked filter
+		if (newFilters.tracked) {
+			params.set('tracked', 'true');
+		}
+		
+		// Add sort parameters (only if not default)
+		if (newSort && newSort !== 'relevance') {
+			params.set('sort', newSort);
+		}
+		if (newSortDirection && newSortDirection !== 'desc') {
+			params.set('sort_direction', newSortDirection);
+		}
+		
+		// Add pagination (only if not first page)
+		if (newFilters.page && newFilters.page > 1) {
+			params.set('page', newFilters.page.toString());
+		}
+		
+		// Update URL without triggering a page reload
+		const newUrl = params.toString() ? `${pathname}?${params.toString()}` : pathname;
+		router.replace(newUrl, { scroll: false });
+	};
+
 	// Toggle filter section
 	const toggleFilterSection = (section) => {
 		setOpenFilterSection(openFilterSection === section ? null : section);
@@ -420,6 +472,9 @@ function OpportunitiesContent() {
 
 			// Reset page when changing filters
 			newFilters.page = 1;
+
+			// Update URL with new filters
+			setTimeout(() => updateUrlParams(newFilters), 0);
 
 			return newFilters;
 		});
@@ -465,20 +520,30 @@ function OpportunitiesContent() {
 
 	// Handle sort option change
 	const handleSortSelect = (option) => {
+		let newSort = option;
+		let newDirection = sortDirection;
+		
 		if (option === sortOption) {
 			// Toggle direction if same option is selected
-			setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+			newDirection = sortDirection === 'asc' ? 'desc' : 'asc';
+			setSortDirection(newDirection);
 		} else {
 			// Set new option with default direction
-			setSortOption(option);
+			setSortOption(newSort);
 			// Set default direction based on the sort type
 			if (option === 'deadline') {
-				setSortDirection('asc'); // Soonest deadlines first
+				newDirection = 'asc'; // Soonest deadlines first
 			} else {
-				setSortDirection('desc'); // Higher values first for other sorts
+				newDirection = 'desc'; // Higher values first for other sorts
 			}
+			setSortDirection(newDirection);
 		}
-		// Don't close the dropdown when selecting an option
+		
+		// Update URL with new sort params
+		updateUrlParams(filters, newSort, newDirection);
+		
+		// Close the dropdown
+		setSortMenuOpen(false);
 	};
 
 	// Get display name for sort options
@@ -620,10 +685,15 @@ function OpportunitiesContent() {
 
 	// Handle page change
 	const handlePageChange = (newPage) => {
-		setFilters((prev) => ({
-			...prev,
-			page: newPage,
-		}));
+		setFilters((prev) => {
+			const newFilters = {
+				...prev,
+				page: newPage,
+			};
+			// Update URL with new page
+			updateUrlParams(newFilters);
+			return newFilters;
+		});
 		// Scroll to top when changing pages
 		window.scrollTo({ top: 0, behavior: 'smooth' });
 	};
@@ -829,7 +899,9 @@ function OpportunitiesContent() {
 										size='sm'
 										className='text-blue-600 hover:text-blue-800'
 										onClick={() => {
-											setFilters({ ...filters, categories: [], page: 1 });
+											const newFilters = { ...filters, categories: [], page: 1 };
+											setFilters(newFilters);
+											updateUrlParams(newFilters);
 										}}>
 										Clear selections
 									</Button>
@@ -957,7 +1029,9 @@ function OpportunitiesContent() {
 										size='sm'
 										className='text-blue-600 hover:text-blue-800'
 										onClick={() => {
-											setFilters({ ...filters, states: [], page: 1 });
+											const newFilters = { ...filters, states: [], page: 1 };
+											setFilters(newFilters);
+											updateUrlParams(newFilters);
 										}}>
 										Clear selections
 									</Button>
@@ -986,21 +1060,13 @@ function OpportunitiesContent() {
 							size={14}
 							className='cursor-pointer'
 							onClick={() => {
-								setFilters({
+								const newFilters = {
 									...filters,
 									tracked: false,
 									page: 1,
-								});
-
-								// Update URL by removing the tracked parameter
-								const params = new URLSearchParams(searchParams.toString());
-								params.delete('tracked');
-
-								// Use Next.js router to update URL without reloading the page
-								const newUrl = params.toString()
-									? `${pathname}?${params.toString()}`
-									: pathname;
-								router.replace(newUrl, { scroll: false });
+								};
+								setFilters(newFilters);
+								updateUrlParams(newFilters);
 							}}
 						/>
 					</span>
@@ -1022,11 +1088,13 @@ function OpportunitiesContent() {
 							size={14}
 							className='cursor-pointer'
 							onClick={() => {
-								setFilters({
+								const newFilters = {
 									...filters,
 									status: null,
 									page: 1,
-								});
+								};
+								setFilters(newFilters);
+								updateUrlParams(newFilters);
 							}}
 						/>
 					</span>
@@ -1051,11 +1119,13 @@ function OpportunitiesContent() {
 									const updatedCategories = filters.categories.filter(
 										(c) => c !== category
 									);
-									setFilters({
+									const newFilters = {
 										...filters,
 										categories: updatedCategories,
 										page: 1,
-									});
+									};
+									setFilters(newFilters);
+									updateUrlParams(newFilters);
 								}}
 							/>
 						</span>
@@ -1073,11 +1143,13 @@ function OpportunitiesContent() {
 							className='cursor-pointer'
 							onClick={() => {
 								const updatedStates = filters.states.filter((s) => s !== state);
-								setFilters({
+								const newFilters = {
 									...filters,
 									states: updatedStates,
 									page: 1,
-								});
+								};
+								setFilters(newFilters);
+								updateUrlParams(newFilters);
 							}}
 						/>
 					</span>
