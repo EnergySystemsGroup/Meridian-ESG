@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/utils/supabase/api';
-import { TAXONOMIES } from '@/lib/constants/taxonomies';
+import { TAXONOMIES } from '../../../../lib/constants/taxonomies.js';
 import { getNormalizedCategories } from '@/lib/utils/categoryUtils';
 
 export async function GET(request) {
@@ -36,7 +36,7 @@ export async function GET(request) {
 		}
 
 		// 2. Normalize and Aggregate
-		const standardCategories = TAXONOMIES.CATEGORIES;
+		const standardCategories = Object.values(TAXONOMIES.CATEGORIES).flat();
 		// Extract just the raw category names for normalization function
 		const rawCategoryNames = rawResults.map((item) => item.category);
 

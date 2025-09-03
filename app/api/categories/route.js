@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/utils/supabase/api';
-import { TAXONOMIES } from '@/lib/constants/taxonomies';
+import { TAXONOMIES } from '../../../lib/constants/taxonomies.js';
 import { getNormalizedCategories } from '@/lib/utils/categoryUtils';
 
 export async function GET(request) {
@@ -31,8 +31,8 @@ export async function GET(request) {
 		const rawCategories = Object.keys(categoryCount);
 		console.log(`Found ${rawCategories.length} unique raw categories`);
 
-		// Get standard categories from taxonomy
-		const standardCategories = TAXONOMIES.CATEGORIES;
+		// Get standard categories from taxonomy - flatten tiered structure
+		const standardCategories = Object.values(TAXONOMIES.CATEGORIES).flat();
 
 		// Generate normalized mapping
 		const { normalizedMapping, categoryGroups } = getNormalizedCategories(
