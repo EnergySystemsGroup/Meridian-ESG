@@ -204,8 +204,11 @@ const OpportunityCard = ({ opportunity }) => {
 			  })()
 			: null;
 
-	// Get relevance score if available
-	const relevanceScore = opportunity.relevance_score || null;
+	// Get relevance score if available - handle both old and new scoring formats
+	const relevanceScore = opportunity.relevance_score ||
+		opportunity.scoring?.finalScore ||
+		opportunity.scoring?.overallScore ||
+		null;
 
 	// Extract categories - for now, we'll use tags as categories if categories aren't available
 	const categories =
