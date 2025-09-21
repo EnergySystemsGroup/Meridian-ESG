@@ -1,0 +1,484 @@
+{
+  "clients": [
+    {
+      "id": "client-1",
+      "name": "Los Angeles Unified School District",
+      "type": "K-12 School Districts",
+      "location": "California",
+      "projectNeeds": [
+        "HVAC Systems",
+        "Solar Panels",
+        "Building Automation Systems",
+        "Classrooms",
+        "Energy Management Systems"
+      ],
+      "budget": "large",
+      "contact": "facilities@lausd.net",
+      "description": "Second largest school district in the US, serving over 430,000 students across 781 schools"
+    },
+    {
+      "id": "client-2",
+      "name": "San Diego Unified School District",
+      "type": "K-12 School Districts",
+      "location": "California",
+      "projectNeeds": [
+        "Solar Arrays",
+        "Lighting Systems",
+        "Computer Labs",
+        "Gymnasiums",
+        "Security Systems"
+      ],
+      "budget": "large",
+      "contact": "capital.planning@sandi.net",
+      "description": "Second largest school district in California, serving over 95,000 students across 175 schools"
+    },
+    {
+      "id": "client-3",
+      "name": "City of Los Angeles",
+      "type": "Municipal Government",
+      "location": "California",
+      "projectNeeds": [
+        "EV Charging Stations",
+        "Community Centers",
+        "Water Treatment Plants",
+        "Fire Stations",
+        "Street Lighting"
+      ],
+      "budget": "very_large",
+      "contact": "sustainability@lacity.org",
+      "description": "Largest city in California with 3.8 million residents, committed to carbon neutrality by 2035"
+    },
+    {
+      "id": "client-4",
+      "name": "University of California, Los Angeles",
+      "type": "Universities",
+      "location": "California",
+      "projectNeeds": [
+        "Laboratory Equipment",
+        "Data Centers",
+        "Battery Storage Systems",
+        "Student Housing",
+        "Microgrids"
+      ],
+      "budget": "large",
+      "contact": "sustainability@ucla.edu",
+      "description": "Top-ranked public university with 47,000 students, leader in sustainability research"
+    },
+    {
+      "id": "client-5",
+      "name": "City of San Diego",
+      "type": "Municipal Government",
+      "location": "California",
+      "projectNeeds": [
+        "Wastewater Treatment Plants",
+        "Parks",
+        "Libraries",
+        "Green Infrastructure",
+        "Traffic Signals"
+      ],
+      "budget": "large",
+      "contact": "sustainability@sandiego.gov",
+      "description": "Second largest city in California with 1.4 million residents, Climate Action Plan leader"
+    },
+    {
+      "id": "client-6",
+      "name": "Fresno Unified School District",
+      "type": "K-12 School Districts",
+      "location": "California",
+      "projectNeeds": [
+        "Cafeterias",
+        "Athletic Fields",
+        "Playgrounds",
+        "Parking Lots",
+        "Kitchen Equipment"
+      ],
+      "budget": "medium",
+      "contact": "facilities@fresnounified.org",
+      "description": "Fourth largest school district in California, serving over 73,000 students in Central Valley"
+    },
+    {
+      "id": "client-7",
+      "name": "San Francisco State University",
+      "type": "Universities",
+      "location": "California",
+      "projectNeeds": [
+        "Laboratories",
+        "IT Infrastructure",
+        "Elevators",
+        "Windows",
+        "Roofing"
+      ],
+      "budget": "medium",
+      "contact": "facilities@sfsu.edu",
+      "description": "Large public university in San Francisco, part of CSU system with 29,000 students"
+    },
+    {
+      "id": "client-8",
+      "name": "County of Los Angeles",
+      "type": "County Government",
+      "location": "California",
+      "projectNeeds": [
+        "Health Centers",
+        "Emergency Operations Centers",
+        "Correctional Facilities",
+        "Water Distribution Systems",
+        "Hospitals"
+      ],
+      "budget": "very_large",
+      "contact": "sustainability@lacounty.gov",
+      "description": "Largest county in the US by population, serving over 10 million residents"
+    },
+    {
+      "id": "client-9",
+      "name": "Long Beach Unified School District",
+      "type": "K-12 School Districts",
+      "location": "California",
+      "projectNeeds": [
+        "Weatherization",
+        "Flooring",
+        "Electrical Systems",
+        "Insulation",
+        "Doors"
+      ],
+      "budget": "medium",
+      "contact": "facilities@lbschools.net",
+      "description": "Large unified school district serving over 67,000 students in Long Beach area"
+    },
+    {
+      "id": "client-10",
+      "name": "California State University, Northridge",
+      "type": "Universities",
+      "location": "California",
+      "projectNeeds": [
+        "Parking Structures",
+        "Geothermal Systems",
+        "Telecommunications Equipment",
+        "Office Equipment",
+        "Networks"
+      ],
+      "budget": "medium",
+      "contact": "facilities@csun.edu",
+      "description": "Large public university in San Fernando Valley, known for engineering and business programs"
+    },
+    {
+      "id": "client-11",
+      "name": "City of San Jose",
+      "type": "Municipal Government",
+      "location": "California",
+      "projectNeeds": [
+        "Broadband Infrastructure",
+        "Fleet Vehicles",
+        "Bus Stops",
+        "Pedestrian Crossings",
+        "Roads"
+      ],
+      "budget": "large",
+      "contact": "sustainability@sanjoseca.gov",
+      "description": "Third largest city in California, heart of Silicon Valley with focus on smart city initiatives"
+    },
+    {
+      "id": "client-12",
+      "name": "Elk Grove Unified School District",
+      "type": "K-12 School Districts",
+      "location": "California",
+      "projectNeeds": [
+        "Plumbing Systems",
+        "Fire Suppression Systems",
+        "Media Centers",
+        "CTE Facilities",
+        "Auditoriums"
+      ],
+      "budget": "medium",
+      "contact": "facilities@egusd.net",
+      "description": "Fast-growing school district south of Sacramento, serving over 62,000 students"
+    },
+    {
+      "id": "client-13",
+      "name": "University of California, Berkeley",
+      "type": "Universities",
+      "location": "California",
+      "projectNeeds": [
+        "Fuel Cells",
+        "Cogeneration Systems",
+        "Wind Turbines",
+        "Manufacturing Equipment",
+        "Agricultural Equipment"
+      ],
+      "budget": "large",
+      "contact": "sustainability@berkeley.edu",
+      "description": "Premier public research university, top-ranked UC campus with strong environmental commitment"
+    },
+    {
+      "id": "client-14",
+      "name": "Sacramento City Unified School District",
+      "type": "K-12 School Districts",
+      "location": "California",
+      "projectNeeds": [
+        "Refrigeration Systems",
+        "Communication Systems",
+        "Lifts",
+        "Siding",
+        "Foundation Repair"
+      ],
+      "budget": "medium",
+      "contact": "facilities@scusd.edu",
+      "description": "Major urban school district serving nearly 40,000 students in California's capital"
+    },
+    {
+      "id": "client-15",
+      "name": "City of Fresno",
+      "type": "Municipal Government",
+      "location": "California",
+      "projectNeeds": [
+        "Water Storage Tanks",
+        "Pump Stations",
+        "Fire Hydrants",
+        "Irrigation Systems",
+        "Sewer Systems"
+      ],
+      "budget": "medium",
+      "contact": "sustainability@fresno.gov",
+      "description": "Central Valley's largest city with 550,000 residents, focusing on water and energy efficiency"
+    },
+    {
+      "id": "client-16",
+      "name": "San Diego State University",
+      "type": "Universities",
+      "location": "California",
+      "projectNeeds": [
+        "Software Systems",
+        "Computers",
+        "Tablets",
+        "Athletic Courts",
+        "Theaters"
+      ],
+      "budget": "medium",
+      "contact": "facilities@sdsu.edu",
+      "description": "Large CSU campus with 35,000 students, major research university in San Diego"
+    },
+    {
+      "id": "client-17",
+      "name": "Oakland Unified School District",
+      "type": "K-12 School Districts",
+      "location": "California",
+      "projectNeeds": [
+        "Vocational Facilities",
+        "Fencing",
+        "Gates",
+        "Landscaping",
+        "Pavilions"
+      ],
+      "budget": "medium",
+      "contact": "facilities@ousd.org",
+      "description": "Urban school district serving over 36,000 students in Oakland, emphasizing equity and sustainability"
+    },
+    {
+      "id": "client-18",
+      "name": "County of Orange",
+      "type": "County Government",
+      "location": "California",
+      "projectNeeds": [
+        "Water Reservoirs",
+        "Stormwater Management Systems",
+        "Museums",
+        "Shelters",
+        "Water Meters"
+      ],
+      "budget": "large",
+      "contact": "sustainability@ocgov.com",
+      "description": "Major Southern California county with 3.2 million residents, focus on climate resilience"
+    },
+    {
+      "id": "client-19",
+      "name": "City of Sacramento",
+      "type": "Municipal Government",
+      "location": "California",
+      "projectNeeds": [
+        "Streets",
+        "Bridges",
+        "Sidewalks",
+        "Walkways",
+        "Bike Lanes"
+      ],
+      "budget": "medium",
+      "contact": "sustainability@cityofsacramento.org",
+      "description": "California's capital city with 525,000 residents, committed to carbon neutrality by 2045"
+    },
+    {
+      "id": "client-20",
+      "name": "Pasadena City College",
+      "type": "Community Colleges",
+      "location": "California",
+      "projectNeeds": [
+        "Bike Paths",
+        "Bus Shelters",
+        "Rail Infrastructure",
+        "Ports",
+        "Harbors"
+      ],
+      "budget": "small",
+      "contact": "facilities@pasadena.edu",
+      "description": "Historic community college serving over 27,000 students in Los Angeles area"
+    },
+    {
+      "id": "client-21",
+      "name": "Santa Ana Unified School District",
+      "type": "K-12 School Districts",
+      "location": "California",
+      "projectNeeds": [
+        "Airports",
+        "Runways",
+        "Police Stations",
+        "911 Centers",
+        "Dispatch Centers"
+      ],
+      "budget": "medium",
+      "contact": "facilities@sausd.us",
+      "description": "Large urban school district in Orange County serving over 41,000 students"
+    },
+    {
+      "id": "client-22",
+      "name": "University of California, San Diego",
+      "type": "Universities",
+      "location": "California",
+      "projectNeeds": [
+        "Security Cameras",
+        "Surveillance Systems",
+        "Emergency Alert Systems",
+        "Fire Trucks",
+        "Fire Equipment"
+      ],
+      "budget": "large",
+      "contact": "sustainability@ucsd.edu",
+      "description": "Premier research university with 42,000 students, leader in clean energy research"
+    },
+    {
+      "id": "client-23",
+      "name": "City of Oakland",
+      "type": "Municipal Government",
+      "location": "California",
+      "projectNeeds": [
+        "Flood Barriers",
+        "Seawalls",
+        "Levees",
+        "Storm Surge Protection",
+        "Cooling Centers"
+      ],
+      "budget": "medium",
+      "contact": "sustainability@oaklandca.gov",
+      "description": "Major Bay Area city with 440,000 residents, strong focus on environmental justice"
+    },
+    {
+      "id": "client-24",
+      "name": "San Bernardino City Unified School District",
+      "type": "K-12 School Districts",
+      "location": "California",
+      "projectNeeds": [
+        "Warming Centers",
+        "Drought Mitigation Systems",
+        "Wildfire Prevention Infrastructure",
+        "Emergency Backup Power Systems",
+        "Climate Monitoring Equipment"
+      ],
+      "budget": "medium",
+      "contact": "facilities@sbcusd.k12.ca.us",
+      "description": "Large Inland Empire school district serving over 46,000 students"
+    },
+    {
+      "id": "client-25",
+      "name": "California State University, Long Beach",
+      "type": "Universities",
+      "location": "California",
+      "projectNeeds": [
+        "Urban Heat Island Mitigation",
+        "Personal Protective Equipment",
+        "Safety Equipment",
+        "Hazmat Equipment",
+        "Decontamination Systems"
+      ],
+      "budget": "medium",
+      "contact": "facilities@csulb.edu",
+      "description": "Large CSU campus with 39,000 students, known for engineering and arts programs"
+    },
+    {
+      "id": "client-26",
+      "name": "County of San Diego",
+      "type": "County Government",
+      "location": "California",
+      "projectNeeds": [
+        "Air Filtration Systems",
+        "Ventilation Improvements",
+        "Biosafety Equipment",
+        "Radiation Detection Equipment",
+        "Medical Equipment"
+      ],
+      "budget": "large",
+      "contact": "sustainability@sdcounty.ca.gov",
+      "description": "Second most populous county in California with 3.3 million residents"
+    },
+    {
+      "id": "client-27",
+      "name": "Stockton Unified School District",
+      "type": "K-12 School Districts",
+      "location": "California",
+      "projectNeeds": [
+        "Hospital Facilities",
+        "Clinics",
+        "Emergency Rooms",
+        "Mental Health Facilities",
+        "Rehabilitation Centers"
+      ],
+      "budget": "medium",
+      "contact": "facilities@stocktonusd.net",
+      "description": "Central Valley school district serving over 39,000 students in Stockton area"
+    },
+    {
+      "id": "client-28",
+      "name": "City of Anaheim",
+      "type": "Municipal Government",
+      "location": "California",
+      "projectNeeds": [
+        "Ambulances",
+        "Emergency Vehicles",
+        "Affordable Housing Units",
+        "Homeless Shelters",
+        "Transitional Housing"
+      ],
+      "budget": "medium",
+      "contact": "sustainability@anaheim.net",
+      "description": "Major Orange County city with 350,000 residents, home to Disneyland Resort"
+    },
+    {
+      "id": "client-29",
+      "name": "Riverside Community College District",
+      "type": "Community Colleges",
+      "location": "California",
+      "projectNeeds": [
+        "Senior Housing",
+        "Exterior Walls",
+        "Kitchens",
+        "Green Spaces",
+        "Concrete"
+      ],
+      "budget": "medium",
+      "contact": "facilities@rccd.edu",
+      "description": "Large community college district serving over 45,000 students across multiple campuses"
+    },
+    {
+      "id": "client-30",
+      "name": "County of Santa Clara",
+      "type": "County Government",
+      "location": "California",
+      "projectNeeds": [
+        "Asphalt",
+        "Steel",
+        "Lumber",
+        "Glass",
+        "Ceramic"
+      ],
+      "budget": "large",
+      "contact": "sustainability@sccgov.org",
+      "description": "Silicon Valley county with 1.9 million residents, focus on innovation and sustainability"
+    }
+  ]
+}
