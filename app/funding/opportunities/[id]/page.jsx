@@ -228,37 +228,73 @@ export default function OpportunityDetailPage() {
 									<TabsContent
 										value='overview'
 										className='animate-in fade-in-50 duration-300'>
-										{opportunity.actionable_summary && (
-											<div className='mb-6 bg-gradient-to-br from-amber-50 to-amber-50/50 dark:from-amber-900/20 dark:to-amber-900/5 p-5 rounded-lg border border-amber-200/70 dark:border-amber-800/30 shadow-sm'>
+										{/* 1. Program Overview */}
+										{opportunity.program_overview && (
+											<div className='mb-6 bg-gradient-to-br from-blue-50 to-blue-50/50 dark:from-blue-900/20 dark:to-blue-900/5 p-5 rounded-lg border border-blue-200/70 dark:border-blue-800/30 shadow-sm'>
 												<div className='flex items-start mb-2'>
-													<div className='mr-3 p-1.5 rounded-full bg-gradient-to-br from-amber-100 to-amber-50 dark:from-amber-800/30 dark:to-amber-700/20 shadow-sm'>
-														<Lightbulb className='h-5 w-5 text-amber-600 dark:text-amber-400' />
+													<div className='mr-3 p-1.5 rounded-full bg-gradient-to-br from-blue-100 to-blue-50 dark:from-blue-800/30 dark:to-blue-700/20 shadow-sm'>
+														<Info className='h-5 w-5 text-blue-600 dark:text-blue-400' />
 													</div>
-													<h3 className='text-lg font-medium text-amber-800 dark:text-amber-400'>
-														Actionable Summary
+													<h3 className='text-lg font-medium text-blue-800 dark:text-blue-400'>
+														Program Overview
 													</h3>
 												</div>
-												<p className='text-amber-900 dark:text-amber-300 pl-10'>
-													{opportunity.actionable_summary}
+												<p className='text-blue-900 dark:text-blue-300 pl-10 whitespace-pre-line leading-relaxed'>
+													{opportunity.program_overview}
 												</p>
 											</div>
 										)}
 
-										<div className='mb-6 bg-white dark:bg-neutral-900/30 p-5 rounded-lg border border-neutral-200/70 dark:border-neutral-800/30 shadow-sm'>
-											<div className='flex items-center justify-between mb-3'>
-												<h3 className='text-lg font-medium text-neutral-900 dark:text-neutral-200'>
-													Description
-												</h3>
-												{opportunity.enhanced_description && (
-													<Badge variant='secondary' className='text-xs bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400'>
-														Enhanced
-													</Badge>
-												)}
+										{/* 2. Application Summary */}
+										{opportunity.application_summary && (
+											<div className='mb-6 bg-gradient-to-br from-green-50 to-green-50/50 dark:from-green-900/20 dark:to-green-900/5 p-5 rounded-lg border border-green-200/70 dark:border-green-800/30 shadow-sm'>
+												<div className='flex items-start mb-2'>
+													<div className='mr-3 p-1.5 rounded-full bg-gradient-to-br from-green-100 to-green-50 dark:from-green-800/30 dark:to-green-700/20 shadow-sm'>
+														<FileText className='h-5 w-5 text-green-600 dark:text-green-400' />
+													</div>
+													<h3 className='text-lg font-medium text-green-800 dark:text-green-400'>
+														Application Summary
+													</h3>
+												</div>
+												<p className='text-green-900 dark:text-green-300 pl-10 whitespace-pre-line leading-relaxed'>
+													{opportunity.application_summary}
+												</p>
 											</div>
-											<p className='text-neutral-700 dark:text-neutral-300 whitespace-pre-line leading-relaxed'>
-												{opportunity.enhanced_description || opportunity.description || 'No description available.'}
-											</p>
-										</div>
+										)}
+
+										{/* 3. Program Insights */}
+										{opportunity.program_insights && (
+											<div className='mb-6 bg-gradient-to-br from-purple-50 to-purple-50/50 dark:from-purple-900/20 dark:to-purple-900/5 p-5 rounded-lg border border-purple-200/70 dark:border-purple-800/30 shadow-sm'>
+												<div className='flex items-start mb-2'>
+													<div className='mr-3 p-1.5 rounded-full bg-gradient-to-br from-purple-100 to-purple-50 dark:from-purple-800/30 dark:to-purple-700/20 shadow-sm'>
+														<Lightbulb className='h-5 w-5 text-purple-600 dark:text-purple-400' />
+													</div>
+													<h3 className='text-lg font-medium text-purple-800 dark:text-purple-400'>
+														Program Insights
+													</h3>
+												</div>
+												<p className='text-purple-900 dark:text-purple-300 pl-10 whitespace-pre-line leading-relaxed'>
+													{opportunity.program_insights}
+												</p>
+											</div>
+										)}
+
+										{/* 4. Program Use Cases */}
+										{opportunity.program_use_cases && (
+											<div className='mb-6 bg-gradient-to-br from-amber-50 to-amber-50/50 dark:from-amber-900/20 dark:to-amber-900/5 p-5 rounded-lg border border-amber-200/70 dark:border-amber-800/30 shadow-sm'>
+												<div className='flex items-start mb-2'>
+													<div className='mr-3 p-1.5 rounded-full bg-gradient-to-br from-amber-100 to-amber-50 dark:from-amber-800/30 dark:to-amber-700/20 shadow-sm'>
+														<Target className='h-5 w-5 text-amber-600 dark:text-amber-400' />
+													</div>
+													<h3 className='text-lg font-medium text-amber-800 dark:text-amber-400'>
+														Program Use Cases
+													</h3>
+												</div>
+												<p className='text-amber-900 dark:text-amber-300 pl-10 whitespace-pre-line leading-relaxed'>
+													{opportunity.program_use_cases}
+												</p>
+											</div>
+										)}
 
 										{opportunity.categories &&
 											opportunity.categories.length > 0 && (

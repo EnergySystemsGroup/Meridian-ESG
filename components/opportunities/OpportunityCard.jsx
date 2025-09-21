@@ -149,9 +149,9 @@ const OpportunityCard = ({ opportunity }) => {
 	// Format status for display (ensuring correct capitalization)
 	const displayStatus = formatStatusForDisplay(status);
 
-	// Use actionable summary if available, fall back to description
+	// Use program overview if available, fall back to description
 	const summary =
-		opportunity.actionable_summary ||
+		opportunity.program_overview ||
 		opportunity.description ||
 		'No description available';
 
