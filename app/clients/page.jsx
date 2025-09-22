@@ -1,3 +1,6 @@
+'use client';
+
+import { useState, useEffect } from 'react';
 import MainLayout from '@/components/layout/main-layout';
 import { Button } from '@/components/ui/button';
 import {
@@ -8,18 +11,50 @@ import {
 	CardTitle,
 } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { AlertTriangle } from 'lucide-react';
+import { AlertTriangle, Loader2 } from 'lucide-react';
+import ClientProfileModal from '@/components/clients/ClientProfileModal';
+import Link from 'next/link';
+import { fetchClientMatches, generateClientTags, formatMatchScore, getMatchScoreBgColor } from '@/lib/utils/clientMatching';
 
 export default function ClientsPage() {
+	const [clientMatches, setClientMatches] = useState({});
+	const [loading, setLoading] = useState(true);
+	const [error, setError] = useState(null);
+	const [selectedClient, setSelectedClient] = useState(null);
+	const [showProfileModal, setShowProfileModal] = useState(false);
+
+	useEffect(() => {
+		async function loadClientMatches() {
+			try {
+				setLoading(true);
+				const matches = await fetchClientMatches();
+				setClientMatches(matches);
+			} catch (err) {
+				console.error('Error loading client matches:', err);
+				setError(err.message);
+			} finally {
+				setLoading(false);
+			}
+		}
+
+		loadClientMatches();
+	}, []);
+
+	const handleViewProfile = (client) => {
+		setSelectedClient(client);
+		setShowProfileModal(true);
+	};
+
+	const clients = Object.values(clientMatches);
+
 	return (
 		<MainLayout>
 			<div className='container py-10'>
-				<Alert variant='warning' className='mb-6 bg-amber-50 border-amber-300'>
-					<AlertTriangle className='h-4 w-4 text-amber-500' />
-					<AlertTitle className='text-amber-600'>Demo Data</AlertTitle>
-					<AlertDescription className='text-amber-700'>
-						This section currently displays sample data for demonstration
-						purposes only. Live client matching data integration is coming soon.
+				<Alert className='mb-6 bg-blue-50 border-blue-300'>
+					<AlertTriangle className='h-4 w-4 text-blue-500' />
+					<AlertTitle className='text-blue-600'>Live Client Matching</AlertTitle>
+					<AlertDescription className='text-blue-700'>
+						Showing real-time matches between clients and current funding opportunities in the database.
 					</AlertDescription>
 				</Alert>
 
@@ -31,36 +66,75 @@ export default function ClientsPage() {
 					</div>
 				</div>
 
-				<div className='grid gap-6 md:grid-cols-2 lg:grid-cols-3 mb-8'>
-					{clients.map((client) => (
-						<ClientCard key={`${client.type}-${client.name}`} client={client} />
-					))}
-				</div>
+				{loading && (
+					<div className='flex justify-center items-center min-h-[400px]'>
+						<div className='flex items-center gap-2'>
+							<Loader2 className='h-6 w-6 animate-spin' />
+							<span>Loading client matches...</span>
+						</div>
+					</div>
+				)}
+
+				{error && (
+					<Alert variant='destructive' className='mb-6'>
+						<AlertTriangle className='h-4 w-4' />
+						<AlertTitle>Error</AlertTitle>
+						<AlertDescription>{error}</AlertDescription>
+					</Alert>
+				)}
+
+				{!loading && !error && (
+					<div className='grid gap-6 md:grid-cols-2 lg:grid-cols-3 mb-8'>
+						{clients.map((clientResult) => (
+							<ClientCard
+								key={clientResult.client.id}
+								clientResult={clientResult}
+								onViewProfile={handleViewProfile}
+							/>
+						))}
+					</div>
+				)}
+
+				{!loading && !error && clients.length === 0 && (
+					<div className='text-center py-12'>
+						<h2 className='text-2xl font-bold mb-2'>No Clients Found</h2>
+						<p className='text-muted-foreground mb-6'>
+							No client data available for matching.
+						</p>
+					</div>
+				)}
+
+				<ClientProfileModal
+					client={selectedClient}
+					isOpen={showProfileModal}
+					onClose={() => setShowProfileModal(false)}
+				/>
 			</div>
 		</MainLayout>
 	);
 }
 
-function ClientCard({ client }) {
-	const { name, type, location, matchCount, topMatches, tags } = client;
+function ClientCard({ clientResult, onViewProfile }) {
+	const { client, matchCount, topMatches } = clientResult;
+	const tags = generateClientTags(client);
 
 	return (
 		<Card>
 			<CardHeader className='pb-3'>
 				<div className='flex justify-between items-start'>
-					<CardTitle className='text-lg'>{name}</CardTitle>
+					<CardTitle className='text-lg'>{client.name}</CardTitle>
 					<span className='text-xs px-2 py-1 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200'>
-						{type}
+						{client.type}
 					</span>
 				</div>
-				<CardDescription>{location}</CardDescription>
+				<CardDescription>{client.location}</CardDescription>
 			</CardHeader>
 			<CardContent>
 				<div className='space-y-4'>
 					<div className='flex flex-wrap gap-1 mb-2'>
-						{tags.map((tag) => (
+						{tags.map((tag, index) => (
 							<span
-								key={`${name}-${tag}`}
+								key={`${client.name}-${tag}-${index}`}
 								className='text-xs bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 px-2 py-1 rounded-full'>
 								{tag}
 							</span>
@@ -71,31 +145,46 @@ function ClientCard({ client }) {
 						<div className='text-sm font-medium mb-2'>
 							Top Opportunity Matches ({matchCount})
 						</div>
-						<ul className='space-y-2'>
-							{topMatches.map((match) => (
-								<li
-									key={`${name}-${match.title}`}
-									className='text-sm border-l-2 border-blue-500 pl-3 py-1'>
-									<div className='font-medium'>{match.title}</div>
-									<div className='flex justify-between items-center'>
-										<span className='text-xs text-gray-500 dark:text-gray-400'>
-											{match.source}
-										</span>
-										<span className='text-xs font-medium'>
-											{match.score}% match
-										</span>
-									</div>
-								</li>
-							))}
-						</ul>
+						{topMatches && topMatches.length > 0 ? (
+							<ul className='space-y-2'>
+								{topMatches.map((match, index) => (
+									<li
+										key={`${client.name}-${match.id}-${index}`}
+										className='text-sm border-l-2 border-blue-500 pl-3 py-1'>
+										<div className='font-medium line-clamp-1'>{match.title}</div>
+										<div className='flex justify-between items-center'>
+											<span className='text-xs text-gray-500 dark:text-gray-400 line-clamp-1'>
+												{match.agency_name || 'Unknown Agency'}
+											</span>
+											<span className={`text-xs font-medium px-2 py-0.5 rounded ${getMatchScoreBgColor(match.score)}`}>
+												{formatMatchScore(match.score)}
+											</span>
+										</div>
+									</li>
+								))}
+							</ul>
+						) : (
+							<p className='text-sm text-gray-500 italic'>No matches found</p>
+						)}
 					</div>
 
 					<div className='flex gap-2'>
-						<Button className='w-full' size='sm'>
+						<Button
+							className='w-full'
+							size='sm'
+							onClick={() => onViewProfile(client)}
+						>
 							View Profile
 						</Button>
-						<Button className='w-full' variant='outline' size='sm'>
-							View Matches
+						<Button
+							className='w-full'
+							variant='outline'
+							size='sm'
+							asChild
+						>
+							<Link href={`/clients/${client.id}/matches`}>
+								View Matches
+							</Link>
 						</Button>
 					</div>
 				</div>
@@ -103,223 +192,3 @@ function ClientCard({ client }) {
 		</Card>
 	);
 }
-
-// Sample data
-const clients = [
-	{
-		name: 'Springfield School District',
-		type: 'K-12',
-		location: 'Springfield, CA',
-		matchCount: 12,
-		topMatches: [
-			{
-				title: 'School Modernization Program',
-				source: 'Department of Education',
-				score: 95,
-			},
-			{
-				title: 'Clean Energy Schools Initiative',
-				source: 'California Energy Commission',
-				score: 90,
-			},
-			{
-				title: 'Zero Emission School Bus Program',
-				source: 'EPA',
-				score: 85,
-			},
-		],
-		tags: ['K-12', 'California', 'Public'],
-	},
-	{
-		name: 'Oakdale Community College',
-		type: 'Higher Ed',
-		location: 'Oakdale, CA',
-		matchCount: 8,
-		topMatches: [
-			{
-				title: 'Building Energy Efficiency Grant',
-				source: 'Department of Energy',
-				score: 88,
-			},
-			{
-				title: 'Clean Energy Innovation Fund',
-				source: 'California Energy Commission',
-				score: 82,
-			},
-			{
-				title: 'Community Climate Resilience Grant',
-				source: 'EPA',
-				score: 75,
-			},
-		],
-		tags: ['Higher Ed', 'California', 'Public'],
-	},
-	{
-		name: 'Riverdale City Government',
-		type: 'Municipal',
-		location: 'Riverdale, OR',
-		matchCount: 10,
-		topMatches: [
-			{
-				title: 'Municipal Building Retrofit Program',
-				source: 'Department of Energy',
-				score: 92,
-			},
-			{
-				title: 'Building Electrification Program',
-				source: 'Oregon Department of Energy',
-				score: 88,
-			},
-			{
-				title: 'Community Climate Resilience Grant',
-				source: 'EPA',
-				score: 80,
-			},
-		],
-		tags: ['Municipal', 'Oregon', 'Government'],
-	},
-	{
-		name: 'Westview School District',
-		type: 'K-12',
-		location: 'Westview, WA',
-		matchCount: 9,
-		topMatches: [
-			{
-				title: 'School Modernization Program',
-				source: 'Department of Energy',
-				score: 90,
-			},
-			{
-				title: 'Energy Storage Incentive Program',
-				source: 'Washington State',
-				score: 85,
-			},
-			{
-				title: 'Zero Emission School Bus Program',
-				source: 'EPA',
-				score: 82,
-			},
-		],
-		tags: ['K-12', 'Washington', 'Public'],
-	},
-	{
-		name: 'Lakeside County Government',
-		type: 'County',
-		location: 'Lakeside County, CA',
-		matchCount: 11,
-		topMatches: [
-			{
-				title: 'Building Energy Efficiency Grant',
-				source: 'Department of Energy',
-				score: 87,
-			},
-			{
-				title: 'Clean Energy Innovation Fund',
-				source: 'California Energy Commission',
-				score: 85,
-			},
-			{
-				title: 'Infrastructure Investment Act Funding',
-				source: 'Federal',
-				score: 80,
-			},
-		],
-		tags: ['County', 'California', 'Government'],
-	},
-	{
-		name: 'Greenfield University',
-		type: 'Higher Ed',
-		location: 'Greenfield, OR',
-		matchCount: 7,
-		topMatches: [
-			{
-				title: 'Building Energy Efficiency Grant',
-				source: 'Department of Energy',
-				score: 89,
-			},
-			{
-				title: 'Building Electrification Program',
-				source: 'Oregon Department of Energy',
-				score: 84,
-			},
-			{
-				title: 'Energy Storage Demonstration Grant',
-				source: 'Department of Energy',
-				score: 78,
-			},
-		],
-		tags: ['Higher Ed', 'Oregon', 'Private'],
-	},
-	{
-		name: 'Sunnyvale School District',
-		type: 'K-12',
-		location: 'Sunnyvale, CA',
-		matchCount: 14,
-		topMatches: [
-			{
-				title: 'School Modernization Program',
-				source: 'Department of Education',
-				score: 96,
-			},
-			{
-				title: 'Solar for Schools Initiative',
-				source: 'California Energy Commission',
-				score: 93,
-			},
-			{
-				title: 'Clean Energy Schools Initiative',
-				source: 'California',
-				score: 90,
-			},
-		],
-		tags: ['K-12', 'California', 'Public'],
-	},
-	{
-		name: 'Pinecrest City Government',
-		type: 'Municipal',
-		location: 'Pinecrest, WA',
-		matchCount: 9,
-		topMatches: [
-			{
-				title: 'Municipal Building Retrofit Program',
-				source: 'Department of Energy',
-				score: 91,
-			},
-			{
-				title: 'Energy Storage Incentive Program',
-				source: 'Washington State',
-				score: 86,
-			},
-			{
-				title: 'Community Climate Resilience Grant',
-				source: 'EPA',
-				score: 79,
-			},
-		],
-		tags: ['Municipal', 'Washington', 'Government'],
-	},
-	{
-		name: 'Redwood Community College',
-		type: 'Higher Ed',
-		location: 'Redwood, CA',
-		matchCount: 10,
-		topMatches: [
-			{
-				title: 'Building Energy Efficiency Grant',
-				source: 'Department of Energy',
-				score: 90,
-			},
-			{
-				title: 'Clean Energy Innovation Fund',
-				source: 'California Energy Commission',
-				score: 87,
-			},
-			{
-				title: 'Energy Storage Demonstration Grant',
-				source: 'Department of Energy',
-				score: 82,
-			},
-		],
-		tags: ['Higher Ed', 'California', 'Public'],
-	},
-];
