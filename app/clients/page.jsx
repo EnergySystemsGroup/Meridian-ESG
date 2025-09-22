@@ -45,7 +45,8 @@ export default function ClientsPage() {
 		setShowProfileModal(true);
 	};
 
-	const clients = Object.values(clientMatches);
+	const clients = Object.values(clientMatches)
+		.sort((a, b) => b.matchCount - a.matchCount);
 
 	return (
 		<MainLayout>
