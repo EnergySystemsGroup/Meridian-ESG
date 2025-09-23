@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef, Suspense } from 'react';
+import { useState, useEffect, useRef, useCallback, Suspense } from 'react';
 import MainLayout from '@/components/layout/main-layout';
 import { Button } from '@/components/ui/button';
 import {
@@ -358,7 +358,31 @@ function OpportunitiesContent() {
 
 				// Fetch data from our API
 				const response = await fetch(`/api/funding?${queryParams.toString()}`);
-				const result = await response.json();
+
+				if (!response.ok) {
+					console.error(`API request failed: ${response.status} ${response.statusText}`);
+					console.error('Request URL:', `/api/funding?${queryParams.toString()}`);
+					throw new Error(`API request failed: ${response.status} ${response.statusText}`);
+				}
+
+				// Check if response is JSON
+				const contentType = response.headers.get('content-type');
+				if (!contentType || !contentType.includes('application/json')) {
+					console.error('Response is not JSON:', contentType);
+					console.error('Request URL:', `/api/funding?${queryParams.toString()}`);
+					throw new Error(`API returned non-JSON response: ${contentType}`);
+				}
+
+				let result;
+				try {
+					result = await response.json();
+				} catch (jsonError) {
+					console.error('Failed to parse JSON response:', jsonError);
+					console.error('Response status:', response.status);
+					console.error('Response headers:', Object.fromEntries(response.headers.entries()));
+					console.error('Request URL:', `/api/funding?${queryParams.toString()}`);
+					throw new Error(`Invalid JSON response from API: ${jsonError.message}`);
+				}
 
 				if (!result.success) {
 					throw new Error(result.error || 'Failed to fetch opportunities');
@@ -398,34 +422,34 @@ function OpportunitiesContent() {
 	]);
 
 	// Update URL parameters based on current filters and sort
-	const updateUrlParams = (newFilters = filters, newSort = sortOption, newSortDirection = sortDirection, newSearchQuery = searchQuery) => {
+	const updateUrlParams = useCallback((newFilters = filters, newSort = sortOption, newSortDirection = sortDirection, newSearchQuery = searchQuery) => {
 		const params = new URLSearchParams();
-		
+
 		// Add search query
 		if (newSearchQuery && newSearchQuery.trim()) {
 			params.set('search', newSearchQuery.trim());
 		}
-		
+
 		// Add status filter
 		if (newFilters.status) {
 			params.set('status', newFilters.status);
 		}
-		
+
 		// Add categories filter
 		if (newFilters.categories && newFilters.categories.length > 0) {
 			params.set('categories', newFilters.categories.join(','));
 		}
-		
+
 		// Add states filter
 		if (newFilters.states && newFilters.states.length > 0) {
 			params.set('states', newFilters.states.join(','));
 		}
-		
+
 		// Add tracked filter
 		if (newFilters.tracked) {
 			params.set('tracked', 'true');
 		}
-		
+
 		// Add sort parameters (only if not default)
 		if (newSort && newSort !== 'relevance') {
 			params.set('sort', newSort);
@@ -433,23 +457,27 @@ function OpportunitiesContent() {
 		if (newSortDirection && newSortDirection !== 'desc') {
 			params.set('sort_direction', newSortDirection);
 		}
-		
+
 		// Add pagination (only if not first page)
 		if (newFilters.page && newFilters.page > 1) {
 			params.set('page', newFilters.page.toString());
 		}
-		
+
 		// Update URL without triggering a page reload
 		const newUrl = params.toString() ? `${pathname}?${params.toString()}` : pathname;
-		router.replace(newUrl, { scroll: false });
-	};
+
+		// Use setTimeout to prevent router updates during render
+		setTimeout(() => {
+			router.replace(newUrl, { scroll: false });
+		}, 0);
+	}, [filters, sortOption, sortDirection, searchQuery, pathname, router]);
 
 	// Sync URL when filters, sort, or search change
 	useEffect(() => {
 		if (isInitialized) {
 			updateUrlParams();
 		}
-	}, [filters, sortOption, sortDirection, searchQuery, isInitialized]);
+	}, [filters, sortOption, sortDirection, searchQuery, isInitialized, updateUrlParams]);
 
 	// Toggle filter section
 	const toggleFilterSection = (section) => {
@@ -494,7 +522,9 @@ function OpportunitiesContent() {
 		setStateSearchInput('');
 
 		// Clear URL parameters
-		router.replace(pathname, { scroll: false });
+		setTimeout(() => {
+			router.replace(pathname, { scroll: false });
+		}, 0);
 	};
 
 	// Filter categories for search
@@ -572,21 +602,7 @@ function OpportunitiesContent() {
 			page: 1, // Reset to first page when toggling filter
 		}));
 
-		// Update URL when toggling the filter
-		const params = new URLSearchParams(searchParams.toString());
-		if (currentlyTracked) {
-			// If currently tracked, remove the tracked parameter
-			params.delete('tracked');
-		} else {
-			// If not currently tracked, add the tracked parameter
-			params.set('tracked', 'true');
-		}
-
-		// Use Next.js router to update URL without reloading the page
-		const newUrl = params.toString()
-			? `${pathname}?${params.toString()}`
-			: pathname;
-		router.replace(newUrl, { scroll: false });
+		// URL will be updated automatically by the URL sync useEffect
 	};
 
 	// Render tracked opportunities filter button
@@ -697,38 +713,13 @@ function OpportunitiesContent() {
 		window.scrollTo({ top: 0, behavior: 'smooth' });
 	};
 
-	// Reset to page 1 when filters change (except for page itself)
-	useEffect(() => {
-		// Store the current filters except page
-		const currentFiltersWithoutPage = { ...filters };
-		delete currentFiltersWithoutPage.page;
-
-		// Store the previous filters except page
-		const prevFiltersWithoutPage = { ...prevFilters.current };
-		delete prevFiltersWithoutPage.page;
-
-		// Compare if any filter other than page has changed
-		if (
-			JSON.stringify(currentFiltersWithoutPage) !==
-			JSON.stringify(prevFiltersWithoutPage)
-		) {
-			setFilters((prev) => ({
-				...prev,
-				page: 1,
-			}));
-		}
-
-		// Update previous filters reference
-		prevFilters.current = { ...filters };
-	}, [
-		filters.status,
-		filters.categories,
-		filters.states,
-		debouncedSearchQuery,
-	]);
-
 	// Track previous filters
 	const prevFilters = useRef(filters);
+
+	// Update previous filters reference for comparison
+	useEffect(() => {
+		prevFilters.current = { ...filters };
+	}, [filters]);
 
 	// Render pagination controls
 	const renderPaginationControls = () => {

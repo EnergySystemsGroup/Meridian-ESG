@@ -14,6 +14,8 @@ import Link from 'next/link';
 import {
 	getCategoryColor,
 	formatCategoryForDisplay,
+	getProjectTypeColor,
+	prioritizeProjectTypes,
 } from '@/lib/utils/uiHelpers';
 
 // Status indicators with colors for badges
@@ -214,6 +216,9 @@ const OpportunityCard = ({ opportunity }) => {
 	const categories =
 		opportunity.categories || (tags.length > 0 ? [tags[0]] : ['Other']);
 
+	// Get prioritized project types (top 3 based on taxonomy)
+	const projectTypes = prioritizeProjectTypes(opportunity.eligible_project_types || [], 3);
+
 	// Function to handle tracking
 	const handleTrackToggle = useCallback(
 		(e) => {
@@ -291,19 +296,19 @@ const OpportunityCard = ({ opportunity }) => {
 					{/* Summary */}
 					<p className='text-sm text-gray-600'>{summary}</p>
 
-					{/* Category pills */}
+					{/* Project type pills */}
 					<div className='flex flex-wrap gap-1'>
-						{categories.map((category, index) => {
-							const categoryColor = getCategoryColor(category);
+						{projectTypes.map((projectType, index) => {
+							const projectTypeColor = getProjectTypeColor(projectType);
 							return (
 								<span
 									key={index}
 									className='text-xs px-2 py-1 rounded'
 									style={{
-										backgroundColor: categoryColor.bgColor,
-										color: categoryColor.color,
+										backgroundColor: projectTypeColor.bgColor,
+										color: projectTypeColor.color,
 									}}>
-									{category}
+									{projectType}
 								</span>
 							);
 						})}
