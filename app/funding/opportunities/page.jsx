@@ -345,9 +345,10 @@ function OpportunitiesContent() {
 						'[Debug Tracking] Appending trackedIds to queryParams:',
 						trackedOpportunityIds.join(',')
 					);
-					if (trackedOpportunityIds.length > 0) {
-						queryParams.append('trackedIds', trackedOpportunityIds.join(','));
-					}
+					// Always send trackedIds parameter when tracked filter is on
+					// This ensures the API knows to filter to tracked opportunities only,
+					// even if the list is empty (which should return no results)
+					queryParams.append('trackedIds', trackedOpportunityIds.join(','));
 				}
 
 				// console.log('Current filters:', filters); // Replaced by more specific logs
@@ -1204,7 +1205,7 @@ function OpportunitiesContent() {
 							<Input
 								type='text'
 								className='pl-10'
-								placeholder='Search opportunities...'
+								placeholder='Search titles, descriptions, summaries...'
 								value={searchQuery}
 								onChange={(e) => setSearchQuery(e.target.value)}
 							/>
