@@ -38,7 +38,7 @@ export async function GET(request) {
         eligible_project_types, eligible_activities, is_national,
         minimum_award, maximum_award, total_funding_available,
         close_date, agency_name, categories, relevance_score,
-        status, created_at
+        status, created_at, program_overview
       `);
 
     if (error) {
