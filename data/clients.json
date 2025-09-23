@@ -14,7 +14,8 @@
       ],
       "budget": "large",
       "contact": "facilities@lausd.net",
-      "description": "Second largest school district in the US, serving over 430,000 students across 781 schools"
+      "description": "Massive district with 781 schools - they're always looking for money and know how to get it (just finished a $7B bond!). Old buildings everywhere from the 1920s-70s means constant HVAC repairs, earthquake retrofits, you name it. Post-COVID they're obsessed with air quality and carbon neutral stuff by 2045. Super responsive to federal grants, especially anything climate or equity related.",
+      "DAC": "Yes"
     },
     {
       "id": "client-2",
@@ -30,7 +31,8 @@
       ],
       "budget": "large",
       "contact": "capital.planning@sandi.net",
-      "description": "Second largest school district in California, serving over 95,000 students across 175 schools"
+      "description": "Well-funded coastal district that loves their solar panels - been doing it since 2010 and saved tons of money. Currently shopping for more renewable energy stuff, gym upgrades, and security systems. Voters keep approving their bond measures ($3.5B since 2008) so they're pretty cash-flush. Great client for any green energy or sports facility funding.",
+      "DAC": "No"
     },
     {
       "id": "client-3",
@@ -46,7 +48,8 @@
       ],
       "budget": "very_large",
       "contact": "sustainability@lacity.org",
-      "description": "Largest city in California with 3.8 million residents, committed to carbon neutrality by 2035"
+      "description": "Big money, big projects - $7.9B budget but always stretched thin with pensions and social services. LAX, Metro, 2028 Olympics prep - they go big or go home. Obsessed with carbon neutral by 2035, so EV charging, microgrids, climate stuff is their jam. Knows how to work the federal system but needs help navigating all the competing priorities.",
+      "DAC": "No"
     },
     {
       "id": "client-4",
@@ -62,7 +65,8 @@
       ],
       "budget": "large",
       "contact": "sustainability@ucla.edu",
-      "description": "Top-ranked public university with 47,000 students, leader in sustainability research"
+      "description": "Prestigious university with deep pockets - $500M+ in donations annually plus all the usual state and federal money. They want the best of everything: fancy labs, supercomputers, cutting-edge energy systems. Total sustainability nerds with LEED buildings everywhere. Will spend big on anything that keeps them looking innovative and ahead of other UC schools.",
+      "DAC": "No"
     },
     {
       "id": "client-5",
@@ -78,7 +82,8 @@
       ],
       "budget": "large",
       "contact": "sustainability@sandiego.gov",
-      "description": "Second largest city in California with 1.4 million residents, Climate Action Plan leader"
+      "description": "Climate action obsessed - they literally pioneered some of this stuff and love to brag about it. Always looking for water tech, smart city gadgets, and anything 'nature-based.' Voters keep saying yes to infrastructure bonds so money flows pretty freely. Good bond ratings mean they can leverage for bigger projects. Perfect fit for any water, climate, or smart city funding.",
+      "DAC": "No"
     },
     {
       "id": "client-6",
@@ -94,7 +99,8 @@
       ],
       "budget": "medium",
       "contact": "facilities@fresnounified.org",
-      "description": "Fourth largest school district in California, serving over 73,000 students in Central Valley"
+      "description": "Always broke but scrappy - typical Central Valley money problems with ag economy. 73K kids, old buildings, growing fast. They hustle hard for any grant money they can get, especially for kitchens, sports stuff, and playgrounds. Recent bond helped but they're still stretching every dollar. Great candidate for Title I, USDA, or any federal programs targeting underserved areas.",
+      "DAC": "Yes"
     },
     {
       "id": "client-7",
@@ -110,7 +116,8 @@
       ],
       "budget": "medium",
       "contact": "facilities@sfsu.edu",
-      "description": "Large public university in San Francisco, part of CSU system with 29,000 students"
+      "description": "Classic CSU money struggles - 1950s-70s buildings falling apart on a San Francisco hilltop. Elevators breaking, earthquake safety issues, energy bills through the roof. Good at working the state capital outlay system but always looking for creative funding. SF location means everything costs 3x more than normal. Perfect for seismic, accessibility, or energy efficiency grants.",
+      "DAC": "No"
     },
     {
       "id": "client-8",
@@ -126,7 +133,8 @@
       ],
       "budget": "very_large",
       "contact": "sustainability@lacounty.gov",
-      "description": "Largest county in the US by population, serving over 10 million residents"
+      "description": "Enormous operation - 10M people, $40B budget, biggest everything (hospitals, jails, social services). They think in billions, not millions. Always upgrading something: hospitals, emergency systems, jails. Federal partnerships are their bread and butter. If you've got a big infrastructure program, these guys can handle it and have the budget to match.",
+      "DAC": "No"
     },
     {
       "id": "client-9",
@@ -142,7 +150,8 @@
       ],
       "budget": "medium",
       "contact": "facilities@lbschools.net",
-      "description": "Large unified school district serving over 67,000 students in Long Beach area"
+      "description": "67K kids in old coastal buildings that need everything - windows, doors, electrical, you name it. They know how to work the bond market and federal emergency cash when disasters hit. Good relationships with contractors so projects actually get done. Always competing priorities but they'll move fast on safety or accessibility funding.",
+      "DAC": "Yes"
     },
     {
       "id": "client-10",
@@ -158,7 +167,8 @@
       ],
       "budget": "medium",
       "contact": "facilities@csun.edu",
-      "description": "Large public university in San Fernando Valley, known for engineering and business programs"
+      "description": "Parking nightmare in the Valley but they're into cool tech - geothermal systems, smart campus stuff. 40K students, strong engineering programs so they want the latest gadgets. Typical CSU tight budget means everything's phased and they love partnerships. Good bet for transportation, energy tech, or anything that helps with their parking crisis.",
+      "DAC": "No"
     },
     {
       "id": "client-11",
@@ -174,7 +184,8 @@
       ],
       "budget": "large",
       "contact": "sustainability@sanjoseca.gov",
-      "description": "Third largest city in California, heart of Silicon Valley with focus on smart city initiatives"
+      "description": "Tech capital with tech money - 1M residents and all the big companies paying taxes. They pilot everything first: smart cities, digital governance, autonomous vehicles. Love public-private partnerships with all their tech neighbors. Currently obsessed with digital equity and electric everything. Perfect client for bleeding-edge transportation or digital infrastructure pilots.",
+      "DAC": "No"
     },
     {
       "id": "client-12",
@@ -190,7 +201,8 @@
       ],
       "budget": "medium",
       "contact": "facilities@egusd.net",
-      "description": "Fast-growing school district south of Sacramento, serving over 62,000 students"
+      "description": "Growing like crazy in Sacramento suburbs - 62K kids and climbing. Property taxes flowing in, voters love education bonds. Big on career tech facilities and media centers, always upgrading fire systems. Track record of landing federal grants. Great client when they need to build fast and want modern everything.",
+      "DAC": "No"
     },
     {
       "id": "client-13",
@@ -206,7 +218,8 @@
       ],
       "budget": "large",
       "contact": "sustainability@berkeley.edu",
-      "description": "Premier public research university, top-ranked UC campus with strong environmental commitment"
+      "description": "Top UC campus - 45K students, unlimited research money, and they invented half the clean energy stuff we pitch. Fuel cells, renewables, sustainable manufacturing - they want to test everything first. Carbon neutral obsessed. Perfect for pilot programs or cutting-edge energy tech. They'll spend big and publicize the hell out of successful projects.",
+      "DAC": "No"
     },
     {
       "id": "client-14",
@@ -222,7 +235,8 @@
       ],
       "budget": "medium",
       "contact": "facilities@scusd.edu",
-      "description": "Major urban school district serving nearly 40,000 students in California's capital"
+      "description": "State capital district with 40K kids in old buildings - always juggling priorities with limited cash. HVAC constantly breaking, ADA compliance nightmares, earthquake safety issues. They know how to chase grants and recently did some big seismic work. State connections help but enrollment fluctuations stress the budget.",
+      "DAC": "Yes"
     },
     {
       "id": "client-15",
@@ -238,7 +252,8 @@
       ],
       "budget": "medium",
       "contact": "sustainability@fresno.gov",
-      "description": "Central Valley's largest city with 550,000 residents, focusing on water and energy efficiency"
+      "description": "Central Valley water crisis poster child - 550K people, ag economy, chronic drought. Ancient water systems falling apart, pump stations from the stone age. Always broke but creative with USDA grants and drought emergency funding. Water storage and efficiency is their holy grail. Jump on any federal water infrastructure programs.",
+      "DAC": "Yes"
     },
     {
       "id": "client-16",
@@ -254,7 +269,8 @@
       ],
       "budget": "medium",
       "contact": "facilities@sdsu.edu",
-      "description": "Large CSU campus with 35,000 students, major research university in San Diego"
+      "description": "Solid CSU with 35K students trying to do everything - tech upgrades, theater renovations, sports facilities. Typical CSU money problems but good alumni network helps with naming rights. They'll take partnerships over cash when possible. Mix of traditional college needs and research ambitions makes them flexible on project types.",
+      "DAC": "No"
     },
     {
       "id": "client-17",
@@ -270,7 +286,8 @@
       ],
       "budget": "medium",
       "contact": "facilities@ousd.org",
-      "description": "Urban school district serving over 36,000 students in Oakland, emphasizing equity and sustainability"
+      "description": "Urban Oakland district with 36K kids - big on equity and environmental justice, so they eat up any funding tied to those buzzwords. Need security upgrades, career tech facilities, green everything. Always scrambling for money but creative with partnerships. If it's sustainable or helps underserved communities, they're interested.",
+      "DAC": "Yes"
     },
     {
       "id": "client-18",
@@ -286,7 +303,8 @@
       ],
       "budget": "large",
       "contact": "sustainability@ocgov.com",
-      "description": "Major Southern California county with 3.2 million residents, focus on climate resilience"
+      "description": "Rich Orange County with 3.2M people - tech, tourism, aerospace money. Water obsessed (drought fears), love their museums and cultural stuff. Smart about climate adaptation and flood protection. Good at multi-city projects and public-private deals. They spend big on anything that protects their coastal lifestyle and property values.",
+      "DAC": "No"
     },
     {
       "id": "client-19",
@@ -302,7 +320,8 @@
       ],
       "budget": "medium",
       "contact": "sustainability@cityofsacramento.org",
-      "description": "California's capital city with 525,000 residents, committed to carbon neutrality by 2045"
+      "description": "State capital with 525K people trying to be the model green city. Bikes, walking, transit - they want it all carbon neutral by 2045. State connections help with federal transportation funding. Good planners who actually finish projects. Perfect for any active transportation or transit innovation grants.",
+      "DAC": "No"
     },
     {
       "id": "client-20",
@@ -318,7 +337,8 @@
       ],
       "budget": "small",
       "contact": "facilities@pasadena.edu",
-      "description": "Historic community college serving over 27,000 students in Los Angeles area"
+      "description": "Old community college (1924) with 27K students in urban LA area. Typical community college budget problems but great at partnerships with cities and transit agencies. Students need better bus stops, bike paths, safer walking routes. Strong community ties mean projects get local support. Good fit for transportation equity funding.",
+      "DAC": "Yes"
     },
     {
       "id": "client-21",
@@ -334,7 +354,8 @@
       ],
       "budget": "medium",
       "contact": "facilities@sausd.us",
-      "description": "Large urban school district in Orange County serving over 41,000 students"
+      "description": "41K kids, mostly Latino community in OC - they specialize in weird career stuff like aviation training and public safety programs. Always chasing Title I money and underserved community grants. Good at workforce development projects and safety upgrades. If you've got career tech or community safety funding, they know how to use it.",
+      "DAC": "Yes"
     },
     {
       "id": "client-22",
@@ -350,7 +371,8 @@
       ],
       "budget": "large",
       "contact": "sustainability@ucsd.edu",
-      "description": "Premier research university with 42,000 students, leader in clean energy research"
+      "description": "Top-tier UC with 42K students doing cutting-edge research. Paranoid about security (expensive labs everywhere) and emergency prep (fires, earthquakes, you name it). Deep pockets from research grants and federal security funding. Want the latest in surveillance tech, fire systems, emergency communications. Will pay premium for proven solutions.",
+      "DAC": "No"
     },
     {
       "id": "client-23",
@@ -366,7 +388,8 @@
       ],
       "budget": "medium",
       "contact": "sustainability@oaklandca.gov",
-      "description": "Major Bay Area city with 440,000 residents, strong focus on environmental justice"
+      "description": "Oakland - 440K people, waterfront flooding problems, environmental justice everything. Moderate budget but great at grant hustling, especially federal climate resilience money. Community engagement pros who actually get stuff built. Perfect for any flood protection, cooling centers, or environmental justice infrastructure programs.",
+      "DAC": "Yes"
     },
     {
       "id": "client-24",
@@ -382,7 +405,8 @@
       ],
       "budget": "medium",
       "contact": "facilities@sbcusd.k12.ca.us",
-      "description": "Large Inland Empire school district serving over 46,000 students"
+      "description": "Inland Empire's biggest district with 46K kids dealing with climate hell - wildfires, heat waves, drought, everything. Always in crisis mode but experienced with emergency response. Broke like most inland districts but good at landing federal emergency and climate adaptation funding. Need cooling centers, fire protection, backup power - basically disaster preparedness everything.",
+      "DAC": "Yes"
     },
     {
       "id": "client-25",
@@ -398,7 +422,8 @@
       ],
       "budget": "medium",
       "contact": "facilities@csulb.edu",
-      "description": "Large CSU campus with 39,000 students, known for engineering and arts programs"
+      "description": "CSU Long Beach with 39K students - strong engineering programs mean lots of safety headaches with labs and equipment. Coastal location adds climate worries. Typical CSU budget squeeze but they know their stuff on environmental and safety engineering. Good partners for phased safety upgrades or climate adaptation projects.",
+      "DAC": "No"
     },
     {
       "id": "client-26",
@@ -414,7 +439,8 @@
       ],
       "budget": "large",
       "contact": "sustainability@sdcounty.ca.gov",
-      "description": "Second most populous county in California with 3.3 million residents"
+      "description": "Massive San Diego County - 3.3M people, tons of money, health system everywhere. Hospitals, emergency services, biosafety labs - they operate everything and upgrade constantly. Federal partnerships for health infrastructure. If you've got medical equipment, emergency systems, or biosafety tech, they're buyers with deep pockets.",
+      "DAC": "No"
     },
     {
       "id": "client-27",
@@ -430,7 +456,8 @@
       ],
       "budget": "medium",
       "contact": "facilities@stocktonusd.net",
-      "description": "Central Valley school district serving over 39,000 students in Stockton area"
+      "description": "Stockton district with 39K kids in tough neighborhoods - they're trying to be everything: school, clinic, mental health center, social services. Always broke but creative with federal health grants and partnerships. If it helps kids' health and wellness, they'll find a way to fund it. Good for integrated health/education facility projects.",
+      "DAC": "Yes"
     },
     {
       "id": "client-28",
@@ -446,7 +473,8 @@
       ],
       "budget": "medium",
       "contact": "sustainability@anaheim.net",
-      "description": "Major Orange County city with 350,000 residents, home to Disneyland Resort"
+      "description": "Anaheim - 350K people, Disneyland money but growing homeless and housing crisis. Tourism revenue helps but competing with visitor infrastructure needs. Emergency services, affordable housing, homeless shelters - they need it all. Good at big public safety projects. Tourism tax base makes them creditworthy for creative financing.",
+      "DAC": "No"
     },
     {
       "id": "client-29",
@@ -462,7 +490,8 @@
       ],
       "budget": "medium",
       "contact": "facilities@rccd.edu",
-      "description": "Large community college district serving over 45,000 students across multiple campuses"
+      "description": "Riverside community colleges - 45K students across multiple campuses, always something breaking. They do weird stuff like senior housing and community centers mixed with education. Typical community college money problems but good at partnerships and bonds. Multi-campus coordination headaches but they make it work. Open to creative facility sharing projects.",
+      "DAC": "Yes"
     },
     {
       "id": "client-30",
@@ -478,7 +507,8 @@
       ],
       "budget": "large",
       "contact": "sustainability@sccgov.org",
-      "description": "Silicon Valley county with 1.9 million residents, focus on innovation and sustainability"
+      "description": "Santa Clara County - Silicon Valley money and Silicon Valley problems. 1.9M residents, tech company taxes, experimental everything. They'll pilot new materials, sustainable construction, smart building tech - basically anything innovative. Tech partnerships galore. Perfect client for cutting-edge infrastructure pilots with unlimited budget expectations.",
+      "DAC": "No"
     }
   ]
 }

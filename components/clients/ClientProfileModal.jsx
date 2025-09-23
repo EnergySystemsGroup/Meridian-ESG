@@ -17,7 +17,7 @@ import {
   MapPin,
   Building,
   DollarSign,
-  Mail,
+  Shield,
   Target,
   FileText,
   ExternalLink,
@@ -74,22 +74,21 @@ export default function ClientProfileModal({ client, isOpen, onClose }) {
                 </div>
               </div>
 
-              {client.contact && (
-                <div className="flex items-center">
-                  <Mail className="h-5 w-5 mr-2 text-neutral-500" />
-                  <div>
-                    <div className="text-sm text-neutral-500">Contact</div>
-                    <div className="font-medium">
-                      <a
-                        href={`mailto:${client.contact}`}
-                        className="text-blue-600 hover:text-blue-800 hover:underline"
-                      >
-                        {client.contact}
-                      </a>
-                    </div>
+              <div className="flex items-center">
+                <Shield className="h-5 w-5 mr-2 text-neutral-500" />
+                <div>
+                  <div className="text-sm text-neutral-500">Disadvantaged Community</div>
+                  <div className="font-medium">
+                    <span className={`inline-flex items-center px-2 py-1 rounded-full text-sm font-medium ${
+                      client.DAC === 'Yes'
+                        ? 'bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-400'
+                        : 'bg-gray-50 text-gray-700 dark:bg-gray-900/20 dark:text-gray-400'
+                    }`}>
+                      {client.DAC || 'No'}
+                    </span>
                   </div>
                 </div>
-              )}
+              </div>
             </div>
           </div>
 

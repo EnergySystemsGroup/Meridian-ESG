@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import MainLayout from '@/components/layout/main-layout';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import {
 	Card,
 	CardContent,
@@ -11,7 +12,7 @@ import {
 	CardTitle,
 } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { AlertTriangle, Loader2 } from 'lucide-react';
+import { AlertTriangle, Loader2, Search } from 'lucide-react';
 import ClientProfileModal from '@/components/clients/ClientProfileModal';
 import Link from 'next/link';
 import { fetchClientMatches, generateClientTags, formatMatchScore, getMatchScoreBgColor } from '@/lib/utils/clientMatching';
@@ -22,6 +23,7 @@ export default function ClientsPage() {
 	const [error, setError] = useState(null);
 	const [selectedClient, setSelectedClient] = useState(null);
 	const [showProfileModal, setShowProfileModal] = useState(false);
+	const [searchQuery, setSearchQuery] = useState('');
 
 	useEffect(() => {
 		async function loadClientMatches() {
@@ -46,24 +48,47 @@ export default function ClientsPage() {
 	};
 
 	const clients = Object.values(clientMatches)
+		.filter(clientResult => {
+			if (!searchQuery) return true;
+
+			const query = searchQuery.toLowerCase();
+			const client = clientResult.client;
+			const tags = generateClientTags(client);
+
+			return (
+				client.name.toLowerCase().includes(query) ||
+				client.type.toLowerCase().includes(query) ||
+				client.location.toLowerCase().includes(query) ||
+				client.description.toLowerCase().includes(query) ||
+				(client.DAC && client.DAC.toLowerCase().includes(query)) ||
+				tags.some(tag => tag.toLowerCase().includes(query)) ||
+				client.projectNeeds.some(need => need.toLowerCase().includes(query))
+			);
+		})
 		.sort((a, b) => b.matchCount - a.matchCount);
 
 	return (
 		<MainLayout>
 			<div className='container py-10'>
-				<Alert className='mb-6 bg-blue-50 border-blue-300'>
-					<AlertTriangle className='h-4 w-4 text-blue-500' />
-					<AlertTitle className='text-blue-600'>Live Client Matching</AlertTitle>
-					<AlertDescription className='text-blue-700'>
-						Showing real-time matches between clients and current funding opportunities in the database.
-					</AlertDescription>
-				</Alert>
 
 				<div className='flex justify-between items-center mb-6'>
 					<h1 className='text-3xl font-bold'>Client Matching</h1>
 					<div className='flex gap-2'>
 						<Button variant='outline'>Filter</Button>
 						<Button>Add Client</Button>
+					</div>
+				</div>
+
+				<div className='mb-6'>
+					<div className='relative max-w-md'>
+						<Search className='absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4' />
+						<Input
+							type='text'
+							placeholder='Search clients, locations, project needs...'
+							value={searchQuery}
+							onChange={(e) => setSearchQuery(e.target.value)}
+							className='pl-10'
+						/>
 					</div>
 				</div>
 
@@ -84,24 +109,45 @@ export default function ClientsPage() {
 					</Alert>
 				)}
 
-				{!loading && !error && (
-					<div className='grid gap-6 md:grid-cols-2 lg:grid-cols-3 mb-8'>
-						{clients.map((clientResult) => (
-							<ClientCard
-								key={clientResult.client.id}
-								clientResult={clientResult}
-								onViewProfile={handleViewProfile}
-							/>
-						))}
-					</div>
+				{!loading && !error && clients.length > 0 && (
+					<>
+						{searchQuery && (
+							<div className='mb-4 text-sm text-gray-600 dark:text-gray-400'>
+								Found {clients.length} client{clients.length !== 1 ? 's' : ''} matching "{searchQuery}"
+							</div>
+						)}
+						<div className='grid gap-8 md:grid-cols-2 lg:grid-cols-3 mb-8'>
+							{clients.map((clientResult) => (
+								<ClientCard
+									key={clientResult.client.id}
+									clientResult={clientResult}
+									onViewProfile={handleViewProfile}
+								/>
+							))}
+						</div>
+					</>
 				)}
 
 				{!loading && !error && clients.length === 0 && (
 					<div className='text-center py-12'>
-						<h2 className='text-2xl font-bold mb-2'>No Clients Found</h2>
+						<h2 className='text-2xl font-bold mb-2'>
+							{searchQuery ? 'No Search Results' : 'No Clients Found'}
+						</h2>
 						<p className='text-muted-foreground mb-6'>
-							No client data available for matching.
+							{searchQuery
+								? `No clients match your search for "${searchQuery}". Try different keywords or clear the search.`
+								: 'No client data available for matching.'
+							}
 						</p>
+						{searchQuery && (
+							<Button
+								variant='outline'
+								onClick={() => setSearchQuery('')}
+								className='mt-4'
+							>
+								Clear Search
+							</Button>
+						)}
 					</div>
 				)}
 
@@ -120,44 +166,41 @@ function ClientCard({ clientResult, onViewProfile }) {
 	const tags = generateClientTags(client);
 
 	return (
-		<Card>
-			<CardHeader className='pb-3'>
-				<div className='flex justify-between items-start'>
-					<CardTitle className='text-lg'>{client.name}</CardTitle>
-					<span className='text-xs px-2 py-1 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200'>
-						{client.type}
-					</span>
-				</div>
-				<CardDescription>{client.location}</CardDescription>
+		<Card className='flex flex-col h-full'>
+			<CardHeader className='pb-4'>
+				<CardTitle className='text-xl font-bold'>{client.name}</CardTitle>
+				<CardDescription className='text-sm text-muted-foreground'>{client.location}</CardDescription>
 			</CardHeader>
-			<CardContent>
-				<div className='space-y-4'>
-					<div className='flex flex-wrap gap-1 mb-2'>
+			<CardContent className='px-6 pb-6 flex flex-col flex-1'>
+				<div className='flex-1 space-y-5'>
+					<div className='flex flex-wrap gap-1 mb-3'>
 						{tags.map((tag, index) => (
 							<span
 								key={`${client.name}-${tag}-${index}`}
-								className='text-xs bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 px-2 py-1 rounded-full'>
+								className='text-xs bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 px-2 py-1 rounded-full'>
 								{tag}
 							</span>
 						))}
 					</div>
 
-					<div>
-						<div className='text-sm font-medium mb-2'>
+					<div className='border-t border-gray-100 dark:border-gray-800 pt-4'>
+						<div className='text-sm font-medium mb-3'>
 							Top Opportunity Matches ({matchCount})
 						</div>
 						{topMatches && topMatches.length > 0 ? (
 							<ul className='space-y-2'>
-								{topMatches.map((match, index) => (
+								{topMatches
+									.sort((a, b) => b.score - a.score) // Sort matches by score descending
+									.map((match, index) => (
 									<li
 										key={`${client.name}-${match.id}-${index}`}
-										className='text-sm border-l-2 border-blue-500 pl-3 py-1'>
-										<div className='font-medium line-clamp-1'>{match.title}</div>
+										className='text-sm border-l-2 border-blue-500 pl-3 py-1 hover:bg-blue-50 dark:hover:bg-blue-900/10 transition-colors duration-200 cursor-pointer rounded-r'>
+										<div className='font-medium truncate pr-12'>{match.title}</div>
 										<div className='flex justify-between items-center'>
-											<span className='text-xs text-gray-500 dark:text-gray-400 line-clamp-1'>
+											<span className='text-xs text-gray-500 dark:text-gray-400 truncate flex-1 pr-2'>
 												{match.agency_name || 'Unknown Agency'}
 											</span>
-											<span className={`text-xs font-medium px-2 py-0.5 rounded ${getMatchScoreBgColor(match.score)}`}>
+											<span className={`text-xs font-medium px-2 py-0.5 rounded transition-all duration-200 hover:scale-105 flex-shrink-0 ${getMatchScoreBgColor(match.score)}`}>
 												{formatMatchScore(match.score)}
 											</span>
 										</div>
@@ -168,26 +211,26 @@ function ClientCard({ clientResult, onViewProfile }) {
 							<p className='text-sm text-gray-500 italic'>No matches found</p>
 						)}
 					</div>
+				</div>
 
-					<div className='flex gap-2'>
-						<Button
-							className='w-full'
-							size='sm'
-							onClick={() => onViewProfile(client)}
-						>
-							View Profile
-						</Button>
-						<Button
-							className='w-full'
-							variant='outline'
-							size='sm'
-							asChild
-						>
-							<Link href={`/clients/${client.id}/matches`}>
-								View Matches
-							</Link>
-						</Button>
-					</div>
+				<div className='flex gap-2 mt-5'>
+					<Button
+						className='w-full'
+						size='sm'
+						onClick={() => onViewProfile(client)}
+					>
+						View Profile
+					</Button>
+					<Button
+						className='w-full'
+						variant='outline'
+						size='sm'
+						asChild
+					>
+						<Link href={`/clients/${client.id}/matches`}>
+							View Matches
+						</Link>
+					</Button>
 				</div>
 			</CardContent>
 		</Card>
