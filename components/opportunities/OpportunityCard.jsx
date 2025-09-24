@@ -14,6 +14,8 @@ import Link from 'next/link';
 import {
 	getCategoryColor,
 	formatCategoryForDisplay,
+	getProjectTypeColor,
+	prioritizeProjectTypes,
 } from '@/lib/utils/uiHelpers';
 
 // Status indicators with colors for badges
@@ -149,9 +151,9 @@ const OpportunityCard = ({ opportunity }) => {
 	// Format status for display (ensuring correct capitalization)
 	const displayStatus = formatStatusForDisplay(status);
 
-	// Use actionable summary if available, fall back to description
+	// Use program overview if available, fall back to description
 	const summary =
-		opportunity.actionable_summary ||
+		opportunity.program_overview ||
 		opportunity.description ||
 		'No description available';
 
@@ -204,12 +206,18 @@ const OpportunityCard = ({ opportunity }) => {
 			  })()
 			: null;
 
-	// Get relevance score if available
-	const relevanceScore = opportunity.relevance_score || null;
+	// Get relevance score if available - handle both old and new scoring formats
+	const relevanceScore = opportunity.relevance_score ||
+		opportunity.scoring?.finalScore ||
+		opportunity.scoring?.overallScore ||
+		null;
 
 	// Extract categories - for now, we'll use tags as categories if categories aren't available
 	const categories =
 		opportunity.categories || (tags.length > 0 ? [tags[0]] : ['Other']);
+
+	// Get prioritized project types (top 3 based on taxonomy)
+	const projectTypes = prioritizeProjectTypes(opportunity.eligible_project_types || [], 3);
 
 	// Function to handle tracking
 	const handleTrackToggle = useCallback(
@@ -288,19 +296,19 @@ const OpportunityCard = ({ opportunity }) => {
 					{/* Summary */}
 					<p className='text-sm text-gray-600'>{summary}</p>
 
-					{/* Category pills */}
+					{/* Project type pills */}
 					<div className='flex flex-wrap gap-1'>
-						{categories.map((category, index) => {
-							const categoryColor = getCategoryColor(category);
+						{projectTypes.map((projectType, index) => {
+							const projectTypeColor = getProjectTypeColor(projectType);
 							return (
 								<span
 									key={index}
 									className='text-xs px-2 py-1 rounded'
 									style={{
-										backgroundColor: categoryColor.bgColor,
-										color: categoryColor.color,
+										backgroundColor: projectTypeColor.bgColor,
+										color: projectTypeColor.color,
 									}}>
-									{category}
+									{projectType}
 								</span>
 							);
 						})}

@@ -21,8 +21,6 @@
 
 // jest.setup.js
 import '@testing-library/jest-dom'
-// Add Anthropic SDK shim for Node environment
-import '@anthropic-ai/sdk/shims/node'
 
 // Polyfills required for MSW in Node environment
 import 'whatwg-fetch'

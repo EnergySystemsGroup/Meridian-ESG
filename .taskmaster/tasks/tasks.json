@@ -3492,11 +3492,112 @@
             "parentTaskId": 62
           }
         ]
+      },
+      {
+        "id": 63,
+        "title": "Upgrade Opportunity Details Page UI",
+        "description": "Enhance the funding opportunity details page to display all valuable data fields from the database that are currently unused, improving the information architecture and user experience",
+        "details": "The opportunity details page currently doesn't utilize several valuable fields from the funding_opportunities table including enhanced_description, scoring details, eligible_activities, disbursement_type, award_process, and notes. This task involves upgrading the UI to display this rich data in a well-organized manner.",
+        "testStrategy": "Manual testing of the opportunity details page with various opportunities to ensure all fields display correctly. Verify data consistency between database and UI. Test responsive design and accessibility.",
+        "status": "pending",
+        "dependencies": [],
+        "priority": "high",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Implement Enhanced Description Display",
+            "description": "Replace the basic description with the AI-enhanced description on the opportunity details page",
+            "dependencies": [],
+            "details": "1. Locate the component rendering the opportunity details (likely in src/components/opportunities/OpportunityDetails.js)\n2. Replace the current description field with enhanced_description\n3. If enhanced_description is empty, fall back to the original description\n4. Adjust styling to accommodate potentially longer content\n5. Update any related tests in test/components/opportunities/OpportunityDetails.test.js",
+            "status": "pending",
+            "testStrategy": "1. Unit test the component with opportunities having both enhanced and basic descriptions\n2. Visual inspection of rendered output\n3. Check responsive design on various screen sizes"
+          },
+          {
+            "id": 2,
+            "title": "Design and Implement Eligibility Information Display",
+            "description": "Create a cohesive approach for displaying eligible activities, eligible project types, and categories on the eligibility tab",
+            "dependencies": [
+              "63.1"
+            ],
+            "details": "1. Analyze the structure of eligible_activities, eligible_project_types, and categories fields in the database\n2. Design a hierarchical or grouped display for these fields in src/components/opportunities/EligibilityTab.js\n3. Implement the new design, ensuring clear labeling and separation between the different types\n4. Add collapsible sections if the content becomes too long\n5. Update related GraphQL queries in src/graphql/queries.js to include these fields",
+            "status": "pending",
+            "testStrategy": "1. Unit tests for the new eligibility display component\n2. Integration tests to ensure correct data flow from GraphQL to the component\n3. User acceptance testing to validate the clarity of the new layout"
+          },
+          {
+            "id": 3,
+            "title": "Refactor Key Details Section",
+            "description": "Add disbursement_type and award_process fields to key details, ensure correct source information display, and reorganize cost share and eligible locations",
+            "dependencies": [
+              "63.2"
+            ],
+            "details": "1. Update the KeyDetails component in src/components/opportunities/KeyDetails.js\n2. Add new fields for disbursement_type and award_process\n3. Verify and fix the source information display\n4. Move cost share and eligible locations to the eligibility tab if they're currently duplicated\n5. Adjust the layout to maintain a clean, organized appearance with the new fields",
+            "status": "pending",
+            "testStrategy": "1. Update unit tests for the KeyDetails component\n2. Perform visual regression testing to ensure the new layout is acceptable\n3. Verify correct data population for a variety of opportunity types"
+          },
+          {
+            "id": 4,
+            "title": "Validate and Fix Award Amount Display",
+            "description": "Verify that minimum_award, maximum_award, and total_funding_available fields are correctly pulled from the database and displayed",
+            "dependencies": [
+              "63.3"
+            ],
+            "details": "1. Review the current implementation of award amount display in src/components/opportunities/AwardDetails.js\n2. Verify that GraphQL queries in src/graphql/queries.js include all necessary award amount fields\n3. Ensure the component correctly handles and displays all three fields: minimum_award, maximum_award, and total_funding_available\n4. Implement proper formatting for currency values\n5. Add conditional rendering to handle cases where some fields might be null or undefined",
+            "status": "pending",
+            "testStrategy": "1. Unit tests for the AwardDetails component with various data scenarios\n2. Integration tests to verify correct data flow from GraphQL to the component\n3. Manual testing with a range of real opportunities to ensure correct display in all cases"
+          },
+          {
+            "id": 5,
+            "title": "Resolve Application Resources Display Issues",
+            "description": "Identify and fix cases where URLs for application resources (url, application_url, guidelines_url) are not being pulled and displayed correctly",
+            "dependencies": [
+              "63.4"
+            ],
+            "details": "1. Audit the current implementation of application resource links in src/components/opportunities/ApplicationResources.js\n2. Update GraphQL queries in src/graphql/queries.js to ensure all URL fields are being requested\n3. Implement proper error handling and fallback display for missing URLs\n4. Add validation to ensure URLs are properly formatted before display\n5. Implement consistent styling and labeling for all resource links",
+            "status": "pending",
+            "testStrategy": "1. Unit tests for the ApplicationResources component with various URL scenarios\n2. Integration tests to verify correct data retrieval and display\n3. Accessibility testing to ensure proper link behavior and screen reader compatibility\n4. Manual testing with a variety of real opportunities to catch edge cases"
+          },
+          {
+            "id": 6,
+            "title": "Restore and Enhance Relevance Tab with Scoring Analysis",
+            "description": "Uncomment and improve the relevance tab to display the detailed scoring breakdown, and analyze current scoring accuracy across opportunities",
+            "details": "1. Uncomment the relevance tab code in the opportunity details page\n2. Display the scoring object fields: overallScore, clientRelevance, projectRelevance, fundingAttractiveness, fundingType\n3. Create visual indicators and progress bars for each scoring component\n4. Add the relevance_reasoning field display with proper formatting\n5. Analyze a sample of opportunities to verify scoring accuracy and consistency\n6. Document any scoring discrepancies found and recommend improvements",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 63
+          },
+          {
+            "id": 7,
+            "title": "Analyze Eligible Locations Handling",
+            "description": "Analyze how we currently handle eligible locations (states) and design approach for future county, local, and utility-specific opportunities",
+            "details": "1. Review current implementation of eligible_states, is_national, and eligible_locations fields\n2. Analyze how state eligibility is displayed and filtered throughout the application\n3. Research database schema to understand how we could extend to handle county, local, and utility district eligibility\n4. Design a scalable approach for geographic eligibility that supports:\n   - National opportunities\n   - State-specific opportunities  \n   - County/local government opportunities\n   - Utility district/service area opportunities\n5. Recommend database schema changes if needed\n6. Plan UI changes to accommodate more granular geographic targeting",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 63
+          },
+          {
+            "id": 8,
+            "title": "Analyze Information Architecture for Opportunity Details",
+            "description": "Conduct comprehensive analysis of the opportunity details page information architecture to optimize user experience and data organization",
+            "details": "1. Audit current information hierarchy and organization on the opportunity details page\n2. Analyze user flow and information prioritization - what users need to see first vs. secondary information\n3. Review tab structure (Overview, Eligibility, Relevance) and determine optimal organization\n4. Assess whether current sidebar vs. main content division makes sense\n5. Identify information redundancy between different sections (Key Details, Eligibility tab, etc.)\n6. Research best practices for funding opportunity presentation from other platforms\n7. Create wireframes or mockups for improved information architecture\n8. Recommend specific changes to improve scanability, hierarchy, and user task completion\n9. Consider mobile responsiveness in the redesigned architecture",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 63
+          },
+          {
+            "id": 9,
+            "title": "A/B Test and Improve Actionable Summary and Enhanced Description Quality",
+            "description": "Test Claude Opus 4.1 vs Claude 3.5 Sonnet for enhanced description and actionable summary generation to improve content quality and readability",
+            "details": "1. Create A/B test comparing current Claude 3.5 Sonnet vs Claude Opus 4.1 for actionable summary generation\n2. Test both models on sample opportunities to evaluate quality differences in enhanced descriptions\n3. Analyze readability, relevance, and sales team utility of outputs from both models\n4. If Opus 4.1 shows improvement, update model configuration in Analysis Agent\n5. If results are still unsatisfactory, refine prompts for better actionable summary generation\n6. Focus particularly on making actionable summaries more concise and sales-oriented",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 63
+          }
+        ]
       }
     ],
     "metadata": {
       "created": "2025-06-17T23:54:58.582Z",
-      "updated": "2025-08-27T23:10:49.062Z",
+      "updated": "2025-08-30T15:36:53.134Z",
       "description": "Tasks for master context"
     }
   },

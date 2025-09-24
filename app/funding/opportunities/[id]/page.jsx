@@ -228,30 +228,73 @@ export default function OpportunityDetailPage() {
 									<TabsContent
 										value='overview'
 										className='animate-in fade-in-50 duration-300'>
-										{opportunity.actionable_summary && (
-											<div className='mb-6 bg-gradient-to-br from-amber-50 to-amber-50/50 dark:from-amber-900/20 dark:to-amber-900/5 p-5 rounded-lg border border-amber-200/70 dark:border-amber-800/30 shadow-sm'>
+										{/* 1. Program Overview */}
+										{opportunity.program_overview && (
+											<div className='mb-6 bg-gradient-to-br from-blue-50 to-blue-50/50 dark:from-blue-900/20 dark:to-blue-900/5 p-5 rounded-lg border border-blue-200/70 dark:border-blue-800/30 shadow-sm'>
 												<div className='flex items-start mb-2'>
-													<div className='mr-3 p-1.5 rounded-full bg-gradient-to-br from-amber-100 to-amber-50 dark:from-amber-800/30 dark:to-amber-700/20 shadow-sm'>
-														<Lightbulb className='h-5 w-5 text-amber-600 dark:text-amber-400' />
+													<div className='mr-3 p-1.5 rounded-full bg-gradient-to-br from-blue-100 to-blue-50 dark:from-blue-800/30 dark:to-blue-700/20 shadow-sm'>
+														<Info className='h-5 w-5 text-blue-600 dark:text-blue-400' />
 													</div>
-													<h3 className='text-lg font-medium text-amber-800 dark:text-amber-400'>
-														Actionable Summary
+													<h3 className='text-lg font-medium text-blue-800 dark:text-blue-400'>
+														Program Overview
 													</h3>
 												</div>
-												<p className='text-amber-900 dark:text-amber-300 pl-10'>
-													{opportunity.actionable_summary}
+												<p className='text-blue-900 dark:text-blue-300 pl-10 whitespace-pre-line leading-relaxed'>
+													{opportunity.program_overview}
 												</p>
 											</div>
 										)}
 
-										<div className='mb-6 bg-white dark:bg-neutral-900/30 p-5 rounded-lg border border-neutral-200/70 dark:border-neutral-800/30 shadow-sm'>
-											<h3 className='text-lg font-medium mb-3 text-neutral-900 dark:text-neutral-200'>
-												Description
-											</h3>
-											<p className='text-neutral-700 dark:text-neutral-300 whitespace-pre-line leading-relaxed'>
-												{opportunity.description || 'No description available.'}
-											</p>
-										</div>
+										{/* 2. Application Summary */}
+										{opportunity.application_summary && (
+											<div className='mb-6 bg-gradient-to-br from-green-50 to-green-50/50 dark:from-green-900/20 dark:to-green-900/5 p-5 rounded-lg border border-green-200/70 dark:border-green-800/30 shadow-sm'>
+												<div className='flex items-start mb-2'>
+													<div className='mr-3 p-1.5 rounded-full bg-gradient-to-br from-green-100 to-green-50 dark:from-green-800/30 dark:to-green-700/20 shadow-sm'>
+														<FileText className='h-5 w-5 text-green-600 dark:text-green-400' />
+													</div>
+													<h3 className='text-lg font-medium text-green-800 dark:text-green-400'>
+														Application Summary
+													</h3>
+												</div>
+												<p className='text-green-900 dark:text-green-300 pl-10 whitespace-pre-line leading-relaxed'>
+													{opportunity.application_summary}
+												</p>
+											</div>
+										)}
+
+										{/* 3. Program Insights */}
+										{opportunity.program_insights && (
+											<div className='mb-6 bg-gradient-to-br from-purple-50 to-purple-50/50 dark:from-purple-900/20 dark:to-purple-900/5 p-5 rounded-lg border border-purple-200/70 dark:border-purple-800/30 shadow-sm'>
+												<div className='flex items-start mb-2'>
+													<div className='mr-3 p-1.5 rounded-full bg-gradient-to-br from-purple-100 to-purple-50 dark:from-purple-800/30 dark:to-purple-700/20 shadow-sm'>
+														<Lightbulb className='h-5 w-5 text-purple-600 dark:text-purple-400' />
+													</div>
+													<h3 className='text-lg font-medium text-purple-800 dark:text-purple-400'>
+														Program Insights
+													</h3>
+												</div>
+												<p className='text-purple-900 dark:text-purple-300 pl-10 whitespace-pre-line leading-relaxed'>
+													{opportunity.program_insights}
+												</p>
+											</div>
+										)}
+
+										{/* 4. Program Use Cases */}
+										{opportunity.program_use_cases && (
+											<div className='mb-6 bg-gradient-to-br from-amber-50 to-amber-50/50 dark:from-amber-900/20 dark:to-amber-900/5 p-5 rounded-lg border border-amber-200/70 dark:border-amber-800/30 shadow-sm'>
+												<div className='flex items-start mb-2'>
+													<div className='mr-3 p-1.5 rounded-full bg-gradient-to-br from-amber-100 to-amber-50 dark:from-amber-800/30 dark:to-amber-700/20 shadow-sm'>
+														<Target className='h-5 w-5 text-amber-600 dark:text-amber-400' />
+													</div>
+													<h3 className='text-lg font-medium text-amber-800 dark:text-amber-400'>
+														Program Use Cases
+													</h3>
+												</div>
+												<p className='text-amber-900 dark:text-amber-300 pl-10 whitespace-pre-line leading-relaxed'>
+													{opportunity.program_use_cases}
+												</p>
+											</div>
+										)}
 
 										{opportunity.categories &&
 											opportunity.categories.length > 0 && (
@@ -442,59 +485,92 @@ export default function OpportunityDetailPage() {
 											<div className='bg-white dark:bg-neutral-900/30 p-5 rounded-lg border border-neutral-200/70 dark:border-neutral-800/30 shadow-sm'>
 												<div className='flex items-start mb-4'>
 													<div className='mr-3 flex-shrink-0 h-9 w-9'>
-														<svg viewBox='0 0 36 36' className='h-full w-full'>
-															<path
-																d='M18,3 C11.4,3 6,8.4 6,15 C6,25 18,33 18,33 C18,33 30,25 30,15 C30,8.4 24.6,3 18,3 Z'
-																fill='#f57c00'
+														<svg
+															viewBox='0 0 36 36'
+															className='h-full w-full'>
+															<rect
+																x='4'
+																y='4'
+																width='28'
+																height='28'
+																rx='3'
+																fill='#2196f3'
+															/>
+															<rect
+																x='8'
+																y='8'
+																width='20'
+																height='20'
+																rx='2'
+																fill='#e3f2fd'
+															/>
+															<rect
+																x='11'
+																y='12'
+																width='14'
+																height='2'
+																rx='1'
+																fill='#1976d2'
+															/>
+															<rect
+																x='11'
+																y='16'
+																width='10'
+																height='2'
+																rx='1'
+																fill='#1976d2'
+															/>
+															<rect
+																x='11'
+																y='20'
+																width='12'
+																height='2'
+																rx='1'
+																fill='#1976d2'
+															/>
+															<circle
+																cx='26'
+																cy='10'
+																r='6'
+																fill='#4caf50'
 															/>
 															<path
-																d='M18,8 C14.1,8 11,11.1 11,15 C11,18.9 14.1,22 18,22 C21.9,22 25,18.9 25,15 C25,11.1 21.9,8 18,8 Z'
-																fill='#ffe0b2'
-															/>
-															<path
-																d='M18,10 C15.2,10 13,12.2 13,15 C13,17.8 15.2,20 18,20 C20.8,20 23,17.8 23,15 C23,12.2 20.8,10 18,10 Z M18,18 C16.3,18 15,16.7 15,15 C15,13.3 16.3,12 18,12 C19.7,12 21,13.3 21,15 C21,16.7 19.7,18 18,18 Z'
-																fill='#fff3e0'
+																d='M23 10 L25 12 L29 8'
+																stroke='white'
+																strokeWidth='2'
+																fill='none'
+																strokeLinecap='round'
+																strokeLinejoin='round'
 															/>
 														</svg>
 													</div>
 													<h3 className='text-lg font-medium text-neutral-900 dark:text-neutral-200'>
-														Geographic Eligibility
+														Eligible Activities
 													</h3>
 												</div>
 
 												<div className='pl-10'>
-													{opportunity.is_national ? (
-														<div className='p-3 bg-gradient-to-r from-green-50 to-transparent dark:from-green-900/20 dark:to-transparent rounded-md flex items-center'>
-															<Globe className='h-5 w-5 text-green-600 dark:text-green-400 mr-2' />
-															<span className='text-green-700 dark:text-green-300 font-medium'>
-																National - Available across all states
-															</span>
-														</div>
-													) : opportunity.eligible_states &&
-													  opportunity.eligible_states.length > 0 ? (
+													{opportunity.eligible_activities && opportunity.eligible_activities.length > 0 ? (
 														<div>
 															<div className='mb-3 p-2 bg-gradient-to-r from-blue-50 to-transparent dark:from-blue-900/20 dark:to-transparent rounded-md'>
 																<span className='text-blue-700 dark:text-blue-300 font-medium'>
-																	Available in{' '}
-																	{opportunity.eligible_states.length} states
+																	This funding supports {opportunity.eligible_activities.length} types of activities
 																</span>
 															</div>
 															<div className='flex flex-wrap gap-2 max-w-[600px]'>
-																{opportunity.eligible_states
-																	.sort()
-																	.map((state, index) => (
-																		<Badge
-																			key={index}
-																			variant='outline'
-																			className='px-2.5 py-1 text-sm bg-neutral-50 dark:bg-neutral-800 border-neutral-200 dark:border-neutral-700 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors'>
-																			{state}
-																		</Badge>
-																	))}
+																{opportunity.eligible_activities.map((activity, index) => (
+																	<Badge
+																		key={index}
+																		variant='outline'
+																		className='px-2.5 py-1 text-sm bg-neutral-50 dark:bg-neutral-800 border-neutral-200 dark:border-neutral-700 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors'>
+																		{activity}
+																	</Badge>
+																))}
 															</div>
 														</div>
 													) : (
 														<div className='p-3 bg-neutral-50 dark:bg-neutral-800/50 rounded-md text-neutral-500 dark:text-neutral-400'>
-															Geographic eligibility information not available
+															Eligible activities information not available
 														</div>
 													)}
 												</div>
@@ -564,66 +640,6 @@ export default function OpportunityDetailPage() {
 												</div>
 											)}
 
-											{/* Cost Share Information */}
-											{opportunity.cost_share_required !== null && (
-												<div className='bg-white dark:bg-neutral-900/30 p-5 rounded-lg border border-neutral-200/70 dark:border-neutral-800/30 shadow-sm'>
-													<div className='flex items-start mb-4'>
-														<div className='mr-3 flex-shrink-0 h-9 w-9'>
-															<svg
-																viewBox='0 0 36 36'
-																className='h-full w-full'>
-																<path
-																	d='M32,15.5 C32,10.8 28.2,7 23.5,7 C20.8,7 18.6,8.5 16.5,10.5 C14.4,8.5 12.2,7 9.5,7 C4.8,7 1,10.8 1,15.5 C1,16.5 1.2,17.4 1.5,18.3 C3.2,24.5 16.5,32 16.5,32 C16.5,32 29.8,24.5 31.5,18.3 C31.8,17.4 32,16.5 32,15.5 Z'
-																	fill='#ef5350'
-																/>
-																<path
-																	d='M23.5,11 C21.2,11 20,11.9 18,13.9 C16,11.9 14.8,11 12.5,11 C9.5,11 7,13.5 7,16.5 C7,17.2 7.1,17.8 7.3,18.3 C8.5,22.8 18,28 18,28 C18,28 27.5,22.8 28.7,18.3 C28.9,17.8 29,17.2 29,16.5 C29,13.5 26.5,11 23.5,11 Z'
-																	fill='#ff8a80'
-																/>
-																<text
-																	x='18'
-																	y='20'
-																	fontFamily='Arial'
-																	fontSize='9'
-																	fontWeight='bold'
-																	fill='white'
-																	textAnchor='middle'>
-																	%
-																</text>
-															</svg>
-														</div>
-														<h3 className='text-lg font-medium text-neutral-900 dark:text-neutral-200'>
-															Cost Share Requirements
-														</h3>
-													</div>
-													<div className='pl-10'>
-														{opportunity.cost_share_required ? (
-															<div className='p-3 bg-amber-50 dark:bg-amber-900/20 rounded-md'>
-																<span className='text-amber-700 dark:text-amber-300 font-medium'>
-																	Cost share is required
-																	{opportunity.cost_share_percentage
-																		? ` (${opportunity.cost_share_percentage}%)`
-																		: ''}
-																</span>
-																<p className='text-neutral-600 dark:text-neutral-400 text-sm mt-1'>
-																	Applicants must contribute a portion of the
-																	project costs.
-																</p>
-															</div>
-														) : (
-															<div className='p-3 bg-green-50 dark:bg-green-900/20 rounded-md'>
-																<span className='text-green-700 dark:text-green-300 font-medium'>
-																	No cost share required
-																</span>
-																<p className='text-neutral-600 dark:text-neutral-400 text-sm mt-1'>
-																	Applicants do not need to contribute matching
-																	funds.
-																</p>
-															</div>
-														)}
-													</div>
-												</div>
-											)}
 										</div>
 									</TabsContent>
 

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef, Suspense } from 'react';
+import { useState, useEffect, useRef, useCallback, Suspense } from 'react';
 import MainLayout from '@/components/layout/main-layout';
 import { Button } from '@/components/ui/button';
 import {
@@ -90,9 +90,6 @@ function OpportunitiesContent() {
 	const [isPageLoading, setIsPageLoading] = useState(true); // Overall page load state
 	const [error, setError] = useState(null);
 	const [totalCount, setTotalCount] = useState(0);
-	const [searchQuery, setSearchQuery] = useState('');
-	const [debouncedSearchQuery, setDebouncedSearchQuery] = useState(searchQuery);
-	const [openFilterSection, setOpenFilterSection] = useState(null);
 	const searchParams = useSearchParams();
 	const router = useRouter();
 	const pathname = usePathname();
@@ -101,14 +98,17 @@ function OpportunitiesContent() {
 	// This avoids a useEffect and potential extra render
 	const initialFilters = {
 		status: searchParams.get('status') || null,
-		categories: [],
-		states: [],
-		page: 1,
+		categories: searchParams.get('categories') ? searchParams.get('categories').split(',') : [],
+		states: searchParams.get('states') ? searchParams.get('states').split(',') : [],
+		page: parseInt(searchParams.get('page')) || 1,
 		page_size: 9,
 		tracked: searchParams.get('tracked') === 'true',
 	};
 
 	const [filters, setFilters] = useState(initialFilters);
+	const [searchQuery, setSearchQuery] = useState(searchParams.get('search') || '');
+	const [debouncedSearchQuery, setDebouncedSearchQuery] = useState(searchParams.get('search') || '');
+	const [openFilterSection, setOpenFilterSection] = useState(null);
 
 	const [availableTags, setAvailableTags] = useState([]);
 	const [categoriesApiResponse, setCategoriesApiResponse] = useState(null);
@@ -243,7 +243,7 @@ function OpportunitiesContent() {
 		return () => {
 			clearTimeout(handler);
 		};
-	}, [searchQuery]); // Only re-run the effect if searchQuery changes
+	}, [searchQuery, sortOption, sortDirection]); // Only re-run the effect if searchQuery changes
 
 	// Log whenever filters change
 	useEffect(() => {
@@ -345,9 +345,10 @@ function OpportunitiesContent() {
 						'[Debug Tracking] Appending trackedIds to queryParams:',
 						trackedOpportunityIds.join(',')
 					);
-					if (trackedOpportunityIds.length > 0) {
-						queryParams.append('trackedIds', trackedOpportunityIds.join(','));
-					}
+					// Always send trackedIds parameter when tracked filter is on
+					// This ensures the API knows to filter to tracked opportunities only,
+					// even if the list is empty (which should return no results)
+					queryParams.append('trackedIds', trackedOpportunityIds.join(','));
 				}
 
 				// console.log('Current filters:', filters); // Replaced by more specific logs
@@ -358,7 +359,31 @@ function OpportunitiesContent() {
 
 				// Fetch data from our API
 				const response = await fetch(`/api/funding?${queryParams.toString()}`);
-				const result = await response.json();
+
+				if (!response.ok) {
+					console.error(`API request failed: ${response.status} ${response.statusText}`);
+					console.error('Request URL:', `/api/funding?${queryParams.toString()}`);
+					throw new Error(`API request failed: ${response.status} ${response.statusText}`);
+				}
+
+				// Check if response is JSON
+				const contentType = response.headers.get('content-type');
+				if (!contentType || !contentType.includes('application/json')) {
+					console.error('Response is not JSON:', contentType);
+					console.error('Request URL:', `/api/funding?${queryParams.toString()}`);
+					throw new Error(`API returned non-JSON response: ${contentType}`);
+				}
+
+				let result;
+				try {
+					result = await response.json();
+				} catch (jsonError) {
+					console.error('Failed to parse JSON response:', jsonError);
+					console.error('Response status:', response.status);
+					console.error('Response headers:', Object.fromEntries(response.headers.entries()));
+					console.error('Request URL:', `/api/funding?${queryParams.toString()}`);
+					throw new Error(`Invalid JSON response from API: ${jsonError.message}`);
+				}
 
 				if (!result.success) {
 					throw new Error(result.error || 'Failed to fetch opportunities');
@@ -396,6 +421,64 @@ function OpportunitiesContent() {
 		isInitialized,
 		categoryMapping,
 	]);
+
+	// Update URL parameters based on current filters and sort
+	const updateUrlParams = useCallback((newFilters = filters, newSort = sortOption, newSortDirection = sortDirection, newSearchQuery = searchQuery) => {
+		const params = new URLSearchParams();
+
+		// Add search query
+		if (newSearchQuery && newSearchQuery.trim()) {
+			params.set('search', newSearchQuery.trim());
+		}
+
+		// Add status filter
+		if (newFilters.status) {
+			params.set('status', newFilters.status);
+		}
+
+		// Add categories filter
+		if (newFilters.categories && newFilters.categories.length > 0) {
+			params.set('categories', newFilters.categories.join(','));
+		}
+
+		// Add states filter
+		if (newFilters.states && newFilters.states.length > 0) {
+			params.set('states', newFilters.states.join(','));
+		}
+
+		// Add tracked filter
+		if (newFilters.tracked) {
+			params.set('tracked', 'true');
+		}
+
+		// Add sort parameters (only if not default)
+		if (newSort && newSort !== 'relevance') {
+			params.set('sort', newSort);
+		}
+		if (newSortDirection && newSortDirection !== 'desc') {
+			params.set('sort_direction', newSortDirection);
+		}
+
+		// Add pagination (only if not first page)
+		if (newFilters.page && newFilters.page > 1) {
+			params.set('page', newFilters.page.toString());
+		}
+
+		// Update URL without triggering a page reload
+		const newUrl = params.toString() ? `${pathname}?${params.toString()}` : pathname;
+
+		// Use setTimeout to prevent router updates during render
+		setTimeout(() => {
+			router.replace(newUrl, { scroll: false });
+		}, 0);
+	}, [filters, sortOption, sortDirection, searchQuery, pathname, router]);
+
+	// Sync URL when filters, sort, or search change
+	useEffect(() => {
+		if (isInitialized) {
+			updateUrlParams();
+		}
+	}, [filters, sortOption, sortDirection, searchQuery, isInitialized, updateUrlParams]);
 
 	// Toggle filter section
 	const toggleFilterSection = (section) => {
@@ -440,7 +523,9 @@ function OpportunitiesContent() {
 		setStateSearchInput('');
 
 		// Clear URL parameters
-		router.replace(pathname, { scroll: false });
+		setTimeout(() => {
+			router.replace(pathname, { scroll: false });
+		}, 0);
 	};
 
 	// Filter categories for search
@@ -465,20 +550,30 @@ function OpportunitiesContent() {
 
 	// Handle sort option change
 	const handleSortSelect = (option) => {
+		let newSort = option;
+		let newDirection = sortDirection;
+		
 		if (option === sortOption) {
 			// Toggle direction if same option is selected
-			setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+			newDirection = sortDirection === 'asc' ? 'desc' : 'asc';
+			setSortDirection(newDirection);
 		} else {
 			// Set new option with default direction
-			setSortOption(option);
+			setSortOption(newSort);
 			// Set default direction based on the sort type
 			if (option === 'deadline') {
-				setSortDirection('asc'); // Soonest deadlines first
+				newDirection = 'asc'; // Soonest deadlines first
 			} else {
-				setSortDirection('desc'); // Higher values first for other sorts
+				newDirection = 'desc'; // Higher values first for other sorts
 			}
+			setSortDirection(newDirection);
 		}
-		// Don't close the dropdown when selecting an option
+		
+		// Update URL with new sort params
+		updateUrlParams(filters, newSort, newDirection);
+		
+		// Close the dropdown
+		setSortMenuOpen(false);
 	};
 
 	// Get display name for sort options
@@ -508,21 +603,7 @@ function OpportunitiesContent() {
 			page: 1, // Reset to first page when toggling filter
 		}));
 
-		// Update URL when toggling the filter
-		const params = new URLSearchParams(searchParams.toString());
-		if (currentlyTracked) {
-			// If currently tracked, remove the tracked parameter
-			params.delete('tracked');
-		} else {
-			// If not currently tracked, add the tracked parameter
-			params.set('tracked', 'true');
-		}
-
-		// Use Next.js router to update URL without reloading the page
-		const newUrl = params.toString()
-			? `${pathname}?${params.toString()}`
-			: pathname;
-		router.replace(newUrl, { scroll: false });
+		// URL will be updated automatically by the URL sync useEffect
 	};
 
 	// Render tracked opportunities filter button
@@ -620,46 +701,26 @@ function OpportunitiesContent() {
 
 	// Handle page change
 	const handlePageChange = (newPage) => {
-		setFilters((prev) => ({
-			...prev,
-			page: newPage,
-		}));
+		setFilters((prev) => {
+			const newFilters = {
+				...prev,
+				page: newPage,
+			};
+			// Update URL with new page
+			updateUrlParams(newFilters);
+			return newFilters;
+		});
 		// Scroll to top when changing pages
 		window.scrollTo({ top: 0, behavior: 'smooth' });
 	};
 
-	// Reset to page 1 when filters change (except for page itself)
-	useEffect(() => {
-		// Store the current filters except page
-		const currentFiltersWithoutPage = { ...filters };
-		delete currentFiltersWithoutPage.page;
-
-		// Store the previous filters except page
-		const prevFiltersWithoutPage = { ...prevFilters.current };
-		delete prevFiltersWithoutPage.page;
-
-		// Compare if any filter other than page has changed
-		if (
-			JSON.stringify(currentFiltersWithoutPage) !==
-			JSON.stringify(prevFiltersWithoutPage)
-		) {
-			setFilters((prev) => ({
-				...prev,
-				page: 1,
-			}));
-		}
-
-		// Update previous filters reference
-		prevFilters.current = { ...filters };
-	}, [
-		filters.status,
-		filters.categories,
-		filters.states,
-		debouncedSearchQuery,
-	]);
-
 	// Track previous filters
 	const prevFilters = useRef(filters);
+
+	// Update previous filters reference for comparison
+	useEffect(() => {
+		prevFilters.current = { ...filters };
+	}, [filters]);
 
 	// Render pagination controls
 	const renderPaginationControls = () => {
@@ -829,7 +890,9 @@ function OpportunitiesContent() {
 										size='sm'
 										className='text-blue-600 hover:text-blue-800'
 										onClick={() => {
-											setFilters({ ...filters, categories: [], page: 1 });
+											const newFilters = { ...filters, categories: [], page: 1 };
+											setFilters(newFilters);
+											updateUrlParams(newFilters);
 										}}>
 										Clear selections
 									</Button>
@@ -957,7 +1020,9 @@ function OpportunitiesContent() {
 										size='sm'
 										className='text-blue-600 hover:text-blue-800'
 										onClick={() => {
-											setFilters({ ...filters, states: [], page: 1 });
+											const newFilters = { ...filters, states: [], page: 1 };
+											setFilters(newFilters);
+											updateUrlParams(newFilters);
 										}}>
 										Clear selections
 									</Button>
@@ -986,21 +1051,13 @@ function OpportunitiesContent() {
 							size={14}
 							className='cursor-pointer'
 							onClick={() => {
-								setFilters({
+								const newFilters = {
 									...filters,
 									tracked: false,
 									page: 1,
-								});
-
-								// Update URL by removing the tracked parameter
-								const params = new URLSearchParams(searchParams.toString());
-								params.delete('tracked');
-
-								// Use Next.js router to update URL without reloading the page
-								const newUrl = params.toString()
-									? `${pathname}?${params.toString()}`
-									: pathname;
-								router.replace(newUrl, { scroll: false });
+								};
+								setFilters(newFilters);
+								updateUrlParams(newFilters);
 							}}
 						/>
 					</span>
@@ -1022,11 +1079,13 @@ function OpportunitiesContent() {
 							size={14}
 							className='cursor-pointer'
 							onClick={() => {
-								setFilters({
+								const newFilters = {
 									...filters,
 									status: null,
 									page: 1,
-								});
+								};
+								setFilters(newFilters);
+								updateUrlParams(newFilters);
 							}}
 						/>
 					</span>
@@ -1051,11 +1110,13 @@ function OpportunitiesContent() {
 									const updatedCategories = filters.categories.filter(
 										(c) => c !== category
 									);
-									setFilters({
+									const newFilters = {
 										...filters,
 										categories: updatedCategories,
 										page: 1,
-									});
+									};
+									setFilters(newFilters);
+									updateUrlParams(newFilters);
 								}}
 							/>
 						</span>
@@ -1073,11 +1134,13 @@ function OpportunitiesContent() {
 							className='cursor-pointer'
 							onClick={() => {
 								const updatedStates = filters.states.filter((s) => s !== state);
-								setFilters({
+								const newFilters = {
 									...filters,
 									states: updatedStates,
 									page: 1,
-								});
+								};
+								setFilters(newFilters);
+								updateUrlParams(newFilters);
 							}}
 						/>
 					</span>
@@ -1142,7 +1205,7 @@ function OpportunitiesContent() {
 							<Input
 								type='text'
 								className='pl-10'
-								placeholder='Search opportunities...'
+								placeholder='Search titles, descriptions, summaries...'
 								value={searchQuery}
 								onChange={(e) => setSearchQuery(e.target.value)}
 							/>

@@ -37,8 +37,10 @@ export async function GET(request) {
 
 		// Handle tracked IDs array
 		const trackedIds = searchParams.get('trackedIds');
-		if (trackedIds) {
-			filters.trackedIds = trackedIds.split(',');
+		if (trackedIds !== null) {
+			// If trackedIds parameter exists (even if empty), set the filter
+			// Empty string means "filter to tracked opportunities but no IDs = no results"
+			filters.trackedIds = trackedIds ? trackedIds.split(',').filter(id => id.trim()) : [];
 		}
 
 		// Add search filtering if present

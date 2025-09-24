@@ -28,7 +28,7 @@ const ClientSideActiveLink = ({ href, children, className, ...props }) => {
 	}, [className, activeClassName]);
 
 	return (
-		<Link href={href} className={combinedClassName} {...props}>
+		<Link href={href} prefetch={true} className={combinedClassName} {...props}>
 			{children}
 		</Link>
 	);
@@ -48,7 +48,7 @@ const MainLayout = ({ children }) => {
 					<div className='flex h-16 items-center justify-between'>
 						{/* Logo and Brand Section */}
 						<div className='flex items-center'>
-							<Link href='/' className='flex items-center group'>
+							<Link href='/' prefetch={true} className='flex items-center group'>
 								<div className='flex flex-col'>
 									<span className='font-extrabold text-2xl md:text-3xl tracking-tight text-blue-600 dark:text-blue-400 group-hover:text-blue-700 dark:group-hover:text-blue-300 transition-colors'>
 										Meridian
@@ -180,6 +180,7 @@ const ListItem = React.forwardRef(
 				<Link
 					ref={ref}
 					href={href}
+					prefetch={true}
 					className={cn(
 						'block select-none space-y-1 rounded-md p-4 leading-none no-underline outline-none transition-all duration-200',
 						'hover:bg-blue-50 hover:text-blue-600 dark:hover:bg-blue-900/20 dark:hover:text-blue-400',

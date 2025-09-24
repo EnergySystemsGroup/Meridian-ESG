@@ -198,13 +198,16 @@ export default function Page() {
 				const response = await fetch('/api/categories');
 				const result = await response.json();
 
-				if (result.success) {
+				if (result.success && result.rawToNormalizedMap) {
 					setCategoryMapping(result.rawToNormalizedMap);
 					console.log(
 						'Loaded category mapping with',
 						Object.keys(result.rawToNormalizedMap).length,
 						'entries'
 					);
+				} else if (result.success) {
+					console.warn('API returned success but no category mapping data:', result);
+					setCategoryMapping({});
 				} else {
 					console.error('Error fetching categories:', result.error);
 				}
@@ -403,43 +406,57 @@ export default function Page() {
 				);
 				const result = await response.json();
 
-				if (result.success) {
-					// Format the data for display
-					const formattedOpportunities = result.data.opportunities.map(
-						(opp) => ({
-							id: opp.id,
-							title: opp.title,
-							amount: formatAmount(
-								opp.minimum_award,
-								opp.maximum_award,
-								opp.total_funding_available
-							),
-							closeDate:
-								opp.close_date && new Date(opp.close_date).getFullYear() > 1970
-									? new Date(opp.close_date).toLocaleDateString()
-									: 'No deadline specified',
-							source: opp.source_name,
-							sourceType: opp.source_type,
-							status: opp.status,
-							isNational: opp.is_national,
-							actionable_summary: opp.actionable_summary,
-							description: opp.description,
-							tags: opp.tags || [],
-							categories: opp.categories || [],
-							eligible_applicants: opp.eligible_applicants || [],
-							eligible_project_types: opp.eligible_project_types || [],
-							eligible_locations: opp.eligible_locations || [],
-							relevance_score: opp.relevance_score,
-							url: opp.url,
-							funding_type: opp.funding_type,
-							agency_name: opp.agency_name,
+				if (result.success && result.data && Array.isArray(result.data.opportunities)) {
+					// Format the data for display - filter out any null/undefined opportunities first
+					const formattedOpportunities = result.data.opportunities
+						.filter(opp => opp && opp.id) // Filter out null/undefined opportunities
+						.map(
+						(opp) => {
+							try {
+								return {
+									id: opp.id,
+									title: opp.title || 'Untitled',
+									amount: formatAmount(
+										opp.minimum_award,
+										opp.maximum_award,
+										opp.total_funding_available
+									),
+									closeDate:
+										opp.close_date && new Date(opp.close_date).getFullYear() > 1970
+											? new Date(opp.close_date).toLocaleDateString()
+											: 'No deadline specified',
+									source: opp.source_name || 'Unknown',
+									sourceType: opp.source_type || 'Unknown',
+									status: opp.status || 'Unknown',
+									isNational: opp.is_national || false,
+									actionable_summary: opp.actionable_summary || '',
+									description: opp.description || '',
+									tags: opp.tags || [],
+									categories: opp.categories || [],
+									eligible_applicants: opp.eligible_applicants || [],
+									eligible_project_types: opp.eligible_project_types || [],
+									eligible_locations: opp.eligible_locations || [],
+									relevance_score: opp.relevance_score || 0,
+									url: opp.url || '',
+									funding_type: opp.funding_type || 'Unknown',
+									agency_name: opp.agency_name || 'Unknown',
+								};
+							} catch (error) {
+								console.error('Error formatting opportunity:', error, opp);
+								return null; // Return null for failed opportunities
+							}
 						})
-					);
+						.filter(opp => opp !== null); // Filter out any failed opportunities
 
 					setStateOpportunities(formattedOpportunities);
 					setStateOpportunitiesTotalCount(
 						result.data.total || formattedOpportunities.length
 					);
+				} else if (result.success) {
+					// Success but no data - handle gracefully
+					console.warn('API returned success but no opportunities data:', result);
+					setStateOpportunities([]);
+					setStateOpportunitiesTotalCount(0);
 				} else {
 					console.error('Error in API response:', result.error);
 					setError(result.error);
@@ -586,9 +603,9 @@ export default function Page() {
 										</SelectTrigger>
 										<SelectContent>
 											<SelectItem value='all'>All Status</SelectItem>
-											<SelectItem value='Open'>Open</SelectItem>
-											<SelectItem value='Upcoming'>Upcoming</SelectItem>
-											<SelectItem value='Closed'>Closed</SelectItem>
+											<SelectItem value='open'>Open</SelectItem>
+											<SelectItem value='upcoming'>Upcoming</SelectItem>
+											<SelectItem value='closed'>Closed</SelectItem>
 										</SelectContent>
 									</Select>
 								</div>
@@ -604,8 +621,8 @@ export default function Page() {
 									/>
 								</div>
 
-								{/* Source Type Filter */}
-								<div className='w-[160px]'>
+								{/* Source Type Filter - Temporarily disabled due to data quality issues */}
+								{/* <div className='w-[160px]'>
 									<Select
 										value={filters.sourceType}
 										onValueChange={(value) =>
@@ -622,7 +639,7 @@ export default function Page() {
 											<SelectItem value='Private'>Private</SelectItem>
 										</SelectContent>
 									</Select>
-								</div>
+								</div> */}
 
 								{/* Award Amount Filter with improved label spacing */}
 								<div className='w-[220px]'>
@@ -812,14 +829,14 @@ export default function Page() {
 																</h3>
 																<Badge
 																	variant={
-																		opportunity.status === 'Open'
+																		opportunity.status === 'open'
 																			? 'default'
-																			: opportunity.status === 'Upcoming'
+																			: opportunity.status === 'upcoming'
 																			? 'success'
 																			: 'destructive'
 																	}
 																	className='h-7 px-3 flex items-center justify-center min-w-[70px] self-start'>
-																	{opportunity.status}
+																	{opportunity.status.charAt(0).toUpperCase() + opportunity.status.slice(1)}
 																</Badge>
 															</div>
 															<div className='flex justify-between text-xs text-muted-foreground mt-1'>

@@ -1,3 +1,6 @@
+'use client';
+
+import { useState, useMemo } from 'react';
 import MainLayout from '@/components/layout/main-layout';
 import { Button } from '@/components/ui/button';
 import {
@@ -7,34 +10,97 @@ import {
 	CardHeader,
 	CardTitle,
 } from '@/components/ui/card';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { AlertTriangle } from 'lucide-react';
+import { AlertTriangle, ExternalLink } from 'lucide-react';
+import Link from 'next/link';
+import legislationData from '@/data/legislation.json';
 
 export default function LegislationPage() {
+	const [statusFilter, setStatusFilter] = useState('All');
+	const [jurisdictionFilter, setJurisdictionFilter] = useState('All');
+
+	// Filter and sort bills based on current filters
+	const filteredBills = useMemo(() => {
+		return legislationData.bills
+			.filter((bill) => {
+				const matchesStatus = statusFilter === 'All' ||
+					(statusFilter === 'Active' && (bill.status === 'active' || bill.status === 'passed-house')) ||
+					(statusFilter === 'Enacted' && bill.status === 'enacted') ||
+					bill.status === statusFilter.toLowerCase();
+				const matchesJurisdiction = jurisdictionFilter === 'All' ||
+					bill.jurisdiction === jurisdictionFilter.toLowerCase();
+				return matchesStatus && matchesJurisdiction;
+			})
+			.sort((a, b) => {
+				// Sort by last action date, most recent first
+				const dateA = new Date(a.lastAction.date);
+				const dateB = new Date(b.lastAction.date);
+				return dateB - dateA;
+			});
+	}, [statusFilter, jurisdictionFilter]);
+
 	return (
 		<MainLayout>
 			<div className='container py-10'>
-				<Alert variant='warning' className='mb-6 bg-amber-50 border-amber-300'>
-					<AlertTriangle className='h-4 w-4 text-amber-500' />
-					<AlertTitle className='text-amber-600'>Demo Data</AlertTitle>
-					<AlertDescription className='text-amber-700'>
-						This section currently displays sample data for demonstration
-						purposes only. Live legislative data integration is coming soon.
-					</AlertDescription>
-				</Alert>
-
 				<div className='flex justify-between items-center mb-6'>
 					<h1 className='text-3xl font-bold'>Legislation Tracker</h1>
 					<div className='flex gap-2'>
-						<Button variant='outline'>Filter</Button>
 						<Button variant='outline'>Sort</Button>
 						<Button>Export</Button>
 					</div>
 				</div>
 
+				{/* Filter Controls */}
+				<div className='flex gap-4 mb-6'>
+					<div className='flex gap-2'>
+						<Button
+							variant={statusFilter === 'All' ? 'default' : 'outline'}
+							onClick={() => setStatusFilter('All')}
+							className='rounded-full'>
+							All
+						</Button>
+						<Button
+							variant={statusFilter === 'Active' ? 'default' : 'outline'}
+							onClick={() => setStatusFilter('Active')}
+							className='rounded-full'>
+							Active
+						</Button>
+						<Button
+							variant={statusFilter === 'Enacted' ? 'default' : 'outline'}
+							onClick={() => setStatusFilter('Enacted')}
+							className='rounded-full'>
+							Enacted
+						</Button>
+					</div>
+					<div className='flex gap-2 border-l pl-4'>
+						<Button
+							variant={jurisdictionFilter === 'All' ? 'default' : 'outline'}
+							onClick={() => setJurisdictionFilter('All')}
+							className='rounded-full'>
+							All
+						</Button>
+						<Button
+							variant={jurisdictionFilter === 'Federal' ? 'default' : 'outline'}
+							onClick={() => setJurisdictionFilter('Federal')}
+							className='rounded-full'>
+							Federal
+						</Button>
+						<Button
+							variant={jurisdictionFilter === 'California' ? 'default' : 'outline'}
+							onClick={() => setJurisdictionFilter('California')}
+							className='rounded-full'>
+							California
+						</Button>
+					</div>
+				</div>
+
+				{/* Results summary */}
+				<div className='text-sm text-muted-foreground mb-4'>
+					Showing {filteredBills.length} of {legislationData.bills.length} bills
+				</div>
+
 				<div className='grid gap-6 md:grid-cols-2 lg:grid-cols-3 mb-8'>
-					{bills.map((bill) => (
-						<BillCard key={`${bill.jurisdiction}-${bill.number}`} bill={bill} />
+					{filteredBills.map((bill) => (
+						<BillCard key={bill.id} bill={bill} />
 					))}
 				</div>
 			</div>
@@ -45,17 +111,20 @@ export default function LegislationPage() {
 function BillCard({ bill }) {
 	const {
 		title,
-		number,
+		billNumber,
 		jurisdiction,
 		status,
 		lastAction,
 		summary,
 		tags,
-		relevance,
+		sponsor,
+		chamber,
+		cosponsors,
+		externalUrl,
 	} = bill;
 
 	return (
-		<Card>
+		<Card className='h-full flex flex-col'>
 			<CardHeader className='pb-3'>
 				<div className='flex justify-between items-start'>
 					<CardTitle className='text-lg'>{title}</CardTitle>
@@ -63,48 +132,63 @@ function BillCard({ bill }) {
 						className={`text-xs px-2 py-1 rounded-full ${getStatusColor(
 							status
 						)}`}>
-						{status}
+						{formatStatus(status)}
 					</span>
 				</div>
 				<CardDescription>
-					{number} | {jurisdiction}
+					{billNumber} | {formatJurisdiction(jurisdiction)} | {formatChamber(chamber)}
 				</CardDescription>
 			</CardHeader>
-			<CardContent>
-				<div className='space-y-4'>
+			<CardContent className='flex-1 flex flex-col'>
+				<div className='space-y-4 flex-1'>
 					<p className='text-sm text-muted-foreground line-clamp-2'>
 						{summary}
 					</p>
 
 					<div className='flex flex-wrap gap-1'>
-						{tags.map((tag) => (
+						{tags.slice(0, 3).map((tag) => (
 							<span
-								key={`${number}-${tag}`}
+								key={`${billNumber}-${tag}`}
 								className='text-xs bg-secondary text-secondary-foreground px-2 py-1 rounded-full'>
 								{tag}
 							</span>
 						))}
+						{tags.length > 3 && (
+							<span className='text-xs text-muted-foreground px-2 py-1'>
+								+{tags.length - 3} more
+							</span>
+						)}
 					</div>
 
 					<div className='grid grid-cols-2 gap-2 text-sm'>
 						<div>
-							<div className='text-muted-foreground'>Last Action</div>
-							<div className='font-medium'>{lastAction.date}</div>
+							<div className='text-muted-foreground'>Sponsor</div>
+							<div className='font-medium truncate'>{sponsor}</div>
 						</div>
 						<div>
-							<div className='text-muted-foreground'>Relevance</div>
-							<div className='flex items-center'>
-								<div className='w-full bg-secondary rounded-full h-2 mr-2'>
-									<div
-										className='bg-primary h-2 rounded-full'
-										style={{ width: `${relevance}%` }}></div>
-								</div>
-								<span>{relevance}%</span>
-							</div>
+							<div className='text-muted-foreground'>Cosponsors</div>
+							<div className='font-medium'>{cosponsors}</div>
 						</div>
 					</div>
 
-					<Button className='w-full'>View Details</Button>
+					<div className='text-sm'>
+						<div className='text-muted-foreground mb-1'>Last Action</div>
+						<div className='font-medium'>{lastAction.date}</div>
+						<div className='text-xs text-muted-foreground line-clamp-2'>
+							{lastAction.description}
+						</div>
+					</div>
+				</div>
+
+				<div className='flex gap-2 mt-4'>
+					{externalUrl && (
+						<Button size='sm' className='flex-1 bg-blue-600 hover:bg-blue-700' asChild>
+							<Link href={externalUrl} target='_blank' rel='noopener noreferrer'>
+								<ExternalLink className='w-4 h-4 mr-1' />
+								View Bill
+							</Link>
+						</Button>
+					)}
 				</div>
 			</CardContent>
 		</Card>
@@ -113,146 +197,47 @@ function BillCard({ bill }) {
 
 function getStatusColor(status) {
 	switch (status) {
-		case 'Introduced':
+		case 'active':
 			return 'bg-blue-100 text-blue-800';
-		case 'Committee':
+		case 'passed-house':
 			return 'bg-purple-100 text-purple-800';
-		case 'Passed':
+		case 'enacted':
 			return 'bg-green-100 text-green-800';
-		case 'Failed':
+		case 'failed':
 			return 'bg-red-100 text-red-800';
 		default:
 			return 'bg-gray-100 text-gray-800';
 	}
 }
 
-// Sample data
-const bills = [
-	{
-		title: 'Building Energy Efficiency Act',
-		number: 'H.R. 123',
-		jurisdiction: 'Federal',
-		status: 'Committee',
-		lastAction: {
-			action: 'Referred to Subcommittee on Energy',
-			date: 'Mar 28, 2025',
-		},
-		summary:
-			'Establishes new energy efficiency standards for commercial buildings and provides funding for retrofits and upgrades to meet these standards.',
-		tags: ['Energy Efficiency', 'Commercial', 'Standards'],
-		relevance: 85,
-	},
-	{
-		title: 'Clean Energy Schools Initiative',
-		number: 'S.B. 456',
-		jurisdiction: 'California',
-		status: 'Introduced',
-		lastAction: {
-			action: 'Introduced in Senate',
-			date: 'Mar 15, 2025',
-		},
-		summary:
-			'Provides funding for K-12 schools to implement clean energy projects including solar installations, energy efficiency upgrades, and electric vehicle infrastructure.',
-		tags: ['K-12', 'Clean Energy', 'California'],
-		relevance: 90,
-	},
-	{
-		title: 'Infrastructure Investment Act',
-		number: 'H.R. 789',
-		jurisdiction: 'Federal',
-		status: 'Passed',
-		lastAction: {
-			action: 'Signed by President',
-			date: 'Apr 02, 2025',
-		},
-		summary:
-			'Comprehensive infrastructure bill that includes significant funding for energy efficiency improvements in public buildings and transportation electrification.',
-		tags: ['Infrastructure', 'Public Buildings', 'Transportation'],
-		relevance: 75,
-	},
-	{
-		title: 'Building Standards Update',
-		number: 'A.B. 567',
-		jurisdiction: 'California',
-		status: 'Committee',
-		lastAction: {
-			action:
-				'Hearing scheduled in Assembly Committee on Housing and Community Development',
-			date: 'Mar 10, 2025',
-		},
-		summary:
-			'Updates building energy codes to require higher efficiency standards and electrification readiness in new construction and major renovations.',
-		tags: ['Building Codes', 'Electrification', 'California'],
-		relevance: 80,
-	},
-	{
-		title: 'Renewable Energy Tax Credit Extension',
-		number: 'S. 345',
-		jurisdiction: 'Federal',
-		status: 'Introduced',
-		lastAction: {
-			action: 'Introduced in Senate',
-			date: 'Feb 05, 2025',
-		},
-		summary:
-			'Extends and expands tax credits for renewable energy installations including solar, wind, and geothermal systems for commercial and residential buildings.',
-		tags: ['Tax Credits', 'Renewable Energy', 'Federal'],
-		relevance: 70,
-	},
-	{
-		title: 'School Facility Modernization Act',
-		number: 'H.R. 567',
-		jurisdiction: 'Federal',
-		status: 'Committee',
-		lastAction: {
-			action: 'Hearing in House Education Committee',
-			date: 'Mar 30, 2025',
-		},
-		summary:
-			'Authorizes funding for K-12 school facility improvements with emphasis on energy efficiency, indoor air quality, and modernization of learning environments.',
-		tags: ['K-12', 'Facilities', 'Federal'],
-		relevance: 95,
-	},
-	{
-		title: 'Clean Transportation Initiative',
-		number: 'S.B. 789',
-		jurisdiction: 'Oregon',
-		status: 'Passed',
-		lastAction: {
-			action: 'Signed by Governor',
-			date: 'Mar 25, 2025',
-		},
-		summary:
-			'Establishes incentives and requirements for transportation electrification including EV charging infrastructure at public buildings and schools.',
-		tags: ['Transportation', 'Electrification', 'Oregon'],
-		relevance: 65,
-	},
-	{
-		title: 'Energy Storage Incentive Program',
-		number: 'H.B. 234',
-		jurisdiction: 'Washington',
-		status: 'Committee',
-		lastAction: {
-			action: 'Passed House Committee on Energy',
-			date: 'Apr 01, 2025',
-		},
-		summary:
-			'Creates incentives for installation of energy storage systems paired with renewable energy generation at commercial and institutional facilities.',
-		tags: ['Energy Storage', 'Renewable Energy', 'Washington'],
-		relevance: 75,
-	},
-	{
-		title: 'Zero Emission Building Standard',
-		number: 'S.B. 301',
-		jurisdiction: 'California',
-		status: 'Introduced',
-		lastAction: {
-			action: 'Introduced in Senate',
-			date: 'Mar 08, 2025',
-		},
-		summary:
-			'Establishes timeline and requirements for new construction to achieve zero net carbon emissions through efficiency, electrification, and renewable energy.',
-		tags: ['Zero Emissions', 'Building Standards', 'California'],
-		relevance: 85,
-	},
-];
+function formatStatus(status) {
+	switch (status) {
+		case 'active':
+			return 'Active';
+		case 'passed-house':
+			return 'Passed House';
+		case 'enacted':
+			return 'Enacted';
+		case 'failed':
+			return 'Failed';
+		default:
+			return status.charAt(0).toUpperCase() + status.slice(1);
+	}
+}
+
+function formatJurisdiction(jurisdiction) {
+	return jurisdiction.charAt(0).toUpperCase() + jurisdiction.slice(1);
+}
+
+function formatChamber(chamber) {
+	switch (chamber) {
+		case 'house':
+			return 'House';
+		case 'senate':
+			return 'Senate';
+		case 'assembly':
+			return 'Assembly';
+		default:
+			return chamber ? chamber.charAt(0).toUpperCase() + chamber.slice(1) : '';
+	}
+}
