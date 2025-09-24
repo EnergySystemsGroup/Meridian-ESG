@@ -13,6 +13,7 @@ import { Button } from '@/components/ui/button';
 import { AlertTriangle } from 'lucide-react';
 import Link from 'next/link';
 import FundingCategoryChart from '@/components/dashboard/FundingCategoryChart';
+import legislationData from '@/data/legislation.json';
 
 export default function Home() {
 	//======================================
@@ -43,6 +44,28 @@ export default function Home() {
 	// Client matches count
 	const [clientMatchesCount, setClientMatchesCount] = useState(0);
 	const [clientMatchesLoading, setClientMatchesLoading] = useState(true);
+
+	// Legislation metrics (calculated from JSON data)
+	const legislationMetrics = {
+		activeBills: legislationData.bills.filter(bill => bill.status === 'active' || bill.status === 'passed-house').length,
+		enactedBills: legislationData.bills.filter(bill => bill.status === 'enacted').length,
+		recentBills: legislationData.bills
+			.filter(bill => {
+				const actionDate = new Date(bill.lastAction.date);
+				const thirtyDaysAgo = new Date();
+				thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+				return actionDate >= thirtyDaysAgo;
+			})
+			.slice(0, 5)
+			.map(bill => ({
+				...bill,
+				formattedDate: new Date(bill.lastAction.date).toLocaleDateString('en-US', {
+					month: 'short',
+					day: 'numeric',
+					year: 'numeric',
+				})
+			}))
+	};
 
 	//======================================
 	// DATA FETCHING
@@ -216,7 +239,7 @@ export default function Home() {
 					{/* Active Legislation Summary Card */}
 					<DashboardCard
 						title='Active Legislation'
-						value='9'
+						value={legislationMetrics.activeBills.toString()}
 						description='Bills and policies in progress'
 						href='/legislation/bills'
 						linkText='View Bills'
@@ -308,28 +331,22 @@ export default function Home() {
 							</CardDescription>
 						</CardHeader>
 						<CardContent className='flex flex-col flex-grow'>
-							<div className='mb-3 px-2 py-1 bg-amber-50 border border-amber-300 rounded-md'>
-								<p className='text-xs text-amber-700 flex items-center'>
-									<AlertTriangle className='h-3 w-3 mr-1 text-amber-500' />
-									Demo data for illustration purposes only
-								</p>
-							</div>
 							<ul className='space-y-4 flex-grow'>
-								{legislativeUpdates.map((item) => (
+								{legislationMetrics.recentBills.map((bill) => (
 									<li
-										key={`legislative-${item.title}`}
+										key={`legislative-${bill.id}`}
 										className='border-b pb-2 last:border-0'>
-										<div className='font-medium'>{item.title}</div>
+										<div className='font-medium'>{bill.shortTitle || bill.title}</div>
 										<div className='text-sm text-muted-foreground'>
-											{item.jurisdiction}
+											{bill.billNumber} • {bill.jurisdiction.charAt(0).toUpperCase() + bill.jurisdiction.slice(1)}
 										</div>
 										<div className='flex justify-between items-center mt-1'>
-											<span className='text-sm'>Updated: {item.date}</span>
+											<span className='text-sm'>Updated: {bill.formattedDate}</span>
 											<span
-												className={`text-xs px-2 py-1 rounded-full ${getStatusColor(
-													item.status
+												className={`text-xs px-2 py-1 rounded-full ${getLegislationStatusColor(
+													bill.status
 												)}`}>
-												{item.status}
+												{formatLegislationStatus(bill.status)}
 											</span>
 										</div>
 									</li>
@@ -491,14 +508,6 @@ function DashboardCard({ title, value, description, href, linkText }) {
 	return (
 		<Card className='overflow-hidden relative'>
 			<div className='h-1 bg-blue-500'></div>
-			{(title === 'Active Legislation') && (
-				<div className='absolute top-2 right-2 px-1 py-0.5 bg-amber-50 border border-amber-300 rounded-md'>
-					<p className='text-[10px] text-amber-700 flex items-center'>
-						<AlertTriangle className='h-2 w-2 mr-0.5 text-amber-500' />
-						Demo Data
-					</p>
-				</div>
-			)}
 			<CardHeader className='pb-2'>
 				<CardTitle className='text-sm font-medium'>{title}</CardTitle>
 			</CardHeader>
@@ -555,6 +564,38 @@ function getDaysColor(days) {
 	if (days <= 7) return 'bg-red-100 text-red-800';
 	if (days <= 14) return 'bg-yellow-100 text-yellow-800';
 	return 'bg-blue-100 text-blue-800';
+}
+
+// Get color coding for legislation status
+function getLegislationStatusColor(status) {
+	switch (status) {
+		case 'active':
+			return 'bg-blue-100 text-blue-800';
+		case 'passed-house':
+			return 'bg-purple-100 text-purple-800';
+		case 'enacted':
+			return 'bg-green-100 text-green-800';
+		case 'failed':
+			return 'bg-red-100 text-red-800';
+		default:
+			return 'bg-gray-100 text-gray-800';
+	}
+}
+
+// Format legislation status for display
+function formatLegislationStatus(status) {
+	switch (status) {
+		case 'active':
+			return 'Active';
+		case 'passed-house':
+			return 'Passed House';
+		case 'enacted':
+			return 'Enacted';
+		case 'failed':
+			return 'Failed';
+		default:
+			return status.charAt(0).toUpperCase() + status.slice(1);
+	}
 }
 
 //======================================
