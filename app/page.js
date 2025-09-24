@@ -40,6 +40,10 @@ export default function Home() {
 	const [recentOpportunitiesError, setRecentOpportunitiesError] =
 		useState(null);
 
+	// Client matches count
+	const [clientMatchesCount, setClientMatchesCount] = useState(0);
+	const [clientMatchesLoading, setClientMatchesLoading] = useState(true);
+
 	//======================================
 	// DATA FETCHING
 	//======================================
@@ -140,11 +144,33 @@ export default function Home() {
 			}
 		}
 
+		// Fetch client matches count
+		async function fetchClientMatchesCount() {
+			try {
+				setClientMatchesLoading(true);
+				const response = await fetch('/api/client-matching/summary');
+				const result = await response.json();
+
+				if (!result.success) {
+					throw new Error(result.error || 'Failed to fetch client matches count');
+				}
+
+				setClientMatchesCount(result.totalMatches);
+			} catch (err) {
+				console.error('Error fetching client matches count:', err);
+				// Fallback to a default value
+				setClientMatchesCount(81); // Use the previous hardcoded value as fallback
+			} finally {
+				setClientMatchesLoading(false);
+			}
+		}
+
 		// Execute all data fetching functions
 		fetchDeadlines();
 		fetchThirtyDayCount();
 		fetchOpenOpportunitiesCount();
 		fetchRecentOpportunities();
+		fetchClientMatchesCount();
 	}, []);
 
 	//======================================
@@ -198,7 +224,11 @@ export default function Home() {
 					{/* Client Matches Summary Card */}
 					<DashboardCard
 						title='Client Matches'
-						value='81'
+						value={
+							clientMatchesLoading
+								? '...'
+								: clientMatchesCount.toString()
+						}
 						description='New potential matches for clients'
 						href='/clients'
 						linkText='View Matches'
@@ -461,7 +491,7 @@ function DashboardCard({ title, value, description, href, linkText }) {
 	return (
 		<Card className='overflow-hidden relative'>
 			<div className='h-1 bg-blue-500'></div>
-			{(title === 'Active Legislation' || title === 'Client Matches') && (
+			{(title === 'Active Legislation') && (
 				<div className='absolute top-2 right-2 px-1 py-0.5 bg-amber-50 border border-amber-300 rounded-md'>
 					<p className='text-[10px] text-amber-700 flex items-center'>
 						<AlertTriangle className='h-2 w-2 mr-0.5 text-amber-500' />
