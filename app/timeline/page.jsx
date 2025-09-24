@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import MainLayout from '@/components/layout/main-layout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import Link from 'next/link';
 
 export default function TimelinePage() {
 	const [timelineData, setTimelineData] = useState([]);
@@ -70,7 +71,12 @@ export default function TimelinePage() {
 				title: deadline.title,
 				date: deadline.formattedDate,
 				type: 'Funding Deadline',
-				description: deadline.description || `Deadline for ${deadline.title}`,
+				description: deadline.program_overview ||
+					(deadline.actionable_summary ?
+						deadline.actionable_summary.length > 200 ?
+							deadline.actionable_summary.substring(0, 200) + '...' :
+							deadline.actionable_summary
+						: `Deadline for ${deadline.title}`),
 				status: deadline.daysLeft <= 7 ? 'Due Soon' : 'Upcoming',
 				daysLeft: deadline.daysLeft,
 			};
@@ -127,12 +133,6 @@ export default function TimelinePage() {
 							className='rounded-full'
 							onClick={() => setFilter('Legislative Event')}>
 							Legislative Events
-						</Button>
-						<Button
-							variant={filter === 'Task' ? 'default' : 'outline'}
-							className='rounded-full'
-							onClick={() => setFilter('Task')}>
-							Tasks
 						</Button>
 					</div>
 
@@ -207,13 +207,13 @@ function TimelineEvent({ event }) {
 			{/* Event card */}
 			<Card className={`relative max-w-2xl ${getEventBorderClass(type)}`}>
 				<CardContent className='p-4'>
-					<div className='flex justify-between items-start mb-2'>
-						<div>
-							<h3 className='font-medium'>{title}</h3>
+					<div className='flex justify-between items-start mb-2 gap-3'>
+						<div className='flex-1 min-w-0'>
+							<h3 className='font-medium pr-2 break-words'>{title}</h3>
 							<p className='text-sm text-muted-foreground'>{date}</p>
 						</div>
 						<span
-							className={`text-xs px-2 py-1 rounded-full ${getEventTypeClass(
+							className={`text-xs px-2 py-1 rounded-full whitespace-nowrap flex-shrink-0 ${getEventTypeClass(
 								type
 							)}`}>
 							{type}
@@ -229,8 +229,10 @@ function TimelineEvent({ event }) {
 							)}`}>
 							{status}
 						</span>
-						<Button size='sm' variant='outline'>
-							View Details
+						<Button size='sm' variant='outline' asChild>
+							<Link href={`/funding/opportunities/${event.id}`}>
+								View Details
+							</Link>
 						</Button>
 					</div>
 				</CardContent>
