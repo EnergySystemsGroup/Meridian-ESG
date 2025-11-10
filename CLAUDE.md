@@ -2,6 +2,17 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## ⚠️ CRITICAL: Git Commit Policy
+
+**NEVER commit changes without explicit user permission.**
+
+- Do NOT use `git commit` unless the user explicitly asks you to commit
+- Do NOT use `git commit --amend` without permission
+- Always ask before committing, even if changes seem ready
+- Exception: User explicitly says "commit this" or "go ahead and commit"
+
+If you accidentally commit without permission, immediately inform the user and offer to undo it with `git reset HEAD~1`.
+
 ## Project Overview
 
 Meridian is a Policy & Funding Intelligence Platform built with Next.js that helps organizations track funding opportunities, monitor legislation, and match clients to relevant funding sources. The platform features a comprehensive dashboard, geographic mapping, and advanced agent-based data processing.

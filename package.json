@@ -33,7 +33,9 @@
     "test:ci:split": "node scripts/ci/test-split.js",
     "test:e2e": "echo 'Playwright E2E tests not yet configured'",
     "add-grants-gov-source": "node scripts/addGrantsGovSource.js",
-    "test-config": "node scripts/testConfig.js"
+    "test-config": "node scripts/testConfig.js",
+    "test-location-matcher": "node scripts/location/test-location-matcher.js",
+    "backfill-coverage-areas": "node scripts/location/backfill-opportunity-coverage-areas.js"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.61.0",
