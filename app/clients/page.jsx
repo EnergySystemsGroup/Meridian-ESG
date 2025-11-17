@@ -11,9 +11,11 @@ import {
 	CardHeader,
 	CardTitle,
 } from '@/components/ui/card';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { AlertTriangle, Loader2, Search } from 'lucide-react';
+import { AlertTriangle, Loader2, Search, Plus } from 'lucide-react';
 import ClientProfileModal from '@/components/clients/ClientProfileModal';
+import ClientForm from '@/components/clients/ClientForm';
 import Link from 'next/link';
 import { fetchClientMatches, generateClientTags, formatMatchScore, getMatchScoreBgColor } from '@/lib/utils/clientMatching';
 
@@ -23,6 +25,7 @@ export default function ClientsPage() {
 	const [error, setError] = useState(null);
 	const [selectedClient, setSelectedClient] = useState(null);
 	const [showProfileModal, setShowProfileModal] = useState(false);
+	const [showAddClientModal, setShowAddClientModal] = useState(false);
 	const [searchQuery, setSearchQuery] = useState('');
 
 	useEffect(() => {
@@ -30,10 +33,16 @@ export default function ClientsPage() {
 			try {
 				setLoading(true);
 				const matches = await fetchClientMatches();
-				setClientMatches(matches);
+				setClientMatches(matches || {});
 			} catch (err) {
 				console.error('Error loading client matches:', err);
-				setError(err.message);
+				// If error is 404, it means no clients exist yet - that's okay
+				if (err.message.includes('404') || err.message.includes('not found')) {
+					setClientMatches({});
+					setError(null);
+				} else {
+					setError(err.message);
+				}
 			} finally {
 				setLoading(false);
 			}
@@ -47,22 +56,39 @@ export default function ClientsPage() {
 		setShowProfileModal(true);
 	};
 
+	const handleClientCreated = async () => {
+		setShowAddClientModal(false);
+		// Reload client matches
+		try {
+			setLoading(true);
+			const matches = await fetchClientMatches();
+			setClientMatches(matches);
+		} catch (err) {
+			console.error('Error reloading client matches:', err);
+			setError(err.message);
+		} finally {
+			setLoading(false);
+		}
+	};
+
 	const clients = Object.values(clientMatches)
 		.filter(clientResult => {
 			if (!searchQuery) return true;
 
 			const query = searchQuery.toLowerCase();
 			const client = clientResult.client;
-			const tags = generateClientTags(client);
+			const tags = generateClientTags(client, clientResult.matches);
 
 			return (
 				client.name.toLowerCase().includes(query) ||
 				client.type.toLowerCase().includes(query) ||
-				client.location.toLowerCase().includes(query) ||
-				client.description.toLowerCase().includes(query) ||
-				(client.DAC && client.DAC.toLowerCase().includes(query)) ||
+				(client.address && client.address.toLowerCase().includes(query)) ||
+				(client.city && client.city.toLowerCase().includes(query)) ||
+				(client.state_code && client.state_code.toLowerCase().includes(query)) ||
+				(client.description && client.description.toLowerCase().includes(query)) ||
+				(client.dac && 'dac'.includes(query)) ||
 				tags.some(tag => tag.toLowerCase().includes(query)) ||
-				client.projectNeeds.some(need => need.toLowerCase().includes(query))
+				(client.project_needs && client.project_needs.some(need => need.toLowerCase().includes(query)))
 			);
 		})
 		.sort((a, b) => b.matchCount - a.matchCount);
@@ -75,7 +101,10 @@ export default function ClientsPage() {
 					<h1 className='text-3xl font-bold'>Client Matching</h1>
 					<div className='flex gap-2'>
 						<Button variant='outline'>Filter</Button>
-						<Button>Add Client</Button>
+						<Button onClick={() => setShowAddClientModal(true)}>
+							<Plus className='h-4 w-4 mr-2' />
+							Add Client
+						</Button>
 					</div>
 				</div>
 
@@ -131,21 +160,29 @@ export default function ClientsPage() {
 				{!loading && !error && clients.length === 0 && (
 					<div className='text-center py-12'>
 						<h2 className='text-2xl font-bold mb-2'>
-							{searchQuery ? 'No Search Results' : 'No Clients Found'}
+							{searchQuery ? 'No Search Results' : 'No Clients Yet'}
 						</h2>
 						<p className='text-muted-foreground mb-6'>
 							{searchQuery
 								? `No clients match your search for "${searchQuery}". Try different keywords or clear the search.`
-								: 'No client data available for matching.'
+								: 'Get started by adding your first client. Click the "Add Client" button above.'
 							}
 						</p>
-						{searchQuery && (
+						{searchQuery ? (
 							<Button
 								variant='outline'
 								onClick={() => setSearchQuery('')}
 								className='mt-4'
 							>
 								Clear Search
+							</Button>
+						) : (
+							<Button
+								onClick={() => setShowAddClientModal(true)}
+								className='mt-4'
+							>
+								<Plus className='h-4 w-4 mr-2' />
+								Add Your First Client
 							</Button>
 						)}
 					</div>
@@ -156,20 +193,36 @@ export default function ClientsPage() {
 					isOpen={showProfileModal}
 					onClose={() => setShowProfileModal(false)}
 				/>
+
+				<Dialog open={showAddClientModal} onOpenChange={setShowAddClientModal}>
+					<DialogContent className='max-w-2xl max-h-[90vh] overflow-y-auto'>
+						<DialogHeader>
+							<DialogTitle>Add New Client</DialogTitle>
+						</DialogHeader>
+						<ClientForm
+							onSuccess={handleClientCreated}
+							onCancel={() => setShowAddClientModal(false)}
+						/>
+					</DialogContent>
+				</Dialog>
 			</div>
 		</MainLayout>
 	);
 }
 
 function ClientCard({ clientResult, onViewProfile }) {
-	const { client, matchCount, topMatches } = clientResult;
-	const tags = generateClientTags(client);
+	const { client, matchCount, topMatches, matches } = clientResult;
+	const tags = generateClientTags(client, matches);
+
+	// Format location from database fields
+	const locationParts = [client.city, client.state_code].filter(Boolean);
+	const location = locationParts.length > 0 ? locationParts.join(', ') : client.address;
 
 	return (
 		<Card className='flex flex-col h-full'>
 			<CardHeader className='pb-4'>
 				<CardTitle className='text-xl font-bold'>{client.name}</CardTitle>
-				<CardDescription className='text-sm text-muted-foreground'>{client.location}</CardDescription>
+				<CardDescription className='text-sm text-muted-foreground'>{location}</CardDescription>
 			</CardHeader>
 			<CardContent className='px-6 pb-6 flex flex-col flex-1'>
 				<div className='flex-1 space-y-5'>
@@ -189,9 +242,7 @@ function ClientCard({ clientResult, onViewProfile }) {
 						</div>
 						{topMatches && topMatches.length > 0 ? (
 							<ul className='space-y-2'>
-								{topMatches
-									.sort((a, b) => b.score - a.score) // Sort matches by score descending
-									.map((match, index) => (
+								{topMatches.map((match, index) => (
 									<li
 										key={`${client.name}-${match.id}-${index}`}
 										className='text-sm border-l-2 border-blue-500 pl-3 py-1 hover:bg-blue-50 dark:hover:bg-blue-900/10 transition-colors duration-200 cursor-pointer rounded-r'>

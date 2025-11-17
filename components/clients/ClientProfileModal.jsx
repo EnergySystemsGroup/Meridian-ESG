@@ -60,7 +60,9 @@ export default function ClientProfileModal({ client, isOpen, onClose }) {
                 <MapPin className="h-5 w-5 mr-2 text-neutral-500" />
                 <div>
                   <div className="text-sm text-neutral-500">Location</div>
-                  <div className="font-medium">{client.location}</div>
+                  <div className="font-medium">
+                    {[client.city, client.state_code].filter(Boolean).join(', ') || client.address}
+                  </div>
                 </div>
               </div>
             </div>
@@ -80,11 +82,11 @@ export default function ClientProfileModal({ client, isOpen, onClose }) {
                   <div className="text-sm text-neutral-500">Disadvantaged Community</div>
                   <div className="font-medium">
                     <span className={`inline-flex items-center px-2 py-1 rounded-full text-sm font-medium ${
-                      client.DAC === 'Yes'
+                      client.dac === 'Yes'
                         ? 'bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-400'
                         : 'bg-gray-50 text-gray-700 dark:bg-gray-900/20 dark:text-gray-400'
                     }`}>
-                      {client.DAC || 'No'}
+                      {client.dac || 'No'}
                     </span>
                   </div>
                 </div>
@@ -116,7 +118,7 @@ export default function ClientProfileModal({ client, isOpen, onClose }) {
               <h3 className="text-lg font-semibold">Project Needs</h3>
             </div>
             <div className="flex flex-wrap gap-2">
-              {formatProjectNeeds(client.projectNeeds).map((need, index) => (
+              {formatProjectNeeds(client.project_needs).map((need, index) => (
                 <Badge
                   key={index}
                   variant="outline"
@@ -126,7 +128,7 @@ export default function ClientProfileModal({ client, isOpen, onClose }) {
                 </Badge>
               ))}
             </div>
-            {(!client.projectNeeds || client.projectNeeds.length === 0) && (
+            {(!client.project_needs || client.project_needs.length === 0) && (
               <p className="text-neutral-500 italic">No project needs specified</p>
             )}
           </div>

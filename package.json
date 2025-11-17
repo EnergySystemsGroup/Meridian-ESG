@@ -35,10 +35,13 @@
     "add-grants-gov-source": "node scripts/addGrantsGovSource.js",
     "test-config": "node scripts/testConfig.js",
     "test-location-matcher": "node scripts/location/test-location-matcher.js",
+    "test-geocoding": "node scripts/clients/test-geocoding.js",
+    "test-client-matching": "node scripts/clients/test-client-matching.js",
     "backfill-coverage-areas": "node scripts/location/backfill-opportunity-coverage-areas.js"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.61.0",
+    "@mapbox/search-js-react": "^1.5.0",
     "@radix-ui/react-accordion": "^1.1.2",
     "@radix-ui/react-alert-dialog": "^1.0.5",
     "@radix-ui/react-aspect-ratio": "^1.0.3",

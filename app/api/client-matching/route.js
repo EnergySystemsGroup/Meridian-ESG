@@ -1,17 +1,22 @@
 /**
  * Client-Opportunity Matching API
  *
- * Matches clients from data/clients.json against real opportunities in the database
+ * Matches clients from the database against real opportunities
  * Returns match scores based on location, applicant type, project needs, and activities
+ *
+ * Location matching uses coverage_area_ids for precise geographic matching:
+ * - Utility-level precision (e.g., PG&E vs SCE)
+ * - County-level precision (e.g., Marin County)
+ * - State-level matching
+ * - National opportunities match all clients
  */
 
 import { createClient } from '@supabase/supabase-js';
 import { TAXONOMIES } from '@/lib/constants/taxonomies';
-import clientsData from '@/data/clients.json';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
 export async function GET(request) {
@@ -21,16 +26,25 @@ export async function GET(request) {
 
     console.log(`[ClientMatching] Starting matching process${clientId ? ` for client: ${clientId}` : ' for all clients'}`);
 
-    // Get clients to process
-    const clientsToProcess = clientId
-      ? clientsData.clients.filter(client => client.id === clientId)
-      : clientsData.clients;
+    // Get clients from database
+    let clientQuery = supabase.from('clients').select('*');
 
-    if (clientsToProcess.length === 0) {
+    if (clientId) {
+      clientQuery = clientQuery.eq('id', clientId);
+    }
+
+    const { data: clientsToProcess, error: clientError } = await clientQuery;
+
+    if (clientError) {
+      console.error('[ClientMatching] Error fetching clients:', clientError);
+      return Response.json({ error: 'Failed to fetch clients' }, { status: 500 });
+    }
+
+    if (!clientsToProcess || clientsToProcess.length === 0) {
       return Response.json({ error: 'Client not found' }, { status: 404 });
     }
 
-    // Get all opportunities from database
+    // Get all opportunities with their coverage areas
     const { data: opportunities, error } = await supabase
       .from('funding_opportunities_with_geography')
       .select(`
@@ -40,6 +54,30 @@ export async function GET(request) {
         close_date, agency_name, categories, relevance_score,
         status, created_at, program_overview
       `);
+
+    // Get opportunity coverage areas separately (since we need to join)
+    const { data: opportunityCoverageAreas, error: coverageError } = await supabase
+      .from('opportunity_coverage_areas')
+      .select('opportunity_id, coverage_area_id');
+
+    if (coverageError) {
+      console.error('[ClientMatching] Error fetching coverage areas:', coverageError);
+      return Response.json({ error: 'Failed to fetch opportunity coverage areas' }, { status: 500 });
+    }
+
+    // Build lookup map: opportunityId -> coverageAreaIds[]
+    const opportunityCoverageMap = {};
+    for (const link of opportunityCoverageAreas || []) {
+      if (!opportunityCoverageMap[link.opportunity_id]) {
+        opportunityCoverageMap[link.opportunity_id] = [];
+      }
+      opportunityCoverageMap[link.opportunity_id].push(link.coverage_area_id);
+    }
+
+    // Attach coverage area IDs to each opportunity
+    for (const opp of opportunities) {
+      opp.coverage_area_ids = opportunityCoverageMap[opp.id] || [];
+    }
 
     if (error) {
       console.error('[ClientMatching] Database error:', error);
@@ -53,6 +91,13 @@ export async function GET(request) {
 
     for (const client of clientsToProcess) {
       console.log(`[ClientMatching] Processing client: ${client.name}`);
+      console.log(`[ClientMatching] Client details:`, {
+        type: client.type,
+        project_needs: client.project_needs,
+        coverage_area_count: client.coverage_area_ids?.length || 0,
+        city: client.city,
+        state_code: client.state_code
+      });
       const matches = calculateMatches(client, opportunities);
 
       results[client.id] = {
@@ -113,16 +158,18 @@ function evaluateMatch(client, opportunity) {
     matchedProjectNeeds: []
   };
 
-  // 1. Location Match
+  // 1. Location Match (using coverage_area_ids for precise geographic matching)
   if (opportunity.is_national) {
+    // National opportunities match all clients
     details.locationMatch = true;
-  } else if (opportunity.eligible_locations && Array.isArray(opportunity.eligible_locations)) {
-    // Check if client's location (state) is in eligible locations
-    const clientState = client.location; // e.g., "California"
-    details.locationMatch = opportunity.eligible_locations.some(location =>
-      location.toLowerCase().includes(clientState.toLowerCase()) ||
-      clientState.toLowerCase().includes(location.toLowerCase())
+  } else if (client.coverage_area_ids && Array.isArray(client.coverage_area_ids) &&
+             opportunity.coverage_area_ids && Array.isArray(opportunity.coverage_area_ids)) {
+    // Check if client's coverage areas intersect with opportunity's coverage areas
+    // This provides utility-level, county-level, or state-level precision
+    const hasIntersection = client.coverage_area_ids.some(clientAreaId =>
+      opportunity.coverage_area_ids.includes(clientAreaId)
     );
+    details.locationMatch = hasIntersection;
   }
 
   // 2. Applicant Type Match
@@ -135,9 +182,9 @@ function evaluateMatch(client, opportunity) {
 
   // 3. Project Needs Match
   if (opportunity.eligible_project_types && Array.isArray(opportunity.eligible_project_types) &&
-      client.projectNeeds && Array.isArray(client.projectNeeds)) {
+      client.project_needs && Array.isArray(client.project_needs)) {
 
-    for (const need of client.projectNeeds) {
+    for (const need of client.project_needs) {
       const hasMatch = opportunity.eligible_project_types.some(projectType =>
         projectType.toLowerCase().includes(need.toLowerCase()) ||
         need.toLowerCase().includes(projectType.toLowerCase())
@@ -168,10 +215,27 @@ function evaluateMatch(client, opportunity) {
                   details.projectNeedsMatch &&
                   details.activitiesMatch;
 
+  // Debug logging for match failures
+  if (!isMatch) {
+    console.log(`[ClientMatching] No match for ${client.name} with opportunity ${opportunity.id}:`, {
+      locationMatch: details.locationMatch,
+      applicantTypeMatch: details.applicantTypeMatch,
+      projectNeedsMatch: details.projectNeedsMatch,
+      activitiesMatch: details.activitiesMatch,
+      clientType: client.type,
+      clientProjectNeeds: client.project_needs,
+      clientCoverageAreas: client.coverage_area_ids?.length || 0,
+      oppCoverageAreas: opportunity.coverage_area_ids?.length || 0,
+      oppApplicants: opportunity.eligible_applicants,
+      oppProjectTypes: opportunity.eligible_project_types,
+      oppActivities: opportunity.eligible_activities
+    });
+  }
+
   // Calculate score (% of project needs matched)
   let score = 0;
-  if (isMatch && client.projectNeeds && client.projectNeeds.length > 0) {
-    score = Math.round((details.matchedProjectNeeds.length / client.projectNeeds.length) * 100);
+  if (isMatch && client.project_needs && client.project_needs.length > 0) {
+    score = Math.round((details.matchedProjectNeeds.length / client.project_needs.length) * 100);
   }
 
   return {

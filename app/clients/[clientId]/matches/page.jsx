@@ -83,7 +83,7 @@ export default function ClientMatchesPage() {
 	}
 
 	const { client, matches, matchCount } = clientResult;
-	const tags = generateClientTags(client);
+	const tags = generateClientTags(client, matches);
 
 	// Budget labels for display
 	const budgetLabels = {
@@ -120,7 +120,7 @@ export default function ClientMatchesPage() {
 								</div>
 								<div className='flex items-center gap-1'>
 									<MapPin className='h-4 w-4' />
-									{client.location}
+									{[client.city, client.state_code].filter(Boolean).join(', ') || client.address}
 								</div>
 								<div className='flex items-center gap-1'>
 									<DollarSign className='h-4 w-4' />
@@ -158,7 +158,7 @@ export default function ClientMatchesPage() {
 										Project Needs
 									</h4>
 									<div className='flex flex-wrap gap-2'>
-										{formatProjectNeeds(client.projectNeeds).map((need, index) => (
+										{formatProjectNeeds(client.project_needs).map((need, index) => (
 											<Badge
 												key={index}
 												variant='outline'
@@ -168,7 +168,7 @@ export default function ClientMatchesPage() {
 											</Badge>
 										))}
 									</div>
-									{(!client.projectNeeds || client.projectNeeds.length === 0) && (
+									{(!client.project_needs || client.project_needs.length === 0) && (
 										<p className='text-sm text-muted-foreground italic'>No project needs specified</p>
 									)}
 								</div>
