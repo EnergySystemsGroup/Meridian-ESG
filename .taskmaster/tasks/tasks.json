@@ -261,7 +261,7 @@
         "id": 4,
         "title": "Conduct Individual Agent Testing",
         "description": "Perform thorough testing of each v2 agent using the new optimized pipeline flow (DataExtraction → EarlyDuplicateDetector → [New opportunities only] → Analysis → Filter → Storage), ensuring performance metrics meet or exceed v1 benchmarks with 60-80% token reduction.",
-        "status": "in-progress",
+        "status": "cancelled",
         "dependencies": [
           1,
           2,
@@ -367,19 +367,19 @@
       },
       {
         "id": 5,
-        "title": "Rewrite Unit Tests",
-        "description": "Update all unit tests to match v2 implementations, maintaining 80%+ coverage and properly covering edge cases.",
-        "details": "1. Update existing unit tests in app/lib/agents-v2/tests/\n2. Add new tests for completed agents\n3. Implement proper mocking for external dependencies (use Jest mocking capabilities)\n4. Create test data fixtures that match real API responses\n5. Ensure test coverage maintains 80%+ (use Istanbul for coverage reporting)\n6. Implement snapshot testing for complex objects\n7. Use TypeScript for writing tests\n8. Implement test helpers and utilities for common testing scenarios\n9. Use faker.js v8.0.2 for generating test data\n10. Implement property-based testing for edge cases (use fast-check v3.10.0)",
-        "testStrategy": "1. Review and update each test suite\n2. Verify that all tests pass after updates\n3. Check test coverage and add tests where needed\n4. Validate mocking of external dependencies\n5. Ensure edge cases are properly covered\n6. Perform code review of test updates\n7. Run the entire test suite and verify results",
-        "priority": "medium",
+        "title": "Develop Comprehensive Testing Plan",
+        "description": "Create a comprehensive testing strategy for the entire application including unit tests, integration tests, and testing infrastructure setup. This should cover test framework selection, coverage goals, and implementation approach.",
+        "status": "pending",
         "dependencies": [
           1,
           2,
           3,
           4
         ],
-        "status": "pending",
-        "subtasks": []
+        "priority": "medium",
+        "details": "1. Evaluate and document current testing setup in app/lib/agents-v2/tests/\n2. Define testing strategy across all application layers:\n   - Unit tests for individual components and utilities\n   - Integration tests for agent workflows and API routes\n   - End-to-end tests for critical user flows\n3. Test framework and tooling decisions:\n   - Continue using Vitest for unit/integration tests (already configured in package.json)\n   - Evaluate Playwright or Cypress for E2E testing\n   - Configure Istanbul/c8 for coverage reporting with 80%+ target\n   - Set up test data generation with faker.js v8.0.2\n   - Implement property-based testing with fast-check v3.10.0\n4. Testing infrastructure:\n   - Create test data fixtures matching real API responses (Grants.gov, etc.)\n   - Implement proper mocking for external dependencies (Supabase, Anthropic SDK)\n   - Set up test database with Supabase local development\n   - Create test helpers and utilities for common scenarios\n5. Coverage goals by area:\n   - Agent v2 modules: 80%+ coverage\n   - API routes: 75%+ coverage\n   - UI components: 70%+ coverage\n   - Utility functions: 85%+ coverage\n6. Special considerations:\n   - Test agent performance tracking and metrics\n   - Validate duplicate detection logic\n   - Test real-time subscription behaviors\n   - Verify geographic filtering and state eligibility\n7. CI/CD integration:\n   - Configure test runs in deployment pipeline\n   - Set up coverage reporting and enforcement\n   - Implement pre-commit hooks for test validation\n8. Documentation:\n   - Create testing guidelines for contributors\n   - Document mocking patterns and best practices\n   - Provide examples for common testing scenarios",
+        "testStrategy": "1. Document current test coverage baseline using c8/Istanbul\n2. Create testing standards document with examples\n3. Develop proof-of-concept tests for each testing layer:\n   - Sample unit test for an agent module\n   - Sample integration test for API route\n   - Sample E2E test for dashboard flow\n4. Validate test infrastructure setup:\n   - Verify Vitest configuration\n   - Test mock implementations for Supabase and Anthropic\n   - Validate test data fixture loading\n5. Review testing plan with team\n6. Create implementation roadmap with priorities\n7. Set up monitoring for test execution times and flakiness",
+        "subtasks": null
       },
       {
         "id": 6,
@@ -512,7 +512,7 @@
         "dependencies": [
           9
         ],
-        "status": "pending",
+        "status": "cancelled",
         "subtasks": []
       },
       {
@@ -607,7 +607,7 @@
         "dependencies": [
           12
         ],
-        "status": "pending",
+        "status": "cancelled",
         "subtasks": []
       },
       {
@@ -3597,7 +3597,7 @@
     ],
     "metadata": {
       "created": "2025-06-17T23:54:58.582Z",
-      "updated": "2025-08-30T15:36:53.134Z",
+      "updated": "2025-11-19T19:45:50.636Z",
       "description": "Tasks for master context"
     }
   },
@@ -3619,6 +3619,174 @@
       "created": "2025-08-05T04:35:00.718Z",
       "updated": "2025-08-05T04:35:33.740Z",
       "description": "=Testing-related tasks and bug fixes"
+    }
+  },
+  "v2": {
+    "tasks": [
+      {
+        "id": "1",
+        "title": "Review API Processing Pipeline",
+        "description": "Validate that API processing captures full data breadth from Grants.gov and other sources. Check duplicate detection works correctly, verify data quality standards are met, and ensure all source configurations are optimal.",
+        "details": "",
+        "testStrategy": "",
+        "status": "pending",
+        "dependencies": [],
+        "priority": "high",
+        "subtasks": []
+      },
+      {
+        "id": "2",
+        "title": "Implement Users + Microsoft SSO + Favoriting",
+        "description": "Add Microsoft SSO authentication (get config from IT department). Implement user profile management, opportunity favoriting tied to users, and client assignment to users for better match visibility.",
+        "details": "",
+        "testStrategy": "",
+        "status": "pending",
+        "dependencies": [],
+        "priority": "high",
+        "subtasks": []
+      },
+      {
+        "id": "3",
+        "title": "Clean Up Funding Opportunity Module",
+        "description": "Make sure filtering and sorting works correctly. Add toggle to hide closed opportunities by default. Ensure filter options are updated (eligible projects, categories, etc.). Add export functionality.",
+        "details": "",
+        "testStrategy": "",
+        "status": "pending",
+        "dependencies": [
+          "2"
+        ],
+        "priority": "high",
+        "subtasks": []
+      },
+      {
+        "id": "4",
+        "title": "Enhance Client Matching Feature",
+        "description": "Add filter and sorting options (client type, location, funding size, etc.). Brainstorm what users might need before implementing. Improve UX for viewing and managing client matches.",
+        "details": "",
+        "testStrategy": "",
+        "status": "pending",
+        "dependencies": [
+          "1"
+        ],
+        "priority": "high",
+        "subtasks": []
+      },
+      {
+        "id": "5",
+        "title": "Review and Optimize Dashboard",
+        "description": "Make sure top 10 funding categories algorithm is correct. Review if recent activities section is needed or should be commented out for later. Optimize data presentation and performance.",
+        "details": "",
+        "testStrategy": "",
+        "status": "pending",
+        "dependencies": [
+          "1",
+          "3",
+          "4"
+        ],
+        "priority": "medium",
+        "subtasks": []
+      },
+      {
+        "id": "6",
+        "title": "Enhance Timeline Feature",
+        "description": "Add filters by state. Consider what happens if legislative events are added. Review timeline display and improve UX. Consider adding export functionality.",
+        "details": "",
+        "testStrategy": "",
+        "status": "pending",
+        "dependencies": [],
+        "priority": "medium",
+        "subtasks": []
+      },
+      {
+        "id": "7",
+        "title": "Clean Up Menu and Navigation",
+        "description": "Hide unnecessary menu options. Remove or implement Coming Soon placeholders. Ensure Settings and Help functionality are ready or hidden if not needed for launch.",
+        "details": "",
+        "testStrategy": "",
+        "status": "pending",
+        "dependencies": [],
+        "priority": "low",
+        "subtasks": []
+      },
+      {
+        "id": "8",
+        "title": "Polish Dark Mode",
+        "description": "Test dark mode across all pages. Ensure consistency and fix any contrast or styling issues. Dark mode toggle already exists, just needs refinement.",
+        "details": "",
+        "testStrategy": "",
+        "status": "pending",
+        "dependencies": [],
+        "priority": "low",
+        "subtasks": []
+      },
+      {
+        "id": "9",
+        "title": "Write and Run Comprehensive Tests",
+        "description": "Develop testing plan for the whole app. Write unit tests, integration tests, and E2E tests for critical paths. Run tests to ensure everything is functional before launch.",
+        "details": "",
+        "testStrategy": "",
+        "status": "pending",
+        "dependencies": [],
+        "priority": "high",
+        "subtasks": []
+      },
+      {
+        "id": "10",
+        "title": "Research Utility Funding Integration",
+        "description": "Brainstorm ways to add utility funding/incentive information to opportunity database. Test if Claude Code SDK can pull utility incentive data effectively. Compare results to IncentiveFind. If data matches, consider automatic periodic pulls.",
+        "details": "",
+        "testStrategy": "",
+        "status": "in-progress",
+        "dependencies": [],
+        "priority": "low",
+        "subtasks": [],
+        "updatedAt": "2025-11-20T00:00:55.888Z"
+      },
+      {
+        "id": "11",
+        "title": "Research Semi-Manual Opportunity Import",
+        "description": "Design a way to add opportunities semi-manually from PDFs or links. Ideally give the system a PDF/URL and it imports relevant opportunity information with analysis similar to current pipeline. Consider using Claude Code SDK.",
+        "details": "",
+        "testStrategy": "",
+        "status": "in-progress",
+        "dependencies": [],
+        "priority": "low",
+        "subtasks": [],
+        "updatedAt": "2025-11-19T21:34:49.750Z"
+      },
+      {
+        "id": "12",
+        "title": "Research Claude SDK for Legislation Data",
+        "description": "Analyze whether Claude Code SDK can pull legislation information effectively. Need to determine if information is complete enough to avoid subscribing to third-party database. Compare data quality and coverage.",
+        "details": "",
+        "testStrategy": "",
+        "status": "deferred",
+        "dependencies": [],
+        "priority": "low",
+        "subtasks": [],
+        "updatedAt": "2025-11-19T20:44:35.211Z"
+      },
+      {
+        "id": "13",
+        "title": "Enhance Map Feature (Advanced)",
+        "description": "Make sure current map filters are correct and summaries are good. Ensure side cards show right info. Brainstorm feasibility of county-level or utility-level information display.",
+        "details": "",
+        "testStrategy": "",
+        "status": "deferred",
+        "dependencies": [],
+        "priority": "low",
+        "subtasks": [],
+        "updatedAt": "2025-11-19T20:44:38.643Z"
+      }
+    ],
+    "metadata": {
+      "version": "1.0.0",
+      "lastModified": "2025-11-20T00:00:55.890Z",
+      "taskCount": 13,
+      "completedCount": 0,
+      "tags": [
+        "v2"
+      ]
     }
   }
 }
