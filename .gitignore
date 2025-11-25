@@ -44,6 +44,9 @@ next-env.d.ts
 # supabase
 supabase/.temp/
 
+# temp working files (discovery data, etc.)
+temp/
+
 # Added by Task Master AI
 # Logs
 logs
