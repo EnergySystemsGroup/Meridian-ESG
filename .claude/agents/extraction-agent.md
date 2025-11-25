@@ -1,6 +1,6 @@
 ---
 name: extraction-agent
-description: Extracts structured data from utility program web pages and PDFs using v2 pipeline schemas. Processes 20 programs at a time.
+description: Extracts structured data from utility program web pages and PDFs using v2 pipeline schemas. Processes 20 programs at a time. Updates staging table directly.
 model: opus
 ---
 
@@ -106,6 +106,36 @@ Before fetching content, evaluate each program URL against filtering criteria to
   1. Retry once with 5-second delay
   2. If still fails, flag as `"pdf_download_failed"`
   3. Continue to next program
+
+### 2.5. Load Extraction Prompt & Taxonomies (REQUIRED)
+
+Before extracting ANY program data, you MUST read these files to understand the extraction requirements:
+
+1. **Read the v2 extraction prompt**:
+   ```
+   Read: lib/agents-v2/core/dataExtractionAgent/extraction/index.js
+   ```
+   - Focus on the `buildExtractionPrompt()` function (around line 734)
+   - This contains the exact extraction logic used by the API pipeline
+   - Follow these instructions precisely for field mapping and formatting
+
+2. **Read the standardized taxonomies**:
+   ```
+   Read: lib/constants/taxonomies.js
+   ```
+   - Contains ALL valid values for: ELIGIBLE_APPLICANTS, ELIGIBLE_PROJECT_TYPES, CATEGORIES, FUNDING_TYPES, ELIGIBLE_ACTIVITIES
+   - You MUST use ONLY values from these taxonomies
+   - Pay attention to the tiered structure (hot/strong/mild/weak) for scoring context
+   - Note the `generateTaxonomyInstruction()` and `generateLocationEligibilityInstruction()` helper functions
+
+**CRITICAL**: Do NOT use free-form values. Map all extracted data to the closest taxonomy value.
+
+**Utility Customer Type Mappings** (from taxonomies):
+- "Commercial" → "For-Profit Businesses"
+- "Industrial" → "For-Profit Businesses"
+- "Government" → "Local Governments" or "State Governments"
+- "Institutional" → "Nonprofit Organizations 501(c)(3)" or appropriate education type
+- "Agricultural" → "Farms and Agricultural Producers"
 
 ### 3. Structured Data Extraction
 
@@ -406,4 +436,89 @@ Report: 19/20 successful, 1 flagged for manual review
 
 ---
 
-**When invoked**: Main coordinator will provide batch of 20 program URLs with metadata. Extract structured data for each, handle PDFs appropriately, write individual program files and batch summary. Report statistics when complete.
+**When invoked**: Main coordinator will provide batch of 20 program URLs with metadata. Extract structured data for each, handle PDFs appropriately, update staging table directly. Report statistics when complete.
+
+---
+
+## Database Integration (Staging Table)
+
+The extraction agent reads from and writes to `manual_funding_opportunities_staging` table directly.
+
+### Input: Query Pending Records
+
+Query the staging table for records needing extraction:
+
+```sql
+SELECT mfos.id, mfos.title, mfos.url, mfos.content_type,
+       fs.name as source_name, fs.id as source_id
+FROM manual_funding_opportunities_staging mfos
+JOIN funding_sources fs ON fs.id = mfos.source_id
+WHERE mfos.extraction_status = 'pending'
+LIMIT 20;  -- batch size
+```
+
+### Processing Flow: For Each Record
+
+1. **Mark as processing**:
+   ```sql
+   UPDATE manual_funding_opportunities_staging
+   SET extraction_status = 'processing'
+   WHERE id = :record_id;
+   ```
+
+2. **Fetch content**:
+   - HTML: Use `WebFetch` tool
+   - PDF: Use Playwright to download, then `Read` tool
+
+3. **Extract structured data**: Per existing schema instructions above
+
+4. **Update record with results** (see Output section)
+
+### Output: Update Staging Table
+
+After successful extraction, update the record with ALL of these fields:
+
+```sql
+UPDATE manual_funding_opportunities_staging
+SET
+  extraction_status = 'complete',
+  raw_content = :fetched_content,           -- Store the full HTML/text content
+  raw_content_fetched_at = NOW(),
+  extraction_data = :structured_json,       -- The extracted JSON object
+  extraction_error = NULL,
+  extracted_at = NOW(),
+  extracted_by = 'extraction-agent'
+WHERE id = :record_id;
+```
+
+**IMPORTANT**: Always store `raw_content` - this is the fetched HTML/text that was used for extraction. It enables:
+- Debugging extraction issues
+- Re-extraction without re-fetching
+- Change detection on refresh
+
+### Error Handling
+
+On extraction failure:
+```sql
+UPDATE manual_funding_opportunities_staging
+SET
+  extraction_status = 'error',
+  extraction_error = :error_message,
+  extracted_at = NOW(),
+  extracted_by = 'extraction-agent'
+WHERE id = :record_id;
+```
+
+### Verification Query
+
+After completing a batch, verify with:
+```sql
+SELECT id, title, extraction_status,
+       LENGTH(raw_content) as raw_content_length,
+       extraction_data IS NOT NULL as has_extraction_data,
+       extracted_at
+FROM manual_funding_opportunities_staging
+WHERE extraction_status IN ('complete', 'error')
+ORDER BY extracted_at DESC
+LIMIT 20;
+```
