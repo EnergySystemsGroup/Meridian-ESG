@@ -3624,7 +3624,7 @@
   "v2": {
     "tasks": [
       {
-        "id": "1",
+        "id": 1,
         "title": "Review API Processing Pipeline",
         "description": "Validate that API processing captures full data breadth from Grants.gov and other sources. Check duplicate detection works correctly, verify data quality standards are met, and ensure all source configurations are optimal.",
         "details": "",
@@ -3635,7 +3635,7 @@
         "subtasks": []
       },
       {
-        "id": "2",
+        "id": 2,
         "title": "Implement Users + Microsoft SSO + Favoriting",
         "description": "Add Microsoft SSO authentication (get config from IT department). Implement user profile management, opportunity favoriting tied to users, and client assignment to users for better match visibility.",
         "details": "",
@@ -3646,7 +3646,7 @@
         "subtasks": []
       },
       {
-        "id": "3",
+        "id": 3,
         "title": "Clean Up Funding Opportunity Module",
         "description": "Make sure filtering and sorting works correctly. Add toggle to hide closed opportunities by default. Ensure filter options are updated (eligible projects, categories, etc.). Add export functionality.",
         "details": "",
@@ -3659,7 +3659,7 @@
         "subtasks": []
       },
       {
-        "id": "4",
+        "id": 4,
         "title": "Enhance Client Matching Feature",
         "description": "Add filter and sorting options (client type, location, funding size, etc.). Brainstorm what users might need before implementing. Improve UX for viewing and managing client matches.",
         "details": "",
@@ -3672,7 +3672,7 @@
         "subtasks": []
       },
       {
-        "id": "5",
+        "id": 5,
         "title": "Review and Optimize Dashboard",
         "description": "Make sure top 10 funding categories algorithm is correct. Review if recent activities section is needed or should be commented out for later. Optimize data presentation and performance.",
         "details": "",
@@ -3687,7 +3687,7 @@
         "subtasks": []
       },
       {
-        "id": "6",
+        "id": 6,
         "title": "Enhance Timeline Feature",
         "description": "Add filters by state. Consider what happens if legislative events are added. Review timeline display and improve UX. Consider adding export functionality.",
         "details": "",
@@ -3698,7 +3698,7 @@
         "subtasks": []
       },
       {
-        "id": "7",
+        "id": 7,
         "title": "Clean Up Menu and Navigation",
         "description": "Hide unnecessary menu options. Remove or implement Coming Soon placeholders. Ensure Settings and Help functionality are ready or hidden if not needed for launch.",
         "details": "",
@@ -3709,7 +3709,7 @@
         "subtasks": []
       },
       {
-        "id": "8",
+        "id": 8,
         "title": "Polish Dark Mode",
         "description": "Test dark mode across all pages. Ensure consistency and fix any contrast or styling issues. Dark mode toggle already exists, just needs refinement.",
         "details": "",
@@ -3720,7 +3720,7 @@
         "subtasks": []
       },
       {
-        "id": "9",
+        "id": 9,
         "title": "Write and Run Comprehensive Tests",
         "description": "Develop testing plan for the whole app. Write unit tests, integration tests, and E2E tests for critical paths. Run tests to ensure everything is functional before launch.",
         "details": "",
@@ -3731,31 +3731,31 @@
         "subtasks": []
       },
       {
-        "id": "10",
+        "id": 10,
         "title": "Research Utility Funding Integration",
         "description": "Brainstorm ways to add utility funding/incentive information to opportunity database. Test if Claude Code SDK can pull utility incentive data effectively. Compare results to IncentiveFind. If data matches, consider automatic periodic pulls.",
         "details": "",
         "testStrategy": "",
-        "status": "in-progress",
+        "status": "done",
         "dependencies": [],
         "priority": "low",
         "subtasks": [],
         "updatedAt": "2025-11-20T00:00:55.888Z"
       },
       {
-        "id": "11",
+        "id": 11,
         "title": "Research Semi-Manual Opportunity Import",
         "description": "Design a way to add opportunities semi-manually from PDFs or links. Ideally give the system a PDF/URL and it imports relevant opportunity information with analysis similar to current pipeline. Consider using Claude Code SDK.",
         "details": "",
         "testStrategy": "",
-        "status": "in-progress",
+        "status": "done",
         "dependencies": [],
         "priority": "low",
         "subtasks": [],
         "updatedAt": "2025-11-19T21:34:49.750Z"
       },
       {
-        "id": "12",
+        "id": 12,
         "title": "Research Claude SDK for Legislation Data",
         "description": "Analyze whether Claude Code SDK can pull legislation information effectively. Need to determine if information is complete enough to avoid subscribing to third-party database. Compare data quality and coverage.",
         "details": "",
@@ -3767,7 +3767,7 @@
         "updatedAt": "2025-11-19T20:44:35.211Z"
       },
       {
-        "id": "13",
+        "id": 13,
         "title": "Enhance Map Feature (Advanced)",
         "description": "Make sure current map filters are correct and summaries are good. Ensure side cards show right info. Brainstorm feasibility of county-level or utility-level information display.",
         "details": "",
@@ -3777,6 +3777,39 @@
         "priority": "low",
         "subtasks": [],
         "updatedAt": "2025-11-19T20:44:38.643Z"
+      },
+      {
+        "id": 14,
+        "title": "Fix duplicates in funding_sources table",
+        "description": "Identify and resolve duplicate entries in the funding_sources table. This includes finding duplicate records by name/type combinations, consolidating references from funding_opportunities, and removing redundant entries while maintaining data integrity.",
+        "details": "",
+        "testStrategy": "",
+        "status": "pending",
+        "dependencies": [],
+        "priority": "medium",
+        "subtasks": []
+      },
+      {
+        "id": 15,
+        "title": "Audit and standardize funding_sources.type field",
+        "description": "Audit the funding_sources table to identify all existing type values. Evaluate whether converting the type field to an ENUM is appropriate based on the variety of values. If converting to ENUM: 1) Document all valid type values needed, 2) Check all insertion points in the codebase (V2 pipeline storageAgent, manual insertion scripts, API endpoints) to ensure they use valid enum values, 3) Create migration that safely converts TEXT to ENUM. Consider: current values in production, future extensibility needs, and error handling for invalid types.",
+        "details": "",
+        "testStrategy": "",
+        "status": "pending",
+        "dependencies": [],
+        "priority": "medium",
+        "subtasks": []
+      },
+      {
+        "id": 16,
+        "title": "Implement Non-API Opportunity Staging Pipeline",
+        "description": "Build the 3-stage processing pipeline (extraction, analysis, storage) for the manual_funding_sources staging table. Migration and initial data import already complete (190 utility programs). Remaining: extraction agent to fetch URLs, analysis agent for content enhancement, storage agent for database insertion.",
+        "details": "",
+        "testStrategy": "",
+        "status": "in-progress",
+        "dependencies": [],
+        "priority": "high",
+        "subtasks": []
       }
     ],
     "metadata": {
@@ -3786,7 +3819,10 @@
       "completedCount": 0,
       "tags": [
         "v2"
-      ]
+      ],
+      "created": "2025-11-24T23:09:01.184Z",
+      "description": "Tasks for v2 context",
+      "updated": "2025-11-25T15:06:34.169Z"
     }
   }
 }
