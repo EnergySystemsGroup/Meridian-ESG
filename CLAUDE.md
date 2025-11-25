@@ -175,6 +175,54 @@ When working with agents:
 - Check Supabase logs for query performance
 - Verify RLS policies for data access issues
 
+## Utility Program Discovery Pipeline
+
+To execute the manual utility discovery pipeline for a specific state:
+
+**Trigger Command**: "Run utility discovery for [STATE]"
+
+**Examples**:
+- "Run utility discovery for California"
+- "Run utility discovery for Texas"
+- "Run utility discovery for New York"
+
+### Coordinator Responsibilities
+
+When this command is received, you act as the pipeline coordinator and must:
+
+1. **Parse State**: Extract target state from user command (convert to 2-letter code, e.g., "California" → "CA")
+2. **Query Database**: Get utilities from `coverage_areas` table filtered by `state_code` and `kind = 'utility'`
+3. **Calculate Batches**: Divide into appropriate batch sizes (10 utilities, 20 programs, etc.)
+4. **Spawn Agents**: Launch parallel Task agents for each batch using custom agents in `.claude/agents/`:
+   - `discovery-agent` for web search (batches of 10 utilities)
+   - `extraction-agent` for content extraction (batches of 20 programs)
+   - `deduplication-agent` for duplicate detection (all programs)
+   - `analysis-agent` for content enhancement (batches of 20 programs)
+   - `storage-agent` for database insertion (all programs)
+5. **Consolidate Files**: Between phases, read and merge batch output files
+6. **Track Progress**: Display real-time progress to user
+7. **Sequence Phases**: Discovery → Extraction → Deduplication → Analysis → Storage
+
+### File Structure
+```
+temp/utility-discovery/
+├── 01-discovery/     # Discovery agent outputs
+├── 02-extracted/     # Extraction agent outputs
+├── 03-deduped/       # Deduplication agent outputs
+├── 04-analyzed/      # Analysis agent outputs
+└── 05-storage/       # Storage agent outputs
+```
+
+### Expected Execution
+- **Output**: All discoverable utility programs stored in `funding_opportunities` table
+- **Coverage Goal**: Near-complete (95%+) coverage of available utility programs
+
+### Full Documentation
+For complete pipeline specifications, agent responsibilities, schemas, and execution workflows, see:
+`docs/prd/utility-discovery/manual-utility-discovery-pipeline.md`
+
+---
+
 ## Task Master AI Instructions
 **Import Task Master's development workflow commands and guidelines, treat as if import is in the main CLAUDE.md file.**
 @./.taskmaster/CLAUDE.md
