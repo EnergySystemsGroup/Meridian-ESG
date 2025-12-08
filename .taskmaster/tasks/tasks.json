@@ -3810,6 +3810,83 @@
         "dependencies": [],
         "priority": "high",
         "subtasks": []
+      },
+      {
+        "id": 17,
+        "title": "Clean up v2 storage agent - remove legacy state eligibility processing",
+        "description": "Remove redundant stateEligibilityProcessor from v2 storageAgent. The coverage_areas system (linkOpportunityToCoverageAreas) already handles all location types including states, making the old state eligibility code redundant.",
+        "details": "## Background\n\nThe v2 storageAgent currently runs TWO location systems in parallel:\n- OLD: stateEligibilityProcessor → opportunity_state_eligibility (states table only)\n- NEW: linkOpportunityToCoverageAreas → opportunity_coverage_areas (utilities, counties, states, national)\n\nThe coverage_areas table has kind='state' entries, so states are already covered by the new system.\n\n## Pre-requisite\nTest the coverage area linking (linkOpportunityToCoverageAreas) to ensure it works smoothly before removing the old code.\n\n## Changes Required\n\n### 1. Modify lib/agents-v2/core/storageAgent/index.js\n\n**Remove import (line 12):**\n```javascript\n// DELETE: import { stateEligibilityProcessor } from './stateEligibilityProcessor.js';\n```\n\n**Remove Step 3 (lines 214-216):**\n```javascript\n// DELETE: const eligibilityPromise = stateEligibilityProcessor.processEligibility(...)\n```\n\n**Remove eligibility promise resolution (lines 235-236):**\n```javascript\n// DELETE: eligibilityPromise.then(() => {});\n```\n\n**Update file header comment** to remove reference to \"state eligibility processing\"\n\n### 2. Files to potentially deprecate/remove (future cleanup)\n- lib/agents-v2/core/storageAgent/stateEligibilityProcessor.js\n- lib/agents-v2/core/storageAgent/utils/locationParsing.js\n- lib/agents-v2/tests/core/stateEligibilityProcessor.test.js\n- __tests__/unit/agents/storageAgent/stateEligibilityProcessor.test.js\n\n## Impact\n- opportunity_state_eligibility table will no longer receive new records\n- opportunity_coverage_areas continues to receive records (no change)\n- Map functions using opportunity_state_eligibility may need separate update\n\n## Verification\n- Run storage agent on test opportunity\n- Verify coverage areas are linked correctly\n- Verify no errors from removed state eligibility code",
+        "testStrategy": "",
+        "status": "pending",
+        "dependencies": [],
+        "priority": "medium",
+        "subtasks": []
+      },
+      {
+        "id": 18,
+        "title": "Enhance Discovery Agent with Catalog Lookup Integration",
+        "description": "Supplement the current web search discovery strategy with catalog lookup to achieve near-100% program coverage.\n\n## Problem Statement\nCurrent discovery relies entirely on web searches (6-10 per utility), which misses programs documented in centralized rebate catalog PDFs. Analysis comparing our database against IncentifFind revealed:\n- We have 21 PG&E/EBMUD programs vs IncentifFind's 78 utility programs\n- IncentifFind parses catalog PDFs into equipment-level entries\n- Some of our programs (financing, third-party implementers, RCx) aren't in IncentifFind\n- Some IncentifFind programs (equipment rebates) aren't in our DB\n\n## Solution Overview\nAdd catalog lookup as a standard step in the discovery workflow:\n1. Catalog lookup runs FIRST (before web searches)\n2. Three-tier discovery: Registry file → DB cache → Dynamic search\n3. Value-based splitting: $500+ rebate categories become separate programs\n4. Both sources feed same staging pipeline with URL deduplication\n\n## Key Design Decisions\n- **Universal**: Applies to any utility, not just pre-configured ones\n- **Additive**: Supplements web search, doesn't replace it\n- **Value-based granularity**: Split by significant savings ($500+), group trivial items\n- **Same pipeline**: Catalog programs flow through extraction→analysis→storage\n\n## Files to Modify\n- `.claude/agents/discovery-agent.md` - Add Section 2.5 (Catalog Lookup)\n- `.claude/agents/extraction-agent.md` - Add Section 2.6 (Catalog Splitting)\n- `lib/data/utility-catalog-registry.json` - CREATE (known catalog URLs)\n- `CLAUDE.md` - Add discovery_method values reference\n\n## Discovery Method Values\n- `web_search` - Standard web search discovery\n- `catalog_lookup` - Catalog PDF found (pending split)\n- `catalog_program` - Individual program extracted from catalog\n\n## Acceptance Criteria\n- [ ] Discovery agent checks for catalog before running web searches\n- [ ] Catalog PDFs are split into value-based program entries\n- [ ] Both web and catalog programs deduplicate correctly\n- [ ] Test against PG&E shows improved coverage vs current data\n- [ ] Documentation updated with new discovery_method values",
+        "details": "",
+        "testStrategy": "",
+        "status": "pending",
+        "dependencies": [],
+        "priority": "medium",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Create utility catalog registry file",
+            "description": "Create `lib/data/utility-catalog-registry.json` with known catalog URLs for major utilities (PG&E, SCE, SDG&E, SoCalGas) and dynamic search query templates for unknown utilities.",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 18
+          },
+          {
+            "id": 2,
+            "title": "Add catalog lookup section to discovery agent",
+            "description": "Modify `.claude/agents/discovery-agent.md` to add Section 2.5 (Catalog Lookup) that runs before web searches. Implement three-tier strategy: registry check → DB cache check → dynamic search. Output catalog entries with `discovery_method: catalog_lookup`.",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 18
+          },
+          {
+            "id": 3,
+            "title": "Add catalog splitting logic to extraction agent",
+            "description": "Modify `.claude/agents/extraction-agent.md` to add Section 2.6 (Catalog Processing). When processing `content_type: catalog_pdf`, split into individual programs using value-based granularity ($500+ = separate entry). Use URL fragments for uniqueness (e.g., `catalog.pdf#hvac-rebates`).",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 18
+          },
+          {
+            "id": 4,
+            "title": "Optional: Add catalog_url column to funding_sources",
+            "description": "Create migration to add `catalog_url` and `catalog_verified_at` columns to `funding_sources` table for caching dynamically discovered catalog URLs. This prevents re-searching for catalogs on subsequent discovery runs.",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 18
+          },
+          {
+            "id": 5,
+            "title": "Update documentation with discovery_method values",
+            "description": "Update CLAUDE.md and pipeline PRD to document the new discovery_method values: `web_search`, `catalog_lookup`, `catalog_program`. Add status query examples for monitoring catalog vs web discovery.",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 18
+          },
+          {
+            "id": 6,
+            "title": "Test catalog discovery against PG&E baseline",
+            "description": "Run enhanced discovery for PG&E and compare results against: (1) current database programs, (2) IncentifFind's 78 utility programs. Verify improved coverage and proper deduplication. Document any gaps that remain.",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 18
+          }
+        ]
       }
     ],
     "metadata": {
@@ -3822,7 +3899,7 @@
       ],
       "created": "2025-11-24T23:09:01.184Z",
       "description": "Tasks for v2 context",
-      "updated": "2025-11-25T15:06:34.169Z"
+      "updated": "2025-12-08T02:46:23.873Z"
     }
   }
 }
