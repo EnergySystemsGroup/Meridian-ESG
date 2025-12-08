@@ -3887,6 +3887,45 @@
             "parentTaskId": 18
           }
         ]
+      },
+      {
+        "id": 19,
+        "title": "Enhance Client Module: Private Sector Support, External IDs, and Bulk Import",
+        "description": "Extend the client module to support private sector clients, add external ID fields for CRM integration (e.g., Salesforce), and implement bulk client import via spreadsheet upload.",
+        "details": "## Current State Analysis\n\nThe client module currently:\n- Uses ELIGIBLE_APPLICANTS taxonomy from `lib/constants/taxonomies.js`\n- Has \"For-Profit Businesses\" and \"Small Businesses\" in the \"weak\" tier (excluded from ClientForm)\n- Database schema in `supabase/migrations/20251105000001_enable_postgis_coverage_areas.sql`\n- No external ID fields exist for CRM integration\n- Clients added one at a time via form\n\n## Requirements\n\n### 1. Private Sector Client Types\n- Review current taxonomy tiers in `lib/constants/taxonomies.js` (lines 338-406)\n- Add dedicated \"Private Sector\" category with appropriate types:\n  - Private Corporations\n  - Small/Medium Businesses (SMB)\n  - Large Enterprises\n  - Commercial Property Owners\n  - Industrial Facilities\n  - Commercial Real Estate\n- Update ClientForm.jsx (line 20-24) to include private sector tier\n- Consider if private clients need different matching logic\n\n### 2. External ID Fields for CRM Integration\n- Add database migration for new fields:\n  - `external_id` (TEXT) - Generic external system ID\n  - `external_source` (TEXT) - Source system name (e.g., 'salesforce', 'hubspot')\n  - Consider: `salesforce_id`, `salesforce_account_id` as dedicated fields\n- Update API routes (`app/api/clients/route.js`, `app/api/clients/[id]/route.js`)\n- Update ClientForm.jsx to optionally capture external IDs\n- Add unique constraint on external_id + external_source combination\n\n### 3. Bulk Import via Spreadsheet\n- Create new API route: `app/api/clients/bulk-import/route.js`\n- Accept CSV/Excel file upload with columns:\n  - name (required)\n  - type (required, must match taxonomy)\n  - address (required)\n  - project_needs (comma-separated)\n  - budget, contact, description, dac\n  - external_id, external_source (optional)\n- Implement batch geocoding with rate limiting\n- Create UI component for file upload with:\n  - Template download\n  - Preview/validation before import\n  - Progress indicator\n  - Error reporting per row\n- Handle duplicate detection (by name + address or external_id)\n\n## Files to Modify\n- `lib/constants/taxonomies.js` - Add private sector types\n- `supabase/migrations/` - New migration for external_id fields\n- `components/clients/ClientForm.jsx` - Add external ID inputs, include private tier\n- `app/api/clients/route.js` - Handle new fields\n- `app/api/clients/[id]/route.js` - Handle new fields in updates\n- New: `app/api/clients/bulk-import/route.js`\n- New: `components/clients/BulkImportModal.jsx`\n- `app/clients/page.jsx` - Add bulk import button\n\n## Technical Considerations\n- Mapbox geocoding rate limits for bulk import\n- Transaction handling for bulk operations\n- CSV parsing library (papaparse or similar)\n- Excel parsing if needed (xlsx library)",
+        "testStrategy": "1. Unit tests for taxonomy changes and new client types\n2. Integration tests for API routes with new fields\n3. Test bulk import with valid/invalid CSV files\n4. Test geocoding batch processing\n5. Verify external ID uniqueness constraints\n6. Test CRM integration field round-trip (create, read, update)\n7. UI tests for bulk import workflow",
+        "status": "pending",
+        "dependencies": [],
+        "priority": "high",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Add Private Sector Client Types to Taxonomy",
+            "description": "Update the ELIGIBLE_APPLICANTS taxonomy in lib/constants/taxonomies.js to add a dedicated \"Private Sector\" tier with types: Private Corporations, Small/Medium Businesses (SMB), Large Enterprises, Commercial Property Owners, Industrial Facilities, Commercial Real Estate. Update ClientForm.jsx to include this new tier in the client type selection dropdown.",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 19
+          },
+          {
+            "id": 2,
+            "title": "Add External ID Fields for CRM Integration",
+            "description": "Create database migration to add external_id (TEXT) and external_source (TEXT) fields to the clients table with a unique constraint on the combination. Update API routes (app/api/clients/route.js and app/api/clients/[id]/route.js) to handle these new fields. Optionally add external ID inputs to ClientForm.jsx for manual entry. This enables integration with Salesforce, HubSpot, or other CRM systems.",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 19
+          },
+          {
+            "id": 3,
+            "title": "Implement Bulk Client Import via Spreadsheet",
+            "description": "Create bulk import functionality: 1) New API route app/api/clients/bulk-import/route.js accepting CSV/Excel files with columns for name, type, address, project_needs, budget, contact, description, dac, external_id, external_source. 2) Implement batch geocoding with Mapbox rate limiting. 3) Create BulkImportModal.jsx component with template download, file upload, preview/validation, progress indicator, and per-row error reporting. 4) Add bulk import button to app/clients/page.jsx. Handle duplicate detection by name+address or external_id.",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 19
+          }
+        ]
       }
     ],
     "metadata": {
@@ -3899,7 +3938,7 @@
       ],
       "created": "2025-11-24T23:09:01.184Z",
       "description": "Tasks for v2 context",
-      "updated": "2025-12-08T02:46:23.873Z"
+      "updated": "2025-12-08T16:20:05.307Z"
     }
   }
 }
