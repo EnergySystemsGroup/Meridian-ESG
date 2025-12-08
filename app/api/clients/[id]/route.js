@@ -108,6 +108,11 @@ export async function PUT(request, { params }) {
       updated_at: new Date().toISOString()
     };
 
+    // Only include salesforce_id if explicitly provided in the request
+    if (body.salesforce_id !== undefined) {
+      updateData.salesforce_id = body.salesforce_id || null;
+    }
+
     // Check if address changed - if so, re-geocode
     const addressChanged = body.address && body.address !== existingClient.address;
 

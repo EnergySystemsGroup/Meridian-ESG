@@ -3669,7 +3669,26 @@
           "1"
         ],
         "priority": "high",
-        "subtasks": []
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Add Filter/Sort UI to Client Matching Page",
+            "description": "Add filter and sorting controls to the client matching page. Include filters for: client type, location (state/city), funding size range, match score threshold. Add sorting options: by match score, by client name, by number of matches. Consider what users need most when browsing client-opportunity matches.",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 4
+          },
+          {
+            "id": 2,
+            "title": "Verify Manual Pipeline Opportunities Match Private Sector Clients",
+            "description": "Test that rebate opportunities added through the manual pipeline are correctly matching with private sector client types. Investigate: 1) What eligible_applicants values are being extracted for manual/utility rebate programs, 2) Do they include private sector types like 'Commercial', 'Industrial', 'Small Business', etc. that would match our new client types (Large Enterprises, SMB, For-Profit Businesses, Hospitality), 3) If not, identify gaps in the extraction agent's applicant type detection and fix the mapping so private sector clients get matched to relevant rebate opportunities.",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 4
+          }
+        ]
       },
       {
         "id": 5,
@@ -3839,7 +3858,8 @@
             "details": "",
             "status": "pending",
             "dependencies": [],
-            "parentTaskId": 18
+            "parentTaskId": 18,
+            "parentId": "undefined"
           },
           {
             "id": 2,
@@ -3848,7 +3868,8 @@
             "details": "",
             "status": "pending",
             "dependencies": [],
-            "parentTaskId": 18
+            "parentTaskId": 18,
+            "parentId": "undefined"
           },
           {
             "id": 3,
@@ -3857,7 +3878,8 @@
             "details": "",
             "status": "pending",
             "dependencies": [],
-            "parentTaskId": 18
+            "parentTaskId": 18,
+            "parentId": "undefined"
           },
           {
             "id": 4,
@@ -3866,7 +3888,8 @@
             "details": "",
             "status": "pending",
             "dependencies": [],
-            "parentTaskId": 18
+            "parentTaskId": 18,
+            "parentId": "undefined"
           },
           {
             "id": 5,
@@ -3875,7 +3898,8 @@
             "details": "",
             "status": "pending",
             "dependencies": [],
-            "parentTaskId": 18
+            "parentTaskId": 18,
+            "parentId": "undefined"
           },
           {
             "id": 6,
@@ -3884,7 +3908,8 @@
             "details": "",
             "status": "pending",
             "dependencies": [],
-            "parentTaskId": 18
+            "parentTaskId": 18,
+            "parentId": "undefined"
           }
         ]
       },
@@ -3894,7 +3919,7 @@
         "description": "Extend the client module to support private sector clients, add external ID fields for CRM integration (e.g., Salesforce), and implement bulk client import via spreadsheet upload.",
         "details": "## Current State Analysis\n\nThe client module currently:\n- Uses ELIGIBLE_APPLICANTS taxonomy from `lib/constants/taxonomies.js`\n- Has \"For-Profit Businesses\" and \"Small Businesses\" in the \"weak\" tier (excluded from ClientForm)\n- Database schema in `supabase/migrations/20251105000001_enable_postgis_coverage_areas.sql`\n- No external ID fields exist for CRM integration\n- Clients added one at a time via form\n\n## Requirements\n\n### 1. Private Sector Client Types\n- Review current taxonomy tiers in `lib/constants/taxonomies.js` (lines 338-406)\n- Add dedicated \"Private Sector\" category with appropriate types:\n  - Private Corporations\n  - Small/Medium Businesses (SMB)\n  - Large Enterprises\n  - Commercial Property Owners\n  - Industrial Facilities\n  - Commercial Real Estate\n- Update ClientForm.jsx (line 20-24) to include private sector tier\n- Consider if private clients need different matching logic\n\n### 2. External ID Fields for CRM Integration\n- Add database migration for new fields:\n  - `external_id` (TEXT) - Generic external system ID\n  - `external_source` (TEXT) - Source system name (e.g., 'salesforce', 'hubspot')\n  - Consider: `salesforce_id`, `salesforce_account_id` as dedicated fields\n- Update API routes (`app/api/clients/route.js`, `app/api/clients/[id]/route.js`)\n- Update ClientForm.jsx to optionally capture external IDs\n- Add unique constraint on external_id + external_source combination\n\n### 3. Bulk Import via Spreadsheet\n- Create new API route: `app/api/clients/bulk-import/route.js`\n- Accept CSV/Excel file upload with columns:\n  - name (required)\n  - type (required, must match taxonomy)\n  - address (required)\n  - project_needs (comma-separated)\n  - budget, contact, description, dac\n  - external_id, external_source (optional)\n- Implement batch geocoding with rate limiting\n- Create UI component for file upload with:\n  - Template download\n  - Preview/validation before import\n  - Progress indicator\n  - Error reporting per row\n- Handle duplicate detection (by name + address or external_id)\n\n## Files to Modify\n- `lib/constants/taxonomies.js` - Add private sector types\n- `supabase/migrations/` - New migration for external_id fields\n- `components/clients/ClientForm.jsx` - Add external ID inputs, include private tier\n- `app/api/clients/route.js` - Handle new fields\n- `app/api/clients/[id]/route.js` - Handle new fields in updates\n- New: `app/api/clients/bulk-import/route.js`\n- New: `components/clients/BulkImportModal.jsx`\n- `app/clients/page.jsx` - Add bulk import button\n\n## Technical Considerations\n- Mapbox geocoding rate limits for bulk import\n- Transaction handling for bulk operations\n- CSV parsing library (papaparse or similar)\n- Excel parsing if needed (xlsx library)",
         "testStrategy": "1. Unit tests for taxonomy changes and new client types\n2. Integration tests for API routes with new fields\n3. Test bulk import with valid/invalid CSV files\n4. Test geocoding batch processing\n5. Verify external ID uniqueness constraints\n6. Test CRM integration field round-trip (create, read, update)\n7. UI tests for bulk import workflow",
-        "status": "pending",
+        "status": "done",
         "dependencies": [],
         "priority": "high",
         "subtasks": [
@@ -3903,42 +3928,59 @@
             "title": "Add Private Sector Client Types to Taxonomy",
             "description": "Update the ELIGIBLE_APPLICANTS taxonomy in lib/constants/taxonomies.js to add a dedicated \"Private Sector\" tier with types: Private Corporations, Small/Medium Businesses (SMB), Large Enterprises, Commercial Property Owners, Industrial Facilities, Commercial Real Estate. Update ClientForm.jsx to include this new tier in the client type selection dropdown.",
             "details": "",
-            "status": "pending",
+            "status": "done",
             "dependencies": [],
-            "parentTaskId": 19
+            "parentTaskId": 19,
+            "updatedAt": "2025-12-08T18:18:25.012Z",
+            "parentId": "undefined"
           },
           {
             "id": 2,
             "title": "Add External ID Fields for CRM Integration",
             "description": "Create database migration to add external_id (TEXT) and external_source (TEXT) fields to the clients table with a unique constraint on the combination. Update API routes (app/api/clients/route.js and app/api/clients/[id]/route.js) to handle these new fields. Optionally add external ID inputs to ClientForm.jsx for manual entry. This enables integration with Salesforce, HubSpot, or other CRM systems.",
             "details": "",
-            "status": "pending",
+            "status": "done",
             "dependencies": [],
-            "parentTaskId": 19
+            "parentTaskId": 19,
+            "parentId": "undefined",
+            "updatedAt": "2025-12-08T18:29:04.098Z"
           },
           {
             "id": 3,
             "title": "Implement Bulk Client Import via Spreadsheet",
             "description": "Create bulk import functionality: 1) New API route app/api/clients/bulk-import/route.js accepting CSV/Excel files with columns for name, type, address, project_needs, budget, contact, description, dac, external_id, external_source. 2) Implement batch geocoding with Mapbox rate limiting. 3) Create BulkImportModal.jsx component with template download, file upload, preview/validation, progress indicator, and per-row error reporting. 4) Add bulk import button to app/clients/page.jsx. Handle duplicate detection by name+address or external_id.",
             "details": "",
-            "status": "pending",
+            "status": "deferred",
             "dependencies": [],
-            "parentTaskId": 19
+            "parentTaskId": 19,
+            "parentId": "undefined",
+            "updatedAt": "2025-12-08T18:39:57.858Z"
           }
-        ]
+        ],
+        "updatedAt": "2025-12-08T18:40:43.634Z"
+      },
+      {
+        "id": 20,
+        "title": "Import Salesforce California Clients via API",
+        "description": "Import California client accounts from Salesforce export into production database using Claude Code and the /api/clients endpoint. Steps: 1) Export California accounts from Salesforce as CSV/Excel, 2) Claude Code validates data, checks for duplicates against existing clients, 3) Call POST /api/clients for each valid record (includes geocoding and coverage area detection), 4) Report results and handle any errors interactively. Use salesforce_id field to link records back to Salesforce.",
+        "details": "",
+        "testStrategy": "",
+        "status": "pending",
+        "dependencies": [],
+        "priority": "medium",
+        "subtasks": []
       }
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2025-11-20T00:00:55.890Z",
-      "taskCount": 13,
-      "completedCount": 0,
+      "lastModified": "2025-12-08T18:40:43.638Z",
+      "taskCount": 20,
+      "completedCount": 3,
       "tags": [
         "v2"
       ],
-      "created": "2025-11-24T23:09:01.184Z",
-      "description": "Tasks for v2 context",
-      "updated": "2025-12-08T16:20:05.307Z"
+      "created": "2025-12-08T18:46:22.406Z",
+      "description": "Tasks for v2 context"
     }
   }
 }

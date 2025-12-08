@@ -194,7 +194,8 @@ export async function POST(request) {
       budget,
       contact: body.contact || null,
       description: body.description || null,
-      dac: body.dac || false
+      dac: body.dac || false,
+      salesforce_id: body.salesforce_id || null
     };
 
     // Log the data being inserted
