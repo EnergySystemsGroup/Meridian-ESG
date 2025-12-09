@@ -107,89 +107,92 @@ Before fetching content, evaluate each program URL against filtering criteria to
   2. If still fails, flag as `"pdf_download_failed"`
   3. Continue to next program
 
-### 2.5. Load Extraction Prompt & Taxonomies (REQUIRED)
+### 2.5. Load Taxonomies (REQUIRED BEFORE EXTRACTION)
 
-Before extracting ANY program data, you MUST read these files to understand the extraction requirements:
+Before extracting ANY program data, you MUST read the taxonomy file to get valid values:
 
-1. **Read the v2 extraction prompt**:
-   ```
-   Read: lib/agents-v2/core/dataExtractionAgent/extraction/index.js
-   ```
-   - Focus on the `buildExtractionPrompt()` function (around line 734)
-   - This contains the exact extraction logic used by the API pipeline
-   - Follow these instructions precisely for field mapping and formatting
+**Read the standardized taxonomies:**
+```
+Read: lib/constants/taxonomies.js
+```
 
-2. **Read the standardized taxonomies**:
-   ```
-   Read: lib/constants/taxonomies.js
-   ```
-   - Contains ALL valid values for: ELIGIBLE_APPLICANTS, ELIGIBLE_PROJECT_TYPES, CATEGORIES, FUNDING_TYPES, ELIGIBLE_ACTIVITIES
-   - You MUST use ONLY values from these taxonomies
-   - Pay attention to the tiered structure (hot/strong/mild/weak) for scoring context
-   - Note the `generateTaxonomyInstruction()` and `generateLocationEligibilityInstruction()` helper functions
+This file contains ALL valid values for:
+- `ELIGIBLE_APPLICANTS` - who can apply (use these EXACT values)
+- `ELIGIBLE_PROJECT_TYPES` - what equipment/systems are funded (use these EXACT values)
+- `ELIGIBLE_ACTIVITIES` - what activities are funded (use these EXACT values)
+- `CATEGORIES` - broad funding domains (use these EXACT values)
+- `FUNDING_TYPES` - grant, loan, rebate, etc.
 
-**CRITICAL**: Do NOT use free-form values. Map all extracted data to the closest taxonomy value.
+**CRITICAL TAXONOMY RULES:**
 
-**Utility Customer Type Mappings** (from taxonomies):
-- "Commercial" → "For-Profit Businesses"
-- "Industrial" → "For-Profit Businesses"
-- "Government" → "Local Governments" or "State Governments"
-- "Institutional" → "Nonprofit Organizations 501(c)(3)" or appropriate education type
-- "Agricultural" → "Farms and Agricultural Producers"
+1. You MUST use ONLY values from the taxonomy file - NO free-form values
+2. Select ALL applicable options (multiple selections encouraged)
+3. Choose the closest match for edge cases - NO exceptions
+4. NO "Other" values allowed - work within the provided taxonomy
+
+**Utility-Specific Mapping (apply when extracting):**
+When utility pages use terms like:
+- "Commercial customers" → Map to `For-Profit Businesses` and/or `Large Enterprises`
+- "Industrial customers" → Map to `For-Profit Businesses` and/or `Large Enterprises`
+- "Small Business" / "SME" → Map to `Small/Medium Businesses (SMB)`
+- "Government" → Map to `Local Governments` or `State Governments` (based on context)
+- "Institutional" → Map to `Nonprofit Organizations 501(c)(3)` or education type
+- "Agricultural" → Map to `Farms and Agricultural Producers`
+- "Non-Profit" → Map to `Nonprofit Organizations 501(c)(3)`
 
 ### 3. Structured Data Extraction
 
-Extract all fields per `schemas.dataExtraction` format:
+Extract all fields matching the V2 `schemas.dataExtraction` format exactly.
 
-**Required Fields:**
+**REQUIRED Fields** (must be present):
 - `id`: Generate as `[utility-slug]-[program-slug]-[4-char-hash]`
-- `title`: Program name (limit 500 chars)
-- `description`: Comprehensive program details, eligibility, and application process
-- `eligibleApplicants`: Customer types (Commercial, Industrial, Institutional, Government, Non-Profit, Agricultural)
-- `eligibleProjectTypes`: Project categories (HVAC, Lighting, Water Efficiency, EV Charging, Building Envelope, Irrigation, Stormwater, Renewable Energy, Custom)
-- `eligibleActivities`: Activities (Equipment Purchase, Installation, Retrofit, Design Assistance, Study/Assessment, Operations & Maintenance)
+- `title`: Program name (string, max 500 chars)
+- `description`: Comprehensive program details - extract and combine ALL text fields verbatim
+- `eligibleApplicants`: Array - MUST use values from `TAXONOMIES.ELIGIBLE_APPLICANTS` in taxonomy file
+- `eligibleProjectTypes`: Array - MUST use values from `TAXONOMIES.ELIGIBLE_PROJECT_TYPES` in taxonomy file
+- `eligibleActivities`: Array - MUST use values from `TAXONOMIES.ELIGIBLE_ACTIVITIES` in taxonomy file
 
-**Funding Details:**
-- `fundingType`: 'rebate', 'incentive', 'direct_payment', 'tax_credit', 'financing'
-- `minimumAward`: Numeric or NULL
-- `maximumAward`: Numeric or NULL
-- `totalFundingAvailable`: Numeric or NULL (often NULL for evergreen programs)
-- `notes`: Additional funding details, rebate ranges, budget notes
+**Funding Fields** (nullable):
+- `fundingType`: Use values from `TAXONOMIES.FUNDING_TYPES` (rebate, grant, loan, tax_credit, etc.)
+- `totalFundingAvailable`: Number or null
+- `minimumAward`: Number or null
+- `maximumAward`: Number or null
+- `notes`: String - funding details, rebate ranges, budget notes
 
-**Dates:**
-- `openDate`: YYYY-MM-DD or NULL (NULL for evergreen programs)
-- `closeDate`: YYYY-MM-DD or NULL (NULL for evergreen programs)
-- `status`: 'open', 'upcoming', 'closed' (default: 'open')
+**Date Fields** (nullable):
+- `openDate`: YYYY-MM-DD format or null (null for evergreen programs)
+- `closeDate`: YYYY-MM-DD format or null (null for evergreen programs)
+- `status`: 'open', 'upcoming', or 'closed' (lowercase only)
 
-**Geographic Eligibility:**
-- `eligibleLocations`: Array with utility territory (e.g., ["SCE service territory"])
+**Geographic Fields**:
+- `eligibleLocations`: Array with utility territory (e.g., ["PG&E service territory"])
 - `isNational`: Boolean (typically false for utilities)
 
-**Funding Source Object:**
-- `funding_source.name`: Full utility name
-- `funding_source.type`: Always 'utility'
+**Funding Source Object** (nullable):
+- `funding_source.name`: Full utility name (REQUIRED if object present)
+- `funding_source.type`: 'utility' for utility programs
 - `funding_source.website`: Utility main website
 - `funding_source.contact_email`: Program contact email
 - `funding_source.contact_phone`: Program contact phone
 - `funding_source.description`: Brief utility description
 
-**Matching Requirements:**
-- `matchingRequired`: Boolean (customer must pay portion?)
-- `matchingPercentage`: Numeric 0-100 or NULL
+**Matching Fields**:
+- `matchingRequired`: Boolean
+- `matchingPercentage`: Number 0-100 or null
 
-**Process Details:**
-- `disbursementType`: 'instant_rebate', 'mail_in_rebate', 'reimbursement', 'on_bill_credit', 'direct_payment'
-- `awardProcess`: 'automatic', 'application_required', 'first_come_first_served', 'competitive'
+**Process Fields**:
+- `disbursementType`: 'instant_rebate', 'mail_in_rebate', 'reimbursement', 'on_bill_credit', 'direct_payment', 'upfront', 'milestone-based', 'performance-based'
+- `awardProcess`: MUST be one of: 'competitive', 'first-come-first-served', 'lottery', 'formula-based', 'rolling', 'unknown'
 
-**Categorization:**
-- `categories`: Array (e.g., ["Energy Efficiency", "Prescriptive"])
-- `tags`: Array (e.g., ["HVAC", "lighting", "commercial", "institutional"])
+**Categorization**:
+- `categories`: Array - MUST use values from `TAXONOMIES.CATEGORIES` in taxonomy file
+- `tags`: Array of short keywords (1-3 words each)
 
-**Source:**
+**Source**:
 - `url`: Original source URL
 
-**Field Exclusions:**
-- `api_updated_at`: NOT used (not an API source)
+**NOT USED for manual extraction**:
+- `api_updated_at`: Leave null (not an API source)
 
 **Program-Specific Details** (capture in description/notes/tags):
 - **Water programs**: Fixture types, gallons saved per year, irrigation equipment specs
@@ -214,9 +217,9 @@ Write each extracted program to separate JSON file:
     "id": "sce-express-solutions-a3f2",
     "title": "Express Solutions",
     "description": "Prescriptive rebates for qualifying energy-efficient equipment including HVAC, lighting, refrigeration, and food service equipment. Online application through SCE Marketplace or contractor submission.",
-    "eligibleApplicants": ["Commercial", "Industrial", "Agricultural"],
-    "eligibleProjectTypes": ["HVAC", "Lighting", "Refrigeration", "Food Service Equipment"],
-    "eligibleActivities": ["Equipment Purchase", "Installation", "Retrofit"],
+    "eligibleApplicants": ["For-Profit Businesses", "Large Enterprises", "Farms and Agricultural Producers"],
+    "eligibleProjectTypes": ["HVAC Systems", "Lighting Systems", "Refrigeration Systems"],
+    "eligibleActivities": ["Equipment Purchase", "Installation", "Replacement"],
     "fundingType": "rebate",
     "totalFundingAvailable": null,
     "minimumAward": 50,
@@ -238,8 +241,8 @@ Write each extracted program to separate JSON file:
     "matchingRequired": true,
     "matchingPercentage": null,
     "disbursementType": "reimbursement",
-    "awardProcess": "application_required",
-    "categories": ["Energy Efficiency", "Prescriptive"],
+    "awardProcess": "first-come-first-served",
+    "categories": ["Energy", "Sustainability"],
     "tags": ["HVAC", "lighting", "refrigeration", "foodservice", "commercial", "industrial"],
     "url": "https://www.sce.com/business/savings-incentives/express-solutions"
   },
@@ -363,13 +366,14 @@ If program explicitly states "residential only" or "homeowners":
 ## Utility-Specific Adaptations
 
 ### Field Mappings
-- `eligibleApplicants`: Use utility customer classes (Commercial, Industrial, Institutional, Government, Non-Profit)
-  - NOT federal grant applicant categories
+- `eligibleApplicants`: MUST use values from `TAXONOMIES.ELIGIBLE_APPLICANTS` in `lib/constants/taxonomies.js`
+  - Map utility customer classes to appropriate taxonomy values (e.g., "Commercial" → "For-Profit Businesses")
 - `eligibleLocations`: Extract utility service territory
   - Examples: "PG&E service territory", "SMUD service area", "City of Los Angeles water customers"
 - `fundingType`: Expect 'rebate', 'incentive' (most common for utilities)
 - `disbursementType`: Include utility-specific values like 'instant_rebate', 'on_bill_credit'
-- `awardProcess`: Include 'automatic' for point-of-sale rebates
+- `awardProcess`: MUST be one of: 'competitive', 'first-come-first-served', 'lottery', 'formula-based', 'rolling', 'unknown'
+  - For utility programs with no competitive process, use 'first-come-first-served' or 'rolling'
 - `openDate/closeDate`: Often NULL (evergreen programs)
 - `totalFundingAvailable`: Often NULL (rolling budgets)
 
@@ -472,11 +476,36 @@ LIMIT 20;  -- batch size
 
 3. **Extract structured data**: Per existing schema instructions above
 
-4. **Update record with results** (see Output section)
+4. **Filter closed/expired opportunities**:
+   ```javascript
+   // CRITICAL: Check if opportunity is closed or expired
+   if (extractedData.status === 'closed' || extractedData.status === 'expired') {
+     // Mark as skipped - do NOT pass to analysis
+     await supabase
+       .from('manual_funding_opportunities_staging')
+       .update({
+         extraction_status: 'skipped',
+         raw_content: fetchedContent,
+         raw_content_fetched_at: new Date().toISOString(),
+         extraction_data: extractedData,  // Keep data for reference
+         extraction_error: `Skipped: Program status is "${extractedData.status}" - not eligible for processing`,
+         extracted_at: new Date().toISOString(),
+         extracted_by: 'extraction-agent'
+       })
+       .eq('id', recordId);
+
+     console.log(`⊘ Skipped closed opportunity: ${extractedData.title}`);
+     continue; // Skip to next record
+   }
+   ```
+
+   **Note**: Closed/expired opportunities are marked with `extraction_status = 'skipped'` and will NOT be passed to the analysis agent. The `extraction_data` is still stored for reference, but the record won't progress through the pipeline.
+
+5. **Update record with results** (see Output section)
 
 ### Output: Update Staging Table
 
-After successful extraction, update the record with ALL of these fields:
+After successful extraction AND status validation, update the record with ALL of these fields:
 
 ```sql
 UPDATE manual_funding_opportunities_staging

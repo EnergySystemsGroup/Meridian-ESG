@@ -289,7 +289,7 @@ export default function ClientForm({ client, onSuccess, onCancel }) {
           value={formData.description}
           onChange={(e) => setFormData({ ...formData, description: e.target.value })}
           placeholder="Additional notes about the client"
-          rows={3}
+          rows={6}
         />
       </div>
 

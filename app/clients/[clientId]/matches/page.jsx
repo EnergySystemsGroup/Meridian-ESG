@@ -173,9 +173,9 @@ export default function ClientMatchesPage() {
 									)}
 								</div>
 
-								{/* Tags */}
+								{/* Match Breakdown */}
 								<div>
-									<h4 className='font-medium mb-2'>Tags</h4>
+									<h4 className='font-medium mb-2'>Match Breakdown</h4>
 									<div className='flex flex-wrap gap-2'>
 										{tags.map((tag, index) => (
 											<Badge key={index} variant='secondary'>
@@ -196,15 +196,18 @@ export default function ClientMatchesPage() {
 					{matchCount > 0 ? (
 						<div className='grid gap-6 md:grid-cols-2 lg:grid-cols-3'>
 							{matches.map((match) => (
-								<div key={match.id} className='relative'>
-									{/* Match Score Badge */}
-									<div className='absolute top-2 right-2 z-10'>
-										<span className={`text-xs font-medium px-2 py-1 rounded ${getMatchScoreBgColor(match.score)}`}>
-											{formatMatchScore(match.score)} match
+								<OpportunityCard
+									key={match.id}
+									opportunity={match}
+									badgeOverride={
+										<span
+											className='text-xs px-2 py-1 rounded-full flex-shrink-0 ml-2 font-medium'
+											style={getMatchScoreBgColor(match.score)}
+										>
+											{formatMatchScore(match.score)}
 										</span>
-									</div>
-									<OpportunityCard opportunity={match} />
-								</div>
+									}
+								/>
 							))}
 						</div>
 					) : (

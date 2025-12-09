@@ -44,7 +44,7 @@ export async function GET(request) {
       return Response.json({ error: 'Client not found' }, { status: 404 });
     }
 
-    // Get all opportunities with their coverage areas
+    // Get all open opportunities with their coverage areas (exclude closed)
     const { data: opportunities, error } = await supabase
       .from('funding_opportunities_with_geography')
       .select(`
@@ -53,7 +53,8 @@ export async function GET(request) {
         minimum_award, maximum_award, total_funding_available,
         close_date, agency_name, categories, relevance_score,
         status, created_at, program_overview
-      `);
+      `)
+      .neq('status', 'closed');
 
     // Get opportunity coverage areas separately (since we need to join)
     const { data: opportunityCoverageAreas, error: coverageError } = await supabase
@@ -172,11 +173,18 @@ function evaluateMatch(client, opportunity) {
     details.locationMatch = hasIntersection;
   }
 
-  // 2. Applicant Type Match
+  // 2. Applicant Type Match (with type expansion for hierarchical matching)
   if (opportunity.eligible_applicants && Array.isArray(opportunity.eligible_applicants)) {
+    // Get expanded types for this client (e.g., "K-12 School Districts" also matches "Local Governments")
+    const expandedTypes = TAXONOMIES.CLIENT_TYPE_EXPANSIONS[client.type] || [client.type];
+
+    // Check if any expanded type matches any eligible applicant
     details.applicantTypeMatch = opportunity.eligible_applicants.some(applicant =>
-      applicant.toLowerCase().includes(client.type.toLowerCase()) ||
-      client.type.toLowerCase().includes(applicant.toLowerCase())
+      expandedTypes.some(clientType =>
+        applicant.toLowerCase() === clientType.toLowerCase() ||
+        applicant.toLowerCase().includes(clientType.toLowerCase()) ||
+        clientType.toLowerCase().includes(applicant.toLowerCase())
+      )
     );
   }
 

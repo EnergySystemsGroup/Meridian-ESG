@@ -127,6 +127,10 @@ function ClientsPageContent() {
 
 	const handleClientCreated = async () => {
 		setShowAddClientModal(false);
+		await reloadClientMatches();
+	};
+
+	const reloadClientMatches = async () => {
 		try {
 			setLoading(true);
 			const matches = await fetchClientMatches();
@@ -595,6 +599,7 @@ function ClientsPageContent() {
 					client={selectedClient}
 					isOpen={showProfileModal}
 					onClose={() => setShowProfileModal(false)}
+					onClientUpdate={reloadClientMatches}
 				/>
 
 				<Dialog open={showAddClientModal} onOpenChange={setShowAddClientModal}>
@@ -642,7 +647,9 @@ function ClientCard({ clientResult, onViewProfile }) {
 	const location = locationParts.length > 0 ? locationParts.join(', ') : client.address;
 
 	return (
-		<Card className='flex flex-col h-full'>
+		<Card className='overflow-hidden flex flex-col h-full'>
+			{/* Blue stripe at top */}
+			<div className='h-1.5 w-full bg-blue-600' />
 			<CardHeader className='pb-4'>
 				<CardTitle className='text-xl font-bold'>{client.name}</CardTitle>
 				<CardDescription className='text-sm text-muted-foreground'>{location}</CardDescription>

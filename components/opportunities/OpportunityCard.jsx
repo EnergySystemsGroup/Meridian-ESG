@@ -104,7 +104,7 @@ const updatedBadgeColors = {
 	bgColor: '#f0f9ff', // Light teal background
 };
 
-const OpportunityCard = ({ opportunity }) => {
+const OpportunityCard = ({ opportunity, badgeOverride }) => {
 	// Use Next.js router and search params
 	const router = useRouter();
 	const pathname = usePathname();
@@ -241,15 +241,19 @@ const OpportunityCard = ({ opportunity }) => {
 				<div className='flex justify-between items-start'>
 					<CardTitle className='text-lg line-clamp-2'>{title}</CardTitle>
 
-					{/* Status badge with appropriate colors */}
-					<span
-						className='text-xs px-2 py-1 rounded-full flex-shrink-0 ml-2 font-medium'
-						style={{
-							backgroundColor: getStatusColor(status),
-							color: 'white',
-						}}>
-						{displayStatus}
-					</span>
+					{/* Status badge OR custom badge override */}
+					{badgeOverride ? (
+						badgeOverride
+					) : (
+						<span
+							className='text-xs px-2 py-1 rounded-full flex-shrink-0 ml-2 font-medium'
+							style={{
+								backgroundColor: getStatusColor(status),
+								color: 'white',
+							}}>
+							{displayStatus}
+						</span>
+					)}
 				</div>
 
 				{/* NEW badge if applicable - updated to match category pill styling */}

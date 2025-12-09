@@ -32,7 +32,7 @@ export default function Loading() {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {/* Tags */}
+                {/* Match Breakdown */}
                 <div className="flex gap-1">
                   <Skeleton className="h-6 w-16 rounded-full" />
                   <Skeleton className="h-6 w-20 rounded-full" />
