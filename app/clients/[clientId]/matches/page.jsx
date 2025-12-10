@@ -7,7 +7,8 @@ import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { AlertTriangle, Loader2, ArrowLeft, User, MapPin, Building, DollarSign, Target } from 'lucide-react';
+import { AlertTriangle, Loader2, ArrowLeft, User, MapPin, Building, DollarSign, Target, FileText } from 'lucide-react';
+import { ExportPDFButton } from '@/components/clients/ExportPDFButton';
 import Link from 'next/link';
 import OpportunityCard from '@/components/opportunities/OpportunityCard';
 import { fetchClientMatches, formatMatchScore, getMatchScoreBgColor, generateClientTags, formatProjectNeeds } from '@/lib/utils/clientMatching';
@@ -98,14 +99,15 @@ export default function ClientMatchesPage() {
 	return (
 		<MainLayout>
 			<div className='container py-10'>
-				{/* Navigation */}
-				<div className='mb-6'>
+				{/* Navigation and Actions */}
+				<div className='mb-6 flex justify-between items-center'>
 					<Button variant='outline' asChild>
 						<Link href='/clients'>
 							<ArrowLeft className='h-4 w-4 mr-2' />
 							Back to Clients
 						</Link>
 					</Button>
+					<ExportPDFButton client={client} matches={matches} />
 				</div>
 
 				{/* Client Header */}

@@ -48,3 +48,19 @@ export function DialogTitle({ className = '', children, ...props }) {
     </h2>
   );
 }
+
+export function DialogDescription({ className = '', children, ...props }) {
+  return (
+    <p className={`text-sm text-muted-foreground mt-1 ${className}`} {...props}>
+      {children}
+    </p>
+  );
+}
+
+export function DialogFooter({ className = '', children, ...props }) {
+  return (
+    <div className={`flex justify-end gap-2 mt-6 ${className}`} {...props}>
+      {children}
+    </div>
+  );
+}

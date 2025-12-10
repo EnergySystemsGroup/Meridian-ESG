@@ -3624,7 +3624,7 @@
   "v2": {
     "tasks": [
       {
-        "id": "1",
+        "id": 1,
         "title": "Review API Processing Pipeline",
         "description": "Validate that API processing captures full data breadth from Grants.gov and other sources. Check duplicate detection works correctly, verify data quality standards are met, and ensure all source configurations are optimal.",
         "details": "",
@@ -3635,7 +3635,7 @@
         "subtasks": []
       },
       {
-        "id": "2",
+        "id": 2,
         "title": "Implement Users + Microsoft SSO + Favoriting",
         "description": "Add Microsoft SSO authentication (get config from IT department). Implement user profile management, opportunity favoriting tied to users, and client assignment to users for better match visibility.",
         "details": "",
@@ -3646,7 +3646,7 @@
         "subtasks": []
       },
       {
-        "id": "3",
+        "id": 3,
         "title": "Clean Up Funding Opportunity Module",
         "description": "Make sure filtering and sorting works correctly. Add toggle to hide closed opportunities by default. Ensure filter options are updated (eligible projects, categories, etc.). Add export functionality.",
         "details": "",
@@ -3659,7 +3659,7 @@
         "subtasks": []
       },
       {
-        "id": "4",
+        "id": 4,
         "title": "Enhance Client Matching Feature",
         "description": "Add filter and sorting options (client type, location, funding size, etc.). Brainstorm what users might need before implementing. Improve UX for viewing and managing client matches.",
         "details": "",
@@ -3740,7 +3740,7 @@
         "updatedAt": "2025-12-09T05:09:07.307Z"
       },
       {
-        "id": "5",
+        "id": 5,
         "title": "Review and Optimize Dashboard",
         "description": "Make sure top 10 funding categories algorithm is correct. Review if recent activities section is needed or should be commented out for later. Optimize data presentation and performance.",
         "details": "",
@@ -3755,7 +3755,7 @@
         "subtasks": []
       },
       {
-        "id": "6",
+        "id": 6,
         "title": "Enhance Timeline Feature",
         "description": "Add filters by state. Consider what happens if legislative events are added. Review timeline display and improve UX. Consider adding export functionality.",
         "details": "",
@@ -3766,7 +3766,7 @@
         "subtasks": []
       },
       {
-        "id": "7",
+        "id": 7,
         "title": "Clean Up Menu and Navigation",
         "description": "Hide unnecessary menu options. Remove or implement Coming Soon placeholders. Ensure Settings and Help functionality are ready or hidden if not needed for launch.",
         "details": "",
@@ -3777,7 +3777,7 @@
         "subtasks": []
       },
       {
-        "id": "8",
+        "id": 8,
         "title": "Polish Dark Mode",
         "description": "Test dark mode across all pages. Ensure consistency and fix any contrast or styling issues. Dark mode toggle already exists, just needs refinement.",
         "details": "",
@@ -3788,7 +3788,7 @@
         "subtasks": []
       },
       {
-        "id": "9",
+        "id": 9,
         "title": "Write and Run Comprehensive Tests",
         "description": "Develop testing plan for the whole app. Write unit tests, integration tests, and E2E tests for critical paths. Run tests to ensure everything is functional before launch.",
         "details": "",
@@ -3799,7 +3799,7 @@
         "subtasks": []
       },
       {
-        "id": "10",
+        "id": 10,
         "title": "Research Utility Funding Integration",
         "description": "Brainstorm ways to add utility funding/incentive information to opportunity database. Test if Claude Code SDK can pull utility incentive data effectively. Compare results to IncentiveFind. If data matches, consider automatic periodic pulls.",
         "details": "",
@@ -3811,7 +3811,7 @@
         "updatedAt": "2025-11-20T00:00:55.888Z"
       },
       {
-        "id": "11",
+        "id": 11,
         "title": "Research Semi-Manual Opportunity Import",
         "description": "Design a way to add opportunities semi-manually from PDFs or links. Ideally give the system a PDF/URL and it imports relevant opportunity information with analysis similar to current pipeline. Consider using Claude Code SDK.",
         "details": "",
@@ -3823,7 +3823,7 @@
         "updatedAt": "2025-11-19T21:34:49.750Z"
       },
       {
-        "id": "12",
+        "id": 12,
         "title": "Research Claude SDK for Legislation Data",
         "description": "Analyze whether Claude Code SDK can pull legislation information effectively. Need to determine if information is complete enough to avoid subscribing to third-party database. Compare data quality and coverage.",
         "details": "",
@@ -3835,7 +3835,7 @@
         "updatedAt": "2025-11-19T20:44:35.211Z"
       },
       {
-        "id": "13",
+        "id": 13,
         "title": "Enhance Map Feature (Advanced)",
         "description": "Make sure current map filters are correct and summaries are good. Ensure side cards show right info. Brainstorm feasibility of county-level or utility-level information display.",
         "details": "",
@@ -3847,7 +3847,7 @@
         "updatedAt": "2025-11-19T20:44:38.643Z"
       },
       {
-        "id": "14",
+        "id": 14,
         "title": "Fix duplicates in funding_sources table",
         "description": "Identify and resolve duplicate entries in the funding_sources table. This includes finding duplicate records by name/type combinations, consolidating references from funding_opportunities, and removing redundant entries while maintaining data integrity.",
         "details": "",
@@ -3858,7 +3858,7 @@
         "subtasks": []
       },
       {
-        "id": "15",
+        "id": 15,
         "title": "Audit and standardize funding_sources.type field",
         "description": "Audit the funding_sources table to identify all existing type values. Evaluate whether converting the type field to an ENUM is appropriate based on the variety of values. If converting to ENUM: 1) Document all valid type values needed, 2) Check all insertion points in the codebase (V2 pipeline storageAgent, manual insertion scripts, API endpoints) to ensure they use valid enum values, 3) Create migration that safely converts TEXT to ENUM. Consider: current values in production, future extensibility needs, and error handling for invalid types.",
         "details": "",
@@ -3869,7 +3869,7 @@
         "subtasks": []
       },
       {
-        "id": "16",
+        "id": 16,
         "title": "Implement Non-API Opportunity Staging Pipeline",
         "description": "Build the 3-stage processing pipeline (extraction, analysis, storage) for the manual_funding_sources staging table. Migration and initial data import already complete (190 utility programs). Remaining: extraction agent to fetch URLs, analysis agent for content enhancement, storage agent for database insertion.",
         "details": "",
@@ -3880,7 +3880,7 @@
         "subtasks": []
       },
       {
-        "id": "17",
+        "id": 17,
         "title": "Clean up v2 storage agent - remove legacy state eligibility processing",
         "description": "Remove redundant stateEligibilityProcessor from v2 storageAgent. The coverage_areas system (linkOpportunityToCoverageAreas) already handles all location types including states, making the old state eligibility code redundant.",
         "details": "## Background\n\nThe v2 storageAgent currently runs TWO location systems in parallel:\n- OLD: stateEligibilityProcessor → opportunity_state_eligibility (states table only)\n- NEW: linkOpportunityToCoverageAreas → opportunity_coverage_areas (utilities, counties, states, national)\n\nThe coverage_areas table has kind='state' entries, so states are already covered by the new system.\n\n## Pre-requisite\nTest the coverage area linking (linkOpportunityToCoverageAreas) to ensure it works smoothly before removing the old code.\n\n## Changes Required\n\n### 1. Modify lib/agents-v2/core/storageAgent/index.js\n\n**Remove import (line 12):**\n```javascript\n// DELETE: import { stateEligibilityProcessor } from './stateEligibilityProcessor.js';\n```\n\n**Remove Step 3 (lines 214-216):**\n```javascript\n// DELETE: const eligibilityPromise = stateEligibilityProcessor.processEligibility(...)\n```\n\n**Remove eligibility promise resolution (lines 235-236):**\n```javascript\n// DELETE: eligibilityPromise.then(() => {});\n```\n\n**Update file header comment** to remove reference to \"state eligibility processing\"\n\n### 2. Files to potentially deprecate/remove (future cleanup)\n- lib/agents-v2/core/storageAgent/stateEligibilityProcessor.js\n- lib/agents-v2/core/storageAgent/utils/locationParsing.js\n- lib/agents-v2/tests/core/stateEligibilityProcessor.test.js\n- __tests__/unit/agents/storageAgent/stateEligibilityProcessor.test.js\n\n## Impact\n- opportunity_state_eligibility table will no longer receive new records\n- opportunity_coverage_areas continues to receive records (no change)\n- Map functions using opportunity_state_eligibility may need separate update\n\n## Verification\n- Run storage agent on test opportunity\n- Verify coverage areas are linked correctly\n- Verify no errors from removed state eligibility code",
@@ -3891,7 +3891,7 @@
         "subtasks": []
       },
       {
-        "id": "18",
+        "id": 18,
         "title": "Enhance Discovery Agent with Catalog Lookup Integration",
         "description": "Supplement the current web search discovery strategy with catalog lookup to achieve near-100% program coverage.\n\n## Problem Statement\nCurrent discovery relies entirely on web searches (6-10 per utility), which misses programs documented in centralized rebate catalog PDFs. Analysis comparing our database against IncentifFind revealed:\n- We have 21 PG&E/EBMUD programs vs IncentifFind's 78 utility programs\n- IncentifFind parses catalog PDFs into equipment-level entries\n- Some of our programs (financing, third-party implementers, RCx) aren't in IncentifFind\n- Some IncentifFind programs (equipment rebates) aren't in our DB\n\n## Solution Overview\nAdd catalog lookup as a standard step in the discovery workflow:\n1. Catalog lookup runs FIRST (before web searches)\n2. Three-tier discovery: Registry file → DB cache → Dynamic search\n3. Value-based splitting: $500+ rebate categories become separate programs\n4. Both sources feed same staging pipeline with URL deduplication\n\n## Key Design Decisions\n- **Universal**: Applies to any utility, not just pre-configured ones\n- **Additive**: Supplements web search, doesn't replace it\n- **Value-based granularity**: Split by significant savings ($500+), group trivial items\n- **Same pipeline**: Catalog programs flow through extraction→analysis→storage\n\n## Files to Modify\n- `.claude/agents/discovery-agent.md` - Add Section 2.5 (Catalog Lookup)\n- `.claude/agents/extraction-agent.md` - Add Section 2.6 (Catalog Splitting)\n- `lib/data/utility-catalog-registry.json` - CREATE (known catalog URLs)\n- `CLAUDE.md` - Add discovery_method values reference\n\n## Discovery Method Values\n- `web_search` - Standard web search discovery\n- `catalog_lookup` - Catalog PDF found (pending split)\n- `catalog_program` - Individual program extracted from catalog\n\n## Acceptance Criteria\n- [ ] Discovery agent checks for catalog before running web searches\n- [ ] Catalog PDFs are split into value-based program entries\n- [ ] Both web and catalog programs deduplicate correctly\n- [ ] Test against PG&E shows improved coverage vs current data\n- [ ] Documentation updated with new discovery_method values",
         "details": "",
@@ -3963,7 +3963,7 @@
         ]
       },
       {
-        "id": "19",
+        "id": 19,
         "title": "Enhance Client Module: Private Sector Support, External IDs, and Bulk Import",
         "description": "Extend the client module to support private sector clients, add external ID fields for CRM integration (e.g., Salesforce), and implement bulk client import via spreadsheet upload.",
         "details": "## Current State Analysis\n\nThe client module currently:\n- Uses ELIGIBLE_APPLICANTS taxonomy from `lib/constants/taxonomies.js`\n- Has \"For-Profit Businesses\" and \"Small Businesses\" in the \"weak\" tier (excluded from ClientForm)\n- Database schema in `supabase/migrations/20251105000001_enable_postgis_coverage_areas.sql`\n- No external ID fields exist for CRM integration\n- Clients added one at a time via form\n\n## Requirements\n\n### 1. Private Sector Client Types\n- Review current taxonomy tiers in `lib/constants/taxonomies.js` (lines 338-406)\n- Add dedicated \"Private Sector\" category with appropriate types:\n  - Private Corporations\n  - Small/Medium Businesses (SMB)\n  - Large Enterprises\n  - Commercial Property Owners\n  - Industrial Facilities\n  - Commercial Real Estate\n- Update ClientForm.jsx (line 20-24) to include private sector tier\n- Consider if private clients need different matching logic\n\n### 2. External ID Fields for CRM Integration\n- Add database migration for new fields:\n  - `external_id` (TEXT) - Generic external system ID\n  - `external_source` (TEXT) - Source system name (e.g., 'salesforce', 'hubspot')\n  - Consider: `salesforce_id`, `salesforce_account_id` as dedicated fields\n- Update API routes (`app/api/clients/route.js`, `app/api/clients/[id]/route.js`)\n- Update ClientForm.jsx to optionally capture external IDs\n- Add unique constraint on external_id + external_source combination\n\n### 3. Bulk Import via Spreadsheet\n- Create new API route: `app/api/clients/bulk-import/route.js`\n- Accept CSV/Excel file upload with columns:\n  - name (required)\n  - type (required, must match taxonomy)\n  - address (required)\n  - project_needs (comma-separated)\n  - budget, contact, description, dac\n  - external_id, external_source (optional)\n- Implement batch geocoding with rate limiting\n- Create UI component for file upload with:\n  - Template download\n  - Preview/validation before import\n  - Progress indicator\n  - Error reporting per row\n- Handle duplicate detection (by name + address or external_id)\n\n## Files to Modify\n- `lib/constants/taxonomies.js` - Add private sector types\n- `supabase/migrations/` - New migration for external_id fields\n- `components/clients/ClientForm.jsx` - Add external ID inputs, include private tier\n- `app/api/clients/route.js` - Handle new fields\n- `app/api/clients/[id]/route.js` - Handle new fields in updates\n- New: `app/api/clients/bulk-import/route.js`\n- New: `components/clients/BulkImportModal.jsx`\n- `app/clients/page.jsx` - Add bulk import button\n\n## Technical Considerations\n- Mapbox geocoding rate limits for bulk import\n- Transaction handling for bulk operations\n- CSV parsing library (papaparse or similar)\n- Excel parsing if needed (xlsx library)",
@@ -4009,10 +4009,32 @@
         "updatedAt": "2025-12-08T18:40:43.634Z"
       },
       {
-        "id": "20",
+        "id": 20,
         "title": "Import Salesforce California Clients via API",
         "description": "Import California client accounts from Salesforce export into production database using Claude Code and the /api/clients endpoint. Steps: 1) Export California accounts from Salesforce as CSV/Excel, 2) Claude Code validates data, checks for duplicates against existing clients, 3) Call POST /api/clients for each valid record (includes geocoding and coverage area detection), 4) Report results and handle any errors interactively. Use salesforce_id field to link records back to Salesforce.",
         "details": "",
+        "testStrategy": "",
+        "status": "pending",
+        "dependencies": [],
+        "priority": "medium",
+        "subtasks": []
+      },
+      {
+        "id": 21,
+        "title": "Rerun API opportunities to fix funding source linkages",
+        "description": "82 opportunities are currently linked to the \"Unknown\" funding source (with null type) instead of their proper funding sources. Many of these have valid agency_name values that match existing funding sources. Need to reprocess opportunities from APIs to ensure source_id is correctly assigned based on the API source configuration.",
+        "details": "Background:\n- The client-matching API shows \"OTHER\" source type for opportunities that should have proper types (Federal, State, Utility, etc.)\n- Root cause: 82 opportunities have source_id pointing to the \"Unknown\" funding source (id: 73bdda2f-0a12-4c1f-8a7b-a66b7e540814)\n- The \"Unknown\" funding source has type = null, causing the fallback to \"OTHER\"\n- Many affected opportunities have valid agency_name values that match real funding sources\n\nAffected opportunities include:\n- Wildlife Corridors and Fish Passage Program (agency: California Wildlife Conservation Board)\n- Various DOE programs (agency: Department of Energy)\n- Various federal programs\n\nTasks:\n1. Identify all opportunities linked to \"Unknown\" funding source\n2. Match these opportunities to their correct funding sources based on agency_name\n3. Update source_id for affected opportunities\n4. Consider adding validation to prevent this in future API processing\n5. Verify source_type displays correctly after fix",
+        "testStrategy": "",
+        "status": "pending",
+        "dependencies": [],
+        "priority": "medium",
+        "subtasks": []
+      },
+      {
+        "id": 22,
+        "title": "Improve structure of program_insights and program_use_case content",
+        "description": "The program_insights and program_use_case fields in funding_opportunities currently contain unstructured text that can be difficult to read. Update the analysis agent to generate properly structured content with punctuation and sentence separation.",
+        "details": "Current Issue:\n- program_insights often contains comma-separated items without proper sentence structure\n- Example: \"Principal investigators are limited to submitting a maximum of two proposals per year,Projects addressing multiple sustainability pillars receive higher evaluation scores,Conflict of interest rules are strictly enforced\"\n\nExpected Output:\n- Each insight should be a complete, punctuated sentence\n- Insights should be separated by periods or presented as bullet points\n- Example: \"• Principal investigators are limited to submitting a maximum of two proposals per year. • Projects addressing multiple sustainability pillars receive higher evaluation scores. • Conflict of interest rules are strictly enforced for Pest Management Advisory Committee members.\"\n\nImplementation:\n1. Update the analysis agent prompt to instruct it to format program_insights as properly punctuated sentences or bullet points\n2. Apply the same formatting requirements to program_use_case field\n3. Consider adding a migration or update script to reformat existing data in the database",
         "testStrategy": "",
         "status": "pending",
         "dependencies": [],
@@ -4027,7 +4049,10 @@
       "completedCount": 4,
       "tags": [
         "v2"
-      ]
+      ],
+      "created": "2025-12-10T01:52:03.208Z",
+      "description": "Tasks for v2 context",
+      "updated": "2025-12-10T03:09:29.701Z"
     }
   }
 }

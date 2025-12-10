@@ -44,17 +44,25 @@ export async function GET(request) {
       return Response.json({ error: 'Client not found' }, { status: 404 });
     }
 
-    // Get all open opportunities with their coverage areas (exclude closed)
-    const { data: opportunities, error } = await supabase
-      .from('funding_opportunities_with_geography')
+    // Get all open opportunities with source type from funding_sources (exclude closed)
+    const { data: rawOpportunities, error } = await supabase
+      .from('funding_opportunities')
       .select(`
         id, title, eligible_locations, eligible_applicants,
         eligible_project_types, eligible_activities, is_national,
         minimum_award, maximum_award, total_funding_available,
         close_date, agency_name, categories, relevance_score,
-        status, created_at, program_overview
+        status, created_at, program_overview, program_insights,
+        funding_sources(type)
       `)
       .neq('status', 'closed');
+
+    // Flatten funding_sources.type to source_type on each opportunity
+    const opportunities = (rawOpportunities || []).map(opp => ({
+      ...opp,
+      source_type: opp.funding_sources?.type || null,
+      funding_sources: undefined // Remove nested object
+    }));
 
     // Get opportunity coverage areas separately (since we need to join)
     const { data: opportunityCoverageAreas, error: coverageError } = await supabase
