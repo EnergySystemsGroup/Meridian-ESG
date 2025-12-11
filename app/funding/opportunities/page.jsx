@@ -94,12 +94,18 @@ function OpportunitiesContent() {
 	const router = useRouter();
 	const pathname = usePathname();
 
+	// Default coverage types (all checked except unknown)
+	const defaultCoverageTypes = ['national', 'state', 'local'];
+
 	// Initialize filter state directly from URL params
 	// This avoids a useEffect and potential extra render
 	const initialFilters = {
 		status: searchParams.get('status') || null,
 		categories: searchParams.get('categories') ? searchParams.get('categories').split(',') : [],
-		states: searchParams.get('states') ? searchParams.get('states').split(',') : [],
+		state: searchParams.get('state') || null, // Single state code
+		coverageTypes: searchParams.get('coverage_types')
+			? searchParams.get('coverage_types').split(',')
+			: defaultCoverageTypes, // Default to all except unknown
 		page: parseInt(searchParams.get('page')) || 1,
 		page_size: 9,
 		tracked: searchParams.get('tracked') === 'true',
@@ -114,20 +120,8 @@ function OpportunitiesContent() {
 	const [categoriesApiResponse, setCategoriesApiResponse] = useState(null);
 	const [availableCategories, setAvailableCategories] = useState([]);
 	const [isCategoriesLoading, setIsCategoriesLoading] = useState(true);
-	const [availableStates, setAvailableStates] = useState(
-		TAXONOMIES.ELIGIBLE_LOCATIONS.filter(
-			(location) =>
-				location !== 'National' &&
-				location !== 'Regional' &&
-				![
-					'Tribal Lands',
-					'Rural Communities',
-					'Urban Areas',
-					'Underserved Communities',
-					'Opportunity Zones',
-				].includes(location)
-		)
-	);
+	// Use US_STATES from taxonomies for state dropdown
+	const usStates = TAXONOMIES.US_STATES;
 	// Initialize sort options from URL parameters
 	const [sortOption, setSortOption] = useState(
 		searchParams.get('sort') || 'relevance'
@@ -136,7 +130,6 @@ function OpportunitiesContent() {
 		searchParams.get('sort_direction') || 'desc'
 	);
 	const [categorySearchInput, setCategorySearchInput] = useState('');
-	const [stateSearchInput, setStateSearchInput] = useState('');
 	const [sortMenuOpen, setSortMenuOpen] = useState(false);
 
 	// Create refs for the dropdown containers
@@ -157,6 +150,14 @@ function OpportunitiesContent() {
 
 	// Add new state for raw-to-normalized mapping
 	const [categoryMapping, setCategoryMapping] = useState({});
+
+	// Coverage counts for filter display
+	const [coverageCounts, setCoverageCounts] = useState({
+		national: null,
+		state: null,
+		local: null,
+		unknown: null
+	});
 
 	// Add click outside listener to close dropdown
 	useEffect(() => {
@@ -250,6 +251,27 @@ function OpportunitiesContent() {
 		console.log('[Debug Tracking] Filters state changed:', filters);
 	}, [filters]);
 
+	// Fetch coverage counts when state filter changes
+	useEffect(() => {
+		async function fetchCoverageCounts() {
+			try {
+				const params = new URLSearchParams();
+				if (filters.state) {
+					params.append('state', filters.state);
+				}
+
+				const response = await fetch(`/api/funding/coverage-counts?${params}`);
+				const result = await response.json();
+				if (result.success) {
+					setCoverageCounts(result.counts);
+				}
+			} catch (err) {
+				console.error('Failed to fetch coverage counts:', err);
+			}
+		}
+		fetchCoverageCounts();
+	}, [filters.state]);
+
 	// Log when isInitialized changes
 	useEffect(() => {
 		console.log('[Debug Tracking] isInitialized state changed:', isInitialized);
@@ -304,8 +326,14 @@ function OpportunitiesContent() {
 					}
 				}
 
-				if (filters.states.length > 0) {
-					queryParams.append('states', filters.states.join(','));
+				// Add state filter (single state code)
+				if (filters.state) {
+					queryParams.append('state', filters.state);
+				}
+
+				// Add coverage types filter
+				if (filters.coverageTypes && filters.coverageTypes.length > 0) {
+					queryParams.append('coverage_types', filters.coverageTypes.join(','));
 				}
 
 				// Add debounced search query to API request if it exists
@@ -441,9 +469,19 @@ function OpportunitiesContent() {
 			params.set('categories', newFilters.categories.join(','));
 		}
 
-		// Add states filter
-		if (newFilters.states && newFilters.states.length > 0) {
-			params.set('states', newFilters.states.join(','));
+		// Add state filter (single state)
+		if (newFilters.state) {
+			params.set('state', newFilters.state);
+		}
+
+		// Add coverage types filter (only if different from default)
+		if (newFilters.coverageTypes && newFilters.coverageTypes.length > 0) {
+			const defaultTypes = ['national', 'state', 'local'];
+			const isDefault = newFilters.coverageTypes.length === defaultTypes.length &&
+				defaultTypes.every(t => newFilters.coverageTypes.includes(t));
+			if (!isDefault) {
+				params.set('coverage_types', newFilters.coverageTypes.join(','));
+			}
 		}
 
 		// Add tracked filter
@@ -513,14 +551,14 @@ function OpportunitiesContent() {
 		setFilters({
 			status: null,
 			categories: [],
-			states: [],
+			state: null,
+			coverageTypes: defaultCoverageTypes,
 			page: 1,
 			page_size: 9,
 			tracked: false,
 		});
 		setSearchQuery('');
 		setCategorySearchInput('');
-		setStateSearchInput('');
 
 		// Clear URL parameters
 		setTimeout(() => {
@@ -534,13 +572,6 @@ function OpportunitiesContent() {
 				category.toLowerCase().includes(categorySearchInput.toLowerCase())
 		  )
 		: availableCategories;
-
-	// Filter states for search
-	const filteredStates = stateSearchInput
-		? availableStates.filter((state) =>
-				state.toLowerCase().includes(stateSearchInput.toLowerCase())
-		  )
-		: availableStates;
 
 	// Handle export functionality
 	const handleExport = () => {
@@ -905,129 +936,180 @@ function OpportunitiesContent() {
 		);
 	};
 
-	// Render state filter dropdown
+	// Render state dropdown (single select)
 	const renderStateFilter = () => {
-		// Count selected states for display
-		const selectedCount = filters.states.length;
-		const displayText =
-			selectedCount > 0 ? `Locations (${selectedCount})` : 'Locations';
+		const selectedState = usStates.find(s => s.code === filters.state);
+		const displayText = selectedState ? selectedState.name : 'All States';
 
 		return (
 			<div className='relative inline-block text-left'>
 				<div>
 					<Button
 						variant='outline'
-						onClick={() => toggleFilterSection('states')}
+						onClick={() => toggleFilterSection('state')}
 						className={classNames(
 							'flex items-center justify-between gap-1 px-4 py-2 text-sm',
-							openFilterSection === 'states'
+							openFilterSection === 'state'
 								? 'bg-blue-50 text-blue-800 border-blue-200'
 								: 'border-gray-300',
-							openFilterSection === 'states' && filters.states.length > 0
-								? 'bg-blue-100'
-								: ''
+							filters.state ? 'bg-blue-100' : ''
+						)}>
+						<Map size={16} className='mr-1' />
+						{displayText}
+						<ChevronDown
+							size={16}
+							className={classNames(
+								'transition-transform',
+								openFilterSection === 'state' ? 'rotate-180' : ''
+							)}
+						/>
+					</Button>
+				</div>
+
+				{openFilterSection === 'state' && (
+					<div
+						className='absolute left-0 z-20 mt-2 origin-top-left bg-white rounded-md shadow-lg w-64 ring-1 ring-black ring-opacity-5 focus:outline-none'
+						tabIndex={-1}
+						ref={stateDropdownRef}>
+						<div className='p-4'>
+							{/* All States option */}
+							<div
+								className='flex items-center py-2 cursor-pointer hover:bg-gray-50 mb-2 border-b border-gray-200 pb-2'
+								onClick={() => {
+									const newFilters = { ...filters, state: null, page: 1 };
+									setFilters(newFilters);
+									updateUrlParams(newFilters);
+									setOpenFilterSection(null);
+								}}>
+								<div className='flex items-center'>
+									{!filters.state && <Check size={16} className='mr-2 text-blue-600' />}
+									{filters.state && <span className='w-6' />}
+									<span className='text-sm font-medium'>All States</span>
+								</div>
+							</div>
+
+							{/* State list */}
+							<div className='max-h-60 overflow-y-auto'>
+								{usStates.map((state) => (
+									<div
+										key={state.code}
+										className='flex items-center py-1 cursor-pointer hover:bg-gray-50'
+										onClick={() => {
+											const newFilters = { ...filters, state: state.code, page: 1 };
+											setFilters(newFilters);
+											updateUrlParams(newFilters);
+											setOpenFilterSection(null);
+										}}>
+										<div className='flex items-center'>
+											{filters.state === state.code && <Check size={16} className='mr-2 text-blue-600' />}
+											{filters.state !== state.code && <span className='w-6' />}
+											<span className='text-sm'>{state.name}</span>
+										</div>
+									</div>
+								))}
+							</div>
+						</div>
+					</div>
+				)}
+			</div>
+		);
+	};
+
+	// Render coverage type checkboxes
+	const renderCoverageTypeFilter = () => {
+		const coverageTypeOptions = [
+			{ value: 'national', label: 'Federal/National' },
+			{ value: 'state', label: 'State' },
+			{ value: 'local', label: 'Local' },
+			{ value: 'unknown', label: 'Unknown Location' },
+		];
+
+		const selectedCount = filters.coverageTypes.length;
+		const displayText = selectedCount < 4 ? `Coverage (${selectedCount})` : 'Coverage';
+
+		return (
+			<div className='relative inline-block text-left'>
+				<div>
+					<Button
+						variant='outline'
+						onClick={() => toggleFilterSection('coverage')}
+						className={classNames(
+							'flex items-center justify-between gap-1 px-4 py-2 text-sm',
+							openFilterSection === 'coverage'
+								? 'bg-blue-50 text-blue-800 border-blue-200'
+								: 'border-gray-300',
+							selectedCount !== defaultCoverageTypes.length ? 'bg-blue-100' : ''
 						)}>
 						{displayText}
 						<ChevronDown
 							size={16}
 							className={classNames(
 								'transition-transform',
-								openFilterSection === 'states' ? 'rotate-180' : ''
+								openFilterSection === 'coverage' ? 'rotate-180' : ''
 							)}
 						/>
 					</Button>
 				</div>
 
-				{openFilterSection === 'states' && (
+				{openFilterSection === 'coverage' && (
 					<div
-						className='absolute left-0 z-20 mt-2 origin-top-left bg-white rounded-md shadow-lg w-64 ring-1 ring-black ring-opacity-5 focus:outline-none'
-						tabIndex={-1}
-						ref={stateDropdownRef}>
+						className='absolute left-0 z-20 mt-2 origin-top-left bg-white rounded-md shadow-lg w-56 ring-1 ring-black ring-opacity-5 focus:outline-none'
+						tabIndex={-1}>
 						<div className='p-4'>
-							{/* Search input */}
-							<div className='mb-4'>
-								<div className='relative'>
-									<Search
-										className='absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400'
-										size={16}
-									/>
-									<input
-										type='text'
-										className='w-full pl-9 pr-4 py-2 border border-gray-300 rounded-md text-sm'
-										placeholder='Search locations...'
-										value={stateSearchInput}
-										onChange={(e) => setStateSearchInput(e.target.value)}
-									/>
-									{stateSearchInput && (
-										<X
-											className='absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 cursor-pointer'
-											size={16}
-											onClick={() => setStateSearchInput('')}
-										/>
-									)}
-								</div>
+							<div className='text-xs text-gray-500 mb-3'>
+								Filter by coverage area type
 							</div>
 
-							{/* National option */}
-							<div
-								className='flex items-center py-1 cursor-pointer hover:bg-gray-50 mb-2 border-b border-gray-200 pb-2'
-								onClick={() => handleFilterSelect('states', 'National')}>
-								<div className='flex items-center'>
+							{coverageTypeOptions.map((option) => (
+								<div
+									key={option.value}
+									className='flex items-center py-2 cursor-pointer hover:bg-gray-50'
+									onClick={() => {
+										const isChecked = filters.coverageTypes.includes(option.value);
+										let newCoverageTypes;
+										if (isChecked) {
+											newCoverageTypes = filters.coverageTypes.filter(t => t !== option.value);
+										} else {
+											newCoverageTypes = [...filters.coverageTypes, option.value];
+										}
+										const newFilters = { ...filters, coverageTypes: newCoverageTypes, page: 1 };
+										setFilters(newFilters);
+										updateUrlParams(newFilters);
+									}}>
 									<input
 										type='checkbox'
-										className='mr-2'
-										checked={filters.states.includes('National')}
-										readOnly
+										className='mr-3 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500'
+										checked={filters.coverageTypes.includes(option.value)}
+										onChange={() => {}} // Handled by parent onClick
 									/>
-									<span className='text-sm font-medium'>
-										National (All States)
+									<span className='text-sm flex-1'>
+										{option.label}
+										{coverageCounts[option.value] !== null && (
+											<span className='text-gray-400 ml-1'>
+												({coverageCounts[option.value]})
+											</span>
+										)}
 									</span>
 								</div>
-							</div>
+							))}
 
-							{/* State list */}
-							<div className='max-h-60 overflow-y-auto'>
-								{filteredStates.map((state) => (
-									<div
-										key={state}
-										className='flex items-center py-1 cursor-pointer hover:bg-gray-50'
-										onClick={() => handleFilterSelect('states', state)}>
-										<div className='flex items-center'>
-											<input
-												type='checkbox'
-												className='mr-2'
-												checked={filters.states.includes(state)}
-												readOnly
-											/>
-											<span className='text-sm'>{state}</span>
-										</div>
-									</div>
-								))}
-							</div>
-
-							{/* No results */}
-							{filteredStates.length === 0 && (
-								<div className='py-3 text-center text-sm text-gray-500'>
-									No locations found
-								</div>
-							)}
-
-							{/* Clear selections button if any selected */}
-							{filters.states.length > 0 && (
-								<div className='mt-4 pt-3 border-t border-gray-200 flex justify-end'>
+							{/* Reset to defaults button */}
+							{filters.coverageTypes.length !== defaultCoverageTypes.length ||
+							!defaultCoverageTypes.every(t => filters.coverageTypes.includes(t)) ? (
+								<div className='mt-3 pt-3 border-t border-gray-200'>
 									<Button
 										variant='link'
 										size='sm'
-										className='text-blue-600 hover:text-blue-800'
+										className='text-blue-600 hover:text-blue-800 p-0'
 										onClick={() => {
-											const newFilters = { ...filters, states: [], page: 1 };
+											const newFilters = { ...filters, coverageTypes: defaultCoverageTypes, page: 1 };
 											setFilters(newFilters);
 											updateUrlParams(newFilters);
 										}}>
-										Clear selections
+										Reset to defaults
 									</Button>
 								</div>
-							)}
+							) : null}
 						</div>
 					</div>
 				)}
@@ -1123,20 +1205,17 @@ function OpportunitiesContent() {
 					);
 				})}
 
-				{/* State filters */}
-				{filters.states.map((state) => (
-					<span
-						key={state}
-						className='flex items-center gap-1 px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs font-medium'>
-						{state}
+				{/* State filter */}
+				{filters.state && (
+					<span className='flex items-center gap-1 px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs font-medium'>
+						{usStates.find(s => s.code === filters.state)?.name || filters.state}
 						<X
 							size={14}
 							className='cursor-pointer'
 							onClick={() => {
-								const updatedStates = filters.states.filter((s) => s !== state);
 								const newFilters = {
 									...filters,
-									states: updatedStates,
+									state: null,
 									page: 1,
 								};
 								setFilters(newFilters);
@@ -1144,7 +1223,28 @@ function OpportunitiesContent() {
 							}}
 						/>
 					</span>
-				))}
+				)}
+
+				{/* Coverage type filters (only show if not default) */}
+				{(filters.coverageTypes.length !== defaultCoverageTypes.length ||
+				!defaultCoverageTypes.every(t => filters.coverageTypes.includes(t))) && (
+					<span className='flex items-center gap-1 px-2 py-1 bg-green-100 text-green-800 rounded-full text-xs font-medium'>
+						Coverage: {filters.coverageTypes.join(', ')}
+						<X
+							size={14}
+							className='cursor-pointer'
+							onClick={() => {
+								const newFilters = {
+									...filters,
+									coverageTypes: defaultCoverageTypes,
+									page: 1,
+								};
+								setFilters(newFilters);
+								updateUrlParams(newFilters);
+							}}
+						/>
+					</span>
+				)}
 
 				{/* Search query */}
 				{debouncedSearchQuery && (
@@ -1170,10 +1270,14 @@ function OpportunitiesContent() {
 
 	// Check if any filters are applied
 	const hasActiveFilters = () => {
+		const hasNonDefaultCoverage = filters.coverageTypes.length !== defaultCoverageTypes.length ||
+			!defaultCoverageTypes.every(t => filters.coverageTypes.includes(t));
+
 		return (
 			filters.status !== null ||
 			filters.categories.length > 0 ||
-			filters.states.length > 0 ||
+			filters.state !== null ||
+			hasNonDefaultCoverage ||
 			debouncedSearchQuery !== '' ||
 			filters.tracked
 		);
@@ -1222,8 +1326,11 @@ function OpportunitiesContent() {
 							{/* Status filter */}
 							{renderStatusFilter()}
 
-							{/* State filter */}
+							{/* State filter (dropdown) */}
 							{renderStateFilter()}
+
+							{/* Coverage type filter (checkboxes) */}
+							{renderCoverageTypeFilter()}
 						</div>
 					</div>
 

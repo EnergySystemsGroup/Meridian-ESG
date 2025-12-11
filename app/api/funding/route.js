@@ -29,10 +29,16 @@ export async function GET(request) {
 			filters.categories = categories.split(',');
 		}
 
-		// Handle states as array
-		const states = searchParams.get('states');
-		if (states) {
-			filters.states = states.split(',');
+		// Handle state as single value (new coverage-based filtering)
+		const stateCode = searchParams.get('state');
+		if (stateCode) {
+			filters.stateCode = stateCode;
+		}
+
+		// Handle coverage types as array
+		const coverageTypes = searchParams.get('coverage_types');
+		if (coverageTypes) {
+			filters.coverageTypes = coverageTypes.split(',');
 		}
 
 		// Handle tracked IDs array
@@ -256,32 +262,6 @@ function getMockOpportunities(filters) {
 				(category) => item.categories && item.categories.includes(category)
 			)
 		);
-	}
-
-	if (filters.states && filters.states.length > 0) {
-		// Handle 'National' as a special case
-		if (filters.states.includes('National')) {
-			filteredData = filteredData.filter(
-				(item) =>
-					item.eligible_locations &&
-					(item.eligible_locations.includes('National') ||
-						// If the user selected National and other states, include opportunities eligible in any of those states
-						filters.states.some(
-							(state) =>
-								state !== 'National' && item.eligible_locations.includes(state)
-						))
-			);
-		} else {
-			// Filter for specific states
-			filteredData = filteredData.filter(
-				(item) =>
-					item.eligible_locations &&
-					(item.eligible_locations.includes('National') || // National opportunities are eligible in all states
-						filters.states.some((state) =>
-							item.eligible_locations.includes(state)
-						))
-			);
-		}
 	}
 
 	if (filters.min_amount) {
