@@ -1030,9 +1030,9 @@ export default function OpportunityDetailPage() {
 											</div>
 											<div className='text-neutral-700 dark:text-neutral-300 mt-0.5'>
 												{opportunity.cost_share_required
-													? `Required (${
-															opportunity.cost_share_percentage || ''
-													  }${opportunity.cost_share_percentage ? '%' : ''})`
+													? opportunity.cost_share_percentage
+														? `Required (${opportunity.cost_share_percentage}%)`
+														: 'Required'
 													: 'Not required'}
 											</div>
 										</div>
@@ -1140,12 +1140,30 @@ export default function OpportunityDetailPage() {
 											<div className='text-sm text-neutral-800 dark:text-neutral-200'>
 												National - All states
 											</div>
+										) : opportunity.coverage_area_names &&
+										  opportunity.coverage_area_names.length > 0 ? (
+											<div>
+												<div className='text-sm text-neutral-800 dark:text-neutral-200 mb-1'>
+													Available in {opportunity.coverage_area_names.length}{' '}
+													location{opportunity.coverage_area_names.length > 1 ? 's' : ''}:
+												</div>
+												<div className='flex flex-wrap gap-1 max-w-[240px]'>
+													{opportunity.coverage_area_names.map((name, index) => (
+														<Badge
+															key={index}
+															variant='outline'
+															className='text-xs border-neutral-200 dark:border-neutral-700'>
+															{name}
+														</Badge>
+													))}
+												</div>
+											</div>
 										) : opportunity.eligible_states &&
 										  opportunity.eligible_states.length > 0 ? (
 											<div>
 												<div className='text-sm text-neutral-800 dark:text-neutral-200 mb-1'>
 													Available in {opportunity.eligible_states.length}{' '}
-													states:
+													state{opportunity.eligible_states.length > 1 ? 's' : ''}:
 												</div>
 												<div className='flex flex-wrap gap-1 max-w-[240px]'>
 													{opportunity.eligible_states
@@ -1158,6 +1176,20 @@ export default function OpportunityDetailPage() {
 																{state}
 															</Badge>
 														))}
+												</div>
+											</div>
+										) : opportunity.eligible_locations &&
+										  opportunity.eligible_locations.length > 0 ? (
+											<div>
+												<div className='flex flex-wrap gap-1 max-w-[240px]'>
+													{opportunity.eligible_locations.map((loc, index) => (
+														<Badge
+															key={index}
+															variant='outline'
+															className='text-xs border-neutral-200 dark:border-neutral-700'>
+															{loc}
+														</Badge>
+													))}
 												</div>
 											</div>
 										) : (

@@ -125,6 +125,32 @@ ORDER BY created_at ASC;
 │    created_at      = NOW()                                                  │
 │    updated_at      = NOW()                                                  │
 ├─────────────────────────────────────────────────────────────────────────────┤
+│  STEP 2.5: UPDATE FUNDING SOURCE DETAILS (IF AVAILABLE)                     │
+│    If extraction_data.funding_source contains additional details,           │
+│    update the funding_sources record (fill in blanks only):                 │
+│                                                                             │
+│    UPDATE funding_sources                                                   │
+│    SET                                                                      │
+│      website = COALESCE(website, :extracted_website),                       │
+│      description = COALESCE(description, :extracted_description),           │
+│      contact_email = COALESCE(contact_email, :extracted_email),             │
+│      contact_phone = COALESCE(contact_phone, :extracted_phone),             │
+│      updated_at = NOW()                                                     │
+│    WHERE id = staging.source_id                                             │
+│      AND (website IS NULL OR description IS NULL                            │
+│           OR contact_email IS NULL OR contact_phone IS NULL);               │
+│                                                                             │
+│    Note: COALESCE ensures we only fill NULL fields, not overwrite existing. │
+│    The WHERE clause skips update if all fields already populated.           │
+│                                                                             │
+│    Data source: staging.extraction_data->'funding_source' contains:         │
+│      - name (already used)                                                  │
+│      - type (already used)                                                  │
+│      - website (e.g., "https://www.anaheim.net/226/Public-Utilities/")      │
+│      - description (e.g., "Municipal electric utility serving Anaheim")     │
+│      - contact_email (may be null)                                          │
+│      - contact_phone (e.g., "714-765-4250")                                 │
+├─────────────────────────────────────────────────────────────────────────────┤
 │  STEP 3: UPSERT TO funding_opportunities                                    │
 │    Use UPSERT for idempotency (running twice won't create duplicates)       │
 │                                                                             │
