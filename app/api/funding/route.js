@@ -29,6 +29,12 @@ export async function GET(request) {
 			filters.categories = categories.split(',');
 		}
 
+		// Handle project types as array
+		const projectTypes = searchParams.get('projectTypes');
+		if (projectTypes) {
+			filters.projectTypes = projectTypes.split(',');
+		}
+
 		// Handle state as single value (new coverage-based filtering)
 		const stateCode = searchParams.get('state');
 		if (stateCode) {
