@@ -717,16 +717,18 @@ export default function OpportunityDetailPage() {
 											View Official Opportunity
 										</a>
 									</div>
-									<div className='flex items-center hover:bg-blue-50/50 dark:hover:bg-blue-900/10 rounded-lg p-2 transition-colors duration-200 -mx-2'>
-										<Info className='h-5 w-5 mr-3 text-blue-600 dark:text-blue-400' />
-										<a
-											href={opportunity.api_source_url || '#'}
-											target='_blank'
-											rel='noopener noreferrer'
-											className='text-blue-600 hover:text-blue-800 dark:hover:text-blue-300 hover:underline font-medium'>
-											Data Source
-										</a>
-									</div>
+									{opportunity.api_source_url && (
+										<div className='flex items-center hover:bg-blue-50/50 dark:hover:bg-blue-900/10 rounded-lg p-2 transition-colors duration-200 -mx-2'>
+											<Info className='h-5 w-5 mr-3 text-blue-600 dark:text-blue-400' />
+											<a
+												href={opportunity.api_source_url}
+												target='_blank'
+												rel='noopener noreferrer'
+												className='text-blue-600 hover:text-blue-800 dark:hover:text-blue-300 hover:underline font-medium'>
+												Data Source
+											</a>
+										</div>
+									)}
 									{opportunity.application_url && (
 										<div className='flex items-center hover:bg-blue-50/50 dark:hover:bg-blue-900/10 rounded-lg p-2 transition-colors duration-200 -mx-2'>
 											<FileText className='h-5 w-5 mr-3 text-neutral-600 dark:text-neutral-400' />
