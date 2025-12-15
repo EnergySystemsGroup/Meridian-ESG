@@ -1140,20 +1140,20 @@ export default function OpportunityDetailPage() {
 											<div className='text-sm text-neutral-800 dark:text-neutral-200'>
 												National - All states
 											</div>
-										) : opportunity.coverage_area_names &&
-										  opportunity.coverage_area_names.length > 0 ? (
+										) : opportunity.coverage_area_codes &&
+										  opportunity.coverage_area_codes.length > 0 ? (
 											<div>
 												<div className='text-sm text-neutral-800 dark:text-neutral-200 mb-1'>
-													Available in {opportunity.coverage_area_names.length}{' '}
-													location{opportunity.coverage_area_names.length > 1 ? 's' : ''}:
+													Available in {opportunity.coverage_area_codes.length}{' '}
+													location{opportunity.coverage_area_codes.length > 1 ? 's' : ''}:
 												</div>
 												<div className='flex flex-wrap gap-1 max-w-[240px]'>
-													{opportunity.coverage_area_names.map((name, index) => (
+													{opportunity.coverage_area_codes.map((code, index) => (
 														<Badge
 															key={index}
 															variant='outline'
 															className='text-xs border-neutral-200 dark:border-neutral-700'>
-															{name}
+															{code}
 														</Badge>
 													))}
 												</div>
