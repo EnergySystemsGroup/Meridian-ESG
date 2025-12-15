@@ -9,7 +9,8 @@ export async function GET(request) {
 
 		// Get URL parameters for filtering
 		const { searchParams } = new URL(request.url);
-		const status = searchParams.get('status');
+		const statusParam = searchParams.get('status');
+		const status = statusParam ? statusParam.split(',') : null;
 		const stateCode = searchParams.get('state');
 		const coverageTypes = searchParams.get('coverage_types')
 			? searchParams.get('coverage_types').split(',')
@@ -18,7 +19,7 @@ export async function GET(request) {
 		// Use the RPC function to get filtered opportunities (reuse existing filter logic)
 		// This ensures consistency with the main funding API filtering
 		const params = {
-			p_status: status || null,
+			p_status: status?.length > 0 ? status : null,
 			p_categories: null,
 			p_project_types: null, // Don't filter by project types when counting them
 			p_state_code: stateCode || null,
@@ -99,12 +100,6 @@ export async function GET(request) {
 			// Then sort alphabetically
 			return a.localeCompare(b);
 		});
-
-		console.log(
-			`Found ${projectTypes.length} project types with opportunities (from ${taxonomyProjectTypes.size} taxonomy types)`,
-			status ? `[status: ${status}]` : '',
-			stateCode ? `[state: ${stateCode}]` : ''
-		);
 
 		return NextResponse.json({
 			success: true,

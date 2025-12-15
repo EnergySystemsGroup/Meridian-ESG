@@ -13,15 +13,8 @@ import {
 import { Input } from '@/components/ui/input';
 import {
 	Search,
-	Calendar,
-	DollarSign,
-	Clock,
-	Filter,
-	Tag,
 	X,
 	ChevronDown,
-	Download,
-	Briefcase,
 	Map,
 	ArrowUp,
 	ArrowDown,
@@ -30,7 +23,6 @@ import {
 	ChevronRight,
 	Star,
 } from 'lucide-react';
-import { calculateDaysLeft, determineStatus } from '@/lib/supabase';
 import TAXONOMIES from '@/lib/constants/taxonomies';
 import OpportunityCard from '@/components/opportunities/OpportunityCard';
 import { classNames } from '@/lib/utils';
@@ -40,11 +32,11 @@ import {
 	getProjectTypeColor,
 } from '@/lib/utils/uiHelpers';
 
-// Status indicator styling
+// Status indicator styling - keys must match filter values (capitalized)
 const statusIndicator = {
-	open: 'Open',
-	upcoming: 'Upcoming',
-	closed: 'Closed',
+	Open: 'Open',
+	Upcoming: 'Upcoming',
+	Closed: 'Closed',
 };
 
 // Helper to format status for display
@@ -96,10 +88,15 @@ function OpportunitiesContent() {
 	// Default coverage types (all checked except unknown)
 	const defaultCoverageTypes = ['national', 'state', 'local'];
 
+	// Default statuses (show Open and Upcoming by default)
+	const defaultStatuses = ['Open', 'Upcoming'];
+
 	// Initialize filter state directly from URL params
 	// This avoids a useEffect and potential extra render
 	const initialFilters = {
-		status: searchParams.get('status') || null,
+		status: searchParams.get('status')
+			? searchParams.get('status').split(',')
+			: defaultStatuses,  // Default to Open + Upcoming
 		projectTypes: searchParams.get('projectTypes') ? searchParams.get('projectTypes').split(',') : [],
 		state: searchParams.get('state') || null, // Single state code
 		coverageTypes: searchParams.get('coverage_types')
@@ -205,8 +202,8 @@ function OpportunitiesContent() {
 
 				// Build query params to pass current filters
 				const params = new URLSearchParams();
-				if (filters.status) {
-					params.append('status', filters.status);
+				if (filters.status && filters.status.length > 0) {
+					params.append('status', filters.status.join(','));
 				}
 				if (filters.state) {
 					params.append('state', filters.state);
@@ -222,12 +219,6 @@ function OpportunitiesContent() {
 				if (result.success) {
 					setProjectTypesApiResponse(result);
 					setAvailableProjectTypes(result.projectTypes);
-					console.log(
-						'Loaded project types:',
-						result.projectTypes.length,
-						filters.status ? `[status: ${filters.status}]` : '',
-						filters.state ? `[state: ${filters.state}]` : ''
-					);
 				} else {
 					console.error('Error fetching project types:', result.error);
 				}
@@ -255,11 +246,6 @@ function OpportunitiesContent() {
 		};
 	}, [searchQuery, sortOption, sortDirection]); // Only re-run the effect if searchQuery changes
 
-	// Log whenever filters change
-	useEffect(() => {
-		console.log('[Debug Tracking] Filters state changed:', filters);
-	}, [filters]);
-
 	// Fetch coverage counts when state filter changes
 	useEffect(() => {
 		async function fetchCoverageCounts() {
@@ -281,33 +267,21 @@ function OpportunitiesContent() {
 		fetchCoverageCounts();
 	}, [filters.state]);
 
-	// Log when isInitialized changes
-	useEffect(() => {
-		console.log('[Debug Tracking] isInitialized state changed:', isInitialized);
-	}, [isInitialized]);
-
 	useEffect(() => {
 		async function fetchOpportunities() {
 			// Wait until context is initialized before fetching
 			if (!isInitialized) {
-				console.log('[Debug Init] Fetch skipped: Context not initialized.');
-				// Don't set isPageLoading false yet, wait for initialization
 				return;
 			}
 
 			try {
-				setLoading(true); // Indicate internal fetch is running
-				// Don't set isPageLoading here - it's already true initially
-
-				console.log('[Debug Tracking] Fetching opportunities...');
-				console.log('[Debug Tracking] isInitialized:', isInitialized);
-				console.log('[Debug Tracking] Current filters:', filters);
+				setLoading(true);
 
 				// Build query string from filters
 				const queryParams = new URLSearchParams();
 
-				if (filters.status) {
-					queryParams.append('status', filters.status);
+				if (filters.status && filters.status.length > 0) {
+					queryParams.append('status', filters.status.join(','));
 				}
 
 				// Add project types filter
@@ -352,27 +326,11 @@ function OpportunitiesContent() {
 
 				// Add tracked IDs filter if tracked filter is on
 				if (filters.tracked && isInitialized) {
-					console.log(
-						'[Debug Tracking] Tracked filter ON. isInitialized:',
-						isInitialized,
-						'Tracked IDs:',
-						trackedOpportunityIds
-					);
-					console.log(
-						'[Debug Tracking] Appending trackedIds to queryParams:',
-						trackedOpportunityIds.join(',')
-					);
 					// Always send trackedIds parameter when tracked filter is on
 					// This ensures the API knows to filter to tracked opportunities only,
 					// even if the list is empty (which should return no results)
 					queryParams.append('trackedIds', trackedOpportunityIds.join(','));
 				}
-
-				// console.log('Current filters:', filters); // Replaced by more specific logs
-				console.log(
-					'[Debug Tracking] Final API URL:',
-					`/api/funding?${queryParams.toString()}`
-				);
 
 				// Fetch data from our API
 				const response = await fetch(`/api/funding?${queryParams.toString()}`);
@@ -406,22 +364,10 @@ function OpportunitiesContent() {
 					throw new Error(result.error || 'Failed to fetch opportunities');
 				}
 
-				// Log API response for debugging
-				console.log('[Debug Tracking] API Response:', result);
-
-				// If trackedIds is used but no opportunities match (empty array),
-				// we handle this edge case by showing no results
 				setOpportunities(result.data);
 				setTotalCount(result.total_count || 0);
-				console.log(
-					'[Debug Tracking] State after API call: Opportunities Count =',
-					result.data?.length,
-					'Total Count =',
-					result.total_count || 0
-				);
 			} catch (err) {
 				console.error('Error fetching opportunities:', err);
-				console.error('[Debug Tracking] Error in fetchOpportunities:', err);
 				setError(err.message);
 			} finally {
 				setLoading(false); // Internal fetch finished
@@ -447,9 +393,13 @@ function OpportunitiesContent() {
 			params.set('search', newSearchQuery.trim());
 		}
 
-		// Add status filter
-		if (newFilters.status) {
-			params.set('status', newFilters.status);
+		// Add status filter (only if different from default)
+		if (newFilters.status && newFilters.status.length > 0) {
+			const isDefault = newFilters.status.length === defaultStatuses.length &&
+				defaultStatuses.every(s => newFilters.status.includes(s));
+			if (!isDefault) {
+				params.set('status', newFilters.status.join(','));
+			}
 		}
 
 		// Add project types filter
@@ -516,13 +466,15 @@ function OpportunitiesContent() {
 		setFilters((prev) => {
 			const newFilters = { ...prev };
 
-			if (type === 'projectTypes' || type === 'states') {
+			// Multi-select filters (arrays)
+			if (type === 'projectTypes' || type === 'states' || type === 'status') {
 				if (newFilters[type].includes(value)) {
 					newFilters[type] = newFilters[type].filter((item) => item !== value);
 				} else {
 					newFilters[type] = [...newFilters[type], value];
 				}
 			} else {
+				// Single-select filters
 				newFilters[type] = newFilters[type] === value ? null : value;
 				setTimeout(() => setOpenFilterSection(null), 50);
 			}
@@ -537,7 +489,7 @@ function OpportunitiesContent() {
 	// Clear all filters
 	const clearAllFilters = () => {
 		setFilters({
-			status: null,
+			status: defaultStatuses,  // Reset to default (Open + Upcoming)
 			projectTypes: [],
 			state: null,
 			coverageTypes: defaultCoverageTypes,
@@ -650,6 +602,17 @@ function OpportunitiesContent() {
 
 	// Render the status filter dropdown
 	const renderStatusFilter = () => {
+		// Build button label based on selected statuses
+		const getStatusButtonLabel = () => {
+			if (!filters.status || filters.status.length === 0) {
+				return 'Status';
+			}
+			if (filters.status.length === 1) {
+				return `Status: ${formatStatusForDisplay(filters.status[0])}`;
+			}
+			return `Status (${filters.status.length})`;
+		};
+
 		return (
 			<div className='relative inline-block text-left'>
 				<div>
@@ -661,13 +624,11 @@ function OpportunitiesContent() {
 							openFilterSection === 'status'
 								? 'bg-blue-50 text-blue-800 border-blue-200'
 								: 'border-gray-300',
-							openFilterSection === 'status' && filters.status
+							openFilterSection === 'status' && filters.status?.length > 0
 								? 'bg-blue-100'
 								: ''
 						)}>
-						{filters.status
-							? `Status: ${formatStatusForDisplay(filters.status)}`
-							: 'Status'}
+						{getStatusButtonLabel()}
 						<ChevronDown
 							size={16}
 							className={classNames(
@@ -693,7 +654,7 @@ function OpportunitiesContent() {
 										<input
 											type='checkbox'
 											className='mr-2'
-											checked={filters.status === key}
+											checked={filters.status?.includes(key)}
 											readOnly
 										/>
 										<span
@@ -1125,33 +1086,39 @@ function OpportunitiesContent() {
 					</span>
 				)}
 
-				{/* Status filter */}
-				{filters.status && (
-					<span
-						className='flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium'
-						style={{
-							backgroundColor: 'white',
-							color: getStatusColor(filters.status),
-							borderWidth: '1px',
-							borderStyle: 'solid',
-							borderColor: getStatusColor(filters.status) + '50',
-						}}>
-						Status: {filters.status}
-						<X
-							size={14}
-							className='cursor-pointer'
-							onClick={() => {
-								const newFilters = {
-									...filters,
-									status: null,
-									page: 1,
-								};
-								setFilters(newFilters);
-								updateUrlParams(newFilters);
-							}}
-						/>
-					</span>
-				)}
+				{/* Status filters - only show when different from default */}
+				{(() => {
+					const isDefaultStatus = filters.status?.length === defaultStatuses.length &&
+						defaultStatuses.every(s => filters.status?.includes(s));
+					if (isDefaultStatus) return null;
+					return filters.status?.map((status) => (
+						<span
+							key={status}
+							className='flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium'
+							style={{
+								backgroundColor: 'white',
+								color: getStatusColor(status),
+								borderWidth: '1px',
+								borderStyle: 'solid',
+								borderColor: getStatusColor(status) + '50',
+							}}>
+							{formatStatusForDisplay(status)}
+							<X
+								size={14}
+								className='cursor-pointer'
+								onClick={() => {
+									const newFilters = {
+										...filters,
+										status: filters.status.filter((s) => s !== status),
+										page: 1,
+									};
+									setFilters(newFilters);
+									updateUrlParams(newFilters);
+								}}
+							/>
+						</span>
+					));
+				})()}
 
 				{/* Project type filters */}
 				{filters.projectTypes.map((projectType) => {
@@ -1253,8 +1220,11 @@ function OpportunitiesContent() {
 		const hasNonDefaultCoverage = filters.coverageTypes.length !== defaultCoverageTypes.length ||
 			!defaultCoverageTypes.every(t => filters.coverageTypes.includes(t));
 
+		const hasNonDefaultStatus = filters.status?.length !== defaultStatuses.length ||
+			!defaultStatuses.every(s => filters.status?.includes(s));
+
 		return (
-			filters.status !== null ||
+			hasNonDefaultStatus ||
 			filters.projectTypes.length > 0 ||
 			filters.state !== null ||
 			hasNonDefaultCoverage ||

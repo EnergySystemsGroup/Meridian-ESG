@@ -12,7 +12,6 @@ export async function GET(request) {
 
 		// Build filters from query parameters
 		const filters = {
-			status: searchParams.get('status'),
 			min_amount: searchParams.get('min_amount'),
 			max_amount: searchParams.get('max_amount'),
 			close_date_after: searchParams.get('close_date_after'),
@@ -22,6 +21,12 @@ export async function GET(request) {
 			page: parseInt(searchParams.get('page') || '1'),
 			page_size: parseInt(searchParams.get('page_size') || '10'),
 		};
+
+		// Handle status as array (supports multi-select: Open,Upcoming)
+		const status = searchParams.get('status');
+		if (status) {
+			filters.status = status.split(',');
+		}
 
 		// Handle categories as array
 		const categories = searchParams.get('categories');
