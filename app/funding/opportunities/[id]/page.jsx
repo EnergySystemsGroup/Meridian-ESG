@@ -214,8 +214,7 @@ export default function OpportunityDetailPage() {
 							<CardContent className='px-6 pt-2 pb-6'>
 								<Tabs defaultValue='overview' className='w-full'>
 									<TabsList className='mb-6 bg-neutral-100/70 dark:bg-neutral-900/30 p-1 rounded-lg'>
-										{/* Relevance tab temporarily hidden - add 'relevance' back to this array when needed */}
-										{['overview', 'eligibility'].map((tab) => (
+										{['overview', 'eligibility', 'relevance'].map((tab) => (
 											<TabsTrigger
 												key={tab}
 												value={tab}
@@ -643,12 +642,7 @@ export default function OpportunityDetailPage() {
 										</div>
 									</TabsContent>
 
-									{/* 
-									Relevance Tab - Temporarily hidden
-									Uncomment this section when ready to show the Relevance tab
-									Don't forget to add 'relevance' back to the tabs array above
-									*/}
-									{/* <TabsContent value='relevance'>
+									<TabsContent value='relevance'>
 										<div className='space-y-6'>
 											{opportunity.relevance_score !== null && (
 												<div>
@@ -694,7 +688,7 @@ export default function OpportunityDetailPage() {
 												</div>
 											)}
 										</div>
-									</TabsContent> */}
+									</TabsContent>
 								</Tabs>
 							</CardContent>
 						</Card>
