@@ -3624,18 +3624,19 @@
   "v2": {
     "tasks": [
       {
-        "id": "1",
+        "id": 1,
         "title": "Review API Processing Pipeline",
         "description": "Validate that API processing captures full data breadth from Grants.gov and other sources. Check duplicate detection works correctly, verify data quality standards are met, and ensure all source configurations are optimal.",
         "details": "",
         "testStrategy": "",
-        "status": "pending",
+        "status": "done",
         "dependencies": [],
         "priority": "high",
-        "subtasks": []
+        "subtasks": [],
+        "updatedAt": "2025-12-16T19:49:34.991Z"
       },
       {
-        "id": "2",
+        "id": 2,
         "title": "Implement Users + Microsoft SSO + Favoriting",
         "description": "Add Microsoft SSO authentication (get config from IT department). Implement user profile management, opportunity favoriting tied to users, and client assignment to users for better match visibility.",
         "details": "",
@@ -3646,20 +3647,33 @@
         "subtasks": []
       },
       {
-        "id": "3",
+        "id": 3,
         "title": "Clean Up Funding Opportunity Module",
         "description": "Make sure filtering and sorting works correctly. Add toggle to hide closed opportunities by default. Ensure filter options are updated (eligible projects, categories, etc.). Add export functionality.",
         "details": "",
         "testStrategy": "",
-        "status": "pending",
+        "status": "done",
         "dependencies": [
           "2"
         ],
         "priority": "high",
-        "subtasks": []
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Implement Geographic Location Filtering for Funding Opportunities",
+            "description": "Redesign the location filtering system to use coverage_areas instead of the legacy eligible_locations text field. Implement a two-tier filtering approach: Primary filter (State dropdown) and Secondary filter (Coverage Type checkboxes). [Updated: 12/10/2025]",
+            "details": "## Overview\nReplace the current state-based multi-select with a cleaner coverage-area-based filtering system.\n\n## Filter Structure\n\n### Primary Filter: State Dropdown\n- Default: \"All States\" (shows everything)\n- Options: All 50 US states (static list)\n- When state selected: Shows opportunities where coverage_areas overlap with that state (national + state-level + local within that state)\n\n### Secondary Filter: Coverage Type Checkboxes\n- Based on `coverage_areas.kind` field\n- Options: ☑ National/Federal  ☑ State  ☑ Local  ☐ Unknown Location\n- All checked by default EXCEPT \"Unknown Location\"\n- \"Unknown Location\" shows opportunities with eligible_locations but no opportunity_coverage_areas link\n\n## Database Query Logic\n\n### When \"All States\" + all types checked:\n```sql\nSELECT fo.* FROM funding_opportunities fo\nLEFT JOIN opportunity_coverage_areas oca ON oca.opportunity_id = fo.id\nLEFT JOIN coverage_areas ca ON ca.id = oca.coverage_area_id\n-- No WHERE clause on location, return all\n```\n\n### When specific state (e.g., California) selected:\n```sql\nSELECT DISTINCT fo.* FROM funding_opportunities fo\nJOIN opportunity_coverage_areas oca ON oca.opportunity_id = fo.id\nJOIN coverage_areas ca ON ca.id = oca.coverage_area_id\nWHERE \n  ca.kind = 'national'  -- Federal applies everywhere\n  OR (ca.kind = 'state' AND ca.state_code = 'CA')\n  OR (ca.kind IN ('utility', 'county', 'city') AND ca.state_code = 'CA')\n```\n\n### Coverage Type checkbox filtering:\n- National/Federal checked: include `ca.kind = 'national'`\n- State checked: include `ca.kind = 'state'`\n- Local checked: include `ca.kind IN ('utility', 'county', 'city')`\n- Unknown Location checked: include opportunities with no oca links\n\n## Files to Modify\n\n1. **API Route**: `app/api/funding/route.js`\n   - Update query logic to use opportunity_coverage_areas join\n   - Add coverage_type filter parameter\n   - Handle \"Unknown Location\" edge case\n\n2. **RPC Function**: May need new/updated Supabase function\n   - `get_funding_opportunities_by_coverage(state_code, coverage_types[])`\n\n3. **Frontend Page**: `app/funding/opportunities/page.jsx`\n   - Replace current locations multi-select with state dropdown\n   - Add coverage type checkboxes (Federal/State/Local/Unknown)\n   - Update URL param sync for new filter structure\n\n4. **Filter Components**: Create or update filter components\n   - StateDropdown component (single select, all 50 states)\n   - CoverageTypeFilter component (checkbox group)\n\n## UI Behavior\n\n- State dropdown: Single select, defaults to \"All States\"\n- Coverage checkboxes: Multi-select, Federal/State/Local checked by default\n- When state changes, counts update to reflect available opportunities\n- \"Unknown Location (N)\" shows count of orphaned opportunities\n- Empty state: \"No opportunities found in [State]\" message\n<info added on 2025-12-11T01:50:28.075Z>\nI'll analyze the codebase to understand the current filtering implementation and provide relevant context for this subtask update.Based on my codebase analysis, the current implementation at app/funding/opportunities/page.jsx (lines 102, 306-309) uses the legacy `eligible_locations` text field for state filtering, while the database now has a proper coverage_areas infrastructure with the opportunity_coverage_areas junction table (created in migration 20251105000001_enable_postgis_coverage_areas.sql).\n\nThe current filtering logic queries the funding_opportunities_with_geography view using the eligible_locations array field. To implement the new geographic filtering system, I need to:\n\n1. Understand that coverage_areas.kind values are: 'national', 'state', 'county', 'city', 'utility', 'region', 'tribal'\n2. The opportunity_coverage_areas junction table links opportunities to their coverage areas\n3. The RPC function get_funding_opportunities_dynamic_sort (called in lib/services/fundingApi.js line 59) needs to be updated to support coverage-based filtering\n4. The frontend state filter (lines 102, 306-309 in page.jsx) currently uses states array from eligible_locations\n\nTest Update: Analysis complete. The current implementation uses eligible_locations text array for state filtering. The coverage_areas infrastructure exists but is not yet integrated into the filtering logic. The RPC function get_funding_opportunities_dynamic_sort needs to be modified to join with opportunity_coverage_areas and coverage_areas tables. Frontend components need state dropdown (single select, 50 states + \"All States\") and coverage type checkboxes (National/Federal, State, Local, Unknown Location).\n</info added on 2025-12-11T01:50:28.075Z>",
+            "status": "done",
+            "dependencies": [],
+            "parentTaskId": 3,
+            "updatedAt": "2025-12-11T04:09:03.632Z",
+            "parentId": "undefined"
+          }
+        ],
+        "updatedAt": "2025-12-11T04:09:03.632Z"
       },
       {
-        "id": "4",
+        "id": 4,
         "title": "Enhance Client Matching Feature",
         "description": "Add filter and sorting options (client type, location, funding size, etc.). Brainstorm what users might need before implementing. Improve UX for viewing and managing client matches.",
         "details": "",
@@ -3740,7 +3754,7 @@
         "updatedAt": "2025-12-09T05:09:07.307Z"
       },
       {
-        "id": "5",
+        "id": 5,
         "title": "Review and Optimize Dashboard",
         "description": "Make sure top 10 funding categories algorithm is correct. Review if recent activities section is needed or should be commented out for later. Optimize data presentation and performance.",
         "details": "",
@@ -3755,7 +3769,7 @@
         "subtasks": []
       },
       {
-        "id": "6",
+        "id": 6,
         "title": "Enhance Timeline Feature",
         "description": "Add filters by state. Consider what happens if legislative events are added. Review timeline display and improve UX. Consider adding export functionality.",
         "details": "",
@@ -3766,7 +3780,7 @@
         "subtasks": []
       },
       {
-        "id": "7",
+        "id": 7,
         "title": "Clean Up Menu and Navigation",
         "description": "Hide unnecessary menu options. Remove or implement Coming Soon placeholders. Ensure Settings and Help functionality are ready or hidden if not needed for launch.",
         "details": "",
@@ -3777,7 +3791,7 @@
         "subtasks": []
       },
       {
-        "id": "8",
+        "id": 8,
         "title": "Polish Dark Mode",
         "description": "Test dark mode across all pages. Ensure consistency and fix any contrast or styling issues. Dark mode toggle already exists, just needs refinement.",
         "details": "",
@@ -3788,7 +3802,7 @@
         "subtasks": []
       },
       {
-        "id": "9",
+        "id": 9,
         "title": "Write and Run Comprehensive Tests",
         "description": "Develop testing plan for the whole app. Write unit tests, integration tests, and E2E tests for critical paths. Run tests to ensure everything is functional before launch.",
         "details": "",
@@ -3799,7 +3813,7 @@
         "subtasks": []
       },
       {
-        "id": "10",
+        "id": 10,
         "title": "Research Utility Funding Integration",
         "description": "Brainstorm ways to add utility funding/incentive information to opportunity database. Test if Claude Code SDK can pull utility incentive data effectively. Compare results to IncentiveFind. If data matches, consider automatic periodic pulls.",
         "details": "",
@@ -3811,7 +3825,7 @@
         "updatedAt": "2025-11-20T00:00:55.888Z"
       },
       {
-        "id": "11",
+        "id": 11,
         "title": "Research Semi-Manual Opportunity Import",
         "description": "Design a way to add opportunities semi-manually from PDFs or links. Ideally give the system a PDF/URL and it imports relevant opportunity information with analysis similar to current pipeline. Consider using Claude Code SDK.",
         "details": "",
@@ -3823,7 +3837,7 @@
         "updatedAt": "2025-11-19T21:34:49.750Z"
       },
       {
-        "id": "12",
+        "id": 12,
         "title": "Research Claude SDK for Legislation Data",
         "description": "Analyze whether Claude Code SDK can pull legislation information effectively. Need to determine if information is complete enough to avoid subscribing to third-party database. Compare data quality and coverage.",
         "details": "",
@@ -3835,7 +3849,7 @@
         "updatedAt": "2025-11-19T20:44:35.211Z"
       },
       {
-        "id": "13",
+        "id": 13,
         "title": "Enhance Map Feature (Advanced)",
         "description": "Make sure current map filters are correct and summaries are good. Ensure side cards show right info. Brainstorm feasibility of county-level or utility-level information display.",
         "details": "",
@@ -3847,7 +3861,7 @@
         "updatedAt": "2025-11-19T20:44:38.643Z"
       },
       {
-        "id": "14",
+        "id": 14,
         "title": "Fix duplicates in funding_sources table",
         "description": "Identify and resolve duplicate entries in the funding_sources table. This includes finding duplicate records by name/type combinations, consolidating references from funding_opportunities, and removing redundant entries while maintaining data integrity.",
         "details": "",
@@ -3858,7 +3872,7 @@
         "subtasks": []
       },
       {
-        "id": "15",
+        "id": 15,
         "title": "Audit and standardize funding_sources.type field",
         "description": "Audit the funding_sources table to identify all existing type values. Evaluate whether converting the type field to an ENUM is appropriate based on the variety of values. If converting to ENUM: 1) Document all valid type values needed, 2) Check all insertion points in the codebase (V2 pipeline storageAgent, manual insertion scripts, API endpoints) to ensure they use valid enum values, 3) Create migration that safely converts TEXT to ENUM. Consider: current values in production, future extensibility needs, and error handling for invalid types.",
         "details": "",
@@ -3869,7 +3883,7 @@
         "subtasks": []
       },
       {
-        "id": "16",
+        "id": 16,
         "title": "Implement Non-API Opportunity Staging Pipeline",
         "description": "Build the 3-stage processing pipeline (extraction, analysis, storage) for the manual_funding_sources staging table. Migration and initial data import already complete (190 utility programs). Remaining: extraction agent to fetch URLs, analysis agent for content enhancement, storage agent for database insertion.",
         "details": "",
@@ -3881,7 +3895,7 @@
         "updatedAt": "2025-12-10T19:53:35.816Z"
       },
       {
-        "id": "17",
+        "id": 17,
         "title": "Clean up v2 storage agent - remove legacy state eligibility processing",
         "description": "Remove redundant stateEligibilityProcessor from v2 storageAgent. The coverage_areas system (linkOpportunityToCoverageAreas) already handles all location types including states, making the old state eligibility code redundant.",
         "details": "## Background\n\nThe v2 storageAgent currently runs TWO location systems in parallel:\n- OLD: stateEligibilityProcessor → opportunity_state_eligibility (states table only)\n- NEW: linkOpportunityToCoverageAreas → opportunity_coverage_areas (utilities, counties, states, national)\n\nThe coverage_areas table has kind='state' entries, so states are already covered by the new system.\n\n## Pre-requisite\nTest the coverage area linking (linkOpportunityToCoverageAreas) to ensure it works smoothly before removing the old code.\n\n## Changes Required\n\n### 1. Modify lib/agents-v2/core/storageAgent/index.js\n\n**Remove import (line 12):**\n```javascript\n// DELETE: import { stateEligibilityProcessor } from './stateEligibilityProcessor.js';\n```\n\n**Remove Step 3 (lines 214-216):**\n```javascript\n// DELETE: const eligibilityPromise = stateEligibilityProcessor.processEligibility(...)\n```\n\n**Remove eligibility promise resolution (lines 235-236):**\n```javascript\n// DELETE: eligibilityPromise.then(() => {});\n```\n\n**Update file header comment** to remove reference to \"state eligibility processing\"\n\n### 2. Files to potentially deprecate/remove (future cleanup)\n- lib/agents-v2/core/storageAgent/stateEligibilityProcessor.js\n- lib/agents-v2/core/storageAgent/utils/locationParsing.js\n- lib/agents-v2/tests/core/stateEligibilityProcessor.test.js\n- __tests__/unit/agents/storageAgent/stateEligibilityProcessor.test.js\n\n## Impact\n- opportunity_state_eligibility table will no longer receive new records\n- opportunity_coverage_areas continues to receive records (no change)\n- Map functions using opportunity_state_eligibility may need separate update\n\n## Verification\n- Run storage agent on test opportunity\n- Verify coverage areas are linked correctly\n- Verify no errors from removed state eligibility code",
@@ -3892,7 +3906,7 @@
         "subtasks": []
       },
       {
-        "id": "18",
+        "id": 18,
         "title": "Enhance Discovery Agent with Catalog Lookup Integration",
         "description": "Supplement the current web search discovery strategy with catalog lookup to achieve near-100% program coverage.\n\n## Problem Statement\nCurrent discovery relies entirely on web searches (6-10 per utility), which misses programs documented in centralized rebate catalog PDFs. Analysis comparing our database against IncentifFind revealed:\n- We have 21 PG&E/EBMUD programs vs IncentifFind's 78 utility programs\n- IncentifFind parses catalog PDFs into equipment-level entries\n- Some of our programs (financing, third-party implementers, RCx) aren't in IncentifFind\n- Some IncentifFind programs (equipment rebates) aren't in our DB\n\n## Solution Overview\nAdd catalog lookup as a standard step in the discovery workflow:\n1. Catalog lookup runs FIRST (before web searches)\n2. Three-tier discovery: Registry file → DB cache → Dynamic search\n3. Value-based splitting: $500+ rebate categories become separate programs\n4. Both sources feed same staging pipeline with URL deduplication\n\n## Key Design Decisions\n- **Universal**: Applies to any utility, not just pre-configured ones\n- **Additive**: Supplements web search, doesn't replace it\n- **Value-based granularity**: Split by significant savings ($500+), group trivial items\n- **Same pipeline**: Catalog programs flow through extraction→analysis→storage\n\n## Files to Modify\n- `.claude/agents/discovery-agent.md` - Add Section 2.5 (Catalog Lookup)\n- `.claude/agents/extraction-agent.md` - Add Section 2.6 (Catalog Splitting)\n- `lib/data/utility-catalog-registry.json` - CREATE (known catalog URLs)\n- `CLAUDE.md` - Add discovery_method values reference\n\n## Discovery Method Values\n- `web_search` - Standard web search discovery\n- `catalog_lookup` - Catalog PDF found (pending split)\n- `catalog_program` - Individual program extracted from catalog\n\n## Acceptance Criteria\n- [ ] Discovery agent checks for catalog before running web searches\n- [ ] Catalog PDFs are split into value-based program entries\n- [ ] Both web and catalog programs deduplicate correctly\n- [ ] Test against PG&E shows improved coverage vs current data\n- [ ] Documentation updated with new discovery_method values",
         "details": "",
@@ -3964,7 +3978,7 @@
         ]
       },
       {
-        "id": "19",
+        "id": 19,
         "title": "Enhance Client Module: Private Sector Support, External IDs, and Bulk Import",
         "description": "Extend the client module to support private sector clients, add external ID fields for CRM integration (e.g., Salesforce), and implement bulk client import via spreadsheet upload.",
         "details": "## Current State Analysis\n\nThe client module currently:\n- Uses ELIGIBLE_APPLICANTS taxonomy from `lib/constants/taxonomies.js`\n- Has \"For-Profit Businesses\" and \"Small Businesses\" in the \"weak\" tier (excluded from ClientForm)\n- Database schema in `supabase/migrations/20251105000001_enable_postgis_coverage_areas.sql`\n- No external ID fields exist for CRM integration\n- Clients added one at a time via form\n\n## Requirements\n\n### 1. Private Sector Client Types\n- Review current taxonomy tiers in `lib/constants/taxonomies.js` (lines 338-406)\n- Add dedicated \"Private Sector\" category with appropriate types:\n  - Private Corporations\n  - Small/Medium Businesses (SMB)\n  - Large Enterprises\n  - Commercial Property Owners\n  - Industrial Facilities\n  - Commercial Real Estate\n- Update ClientForm.jsx (line 20-24) to include private sector tier\n- Consider if private clients need different matching logic\n\n### 2. External ID Fields for CRM Integration\n- Add database migration for new fields:\n  - `external_id` (TEXT) - Generic external system ID\n  - `external_source` (TEXT) - Source system name (e.g., 'salesforce', 'hubspot')\n  - Consider: `salesforce_id`, `salesforce_account_id` as dedicated fields\n- Update API routes (`app/api/clients/route.js`, `app/api/clients/[id]/route.js`)\n- Update ClientForm.jsx to optionally capture external IDs\n- Add unique constraint on external_id + external_source combination\n\n### 3. Bulk Import via Spreadsheet\n- Create new API route: `app/api/clients/bulk-import/route.js`\n- Accept CSV/Excel file upload with columns:\n  - name (required)\n  - type (required, must match taxonomy)\n  - address (required)\n  - project_needs (comma-separated)\n  - budget, contact, description, dac\n  - external_id, external_source (optional)\n- Implement batch geocoding with rate limiting\n- Create UI component for file upload with:\n  - Template download\n  - Preview/validation before import\n  - Progress indicator\n  - Error reporting per row\n- Handle duplicate detection (by name + address or external_id)\n\n## Files to Modify\n- `lib/constants/taxonomies.js` - Add private sector types\n- `supabase/migrations/` - New migration for external_id fields\n- `components/clients/ClientForm.jsx` - Add external ID inputs, include private tier\n- `app/api/clients/route.js` - Handle new fields\n- `app/api/clients/[id]/route.js` - Handle new fields in updates\n- New: `app/api/clients/bulk-import/route.js`\n- New: `components/clients/BulkImportModal.jsx`\n- `app/clients/page.jsx` - Add bulk import button\n\n## Technical Considerations\n- Mapbox geocoding rate limits for bulk import\n- Transaction handling for bulk operations\n- CSV parsing library (papaparse or similar)\n- Excel parsing if needed (xlsx library)",
@@ -4010,7 +4024,7 @@
         "updatedAt": "2025-12-08T18:40:43.634Z"
       },
       {
-        "id": "20",
+        "id": 20,
         "title": "Import Salesforce California Clients via API",
         "description": "Import California client accounts from Salesforce export into production database using Claude Code and the /api/clients endpoint. Steps: 1) Export California accounts from Salesforce as CSV/Excel, 2) Claude Code validates data, checks for duplicates against existing clients, 3) Call POST /api/clients for each valid record (includes geocoding and coverage area detection), 4) Report results and handle any errors interactively. Use salesforce_id field to link records back to Salesforce.",
         "details": "",
@@ -4021,36 +4035,144 @@
         "subtasks": []
       },
       {
-        "id": "21",
+        "id": 21,
         "title": "Rerun API opportunities to fix funding source linkages",
         "description": "82 opportunities are currently linked to the \"Unknown\" funding source (with null type) instead of their proper funding sources. Many of these have valid agency_name values that match existing funding sources. Need to reprocess opportunities from APIs to ensure source_id is correctly assigned based on the API source configuration.",
         "details": "Background:\n- The client-matching API shows \"OTHER\" source type for opportunities that should have proper types (Federal, State, Utility, etc.)\n- Root cause: 82 opportunities have source_id pointing to the \"Unknown\" funding source (id: 73bdda2f-0a12-4c1f-8a7b-a66b7e540814)\n- The \"Unknown\" funding source has type = null, causing the fallback to \"OTHER\"\n- Many affected opportunities have valid agency_name values that match real funding sources\n\nAffected opportunities include:\n- Wildlife Corridors and Fish Passage Program (agency: California Wildlife Conservation Board)\n- Various DOE programs (agency: Department of Energy)\n- Various federal programs\n\nTasks:\n1. Identify all opportunities linked to \"Unknown\" funding source\n2. Match these opportunities to their correct funding sources based on agency_name\n3. Update source_id for affected opportunities\n4. Consider adding validation to prevent this in future API processing\n5. Verify source_type displays correctly after fix",
         "testStrategy": "",
-        "status": "pending",
+        "status": "done",
         "dependencies": [],
         "priority": "medium",
-        "subtasks": []
+        "subtasks": [],
+        "updatedAt": "2025-12-16T19:52:30.135Z"
       },
       {
-        "id": "22",
+        "id": 22,
         "title": "Improve structure of program_insights and program_use_case content",
         "description": "The program_insights and program_use_case fields in funding_opportunities currently contain unstructured text that can be difficult to read. Update the analysis agent to generate properly structured content with punctuation and sentence separation.",
         "details": "Current Issue:\n- program_insights often contains comma-separated items without proper sentence structure\n- Example: \"Principal investigators are limited to submitting a maximum of two proposals per year,Projects addressing multiple sustainability pillars receive higher evaluation scores,Conflict of interest rules are strictly enforced\"\n\nExpected Output:\n- Each insight should be a complete, punctuated sentence\n- Insights should be separated by periods or presented as bullet points\n- Example: \"• Principal investigators are limited to submitting a maximum of two proposals per year. • Projects addressing multiple sustainability pillars receive higher evaluation scores. • Conflict of interest rules are strictly enforced for Pest Management Advisory Committee members.\"\n\nImplementation:\n1. Update the analysis agent prompt to instruct it to format program_insights as properly punctuated sentences or bullet points\n2. Apply the same formatting requirements to program_use_case field\n3. Consider adding a migration or update script to reformat existing data in the database",
         "testStrategy": "",
-        "status": "pending",
+        "status": "done",
         "dependencies": [],
         "priority": "medium",
-        "subtasks": []
+        "subtasks": [],
+        "updatedAt": "2025-12-16T19:55:35.884Z"
+      },
+      {
+        "id": 23,
+        "title": "Data Cleanup and Quality Improvements",
+        "description": "Implement multiple data quality fixes covering California location parsing, coverage area assignment hierarchy, report formatting, utility pipeline analysis, project type matching, federal applicant type correction, and report hiding functionality.",
+        "details": "## Background\n\nThis task addresses seven distinct data quality and user experience issues identified during production use:\n\n1. **California Location Parsing**: Opportunities with partial California coverage (e.g., \"Northern California counties\") are currently assigned to the entire state rather than specific counties.\n\n2. **Coverage Area Assignment Hierarchy**: Some opportunities are incorrectly assigned to both state-level and county-level coverage areas when only the most specific (county) should be assigned.\n\n3. **Report Formatting Issues**: PDF reports generated via `@react-pdf/renderer` have logo alignment and text formatting problems in `lib/pdf/` components.\n\n4. **Sparse Utility Opportunities**: The manual pipeline (see `docs/prd/opp_staging/manual-funding-opportunities-pipeline.md`) is returning fewer utility opportunities than expected during discovery and extraction phases.\n\n5. **Project Type Matching Logic**: The Victorville city example revealed matching discrepancies in `app/api/client-matching/route.js` where project types don't align correctly with client needs.\n\n6. **Federal Applicant Type Correction**: A recent change incorrectly modified applicant types for federal opportunities, needs to be reversed in the database.\n\n7. **Report Match Hiding**: Users need the ability to hide specific matches from client reports, requiring a new field in the database and UI controls.\n\n## Implementation Plan\n\n### 1. California Location Parsing Enhancement\n\n**Files to modify:**\n- `lib/services/locationMatcher.js` (lines 82-111: `detectLocationType` function)\n- `lib/agents-v2/core/dataExtractionAgent/extraction/index.js` (location extraction logic)\n\n**Approach:**\n- Add pattern detection for partial California coverage (e.g., \"Northern California\", \"Southern California counties\", \"Bay Area counties\")\n- Query `coverage_areas` table WHERE `kind='county'` AND `state_code='CA'` to get county lists\n- For \"Northern California\" patterns, match to counties in regions: Del Norte, Siskiyou, Modoc, Humboldt, Trinity, Shasta, Lassen, Tehama, Plumas, Mendocino, Glenn, Butte, Sierra, Lake, Colusa, Sutter, Yuba, Nevada, Placer, El Dorado, Yolo, Napa, Sonoma, Marin, Sacramento, Solano, Contra Costa, San Francisco, Alameda, San Mateo, Santa Clara\n- For \"Southern California\" patterns, match to counties south of Kern/San Luis Obispo\n- Update `fuzzyMatchLocation` to return multiple county IDs instead of state ID when partial coverage detected\n\n### 2. Highest-Available Coverage Area Assignment\n\n**Files to modify:**\n- `lib/services/locationMatcher.js` (lines 291-345: `linkOpportunityToCoverageAreas` function)\n- `scripts/location/backfill-opportunity-coverage-areas.js` (lines 21-94: `processOpportunity` function)\n\n**Approach:**\n- After collecting all matched coverage areas, implement hierarchy filter:\n  ```javascript\n  function filterToHighestSpecificity(coverageAreas) {\n    const kinds = ['county', 'city', 'utility', 'state', 'national'];\n    // Find the most specific kind present\n    for (const kind of kinds) {\n      const matches = coverageAreas.filter(ca => ca.kind === kind);\n      if (matches.length > 0) return matches;\n    }\n    return coverageAreas;\n  }\n  ```\n- Apply this filter before inserting into `opportunity_coverage_areas` junction table\n- Add migration to clean up existing opportunities with redundant assignments:\n  ```sql\n  DELETE FROM opportunity_coverage_areas oca1\n  WHERE EXISTS (\n    SELECT 1 FROM opportunity_coverage_areas oca2\n    JOIN coverage_areas ca1 ON oca1.coverage_area_id = ca1.id\n    JOIN coverage_areas ca2 ON oca2.coverage_area_id = ca2.id\n    WHERE oca1.opportunity_id = oca2.opportunity_id\n    AND ca1.kind = 'state' \n    AND ca2.kind IN ('county', 'city', 'utility')\n  );\n  ```\n\n### 3. Report Formatting Improvements\n\n**Files to modify:**\n- `lib/pdf/styles/pdfStyles.js` (styling definitions)\n- `lib/pdf/components/CoverPage.js` (logo alignment)\n- `lib/pdf/components/PageHeader.js` (text alignment issues)\n\n**Approach:**\n- Review logo rendering in CoverPage component, ensure proper `Image` component usage with absolute positioning or flexbox centering\n- Check for text alignment issues in PageHeader - likely need to update `styles.header` to use `alignItems: 'center'`\n- Test with `npm run test-client-matching` and review generated PDF output\n- Common fixes in @react-pdf/renderer:\n  - Use `View` with `flexDirection: 'row'` and `justifyContent: 'center'` for centering\n  - Ensure `Image` has explicit `width` and `height` properties\n  - Check for overlapping absolute positioning\n\n### 4. Utility Pipeline Analysis Investigation\n\n**Files to investigate:**\n- Discovery agent spawned via Task tool with `subagent_type=\"discovery-agent\"`\n- `scripts/test-extraction.mjs` (if exists, for testing)\n- Manual staging table: `manual_funding_opportunities_staging`\n\n**Approach:**\n- Run query to check staging pipeline status:\n  ```sql\n  SELECT \n    extraction_status,\n    COUNT(*) as count,\n    COUNT(DISTINCT source_id) as unique_sources\n  FROM manual_funding_opportunities_staging\n  GROUP BY extraction_status;\n  ```\n- Review recent discovery runs to identify if:\n  - Web search is filtering too aggressively\n  - Extraction is failing to parse utility program pages\n  - URL patterns have changed for utility websites\n- Check `temp/utility-discovery/` directory for recent discovery output files\n- Compare against IncentiveFind or other utility databases to identify missing programs\n- Consider adjusting discovery agent search terms or filtering logic\n\n### 5. Project Type Matching Logic Review\n\n**Files to modify:**\n- `app/api/client-matching/route.js` (lines 199-220: project needs matching logic)\n- `lib/constants/taxonomies.js` (CLIENT_TYPE_EXPANSIONS and project type definitions)\n\n**Test case:** Victorville city example\n- Review current matching logic in `evaluateMatch` function\n- Check if taxonomy expansions properly map project types to eligible_project_types\n- Add logging to identify where matches fail:\n  ```javascript\n  console.log('[DEBUG] Project type matching:', {\n    clientNeeds: client.project_needs,\n    oppEligible: opportunity.eligible_project_types,\n    matchedNeeds: details.matchedProjectNeeds\n  });\n  ```\n- Consider adding fuzzy matching for project types if exact matches are too restrictive\n- Update taxonomy if new project type mappings are needed\n\n### 6. Federal Applicant Type Correction\n\n**Files to check:**\n- Recent database migrations that modified `eligible_applicants` field\n- Git history: `git log --all --full-history -- \"*eligible_applicants*\"`\n\n**Approach:**\n- Identify the incorrect change via git history\n- Query to find affected opportunities:\n  ```sql\n  SELECT id, title, agency_name, eligible_applicants, source_id\n  FROM funding_opportunities fo\n  JOIN funding_sources fs ON fo.source_id = fs.id\n  WHERE fs.type = 'Federal'\n  AND [condition identifying incorrect change];\n  ```\n- Create migration to restore correct values:\n  - Either revert to previous values from backups\n  - Or reprocess affected opportunities using the analysis agent\n- Consider using `api_response_data` field if original data is preserved\n\n### 7. Report Match Hiding Feature\n\n**Files to create/modify:**\n- `supabase/migrations/YYYYMMDD_add_hidden_matches.sql` (new migration)\n- Schema: Add junction table `client_hidden_matches(client_id UUID, opportunity_id UUID, hidden_at TIMESTAMPTZ, hidden_by TEXT)`\n- `app/api/client-matching/route.js` (filter out hidden matches)\n- Client report UI components to add \"Hide from report\" button\n- `lib/pdf/ClientMatchesPDF.js` (respect hidden matches when generating PDF)\n\n**Database schema:**\n```sql\nCREATE TABLE client_hidden_matches (\n  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),\n  client_id UUID REFERENCES clients(id) ON DELETE CASCADE NOT NULL,\n  opportunity_id UUID REFERENCES funding_opportunities(id) ON DELETE CASCADE NOT NULL,\n  hidden_at TIMESTAMPTZ DEFAULT NOW(),\n  hidden_by TEXT,\n  notes TEXT,\n  UNIQUE(client_id, opportunity_id)\n);\n\nCREATE INDEX idx_client_hidden_matches_client ON client_hidden_matches(client_id);\n```\n\n**API modifications:**\n- Update `GET /api/client-matching` to filter: `WHERE NOT EXISTS (SELECT 1 FROM client_hidden_matches WHERE client_id = $1 AND opportunity_id = fo.id)`\n- Add `POST /api/client-matching/hide` endpoint to add hidden matches\n- Add `DELETE /api/client-matching/hide` endpoint to unhide matches\n\n## Dependencies\n\n- Task 1 (API Processing Pipeline Review): Needed for understanding current data extraction patterns and quality standards\n- Task 3 (Funding Opportunity Module Cleanup): Provides filtering infrastructure that can be extended for hidden matches\n- Task 22 (Improve program_insights structure): Related data quality work that may share code paths\n\n## Files and Components\n\n**Core files:**\n- `lib/services/locationMatcher.js` - Geographic matching logic\n- `lib/agents-v2/core/storageAgent/dataSanitizer.js` - Data cleaning utilities\n- `app/api/client-matching/route.js` - Matching algorithm\n- `lib/pdf/` directory - Report generation\n- `supabase/migrations/` - Database schema changes\n\n**Testing:**\n- Use `npm run test-location-matcher` for location parsing tests\n- Use `npm run test-client-matching` for matching logic validation\n- Use `npm run backfill-coverage-areas` to reprocess coverage area assignments\n- Check staging pipeline with `psql` queries against `manual_funding_opportunities_staging`",
+        "testStrategy": "## Testing Strategy\n\n### 1. California Location Parsing\n- **Unit tests:** Create test cases for location patterns:\n  - \"Northern California counties\" → returns specific county IDs, not CA state ID\n  - \"Bay Area\" → returns 9 county IDs (SF, Alameda, Contra Costa, Marin, San Mateo, Santa Clara, Napa, Solano, Sonoma)\n  - \"Southern California\" → returns county IDs from San Luis Obispo southward\n- **Integration test:** Run `npm run test-location-matcher` with real opportunity data\n- **Verification:** Query `opportunity_coverage_areas` to confirm no whole-state assignments when partial coverage exists:\n  ```sql\n  SELECT fo.id, fo.title, COUNT(DISTINCT ca.kind) as kind_count, array_agg(DISTINCT ca.kind) as kinds\n  FROM funding_opportunities fo\n  JOIN opportunity_coverage_areas oca ON fo.id = oca.opportunity_id\n  JOIN coverage_areas ca ON oca.coverage_area_id = ca.id\n  WHERE fo.eligible_locations::text ILIKE '%california%'\n  AND fo.eligible_locations::text NOT ILIKE '%national%'\n  GROUP BY fo.id, fo.title\n  HAVING 'state' = ANY(array_agg(DISTINCT ca.kind)) AND 'county' = ANY(array_agg(DISTINCT ca.kind));\n  ```\n  Should return 0 rows after fix.\n\n### 2. Coverage Area Hierarchy\n- **Database test:** Before running fix, count opportunities with redundant assignments:\n  ```sql\n  SELECT COUNT(DISTINCT oca1.opportunity_id)\n  FROM opportunity_coverage_areas oca1\n  JOIN coverage_areas ca1 ON oca1.coverage_area_id = ca1.id\n  WHERE ca1.kind = 'state'\n  AND EXISTS (\n    SELECT 1 FROM opportunity_coverage_areas oca2\n    JOIN coverage_areas ca2 ON oca2.coverage_area_id = ca2.id\n    WHERE oca1.opportunity_id = oca2.opportunity_id\n    AND ca2.kind IN ('county', 'city', 'utility')\n  );\n  ```\n- **After fix verification:** Re-run query, should return 0\n- **Functional test:** Create test opportunity with mixed coverage areas, verify only highest specificity is assigned\n- **Backfill test:** Run `npm run backfill-coverage-areas` on test dataset, verify hierarchy is maintained\n\n### 3. Report Formatting\n- **Visual inspection:** Generate PDF report for test client with `npm run test-client-matching`\n- **Specific checks:**\n  - Logo is centered on cover page\n  - Header text doesn't overlap with other elements\n  - All text is properly aligned within its containers\n- **Automated test:** If possible, use PDF parsing library to extract layout information and verify positioning\n- **Cross-platform:** Test PDF rendering on macOS, Windows, and Linux to ensure consistency\n\n### 4. Utility Pipeline Analysis\n- **Data audit:** \n  ```sql\n  SELECT \n    fs.name as utility_name,\n    COUNT(*) as program_count,\n    AVG(CASE WHEN mfos.extraction_status = 'complete' THEN 1 ELSE 0 END) as extraction_rate,\n    MAX(mfos.created_at) as last_discovered\n  FROM coverage_areas ca\n  JOIN funding_sources fs ON fs.name ILIKE '%' || ca.name || '%'\n  LEFT JOIN manual_funding_opportunities_staging mfos ON mfos.source_id = fs.id\n  WHERE ca.kind = 'utility' AND ca.state_code = 'CA'\n  GROUP BY fs.name\n  ORDER BY program_count DESC;\n  ```\n- **Comparison test:** Compare results against IncentiveFind or DSIRE database for same utilities\n- **Discovery validation:** Review `temp/utility-discovery/discovery-batch-*.json` files for search quality\n- **Success metric:** Each major CA utility (PG&E, SCE, SDG&E, SMUD, LADWP) should have ≥5 programs discovered\n\n### 5. Project Type Matching\n- **Victorville test case:**\n  - Client: City of Victorville with project_needs=['Transportation', 'Public Infrastructure']\n  - Expected: Should match opportunities with eligible_project_types including these or related terms\n- **Logging test:** Enable debug logging in client-matching API, review match results for false negatives\n- **Taxonomy validation:** Review `lib/constants/taxonomies.js` to ensure all common project types have appropriate expansions\n- **Regression test:** Run full matching for all clients, compare match counts before/after fix to ensure no unexpected drops\n\n### 6. Federal Applicant Type Correction\n- **Pre-fix audit:**\n  ```sql\n  SELECT COUNT(*), array_agg(DISTINCT eligible_applicants)\n  FROM funding_opportunities fo\n  JOIN funding_sources fs ON fo.source_id = fs.id\n  WHERE fs.type = 'Federal';\n  ```\n- **Fix verification:** After migration, re-run query and compare results\n- **Sample validation:** Manually review 10 random federal opportunities to verify applicant types are correct (cross-reference with grants.gov if available)\n- **Client matching impact:** Run client matching before/after fix, verify match counts increase for federal opportunities\n\n### 7. Report Match Hiding\n- **API tests:**\n  - POST `/api/client-matching/hide` with valid client_id and opportunity_id → returns 200\n  - GET `/api/client-matching?clientId=X` → hidden matches not included\n  - DELETE `/api/client-matching/hide` → match reappears in results\n- **Database tests:**\n  - Verify UNIQUE constraint prevents duplicate hide records\n  - Test CASCADE delete when client or opportunity is deleted\n- **PDF generation test:** Generate report for client with hidden matches, verify they don't appear in PDF\n- **UI test:** Add match hiding button to client report interface, verify it calls API correctly\n- **Edge case:** Hide all matches for a client, verify report generation handles empty state gracefully\n\n## Overall Integration Test\n\nAfter implementing all fixes:\n1. Process a new batch of opportunities through the full pipeline (API → extraction → analysis → storage)\n2. Run `npm run backfill-coverage-areas` on the new opportunities\n3. Generate client matches for 5 diverse test clients\n4. Create PDF reports for each client\n5. Verify:\n   - California opportunities have correct county-level assignments\n   - No redundant state+county coverage areas\n   - PDFs render correctly\n   - Utility programs are present in reasonable numbers\n   - Project type matching works for Victorville and similar clients\n   - Federal opportunities have correct applicant types\n   - Hidden matches are excluded from reports\n\n## Success Metrics\n\n- ✅ 0 opportunities with both state and county coverage areas for the same state\n- ✅ California partial coverage opportunities correctly assigned to counties (not whole state)\n- ✅ PDF reports render with proper formatting (visual QA approval)\n- ✅ ≥50 utility programs discovered for California utilities\n- ✅ Victorville test case matches ≥10 relevant opportunities\n- ✅ Federal applicant types corrected for all affected opportunities\n- ✅ Match hiding feature works end-to-end in UI and PDF generation",
+        "status": "pending",
+        "dependencies": [
+          "1",
+          "3"
+        ],
+        "priority": "high",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "California Location Parsing for Partial Coverage",
+            "description": "When opportunities specify certain portions of California (e.g., Southern California, Bay Area, Central Valley), the agent should identify and list the specific counties covered so we can properly assign to coverage areas rather than assigning to California in general. Update location parsing logic to recognize regional descriptors and map them to county lists.",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 23,
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "Highest-Only Coverage Area Assignment",
+            "description": "Ensure we only assign opportunities to the highest available coverage area. Don't assign to both a county AND a state. If an opp covers the whole state, assign to state only. If it only covers a county or utility area, don't also assign to state. Review and fix the coverage area assignment logic.",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 23,
+            "parentId": "undefined"
+          },
+          {
+            "id": 3,
+            "title": "Add Company Logo to Reports",
+            "description": "Add the company logo to the generated client reports for branding purposes.",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 23,
+            "parentId": "undefined"
+          },
+          {
+            "id": 4,
+            "title": "Center Align Report Header Text",
+            "description": "Align the words Policy and Funding Intelligence to center in the report header layout.",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 23,
+            "parentId": "undefined"
+          },
+          {
+            "id": 5,
+            "title": "Investigate Sparse Utility Opportunity Analysis",
+            "description": "Find out why our manual process produced sparse analysis for utility opportunities. We had to have Claude Code go back in and do more research to fill in data. Review the analysis pipeline, look at examples that are lacking, re-run the process to see if we get intended results. Ensure analysis is useful from the beginning without manual intervention.",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 23,
+            "parentId": "undefined"
+          },
+          {
+            "id": 6,
+            "title": "Review Project Type Matching Logic",
+            "description": "Look at the logic for how we are group matching based on project type similarity. Ensure we aren't overly matching (false positives) and aren't missing valid matches (false negatives). Use the Victorville example to validate the matching is working correctly.",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 23,
+            "parentId": "undefined"
+          },
+          {
+            "id": 7,
+            "title": "Reverse Federal Opp Applicant Type Change",
+            "description": "Find the one federal opportunity where we changed the applicant type so it wouldn't match with Victorville because it had other prerequisites for qualification. This change was incorrect - we shouldn't have modified the applicant type. Reverse this change.",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 23,
+            "parentId": "undefined"
+          },
+          {
+            "id": 8,
+            "title": "Add Hide Matches Feature for Reports",
+            "description": "Add a way to hide matches so they don't show up on the report. The system might match an opportunity, but if we don't like the match, we should be able to hide it from the report output rather than worrying about why it matched. Add a mechanism to mark matches as hidden.",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 23,
+            "parentId": "undefined"
+          },
+          {
+            "id": 9,
+            "title": "Test API Pipeline Auto Processing Feature",
+            "description": "Test the auto processing feature of the API pipeline before fully implementing it. We have already pulled in records 1-150 from the federal API. Need to test how to pull in records 150-600 to validate the auto processing workflow works correctly for larger batches.",
+            "details": "Already pulled: Federal API records 1-150. Next test: Pull records 150-600 to validate auto processing before enabling the feature.",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 23
+          }
+        ]
       }
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2025-12-10T19:53:35.822Z",
-      "taskCount": 22,
-      "completedCount": 5,
+      "lastModified": "2025-12-16T19:55:35.887Z",
+      "taskCount": 23,
+      "completedCount": 9,
       "tags": [
         "v2"
-      ]
+      ],
+      "created": "2025-12-16T20:03:33.943Z",
+      "description": "Tasks for v2 context"
     }
   }
 }
