@@ -1,7 +1,8 @@
 'use client';
 
 import React from 'react';
-import { Page, View, Text } from '@react-pdf/renderer';
+import { Page, View, Text, Image } from '@react-pdf/renderer';
+import { getLogoBase64 } from '../utils/assets';
 import { styles } from '../styles/pdfStyles';
 import { formatDate, formatCurrency, calculateTotalFunding } from '../utils/formatters';
 
@@ -27,13 +28,16 @@ export function CoverPage({ client, matches, options = {} }) {
     return days >= 0 && days <= 30;
   }).length;
 
+  const logoBase64 = getLogoBase64();
+
   return (
     <Page size="LETTER" style={styles.coverPage}>
-      {/* Logo/Brand */}
-      <View style={{ marginBottom: 20 }}>
-        <Text style={styles.coverLogo}>MERIDIAN ESG</Text>
-        <Text style={styles.coverSubtitle}>Policy & Funding Intelligence</Text>
-      </View>
+      {/* ESG Logo - Top Left Corner */}
+      {logoBase64 && <Image src={logoBase64} style={styles.coverLogoImage} />}
+
+      {/* Brand Title */}
+      <Text style={styles.coverLogo}>MERIDIAN</Text>
+      <Text style={styles.coverSubtitle}>Policy & Funding Intelligence</Text>
 
       {/* Main Title */}
       <Text style={styles.coverTitle}>FUNDING OPPORTUNITIES REPORT</Text>

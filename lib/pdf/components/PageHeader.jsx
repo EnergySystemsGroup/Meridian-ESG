@@ -1,8 +1,9 @@
 'use client';
 
 import React from 'react';
-import { View, Text } from '@react-pdf/renderer';
+import { View, Text, Image } from '@react-pdf/renderer';
 import { styles } from '../styles/pdfStyles';
+import { getLogoBase64 } from '../utils/assets';
 
 /**
  * Page Header Component
@@ -10,9 +11,11 @@ import { styles } from '../styles/pdfStyles';
  * Displays on each content page (not cover)
  */
 export function PageHeader({ clientName }) {
+  const logoBase64 = getLogoBase64();
+
   return (
     <View style={styles.pageHeader} fixed>
-      <Text style={styles.headerLogo}>MERIDIAN ESG</Text>
+      {logoBase64 && <Image src={logoBase64} style={styles.headerLogoImage} />}
       <Text style={styles.headerClient}>{clientName || 'Funding Report'}</Text>
     </View>
   );
