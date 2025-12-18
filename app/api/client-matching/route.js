@@ -12,7 +12,7 @@
  */
 
 import { createClient } from '@supabase/supabase-js';
-import { TAXONOMIES } from '@/lib/constants/taxonomies';
+import { TAXONOMIES, getExpandedClientTypes } from '@/lib/constants/taxonomies';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -183,8 +183,9 @@ function evaluateMatch(client, opportunity) {
 
   // 2. Applicant Type Match (with type expansion for hierarchical matching)
   if (opportunity.eligible_applicants && Array.isArray(opportunity.eligible_applicants)) {
-    // Get expanded types for this client (e.g., "K-12 School Districts" also matches "Local Governments")
-    const expandedTypes = TAXONOMIES.CLIENT_TYPE_EXPANSIONS[client.type] || [client.type];
+    // Get expanded types for this client (child → parent expansion)
+    // e.g., "Hospitals" expands to ["Hospitals", "Healthcare Facilities"]
+    const expandedTypes = getExpandedClientTypes(client.type);
 
     // Check if any expanded type matches any eligible applicant
     details.applicantTypeMatch = opportunity.eligible_applicants.some(applicant =>

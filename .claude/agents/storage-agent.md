@@ -63,6 +63,29 @@ Read: lib/services/locationMatcher.js
 
 ## 2. Execution Flow
 
+### ⚠️ CRITICAL: DO NOT TRUNCATE TEXT FIELDS
+
+**All text fields MUST be copied VERBATIM from `analysis_data` to production.**
+
+- **DO NOT** summarize, shorten, or compress any text
+- **DO NOT** remove sentences, paragraphs, or bullet points
+- **DO NOT** truncate to "fit" or be "concise"
+- Text fields can be **500-2000+ characters** - this is EXPECTED and CORRECT
+- `sanitizeDescription()` means "trim whitespace only" - NOT "make shorter"
+
+**Fields that must be copied IN FULL (no truncation):**
+- `enhancedDescription` → `enhanced_description` (often 1500+ chars)
+- `programOverview` → `program_overview` (often 300+ chars)
+- `programUseCases` → `program_use_cases` (often 600+ chars with bullet points)
+- `applicationSummary` → `application_summary` (often 500+ chars with bullet points)
+- `programInsights` → `program_insights` (often 350+ chars)
+- `actionableSummary` → `actionable_summary`
+- `relevanceReasoning` → `relevance_reasoning`
+
+**Preserve all formatting:** newlines (`\n`), bullet points (`-`), and paragraph breaks.
+
+---
+
 ### 2.1. Query Staging Records
 
 ```sql
@@ -83,17 +106,20 @@ ORDER BY created_at ASC;
 │    - api_source_id = NULL (not from API)                                    │
 │    - api_opportunity_id = 'manual' (indicates CC pipeline source)           │
 ├─────────────────────────────────────────────────────────────────────────────┤
-│  STEP 2: SANITIZE FIELDS (DETERMINISTIC)                                    │
-│    Apply dataSanitizer functions to each field from analysis_data:          │
+│  STEP 2: SANITIZE FIELDS (DETERMINISTIC) - COPY TEXT VERBATIM              │
+│    Apply dataSanitizer functions to each field from analysis_data.          │
+│    ⚠️ TEXT FIELDS: Copy COMPLETE content - DO NOT truncate or summarize!   │
 │                                                                             │
 │    title           = sanitizeTitle(analysis_data.title)                     │
 │    description     = sanitizeDescription(analysis_data.description)         │
-│    enhanced_description = sanitizeDescription(analysis_data.enhancedDescription) │
-│    actionable_summary = sanitizeDescription(analysis_data.actionableSummary)│
-│    program_overview = sanitizeDescription(analysis_data.programOverview)    │
-│    program_use_cases = sanitizeDescription(analysis_data.programUseCases)   │
-│    application_summary = sanitizeDescription(analysis_data.applicationSummary) │
-│    program_insights = sanitizeDescription(analysis_data.programInsights)    │
+│                                                                             │
+│    -- COPY THESE IN FULL (500-2000+ chars each, preserve all content) --   │
+│    enhanced_description = analysis_data.enhancedDescription   [VERBATIM]    │
+│    actionable_summary = analysis_data.actionableSummary       [VERBATIM]    │
+│    program_overview = analysis_data.programOverview           [VERBATIM]    │
+│    program_use_cases = analysis_data.programUseCases          [VERBATIM]    │
+│    application_summary = analysis_data.applicationSummary     [VERBATIM]    │
+│    program_insights = analysis_data.programInsights           [VERBATIM]    │
 │    url             = sanitizeUrl(analysis_data.url)                         │
 │    status          = sanitizeStatus(analysis_data.status)                   │
 │    minimum_award   = sanitizeAmount(analysis_data.minimumAward)             │
@@ -114,7 +140,7 @@ ORDER BY created_at ASC;
 │    notes           = sanitizeDescription(analysis_data.notes)               │
 │    relevance_score = sanitizeRelevanceScore(analysis_data.scoring.finalScore) │
 │    scoring         = analysis_data.scoring  (JSONB - direct copy)           │
-│    relevance_reasoning = sanitizeDescription(analysis_data.relevanceReasoning) │
+│    relevance_reasoning = analysis_data.relevanceReasoning     [VERBATIM]    │
 │    categories      = sanitizeArray(analysis_data.categories)                │
 │    tags            = sanitizeArray(analysis_data.tags)                      │
 │                                                                             │
@@ -273,10 +299,30 @@ Failed records (if any):
 
 - [ ] All staging records with analysis_status='complete' processed
 - [ ] Data sanitized per dataSanitizer.js functions
+- [ ] **TEXT FIELDS COPIED VERBATIM** - no truncation (enhanced_description should be 1000+ chars)
 - [ ] UPSERT used with conflict key (funding_source_id, title)
 - [ ] Coverage areas linked via linkOpportunityToCoverageAreas
 - [ ] Staging status updated to 'complete' or 'failed'
 - [ ] Error details logged for any failures
+
+### 8.1 Verification Query (Run After Storage)
+
+```sql
+-- Verify text fields were NOT truncated
+SELECT
+  fo.title,
+  LENGTH(s.analysis_data->>'enhancedDescription') as staging_len,
+  LENGTH(fo.enhanced_description) as prod_len,
+  CASE WHEN LENGTH(fo.enhanced_description) < LENGTH(s.analysis_data->>'enhancedDescription') * 0.9
+       THEN '⚠️ TRUNCATED' ELSE '✓ OK' END as status
+FROM manual_funding_opportunities_staging s
+JOIN funding_opportunities fo ON LOWER(s.title) = LOWER(fo.title)
+WHERE s.storage_status = 'complete'
+ORDER BY staging_len DESC
+LIMIT 10;
+```
+
+If any show "TRUNCATED", re-run storage for those records.
 
 ---
 

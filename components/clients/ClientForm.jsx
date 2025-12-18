@@ -14,14 +14,11 @@ import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Combobox } from '@/components/ui/combobox';
 import { AddressAutofillInput } from '@/components/ui/address-autofill-input-client';
-import { TAXONOMIES } from '@/lib/constants/taxonomies';
+import { TAXONOMIES, getSelectableClientTypes } from '@/lib/constants/taxonomies';
 
-// Build client types from taxonomy (hot + strong + mild tiers only, alphabetically sorted)
-const CLIENT_TYPES = [
-  ...TAXONOMIES.ELIGIBLE_APPLICANTS.hot,
-  ...TAXONOMIES.ELIGIBLE_APPLICANTS.strong,
-  ...TAXONOMIES.ELIGIBLE_APPLICANTS.mild
-].sort();
+// Get selectable client types (children + standalone + selectable parent exceptions)
+// This encourages users to select specific types rather than broad parent categories
+const CLIENT_TYPES = getSelectableClientTypes();
 
 // Build project needs from taxonomy (hot + strong + mild tiers only, alphabetically sorted)
 const PROJECT_NEEDS = [
