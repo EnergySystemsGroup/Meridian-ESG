@@ -107,12 +107,34 @@ export async function GET(request) {
         city: client.city,
         state_code: client.state_code
       });
-      const matches = calculateMatches(client, opportunities);
+
+      // Fetch hidden matches for this client
+      const { data: hiddenMatches, error: hiddenError } = await supabase
+        .from('hidden_matches')
+        .select('opportunity_id')
+        .eq('client_id', client.id);
+
+      if (hiddenError) {
+        console.error('[ClientMatching] Error fetching hidden matches:', hiddenError);
+      }
+
+      const hiddenOpportunityIds = new Set((hiddenMatches || []).map(h => h.opportunity_id));
+      const hiddenCount = hiddenOpportunityIds.size;
+
+      // Filter out hidden opportunities before matching
+      const visibleOpportunities = opportunities.filter(opp => !hiddenOpportunityIds.has(opp.id));
+
+      if (hiddenCount > 0) {
+        console.log(`[ClientMatching] Filtered out ${hiddenCount} hidden matches for ${client.name}`);
+      }
+
+      const matches = calculateMatches(client, visibleOpportunities);
 
       results[client.id] = {
         client,
         matches: matches.sort((a, b) => b.score - a.score), // Sort by score descending
         matchCount: matches.length,
+        hiddenCount, // Include hidden count in response
         topMatches: matches.slice(0, 3) // Top 3 for card display
       };
 

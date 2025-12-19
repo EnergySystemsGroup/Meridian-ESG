@@ -1,14 +1,17 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import MainLayout from '@/components/layout/main-layout';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { AlertTriangle, Loader2, ArrowLeft, User, MapPin, Building, DollarSign, Target, FileText } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { AlertTriangle, Loader2, ArrowLeft, User, MapPin, Building, DollarSign, Target, EyeOff } from 'lucide-react';
 import { ExportPDFButton } from '@/components/clients/ExportPDFButton';
+import { HideMatchButton } from '@/components/clients/HideMatchButton';
+import { HiddenMatchesPanel } from '@/components/clients/HiddenMatchesPanel';
 import Link from 'next/link';
 import OpportunityCard from '@/components/opportunities/OpportunityCard';
 import { fetchClientMatches, formatMatchScore, getMatchScoreBgColor, generateClientTags, formatProjectNeeds } from '@/lib/utils/clientMatching';
@@ -20,25 +23,44 @@ export default function ClientMatchesPage() {
 	const [clientResult, setClientResult] = useState(null);
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState(null);
+	const [activeTab, setActiveTab] = useState('matches');
+	const [hiddenCount, setHiddenCount] = useState(0);
+
+	const loadClientMatches = useCallback(async () => {
+		try {
+			setLoading(true);
+			const result = await fetchClientMatches(clientId);
+			setClientResult(result);
+			setHiddenCount(result.hiddenCount || 0);
+		} catch (err) {
+			console.error('Error loading client matches:', err);
+			setError(err.message);
+		} finally {
+			setLoading(false);
+		}
+	}, [clientId]);
 
 	useEffect(() => {
-		async function loadClientMatches() {
-			try {
-				setLoading(true);
-				const result = await fetchClientMatches(clientId);
-				setClientResult(result);
-			} catch (err) {
-				console.error('Error loading client matches:', err);
-				setError(err.message);
-			} finally {
-				setLoading(false);
-			}
-		}
-
 		if (clientId) {
 			loadClientMatches();
 		}
-	}, [clientId]);
+	}, [clientId, loadClientMatches]);
+
+	// Handler for when a match is hidden
+	const handleMatchHidden = useCallback((opportunityId) => {
+		setClientResult(prev => ({
+			...prev,
+			matches: prev.matches.filter(m => m.id !== opportunityId),
+			matchCount: prev.matchCount - 1
+		}));
+		setHiddenCount(prev => prev + 1);
+	}, []);
+
+	// Handler for when a match is restored
+	const handleMatchRestored = useCallback(() => {
+		// Refetch matches to get the restored one
+		loadClientMatches();
+	}, [loadClientMatches]);
 
 	if (loading) {
 		return (
@@ -193,34 +215,65 @@ export default function ClientMatchesPage() {
 
 				{/* Matches Section */}
 				<div className='mb-6'>
-					<h2 className='text-2xl font-bold mb-4'>Funding Opportunities ({matchCount})</h2>
-
-					{matchCount > 0 ? (
-						<div className='grid gap-6 md:grid-cols-2 lg:grid-cols-3'>
-							{matches.map((match) => (
-								<OpportunityCard
-									key={match.id}
-									opportunity={match}
-									badgeOverride={
-										<span
-											className='text-xs px-2 py-1 rounded-full flex-shrink-0 ml-2 font-medium'
-											style={getMatchScoreBgColor(match.score)}
-										>
-											{formatMatchScore(match.score)}
-										</span>
-									}
-								/>
-							))}
+					<Tabs value={activeTab} onValueChange={setActiveTab}>
+						<div className='flex items-center justify-between mb-4'>
+							<h2 className='text-2xl font-bold'>Funding Opportunities</h2>
+							<TabsList>
+								<TabsTrigger value='matches'>
+									Matches ({matchCount})
+								</TabsTrigger>
+								<TabsTrigger value='hidden' className='flex items-center gap-1'>
+									<EyeOff className='h-3 w-3' />
+									Hidden ({hiddenCount})
+								</TabsTrigger>
+							</TabsList>
 						</div>
-					) : (
-						<Alert>
-							<AlertTriangle className='h-4 w-4' />
-							<AlertTitle>No Matches Found</AlertTitle>
-							<AlertDescription>
-								No funding opportunities currently match this client's criteria. Try adjusting the client's project needs or location requirements.
-							</AlertDescription>
-						</Alert>
-					)}
+
+						<TabsContent value='matches'>
+							{matchCount > 0 ? (
+								<div className='grid gap-6 md:grid-cols-2 lg:grid-cols-3'>
+									{matches.map((match) => (
+										<div key={match.id} className='relative group'>
+											<OpportunityCard
+												opportunity={match}
+												badgeOverride={
+													<span
+														className='text-xs px-2 py-1 rounded-full flex-shrink-0 ml-2 font-medium'
+														style={getMatchScoreBgColor(match.score)}
+													>
+														{formatMatchScore(match.score)}
+													</span>
+												}
+											/>
+											<div className='absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity'>
+												<HideMatchButton
+													clientId={clientId}
+													opportunityId={match.id}
+													opportunityTitle={match.title}
+													onHidden={handleMatchHidden}
+												/>
+											</div>
+										</div>
+									))}
+								</div>
+							) : (
+								<Alert>
+									<AlertTriangle className='h-4 w-4' />
+									<AlertTitle>No Matches Found</AlertTitle>
+									<AlertDescription>
+										No funding opportunities currently match this client's criteria. Try adjusting the client's project needs or location requirements.
+									</AlertDescription>
+								</Alert>
+							)}
+						</TabsContent>
+
+						<TabsContent value='hidden'>
+							<HiddenMatchesPanel
+								clientId={clientId}
+								onRestore={handleMatchRestored}
+							/>
+						</TabsContent>
+					</Tabs>
 				</div>
 			</div>
 		</MainLayout>
