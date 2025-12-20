@@ -3641,10 +3641,119 @@
         "description": "Add Microsoft SSO authentication (get config from IT department). Implement user profile management, opportunity favoriting tied to users, and client assignment to users for better match visibility.",
         "details": "",
         "testStrategy": "",
-        "status": "pending",
+        "status": "in-progress",
         "dependencies": [],
         "priority": "high",
-        "subtasks": []
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Create login page with Microsoft SSO button",
+            "description": "Created /app/login/page.jsx with professional login UI and Microsoft SSO OAuth flow using Supabase signInWithOAuth",
+            "details": "",
+            "status": "done",
+            "dependencies": [],
+            "parentTaskId": 2,
+            "updatedAt": "2025-12-20T20:52:35.106Z",
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "Create OAuth callback route handler",
+            "description": "Created /app/auth/callback/route.js to handle OAuth code exchange and redirect to intended destination",
+            "details": "",
+            "status": "done",
+            "dependencies": [],
+            "parentTaskId": 2,
+            "parentId": "undefined",
+            "updatedAt": "2025-12-20T20:52:40.045Z"
+          },
+          {
+            "id": 3,
+            "title": "Create root middleware for route protection",
+            "description": "Created /middleware.js to protect all routes except /login and /auth/callback. Uses @supabase/ssr for server-side auth. Currently disabled pending IT approval.",
+            "details": "",
+            "status": "done",
+            "dependencies": [],
+            "parentTaskId": 2,
+            "parentId": "undefined",
+            "updatedAt": "2025-12-20T20:52:44.930Z"
+          },
+          {
+            "id": 4,
+            "title": "Update AuthContext for SSO methods",
+            "description": "Updated /contexts/AuthContext.js with signInWithMicrosoft, signOut, and user metadata helpers (displayName, email, avatarUrl)",
+            "details": "",
+            "status": "done",
+            "dependencies": [],
+            "parentTaskId": 2,
+            "parentId": "undefined",
+            "updatedAt": "2025-12-20T20:52:50.074Z"
+          },
+          {
+            "id": 5,
+            "title": "Create UserMenu component",
+            "description": "Created /components/auth/UserMenu.jsx with user avatar dropdown and sign out functionality using Popover component",
+            "details": "",
+            "status": "done",
+            "dependencies": [],
+            "parentTaskId": 2,
+            "parentId": "undefined",
+            "updatedAt": "2025-12-20T20:52:55.713Z"
+          },
+          {
+            "id": 6,
+            "title": "Update layout with auth components",
+            "description": "Added AuthProvider to /app/layout.js and UserMenu to /components/layout/main-layout.jsx header",
+            "details": "",
+            "status": "done",
+            "dependencies": [],
+            "parentTaskId": 2,
+            "parentId": "undefined",
+            "updatedAt": "2025-12-20T20:53:01.065Z"
+          },
+          {
+            "id": 7,
+            "title": "Configure Azure SSO in Supabase",
+            "description": "Added Azure SSO config in Supabase Dashboard (staging) and local supabase/config.toml with client_id, tenant_id, redirect_uri. Added AZURE_CLIENT_SECRET to .env.local",
+            "details": "",
+            "status": "done",
+            "dependencies": [],
+            "parentTaskId": 2,
+            "parentId": "undefined",
+            "updatedAt": "2025-12-20T20:53:05.979Z"
+          },
+          {
+            "id": 8,
+            "title": "IT: Grant admin consent for Azure AD SSO app",
+            "description": "IT team (Jeff) needs to grant admin consent in Azure AD Portal: Enterprise applications > Meridian ESG Staging SSO > Permissions > Grant admin consent. Required for both staging and local dev.",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 2,
+            "parentId": "undefined"
+          },
+          {
+            "id": 9,
+            "title": "IT: Add local redirect URI to Azure AD app",
+            "description": "IT team needs to add http://localhost:54321/auth/v1/callback to Azure AD app registration redirect URIs for local development testing.",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 2,
+            "parentId": "undefined"
+          },
+          {
+            "id": 10,
+            "title": "Re-enable auth and test SSO flow",
+            "description": "After IT completes Azure AD config: 1) Uncomment redirect logic in /middleware.js (lines 53-57), 2) Restart local Supabase, 3) Test full SSO flow end-to-end on both local and staging.",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 2,
+            "parentId": "undefined"
+          }
+        ],
+        "updatedAt": "2025-12-20T20:53:05.979Z"
       },
       {
         "id": "3",
@@ -4198,7 +4307,7 @@
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2025-12-19T02:38:57.409Z",
+      "lastModified": "2025-12-20T20:53:05.985Z",
       "taskCount": 23,
       "completedCount": 10,
       "tags": [
