@@ -13,6 +13,7 @@ import {
 import { cn } from '@/lib/utils';
 import { HelpCircle, Moon, Settings, Sun } from 'lucide-react';
 import { useTheme } from '@/components/theme-provider';
+import { UserMenu } from '@/components/auth/UserMenu';
 
 const ClientSideActiveLink = ({ href, children, className, ...props }) => {
 	const pathname = usePathname();
@@ -83,6 +84,7 @@ const MainLayout = ({ children }) => {
 								<Settings size={16} />
 								<span className='hidden sm:inline'>Settings</span>
 							</button>
+							<UserMenu />
 						</div>
 					</div>
 				</div>
@@ -160,16 +162,6 @@ const MainNav = () => {
 				</NavigationMenuItem>
 			</NavigationMenuList>
 		</NavigationMenu>
-	);
-};
-
-const MobileNav = () => {
-	const [isOpen, setIsOpen] = React.useState(false);
-
-	return (
-		<div className='md:hidden'>
-			{/* Mobile menu button and implementation would go here */}
-		</div>
 	);
 };
 

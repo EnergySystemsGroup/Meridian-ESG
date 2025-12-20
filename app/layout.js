@@ -1,6 +1,7 @@
 import { Inter, JetBrains_Mono } from 'next/font/google';
 import './globals.css';
 import { ThemeProvider } from '@/components/theme-provider';
+import { AuthProvider } from '@/contexts/AuthContext';
 import { TrackedOpportunitiesProvider } from '@/contexts/TrackedOpportunitiesContext';
 
 const inter = Inter({
@@ -25,9 +26,11 @@ export default function RootLayout({ children }) {
 		<html lang='en' className={`${inter.variable} ${jetbrainsMono.variable}`}>
 			<body className='antialiased min-h-screen bg-white dark:bg-neutral-950'>
 				<ThemeProvider>
-					<TrackedOpportunitiesProvider>
-						{children}
-					</TrackedOpportunitiesProvider>
+					<AuthProvider>
+						<TrackedOpportunitiesProvider>
+							{children}
+						</TrackedOpportunitiesProvider>
+					</AuthProvider>
 				</ThemeProvider>
 			</body>
 		</html>
