@@ -641,7 +641,7 @@ function OpportunitiesContent() {
 
 				{openFilterSection === 'status' && (
 					<div
-						className='absolute left-0 z-20 mt-2 origin-top-left bg-white rounded-md shadow-lg w-48 ring-1 ring-black ring-opacity-5 focus:outline-none'
+						className='absolute left-0 z-20 mt-2 origin-top-left bg-white dark:bg-neutral-800 rounded-md shadow-lg w-48 ring-1 ring-black ring-opacity-5 dark:ring-neutral-600 focus:outline-none'
 						tabIndex={-1}
 						ref={statusDropdownRef}>
 						<div className='p-4'>
@@ -771,7 +771,7 @@ function OpportunitiesContent() {
 
 				{openFilterSection === 'projectTypes' && (
 					<div
-						className='absolute left-0 z-20 mt-2 origin-top-left bg-white rounded-md shadow-lg w-80 ring-1 ring-black ring-opacity-5 focus:outline-none'
+						className='absolute left-0 z-20 mt-2 origin-top-left bg-white dark:bg-neutral-800 rounded-md shadow-lg w-80 ring-1 ring-black ring-opacity-5 dark:ring-neutral-600 focus:outline-none'
 						tabIndex={-1}
 						ref={projectTypeDropdownRef}>
 						<div className='p-4'>
@@ -909,7 +909,7 @@ function OpportunitiesContent() {
 
 				{openFilterSection === 'state' && (
 					<div
-						className='absolute left-0 z-20 mt-2 origin-top-left bg-white rounded-md shadow-lg w-64 ring-1 ring-black ring-opacity-5 focus:outline-none'
+						className='absolute left-0 z-20 mt-2 origin-top-left bg-white dark:bg-neutral-800 rounded-md shadow-lg w-64 ring-1 ring-black ring-opacity-5 dark:ring-neutral-600 focus:outline-none'
 						tabIndex={-1}
 						ref={stateDropdownRef}>
 						<div className='p-4'>
@@ -994,7 +994,7 @@ function OpportunitiesContent() {
 
 				{openFilterSection === 'coverage' && (
 					<div
-						className='absolute left-0 z-20 mt-2 origin-top-left bg-white rounded-md shadow-lg w-56 ring-1 ring-black ring-opacity-5 focus:outline-none'
+						className='absolute left-0 z-20 mt-2 origin-top-left bg-white dark:bg-neutral-800 rounded-md shadow-lg w-56 ring-1 ring-black ring-opacity-5 dark:ring-neutral-600 focus:outline-none'
 						tabIndex={-1}>
 						<div className='p-4'>
 							<div className='text-xs text-gray-500 mb-3'>
@@ -1249,7 +1249,7 @@ function OpportunitiesContent() {
 				</div>
 
 				{/* Search and filter bar */}
-				<div className='bg-white rounded-xl shadow-sm p-4 mb-6'>
+				<div className='bg-white dark:bg-neutral-900 dark:border dark:border-neutral-700 rounded-xl shadow-sm p-4 mb-6'>
 					<div className='flex flex-col md:flex-row gap-4'>
 						{/* Search input */}
 						<div className='relative flex-grow'>
@@ -1312,7 +1312,7 @@ function OpportunitiesContent() {
 							</Button>
 
 							{sortMenuOpen && (
-								<div className='absolute right-0 top-full mt-1 w-44 bg-white rounded-md shadow-lg z-10 border border-gray-200 py-1'>
+								<div className='absolute right-0 top-full mt-1 w-44 bg-white dark:bg-neutral-800 rounded-md shadow-lg z-10 border border-gray-200 dark:border-neutral-600 py-1'>
 									<div className='p-2 text-sm text-gray-500 border-b border-gray-100'>
 										Sort By
 									</div>

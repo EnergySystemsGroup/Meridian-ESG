@@ -1,20 +1,13 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState } from 'react';
 import {
 	ComposableMap,
 	Geographies,
 	Geography,
 	ZoomableGroup,
 } from 'react-simple-maps';
-import {
-	scaleQuantile,
-	scaleLinear,
-	scaleThreshold,
-	extent,
-	max,
-} from 'd3-scale';
-import { geoCentroid } from 'd3-geo';
+import { scaleLinear, scaleThreshold } from 'd3-scale';
 import { Spinner } from '@/components/ui/spinner';
 
 // US States GeoJSON
@@ -29,10 +22,6 @@ export default function FundingMapClient({
 	onStateClick,
 	stateAbbreviations,
 }) {
-	// Check California data
-	const california = fundingData.find((d) => d.state === 'California');
-	console.log('FundingMapClient California data received:', california);
-
 	// Tooltip state
 	const [tooltipVisible, setTooltipVisible] = useState(false);
 	const [tooltipState, setTooltipState] = useState('');
@@ -48,7 +37,6 @@ export default function FundingMapClient({
 	// Find the maximum value and unique values
 	const maxValue = Math.max(...values);
 	const uniqueValues = [...new Set(values)].sort((a, b) => a - b);
-	console.log('Unique values for coloring:', uniqueValues);
 
 	// Choose the appropriate scale based on the data distribution
 	let colorScale;
@@ -86,23 +74,11 @@ export default function FundingMapClient({
 
 	// Handlers for tooltip
 	const handleMouseEnter = (evt, stateName, stateData) => {
-		// Log special debug info for California
-		if (stateName === 'California') {
-			console.log('California hover - state name matches');
-			console.log('California hover - stateData:', stateData);
-			console.log(
-				'California hover - direct lookup:',
-				fundingData.find((d) => d.state === 'California')
-			);
-		}
-
 		setTooltipState(stateName);
 		setTooltipOpportunities(stateData?.opportunities || 0);
 		setTooltipValue(stateData?.value || 0);
 		setTooltipPosition({ x: evt.clientX, y: evt.clientY });
 		setTooltipVisible(true);
-
-		console.log('Tooltip shown for:', stateName); // Debug
 	};
 
 	const handleMouseMove = (evt) => {
@@ -174,7 +150,7 @@ export default function FundingMapClient({
 			</ComposableMap>
 
 			{/* Map Legend */}
-			<div className='absolute bottom-2 right-2 bg-white p-3 rounded-md shadow-md text-xs'>
+			<div className='absolute bottom-2 right-2 bg-white dark:bg-neutral-800 p-3 rounded-md shadow-md text-xs'>
 				<div className='mb-2 font-medium'>
 					{colorBy === 'amount' ? 'Funding Amount' : 'Opportunity Count'}
 				</div>
@@ -202,7 +178,7 @@ export default function FundingMapClient({
 			{tooltipVisible && (
 				<div
 					id='map-tooltip'
-					className='fixed bg-white p-2 border border-gray-200 rounded shadow-lg text-xs z-[9999]'
+					className='fixed bg-white dark:bg-neutral-800 p-2 border border-gray-200 dark:border-neutral-600 rounded shadow-lg text-xs z-[9999]'
 					style={{
 						left: tooltipPosition.x + 20,
 						top: tooltipPosition.y - 10,
