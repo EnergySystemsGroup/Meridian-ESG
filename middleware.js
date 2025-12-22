@@ -48,13 +48,12 @@ export async function middleware(request) {
 		return supabaseResponse;
 	}
 
-	// TEMPORARILY DISABLED - waiting for IT to configure Azure AD
 	// If not authenticated, redirect to login
-	// if (!user || error) {
-	// 	const loginUrl = new URL('/login', request.url);
-	// 	loginUrl.searchParams.set('redirectTo', request.nextUrl.pathname);
-	// 	return NextResponse.redirect(loginUrl);
-	// }
+	if (!user || error) {
+		const loginUrl = new URL('/login', request.url);
+		loginUrl.searchParams.set('redirectTo', request.nextUrl.pathname);
+		return NextResponse.redirect(loginUrl);
+	}
 
 	// User is authenticated - allow access
 	return supabaseResponse;

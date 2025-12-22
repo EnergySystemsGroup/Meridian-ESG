@@ -3641,7 +3641,7 @@
         "description": "Add Microsoft SSO authentication (get config from IT department). Implement user profile management, opportunity favoriting tied to users, and client assignment to users for better match visibility.",
         "details": "",
         "testStrategy": "",
-        "status": "in-progress",
+        "status": "done",
         "dependencies": [],
         "priority": "high",
         "subtasks": [
@@ -3727,33 +3727,36 @@
             "title": "IT: Grant admin consent for Azure AD SSO app",
             "description": "IT team (Jeff) needs to grant admin consent in Azure AD Portal: Enterprise applications > Meridian ESG Staging SSO > Permissions > Grant admin consent. Required for both staging and local dev.",
             "details": "",
-            "status": "pending",
+            "status": "done",
             "dependencies": [],
             "parentTaskId": 2,
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2025-12-22T19:21:13.934Z"
           },
           {
             "id": 9,
             "title": "IT: Add local redirect URI to Azure AD app",
             "description": "IT team needs to add http://localhost:54321/auth/v1/callback to Azure AD app registration redirect URIs for local development testing.",
             "details": "",
-            "status": "pending",
+            "status": "done",
             "dependencies": [],
             "parentTaskId": 2,
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2025-12-22T19:21:18.474Z"
           },
           {
             "id": 10,
             "title": "Re-enable auth and test SSO flow",
             "description": "After IT completes Azure AD config: 1) Uncomment redirect logic in /middleware.js (lines 53-57), 2) Restart local Supabase, 3) Test full SSO flow end-to-end on both local and staging.",
             "details": "",
-            "status": "pending",
+            "status": "done",
             "dependencies": [],
             "parentTaskId": 2,
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2025-12-22T19:21:24.112Z"
           }
         ],
-        "updatedAt": "2025-12-20T20:53:05.979Z"
+        "updatedAt": "2025-12-22T19:21:24.112Z"
       },
       {
         "id": "3",
@@ -3905,10 +3908,11 @@
         "description": "Test dark mode across all pages. Ensure consistency and fix any contrast or styling issues. Dark mode toggle already exists, just needs refinement.",
         "details": "",
         "testStrategy": "",
-        "status": "pending",
+        "status": "done",
         "dependencies": [],
         "priority": "low",
-        "subtasks": []
+        "subtasks": [],
+        "updatedAt": "2025-12-22T17:44:13.237Z"
       },
       {
         "id": "9",
@@ -4307,9 +4311,9 @@
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2025-12-20T20:53:05.985Z",
+      "lastModified": "2025-12-22T19:21:24.121Z",
       "taskCount": 23,
-      "completedCount": 10,
+      "completedCount": 12,
       "tags": [
         "v2"
       ]
