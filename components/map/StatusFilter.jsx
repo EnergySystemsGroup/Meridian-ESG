@@ -88,7 +88,7 @@ export default function StatusFilter({
 				onClick={() => setIsOpen(!isOpen)}
 				disabled={disabled}
 				className={cn(
-					'h-10 w-[150px] justify-between',
+					'h-10 w-full sm:w-[150px] justify-between',
 					isOpen && 'border-blue-500 ring-1 ring-blue-200',
 					!isDefault && 'bg-blue-50 border-blue-200 dark:bg-blue-950 dark:border-blue-800'
 				)}

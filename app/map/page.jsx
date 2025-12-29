@@ -814,16 +814,18 @@ function MapPageContent() {
 					<div className='lg:col-span-8'>
 						<Card>
 							<CardHeader>
-								<div className='flex justify-between items-center'>
+								<div className='flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2'>
 									<CardTitle>Geographic Distribution</CardTitle>
 									<div className='flex gap-2'>
 										<Button
 											variant={colorBy === 'amount' ? 'default' : 'outline'}
+											size='sm'
 											onClick={() => setColorBy('amount')}>
 											Color by Amount
 										</Button>
 										<Button
 											variant={colorBy === 'count' ? 'default' : 'outline'}
+											size='sm'
 											onClick={() => setColorBy('count')}>
 											Color by Count
 										</Button>

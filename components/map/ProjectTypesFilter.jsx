@@ -90,7 +90,7 @@ export default function ProjectTypesFilter({
 				onClick={() => setIsOpen(!isOpen)}
 				disabled={disabled}
 				className={cn(
-					'h-10 w-[160px] justify-between',
+					'h-10 w-full sm:w-[160px] justify-between',
 					isOpen && 'border-blue-500 ring-1 ring-blue-200',
 					selectedCount > 0 && 'bg-blue-50 border-blue-200'
 				)}
