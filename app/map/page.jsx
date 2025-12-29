@@ -262,13 +262,15 @@ function MapPageContent() {
 					queryParams.append('categories', categoriesToSend.join(','));
 				}
 
-				if (filters.minAmount > 0) {
-					queryParams.append('min_amount', filters.minAmount);
-				}
-				// Only include max_amount parameter if it's greater than 0
-				if (filters.maxAmount > 0) {
-					queryParams.append('max_amount', filters.maxAmount);
-				}
+				// AMOUNT FILTER DISABLED (Dec 2025)
+				// Reason: 65% of opportunities have NULL maximum_award, making this filter
+				// ineffective and confusing. Re-enable if data quality improves or users request it.
+				// if (filters.minAmount > 0) {
+				// 	queryParams.append('min_amount', filters.minAmount);
+				// }
+				// if (filters.maxAmount > 0) {
+				// 	queryParams.append('max_amount', filters.maxAmount);
+				// }
 				if (!filters.showNational) {
 					queryParams.append('include_national', 'false');
 				}
@@ -361,9 +363,10 @@ function MapPageContent() {
 		if (newFilters.search) {
 			params.set('search', newFilters.search);
 		}
-		if (newFilters.maxAmount > 0) {
-			params.set('maxAmount', newFilters.maxAmount.toString());
-		}
+		// DISABLED - see amount filter comment in fetchData
+		// if (newFilters.maxAmount > 0) {
+		// 	params.set('maxAmount', newFilters.maxAmount.toString());
+		// }
 		if (newFilters.scope?.length > 0 && newFilters.scope.length < 4) {
 			params.set('scope', newFilters.scope.join(','));
 		}
@@ -652,7 +655,9 @@ function MapPageContent() {
 									}}
 								/>
 
-								{/* Award Amount Filter - Hidden on smallest screens */}
+								{/* AMOUNT FILTER UI DISABLED (Dec 2025)
+								   Reason: 65% of opportunities have NULL maximum_award, making this filter
+								   ineffective. Re-enable if data quality improves or users request it.
 								<div className='hidden sm:block w-[180px] lg:w-[200px]'>
 									<div className='flex justify-between mb-1'>
 										<span className='text-xs sm:text-sm font-medium'>Amount:</span>
@@ -669,6 +674,7 @@ function MapPageContent() {
 										}
 									/>
 								</div>
+							*/}
 
 								{/* Sort Dropdown */}
 								<OpportunitySortDropdown
@@ -698,7 +704,7 @@ function MapPageContent() {
 							const hasActiveFilters = !isDefaultStatus ||
 								filters.projectTypes?.length > 0 ||
 								filters.search ||
-								filters.maxAmount > 0 ||
+								// filters.maxAmount > 0 ||  // DISABLED - see amount filter comment above
 								!isDefaultScope;
 
 							return hasActiveFilters && (
@@ -764,7 +770,7 @@ function MapPageContent() {
 										</span>
 									)}
 
-									{/* Amount pill */}
+									{/* Amount pill - DISABLED (see amount filter comment above)
 									{filters.maxAmount > 0 && (
 										<span className='flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'>
 											Max: ${(filters.maxAmount / 1000000).toFixed(1)}M
@@ -774,6 +780,7 @@ function MapPageContent() {
 											/>
 										</span>
 									)}
+								*/}
 
 									{/* Clear all button */}
 									<button
