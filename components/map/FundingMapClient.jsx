@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState } from 'react';
 import {
 	ComposableMap,
 	Geographies,
@@ -8,66 +8,10 @@ import {
 	ZoomableGroup,
 } from 'react-simple-maps';
 import { scaleLinear, scaleThreshold } from 'd3-scale';
-import { geoCentroid } from 'd3-geo';
 import { Spinner } from '@/components/ui/spinner';
 
 // US States GeoJSON
 const geoUrl = 'https://cdn.jsdelivr.net/npm/us-atlas@3/states-10m.json';
-
-// State centroids and zoom levels for focusing on individual states
-const stateZoomConfig = {
-	'Alabama': { center: [-86.9, 32.8], zoom: 5 },
-	'Alaska': { center: [-153, 64], zoom: 2.5 },
-	'Arizona': { center: [-111.9, 34.3], zoom: 5 },
-	'Arkansas': { center: [-92.4, 34.9], zoom: 5.5 },
-	'California': { center: [-119.4, 37.2], zoom: 4 },
-	'Colorado': { center: [-105.5, 39], zoom: 5 },
-	'Connecticut': { center: [-72.7, 41.6], zoom: 9 },
-	'Delaware': { center: [-75.5, 39], zoom: 9 },
-	'Florida': { center: [-82, 28.5], zoom: 4.5 },
-	'Georgia': { center: [-83.4, 32.6], zoom: 5 },
-	'Hawaii': { center: [-157, 20.5], zoom: 5 },
-	'Idaho': { center: [-114.5, 44.4], zoom: 4.5 },
-	'Illinois': { center: [-89.2, 40], zoom: 5 },
-	'Indiana': { center: [-86.3, 39.9], zoom: 5.5 },
-	'Iowa': { center: [-93.5, 42], zoom: 5 },
-	'Kansas': { center: [-98.4, 38.5], zoom: 5 },
-	'Kentucky': { center: [-85.7, 37.8], zoom: 5.5 },
-	'Louisiana': { center: [-92, 31], zoom: 5 },
-	'Maine': { center: [-69, 45.3], zoom: 5 },
-	'Maryland': { center: [-76.8, 39.2], zoom: 7 },
-	'Massachusetts': { center: [-71.8, 42.2], zoom: 7.5 },
-	'Michigan': { center: [-85, 44.3], zoom: 4.5 },
-	'Minnesota': { center: [-94.3, 46.3], zoom: 4.5 },
-	'Mississippi': { center: [-89.7, 32.7], zoom: 5 },
-	'Missouri': { center: [-92.5, 38.4], zoom: 5 },
-	'Montana': { center: [-110, 47], zoom: 4 },
-	'Nebraska': { center: [-99.8, 41.5], zoom: 5 },
-	'Nevada': { center: [-117, 39], zoom: 4.5 },
-	'New Hampshire': { center: [-71.5, 43.7], zoom: 6.5 },
-	'New Jersey': { center: [-74.7, 40.2], zoom: 7 },
-	'New Mexico': { center: [-106, 34.4], zoom: 4.5 },
-	'New York': { center: [-75.5, 43], zoom: 5 },
-	'North Carolina': { center: [-79.4, 35.5], zoom: 5 },
-	'North Dakota': { center: [-100.5, 47.5], zoom: 5 },
-	'Ohio': { center: [-82.8, 40.2], zoom: 5.5 },
-	'Oklahoma': { center: [-97.5, 35.5], zoom: 5 },
-	'Oregon': { center: [-120.5, 44], zoom: 4.5 },
-	'Pennsylvania': { center: [-77.6, 41], zoom: 5.5 },
-	'Rhode Island': { center: [-71.5, 41.7], zoom: 10 },
-	'South Carolina': { center: [-80.9, 33.9], zoom: 6 },
-	'South Dakota': { center: [-100.2, 44.4], zoom: 5 },
-	'Tennessee': { center: [-86.3, 35.8], zoom: 5.5 },
-	'Texas': { center: [-99.5, 31.5], zoom: 3.5 },
-	'Utah': { center: [-111.7, 39.3], zoom: 4.5 },
-	'Vermont': { center: [-72.7, 44], zoom: 6.5 },
-	'Virginia': { center: [-78.8, 37.5], zoom: 5.5 },
-	'Washington': { center: [-120.5, 47.4], zoom: 5 },
-	'West Virginia': { center: [-80.6, 38.9], zoom: 6 },
-	'Wisconsin': { center: [-89.8, 44.6], zoom: 5 },
-	'Wyoming': { center: [-107.5, 43], zoom: 5 },
-	'District of Columbia': { center: [-77, 38.9], zoom: 12 },
-};
 
 export default function FundingMapClient({
 	loading,
@@ -77,8 +21,6 @@ export default function FundingMapClient({
 	selectedState,
 	onStateClick,
 	stateAbbreviations,
-	viewMode = 'us', // 'us', 'state', 'national'
-	zoomToState = null, // State name to zoom to
 }) {
 	// Tooltip state
 	const [tooltipVisible, setTooltipVisible] = useState(false);
@@ -87,26 +29,8 @@ export default function FundingMapClient({
 	const [tooltipValue, setTooltipValue] = useState(0);
 	const [tooltipPosition, setTooltipPosition] = useState({ x: 0, y: 0 });
 
-	// Zoom and center state
-	const [position, setPosition] = useState({ coordinates: [-96, 38], zoom: 1 });
-
-	// Calculate zoom position based on selected state or view mode
-	useEffect(() => {
-		console.log('Zoom effect triggered:', { viewMode, zoomToState });
-		if (viewMode === 'state' && zoomToState && stateZoomConfig[zoomToState]) {
-			const config = stateZoomConfig[zoomToState];
-			console.log('Zooming to state:', zoomToState, config);
-			setPosition({ coordinates: config.center, zoom: config.zoom });
-		} else if (viewMode === 'us' || viewMode === 'national') {
-			console.log('Resetting to US view');
-			setPosition({ coordinates: [-96, 38], zoom: 1 });
-		}
-	}, [viewMode, zoomToState]);
-
-	// Handle zoom changes from user interaction
-	const handleMoveEnd = (position) => {
-		setPosition(position);
-	};
+	// Fixed position - no zoom on state selection
+	const position = { coordinates: [-96, 38], zoom: 1 };
 
 	// Get the values for coloring
 	const values = fundingData.map((d) =>
@@ -178,9 +102,8 @@ export default function FundingMapClient({
 				<ZoomableGroup
 					center={position.coordinates}
 					zoom={position.zoom}
-					onMoveEnd={handleMoveEnd}
 					minZoom={1}
-					maxZoom={12}
+					maxZoom={4}
 					translateExtent={[
 						[-500, -300],
 						[1300, 900],
@@ -202,6 +125,10 @@ export default function FundingMapClient({
 												: stateData.opportunities
 											: 0;
 
+										// Dim non-selected states when one is selected
+										const hasSelection = selectedState !== null;
+										const opacity = hasSelection && !isSelected ? 0.5 : 1;
+
 										return (
 											<Geography
 												key={geo.rsmKey}
@@ -215,21 +142,24 @@ export default function FundingMapClient({
 												style={{
 													default: {
 														fill: stateData ? colorScale(value) : '#EEE',
-														stroke: '#FFF',
-														strokeWidth: isSelected ? 2 : 0.5,
+														stroke: isSelected ? '#1e3a5f' : '#FFF',
+														strokeWidth: isSelected ? 2.5 : 0.5,
 														outline: 'none',
+														opacity: opacity,
+														transition: 'all 0.2s ease-in-out',
 													},
 													hover: {
-														fill: '#1890ff',
-														stroke: '#FFF',
-														strokeWidth: 1,
+														fill: isSelected ? colorScale(value) : '#1890ff',
+														stroke: isSelected ? '#1e3a5f' : '#FFF',
+														strokeWidth: isSelected ? 2.5 : 1,
 														outline: 'none',
 														cursor: 'pointer',
+														opacity: 1,
 													},
 													pressed: {
 														fill: '#003a8c',
-														stroke: '#FFF',
-														strokeWidth: 1,
+														stroke: '#1e3a5f',
+														strokeWidth: 2,
 														outline: 'none',
 													},
 												}}

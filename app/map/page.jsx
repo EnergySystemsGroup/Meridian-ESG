@@ -13,20 +13,12 @@ import {
 	CardTitle,
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { scaleQuantile } from 'd3-scale';
 import {
-	MapPin,
-	Filter,
-	DollarSign,
 	Calendar,
 	Info,
-	ChevronDown,
-	Tag,
-	Star,
 	Globe,
 	ArrowLeft,
 	Building2,
-	Zap,
 	Search,
 	X,
 } from 'lucide-react';
@@ -51,15 +43,7 @@ import {
 	TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { format } from 'date-fns';
-import { CalendarIcon } from '@radix-ui/react-icons';
-import { cn } from '@/lib/utils';
 import { getProjectTypeColor } from '@/lib/utils/uiHelpers';
-import {
-	Popover,
-	PopoverContent,
-	PopoverTrigger,
-} from '@/components/ui/popover';
-import { Calendar as CalendarComponent } from '@/components/ui/calendar';
 
 // Dynamically import the map component with SSR disabled
 const FundingMapClient = dynamic(
@@ -196,18 +180,7 @@ function MapPageContent() {
 	const [error, setError] = useState(null);
 	const [selectedState, setSelectedState] = useState(() => getStateNameFromCode(initialStateCode));
 	const [selectedStateCode, setSelectedStateCode] = useState(initialStateCode);
-	const [stateOpportunities, setStateOpportunities] = useState([]);
-	const [stateOpportunitiesPage, setStateOpportunitiesPage] = useState(1);
-	const [stateOpportunitiesTotalCount, setStateOpportunitiesTotalCount] =
-		useState(0);
-	const [stateOpportunitiesLoading, setStateOpportunitiesLoading] =
-		useState(false);
 	const [colorBy, setColorBy] = useState('amount'); // 'amount' or 'count'
-	const [tooltip, setTooltip] = useState({
-		show: false,
-		content: {},
-		position: { x: 0, y: 0 },
-	});
 	const [totalFundingAvailable, setTotalFundingAvailable] = useState(0);
 	const [totalOpportunities, setTotalOpportunities] = useState(0);
 	const [statesWithFunding, setStatesWithFunding] = useState(0);
@@ -227,17 +200,6 @@ function MapPageContent() {
 	// Sort state
 	const [sortOption, setSortOption] = useState(initialSortOption);
 	const [sortDirection, setSortDirection] = useState(initialSortDirection);
-
-	// Debounced search state
-	const [debouncedSearch, setDebouncedSearch] = useState('');
-
-	// Debounce search input
-	useEffect(() => {
-		const timer = setTimeout(() => {
-			setDebouncedSearch(filters.search);
-		}, 300);
-		return () => clearTimeout(timer);
-	}, [filters.search]);
 
 	// Fetch the category mapping on mount
 	useEffect(() => {
@@ -361,185 +323,6 @@ function MapPageContent() {
 		fetchFundingData();
 	}, [filters, categoryMapping]);
 
-	// When a state is selected, fetch opportunities for that state
-	useEffect(() => {
-		async function fetchStateOpportunities() {
-			if (!selectedState) {
-				setStateOpportunities([]);
-				setStateOpportunitiesTotalCount(0);
-				return;
-			}
-
-			try {
-				setStateOpportunitiesLoading(true);
-
-				// Calculate paging
-				const pageSize = 5;
-				const from = (stateOpportunitiesPage - 1) * pageSize;
-				const to = from + pageSize - 1;
-
-				// Generate state code for API
-				let stateCode = '';
-				for (const [fullName, abbr] of Object.entries(stateAbbreviations)) {
-					if (fullName === selectedState) {
-						stateCode = abbr;
-						break;
-					}
-				}
-
-				if (!stateCode) {
-					console.error(`Could not find state code for ${selectedState}`);
-					setStateOpportunitiesLoading(false);
-					return;
-				}
-
-				// Build query params
-				const queryParams = new URLSearchParams({
-					from: from.toString(),
-					to: to.toString(),
-				});
-
-				// Add filters - Handle status as array
-				const statusArray = Array.isArray(filters.status) ? filters.status : [filters.status];
-				if (statusArray.length > 0 && statusArray[0] !== 'all') {
-					queryParams.append('status', statusArray.join(','));
-				}
-				if (filters.sourceType !== 'all') {
-					queryParams.append('source_type', filters.sourceType);
-				}
-
-				// Handle category filtering with normalization
-				if (filters.categories?.length > 0) {
-					// Get all raw categories that map to our selected normalized categories
-					const rawCategories = Object.entries(categoryMapping)
-						.filter(([raw, normalized]) =>
-							filters.categories.includes(normalized)
-						)
-						.map(([raw]) => raw);
-
-					// If we have a mapping, use all raw categories that map to our selections
-					// Otherwise, just use the selected categories directly
-					const categoriesToSend =
-						rawCategories.length > 0 ? rawCategories : filters.categories;
-
-					queryParams.append('categories', categoriesToSend.join(','));
-				}
-
-				if (filters.minAmount > 0) {
-					queryParams.append('min_amount', filters.minAmount);
-				}
-				if (filters.maxAmount > 0) {
-					queryParams.append('max_amount', filters.maxAmount);
-				}
-				if (filters.deadlineRange.start) {
-					queryParams.append(
-						'deadline_start',
-						format(filters.deadlineRange.start, 'yyyy-MM-dd')
-					);
-				}
-				if (filters.deadlineRange.end) {
-					queryParams.append(
-						'deadline_end',
-						format(filters.deadlineRange.end, 'yyyy-MM-dd')
-					);
-				}
-				// Add national filter parameter
-				queryParams.append(
-					'include_national',
-					filters.showNational ? 'true' : 'false'
-				);
-
-				// Add cache-busting timestamp
-				queryParams.append('_t', Date.now());
-
-				const response = await fetch(
-					`/api/map/opportunities/${stateCode}?${queryParams}`
-				);
-				const result = await response.json();
-
-				if (result.success && result.data && Array.isArray(result.data.opportunities)) {
-					// Format the data for display - filter out any null/undefined opportunities first
-					const formattedOpportunities = result.data.opportunities
-						.filter(opp => opp && opp.id) // Filter out null/undefined opportunities
-						.map(
-						(opp) => {
-							try {
-								return {
-									id: opp.id,
-									title: opp.title || 'Untitled',
-									amount: formatAmount(
-										opp.minimum_award,
-										opp.maximum_award,
-										opp.total_funding_available
-									),
-									closeDate:
-										opp.close_date && new Date(opp.close_date).getFullYear() > 1970
-											? new Date(opp.close_date).toLocaleDateString()
-											: 'No deadline specified',
-									source: opp.source_name || 'Unknown',
-									sourceType: opp.source_type || 'Unknown',
-									status: opp.status || 'Unknown',
-									isNational: opp.is_national || false,
-									actionable_summary: opp.actionable_summary || '',
-									description: opp.description || '',
-									tags: opp.tags || [],
-									categories: opp.categories || [],
-									eligible_applicants: opp.eligible_applicants || [],
-									eligible_project_types: opp.eligible_project_types || [],
-									eligible_locations: opp.eligible_locations || [],
-									relevance_score: opp.relevance_score || 0,
-									url: opp.url || '',
-									funding_type: opp.funding_type || 'Unknown',
-									agency_name: opp.agency_name || 'Unknown',
-								};
-							} catch (error) {
-								console.error('Error formatting opportunity:', error, opp);
-								return null; // Return null for failed opportunities
-							}
-						})
-						.filter(opp => opp !== null); // Filter out any failed opportunities
-
-					setStateOpportunities(formattedOpportunities);
-					setStateOpportunitiesTotalCount(
-						result.data.total || formattedOpportunities.length
-					);
-				} else if (result.success) {
-					// Success but no data - handle gracefully
-					console.warn('API returned success but no opportunities data:', result);
-					setStateOpportunities([]);
-					setStateOpportunitiesTotalCount(0);
-				} else {
-					console.error('Error in API response:', result.error);
-					setError(result.error);
-				}
-			} catch (err) {
-				console.error('Error fetching state opportunities:', err);
-				setError(err.message);
-			} finally {
-				setStateOpportunitiesLoading(false);
-			}
-		}
-
-		fetchStateOpportunities();
-	}, [selectedState, filters, stateOpportunitiesPage, categoryMapping]);
-
-	// Generate color scale based on either funding amounts or opportunity count
-	const colorScale = scaleQuantile()
-		.domain(
-			fundingData.map((d) => (colorBy === 'amount' ? d.value : d.opportunities))
-		)
-		.range([
-			'#e6f7ff',
-			'#bae7ff',
-			'#91d5ff',
-			'#69c0ff',
-			'#40a9ff',
-			'#1890ff',
-			'#096dd9',
-			'#0050b3',
-			'#003a8c',
-		]);
-
 	const handleStateClick = (geo) => {
 		const stateName = geo.properties.name;
 		const stateCode = stateAbbreviations[stateName] || null;
@@ -556,7 +339,6 @@ function MapPageContent() {
 			setViewMode('state');
 			updateUrlParams(filters, 'state', stateCode);
 		}
-		setStateOpportunitiesPage(1);
 	};
 
 
@@ -609,8 +391,6 @@ function MapPageContent() {
 			[filterKey]: value,
 		};
 		setFilters(newFilters);
-		// Reset pagination when changing filters
-		setStateOpportunitiesPage(1);
 		// Update URL
 		updateUrlParams(newFilters, viewMode, selectedStateCode);
 	};
@@ -635,7 +415,6 @@ function MapPageContent() {
 		setSortOption('relevance');
 		setSortDirection('desc');
 		// Reset pagination
-		setStateOpportunitiesPage(1);
 		setNationalPage(1);
 		// Update URL to clear filter params
 		updateUrlParams(defaultFilters, viewMode, selectedStateCode, 'relevance', 'desc');
@@ -645,15 +424,7 @@ function MapPageContent() {
 	const handleSortChange = (newOption, newDirection) => {
 		setSortOption(newOption);
 		setSortDirection(newDirection);
-		// Reset to first page when sorting changes
-		setStateOpportunitiesPage(1);
 		updateUrlParams(filters, viewMode, selectedStateCode, newOption, newDirection);
-	};
-
-	const handlePageChange = (newPage, e) => {
-		// Prevent any default behavior that might trigger a page reload
-		if (e) e.preventDefault();
-		setStateOpportunitiesPage(newPage);
 	};
 
 	// View mode handlers
@@ -1046,8 +817,6 @@ function MapPageContent() {
 									selectedState={selectedState}
 									onStateClick={handleStateClick}
 									stateAbbreviations={stateAbbreviations}
-									viewMode={viewMode}
-									zoomToState={viewMode === 'state' ? selectedState : null}
 								/>
 							</CardContent>
 						</Card>
