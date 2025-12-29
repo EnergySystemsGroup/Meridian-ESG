@@ -2,6 +2,15 @@ import { createServerClient } from '@supabase/ssr';
 import { NextResponse } from 'next/server';
 
 export async function middleware(request) {
+	// In development mode, bypass authentication for easier testing
+	if (process.env.NODE_ENV === 'development') {
+		return NextResponse.next({
+			request: {
+				headers: request.headers,
+			},
+		});
+	}
+
 	// Create a response object to modify
 	let supabaseResponse = NextResponse.next({
 		request: {

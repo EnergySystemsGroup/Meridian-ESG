@@ -1,4 +1,4 @@
-import React, { useCallback, useRef, useLayoutEffect, useEffect } from 'react';
+import React, { useCallback, useEffect } from 'react';
 import {
 	Card,
 	CardHeader,
@@ -59,14 +59,14 @@ const formatLocationEligibility = (opportunity) => {
 		return 'National';
 	}
 
-	// Check for eligible_states array from our view
-	if (opportunity.eligible_states && opportunity.eligible_states.length > 0) {
-		if (opportunity.eligible_states.length > 3) {
-			return `${opportunity.eligible_states.slice(0, 3).join(', ')} +${
-				opportunity.eligible_states.length - 3
+	// Check for coverage_state_codes array from coverage_areas system
+	if (opportunity.coverage_state_codes && opportunity.coverage_state_codes.length > 0) {
+		if (opportunity.coverage_state_codes.length > 3) {
+			return `${opportunity.coverage_state_codes.slice(0, 3).join(', ')} +${
+				opportunity.coverage_state_codes.length - 3
 			} more`;
 		}
-		return opportunity.eligible_states.join(', ');
+		return opportunity.coverage_state_codes.join(', ');
 	}
 
 	// Fallback to eligible_locations array

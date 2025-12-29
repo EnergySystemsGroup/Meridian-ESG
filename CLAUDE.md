@@ -103,9 +103,28 @@ The system uses Supabase PostgreSQL with:
 - **funding_opportunities**: Core opportunity data
 - **funding_sources**: API source configurations
 - **runs**: Processing execution tracking
-- **states**: Geographic eligibility data
+- **coverage_areas**: Geographic entities with PostGIS polygons
 
 Key views and functions handle complex queries for the dashboard and mapping features.
+
+### Geographic Filtering (IMPORTANT)
+
+**Use `coverage_areas` system, NOT legacy `eligible_states`.**
+
+| Current System | Deprecated |
+|----------------|------------|
+| `opportunity_coverage_areas` table | `opportunity_state_eligibility` table |
+| `coverage_state_codes` view column | `eligible_states` view column |
+
+```javascript
+// Correct: filter by coverage areas
+query.or(`is_national.eq.true,coverage_state_codes.cs.{${stateCode}}`);
+
+// WRONG: don't use eligible_states
+query.or(`is_national.eq.true,eligible_states.cs.{${stateCode}}`);
+```
+
+See `docs/architecture/ADR-001-geographic-filtering.md` for details.
 
 ## Development Guidelines
 

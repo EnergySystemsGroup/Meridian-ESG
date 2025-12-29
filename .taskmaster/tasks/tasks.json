@@ -3964,14 +3964,307 @@
       {
         "id": "13",
         "title": "Enhance Map Feature (Advanced)",
-        "description": "Make sure current map filters are correct and summaries are good. Ensure side cards show right info. Brainstorm feasibility of county-level or utility-level information display.",
-        "details": "",
-        "testStrategy": "",
-        "status": "deferred",
+        "description": "Transform the funding map into a comprehensive geographic explorer with 4 view modes (National, US States, State Detail, County/Utility), scope filtering (National/State-wide/County/Utility), project types filtering aligned with opportunity explorer, and drill-down navigation using PostGIS coverage_areas data. Replace current state-only view with multi-level geographic exploration, align filters with opportunity explorer patterns, and integrate coverage_areas.geom for county and utility boundary visualization.",
+        "status": "in-progress",
         "dependencies": [],
         "priority": "low",
-        "subtasks": [],
-        "updatedAt": "2025-11-19T20:44:38.643Z"
+        "details": "The current map implementation (app/map/page.jsx, components/map/FundingMapClient.jsx) provides basic state-level visualization with limited filtering. This revamp will:\n\n1. **Multi-Level Geographic Views**: Transform from single US states view to 4-mode system:\n   - National View: Full US as single clickable area\n   - US States View: Individual state selection and drill-down\n   - State Detail View: Selected state with scope breakdown and drill-down options\n   - County/Utility View: PostGIS polygon overlay with toggle between county/utility layers\n\n2. **Coverage Areas Integration**: Leverage existing coverage_areas table (created in 20251105000001_enable_postgis_coverage_areas.sql) with PostGIS geometry:\n   - Query coverage_areas WHERE kind='county' OR kind='utility'\n   - Convert PostGIS MultiPolygon to GeoJSON for react-simple-maps\n   - Handle state_code filtering for efficient data loading\n\n3. **Filter Alignment**: Replace current FilterSidebar.jsx category implementation with opportunity explorer patterns:\n   - Project Types filter (replacing categories) with search, counts, color coding\n   - Status filter (multi-select: Open, Upcoming, Closed)\n   - Award amount range slider\n   - Text search with debounce\n   - Scope filter (National/State-wide/County/Utility checkboxes)\n\n4. **Opportunity Display**: Replace basic cards with OpportunityCard.jsx component:\n   - Project type pills with colors\n   - Relevance score display\n   - Tracking status integration\n   - Load More pagination (not traditional page numbers)\n\n5. **Navigation System**:\n   - Back to US button (County/Utility → State → US)\n   - Back to State button (County/Utility → State)\n   - Breadcrumb trail showing current path\n   - URL param sync for bookmarking\n\n6. **Context-Aware Summary**: Replace static funding summary with dynamic view-based display:\n   - National: Total opportunities, funding, states with programs\n   - State: State totals + scope breakdown (X state-wide, Y county, Z utility)\n   - County/Utility: Area-specific totals + top project types\n\nExisting infrastructure to leverage:\n- FilterSidebar.jsx: Has category multi-select pattern to adapt\n- FundingMapClient.jsx: Has react-simple-maps setup and ZoomableGroup\n- coverage_areas table: PostGIS geometry ready for county/utility boundaries\n- API routes: /api/map/funding-by-state and /api/map/opportunities/[stateCode] need extension for coverage areas",
+        "testStrategy": "1. **View Mode Testing**: Verify National View shows US as single clickable area, test US States View state selection and drill-down, validate State Detail shows scope breakdown, test County/Utility View layer toggle\n\n2. **Coverage Areas Integration**: Test GeoJSON conversion from PostGIS geometry, verify county boundaries render correctly, verify utility boundaries with toggle, test performance with large polygon datasets\n\n3. **Filter Testing**: Test Project Types filter with search and counts, test Status multi-select, test Award Amount slider, test Text search with debounce, test Scope filter checkboxes, verify filter pills, test URL param sync\n\n4. **Navigation Testing**: Test Back to US button, test Back to State button, verify breadcrumb trail updates, test URL bookmarking\n\n5. **Opportunity Display**: Verify OpportunityCard renders with project type pills, test relevance score display, test Load More pagination, verify tracking status\n\n6. **Summary Panel Testing**: Verify National View statistics, test State Detail scope breakdown, test County/Utility View area totals, verify top project types display\n\n7. **Performance Testing**: Test lazy loading of GeoJSON, verify caching of polygons, test debouncing of filters, test virtualization for long lists\n\n8. **Cross-Browser & Responsive Testing**: Test on mobile (stacked layout, collapsible filters, touch controls), verify dark mode support, test swipeable cards\n\n9. **Error Handling**: Test GeoJSON load failure with retry, test fallback to state-level view, verify loading states",
+        "subtasks": [
+          {
+            "id": 2,
+            "title": "Create database RPC functions for geographic queries",
+            "description": "Create Supabase RPC functions to query coverage_areas table: get_coverage_areas_geojson(state_code, kind), get_opportunity_counts_by_coverage_area(area_id), get_opportunities_for_coverage_area(area_id, filters). Handle PostGIS to GeoJSON conversion using ST_AsGeoJSON() for react-simple-maps compatibility. Reference coverage_areas schema from 20251105000001_enable_postgis_coverage_areas.sql migration.",
+            "dependencies": [],
+            "details": "Functions needed:\n- get_coverage_areas_geojson(state_code TEXT, kind TEXT): Returns GeoJSON FeatureCollection from coverage_areas WHERE state_code=X AND kind IN ('county','utility')\n- get_opportunity_counts_by_coverage_area(area_id UUID): Returns count of opportunities linked via opportunity_coverage_areas junction table\n- get_opportunities_for_coverage_area(area_id UUID, filters JSONB): Returns filtered opportunities for specific coverage area with pagination support\n\nUse ST_AsGeoJSON(geom) for geometry conversion. Ensure proper indexing on coverage_areas.state_code and coverage_areas.kind for performance.",
+            "status": "done",
+            "testStrategy": null,
+            "parentId": "undefined",
+            "updatedAt": "2025-12-22T20:22:41.351Z"
+          },
+          {
+            "id": 3,
+            "title": "Implement coverage areas API endpoints",
+            "description": "Create Next.js API routes: GET /api/map/coverage-areas/[stateCode]?kind=county|utility (returns GeoJSON), GET /api/map/opportunities-by-area/[areaId] (returns opportunities for specific coverage area), GET /api/map/national-count (returns total national opportunity count). Integrate with RPC functions from subtask 2.",
+            "dependencies": [
+              2
+            ],
+            "details": "Routes to create:\n- app/api/map/coverage-areas/[stateCode]/route.js: Calls get_coverage_areas_geojson RPC, returns GeoJSON FeatureCollection for county or utility boundaries\n- app/api/map/opportunities-by-area/[areaId]/route.js: Calls get_opportunities_for_coverage_area RPC with filter support (status, project_types, amount_range, search)\n- app/api/map/national-count/route.js: Returns total count of opportunities WHERE scope='national' OR scope='state-wide'\n\nAdd caching headers (Cache-Control) for GeoJSON responses since boundaries don't change frequently.",
+            "status": "done",
+            "testStrategy": null,
+            "updatedAt": "2025-12-22T20:14:59.351Z",
+            "parentId": "undefined"
+          },
+          {
+            "id": 4,
+            "title": "Implement National View mode",
+            "description": "Create National View where full US shown as single clickable area. Cards show only national-scope opportunities (scope='national'). Scope filter auto-sets to National checkbox only. Clicking US triggers transition to US States View. Summary shows: Total National Opportunities, Total National Funding, Top 3 Project Types.",
+            "dependencies": [],
+            "details": "In app/map/page.jsx:\n- Add view state: { mode: 'national', selectedState: null, selectedArea: null }\n- Render single US Geography with onClick → setView({ mode: 'states' })\n- Filter opportunities WHERE scope='national'\n- Display national summary card with totals\n- Auto-check 'National' scope filter, disable other scope checkboxes\n- Show top 3 project types by opportunity count",
+            "status": "done",
+            "testStrategy": null,
+            "parentId": "undefined",
+            "updatedAt": "2025-12-22T20:27:21.163Z"
+          },
+          {
+            "id": 5,
+            "title": "Implement State View mode",
+            "description": "Implement State Detail View: Selected state highlighted/zoomed, summary shows scope breakdown (X State-wide, Y County, Z Utility), cards show state-wide opportunities, drill-down buttons for 'View by County' and 'View by Utility'. Zoom/pan to selected state using geoCentroid for center point. Breadcrumb: US > [State].",
+            "dependencies": [
+              3
+            ],
+            "details": "In app/map/page.jsx:\n- Add view state: { mode: 'state', selectedState: 'California', selectedArea: null }\n- Calculate state center using geoCentroid from d3-geo\n- Render ZoomableGroup with center and zoom level (scale: 4 for state-level)\n- Query opportunities WHERE state_code='CA' AND scope IN ('state-wide', 'national')\n- Display scope breakdown card: 'X State-wide programs, Y in counties, Z utility programs'\n- Add drill-down buttons: 'View by County' → mode='county', 'View by Utility' → mode='utility'\n- Breadcrumb component showing 'US > California' with click handlers",
+            "status": "done",
+            "testStrategy": null,
+            "parentId": "undefined",
+            "updatedAt": "2025-12-22T20:27:27.483Z"
+          },
+          {
+            "id": 6,
+            "title": "Implement County/Utility View mode with layer toggle",
+            "description": "State remains zoomed, overlay county OR utility boundaries from coverage_areas.geom as Geography components. Add toggle switch for County/Utility layer selection. Click on area shows opportunities linked via opportunity_coverage_areas junction. Back to State button in navigation. Breadcrumb: US > [State] > Counties/Utilities.",
+            "dependencies": [
+              3
+            ],
+            "details": "In components/map/FundingMapClient.jsx:\n- Add layer state: { layer: 'county' } with toggle button\n- Fetch GeoJSON from /api/map/coverage-areas/[stateCode]?kind=county|utility\n- Render each coverage area as Geography with click handler → fetch area opportunities\n- Display area opportunities in side panel with OpportunityCard.jsx\n- Add 'Back to State' button → setView({ mode: 'state' })\n- Update breadcrumb to show current layer type\n- Color areas by opportunity count using scaleQuantile",
+            "status": "done",
+            "testStrategy": null,
+            "parentId": "undefined",
+            "updatedAt": "2025-12-22T20:33:24.588Z"
+          },
+          {
+            "id": 7,
+            "title": "Add navigation: Back to US, Back to State, breadcrumb trail",
+            "description": "Implement navigation controls for moving between view levels: Back to US button (visible in state/county/utility modes), Back to State button (visible in county/utility modes), breadcrumb trail showing current path (US > California > Counties). All navigation updates URL params.",
+            "dependencies": [
+              4,
+              5,
+              6
+            ],
+            "details": "Create components/map/MapNavigation.jsx:\n- Back to US button: onClick → setView({ mode: 'national' }), updateURL()\n- Back to State button: onClick → setView({ mode: 'state' }), updateURL()\n- Breadcrumb trail using shadcn/ui Breadcrumb component\n- Each breadcrumb item clickable to navigate to that level\n- Sync with URL params: /map?view=state&state=CA&layer=county\n- Show/hide buttons based on current view mode",
+            "status": "done",
+            "testStrategy": null,
+            "parentId": "undefined",
+            "updatedAt": "2025-12-22T20:33:29.275Z"
+          },
+          {
+            "id": 8,
+            "title": "Update FundingMapClient with zoom/pan for state drill-down",
+            "description": "Add zoom state management to FundingMapClient: US (scale: 1, center: [-96, 38]) → State (scale: 4, center: geoCentroid(state)) → Area (scale: 6, center: geoCentroid(area)). Implement smooth zoom transitions using ZoomableGroup onMoveEnd. Handle dynamic zoom/pan when states/areas are clicked.",
+            "dependencies": [
+              5,
+              6
+            ],
+            "details": "In components/map/FundingMapClient.jsx:\n- Add zoom state: { center: [-96, 38], zoom: 1 }\n- Define zoom levels: NATIONAL=1, STATE=4, AREA=6\n- Calculate state center using geoCentroid from d3-geo on state Geography click\n- Calculate area center for county/utility polygons\n- Animate zoom transitions using ZoomableGroup.transitionDuration=800\n- Add onMoveEnd handler to update zoom state\n- Ensure ZoomableGroup.maxZoom=8 to prevent over-zooming",
+            "status": "done",
+            "testStrategy": null,
+            "parentId": "undefined",
+            "updatedAt": "2025-12-22T20:48:54.422Z"
+          },
+          {
+            "id": 9,
+            "title": "Create CoverageAreaLayer component",
+            "description": "Create components/map/CoverageAreaLayer.jsx to render county or utility polygons from coverage_areas.geom. Component receives GeoJSON FeatureCollection and renders each feature as Geography. Handle PostGIS MultiPolygon geometry to react-simple-maps Geography conversion. Support click handlers, tooltips, and color scaling by opportunity count.",
+            "dependencies": [
+              3
+            ],
+            "details": "Component props:\n- geojsonData: FeatureCollection from /api/map/coverage-areas/[stateCode]\n- onAreaClick: (areaId) => void\n- colorScale: d3.scaleQuantile for coloring by opportunity count\n- selectedAreaId: UUID for highlighting selected area\n\nRender logic:\n- Map geojsonData.features to Geography components\n- Use feature.properties.id for key and click handling\n- Apply colorScale(feature.properties.opportunity_count) for fill color\n- Add hover states with stroke highlighting\n- Show tooltip with area name and opportunity count",
+            "status": "done",
+            "testStrategy": null,
+            "parentId": "undefined",
+            "updatedAt": "2025-12-22T20:33:19.461Z"
+          },
+          {
+            "id": 10,
+            "title": "Implement dynamic GeoJSON loading from coverage_areas.geom",
+            "description": "Load GeoJSON dynamically based on zoom level and selected state. Implement caching: store loaded GeoJSON in Map<stateCode_kind, FeatureCollection> to prevent redundant API calls. Add loading states for GeoJSON fetch operations. Handle errors gracefully with retry logic.",
+            "dependencies": [
+              3,
+              9
+            ],
+            "details": "In app/map/page.jsx:\n- Create geojsonCache state: Map<'CA_county', FeatureCollection>\n- Fetch GeoJSON only when view.mode='county' or 'utility' AND not in cache\n- Cache key format: `${stateCode}_${layer}` (e.g., 'CA_county', 'TX_utility')\n- Add loading state: geojsonLoading: boolean\n- Error handling: retry button, fallback to state view if GeoJSON unavailable\n- Clear cache on component unmount to prevent memory leaks",
+            "status": "done",
+            "testStrategy": null,
+            "parentId": "undefined",
+            "updatedAt": "2025-12-22T20:49:53.561Z"
+          },
+          {
+            "id": 11,
+            "title": "Add Scope Filter component",
+            "description": "Create scope filter with checkboxes for National, State-wide, County, Utility. Controls what opportunities are displayed in cards. Auto-updates based on current view mode (National view auto-checks National only). Sync with URL params. Show opportunity counts per scope type.",
+            "dependencies": [],
+            "details": "Add to components/map/FilterSidebar.jsx:\n- Scope filter section with 4 checkboxes: National, State-wide, County, Utility\n- Multi-select enabled (can select multiple scopes)\n- Auto-behavior: National view → auto-check 'National', disable others\n- State view → enable State-wide + National, show counts\n- County/Utility view → enable all, show counts\n- Filter opportunities WHERE scope IN (selected_scopes)\n- Add to URL params: ?scope=national,state-wide",
+            "status": "done",
+            "testStrategy": null,
+            "parentId": "undefined",
+            "updatedAt": "2025-12-22T20:30:05.793Z"
+          },
+          {
+            "id": 12,
+            "title": "Replace category filters with Project Types",
+            "description": "Align with opportunity explorer: replace old category filter (FilterSidebar.jsx lines 108-256) with Project Types multi-select filter. Add search box, show opportunity counts per type, use color coding from lib/utils/uiHelpers.js getCategoryColor(). Reference opportunity explorer filter implementation.",
+            "dependencies": [],
+            "details": "In components/map/FilterSidebar.jsx:\n- Remove category filter dropdown (lines 108-256)\n- Add Project Types filter following opportunity explorer pattern\n- Multi-select with checkboxes\n- Search input with placeholder 'Search project types...'\n- Show count per type: 'Solar (23)'\n- Use getCategoryColor() for colored pills\n- Filter opportunities WHERE project_types && ARRAY[selected_types]\n- Migrate from filters.categories to filters.projectTypes",
+            "status": "done",
+            "testStrategy": null,
+            "parentId": "undefined",
+            "updatedAt": "2025-12-22T20:52:10.420Z"
+          },
+          {
+            "id": 13,
+            "title": "Add Status filter, Search box, Amount Range",
+            "description": "Enhance FilterSidebar.jsx with: Status filter (multi-select: Open, Upcoming, Closed), text search box with debounce (300ms) for title/description search, award amount range slider (min/max inputs). Align UI patterns with opportunity explorer. All filters sync to URL params.",
+            "dependencies": [],
+            "details": "Filters to add:\n1. Status filter: Multi-select checkboxes (Open, Upcoming, Closed) - already exists as Select, convert to multi-select\n2. Text search: Input with Search icon, debounce 300ms, searches title + description fields\n3. Amount range: Slider with min/max labels, range: $0 - $10M, step: $100K\n\nAll filters:\n- Update URL params on change\n- Show active filter count in badges\n- Clear individual filters via X button\n- Reset All button clears everything",
+            "status": "done",
+            "testStrategy": null,
+            "parentId": "undefined",
+            "updatedAt": "2025-12-22T20:53:40.406Z"
+          },
+          {
+            "id": 14,
+            "title": "Implement filter pills with remove buttons",
+            "description": "Show active filters as removable pills - each filter type has colored pill that can be clicked to remove. Match opportunity explorer pattern (components/funding/OpportunityExplorer.jsx). Display below filter controls. Pills format: 'Status: Open', 'Project Type: Solar', 'Amount: $1M+'.",
+            "dependencies": [
+              11,
+              12,
+              13
+            ],
+            "details": "Create filter pills section in app/map/page.jsx:\n- Display below filter bar, above map\n- Pill format: '[Filter Type]: [Value]' with X icon\n- Color coding: Status (blue), Project Types (getCategoryColor), Scope (green), Amount (purple)\n- Click X → remove that specific filter value\n- Group pills by filter type with visual separation\n- Hide pills section when no filters active\n- Reference opportunity explorer implementation for styling",
+            "status": "done",
+            "testStrategy": null,
+            "parentId": "undefined",
+            "updatedAt": "2025-12-22T20:54:51.429Z"
+          },
+          {
+            "id": 15,
+            "title": "Add URL param sync for all filters and view state",
+            "description": "Sync all filters and current view state to URL params for bookmarking and sharing. Include: view mode (national/states/state/county/utility), selected state, selected area, scope filters, project types, status, amount range, search query. Use Next.js useRouter and useSearchParams. Support deep linking.",
+            "dependencies": [
+              11,
+              12,
+              13
+            ],
+            "details": "URL param schema:\n- view: 'national' | 'states' | 'state' | 'county' | 'utility'\n- state: state code (e.g., 'CA')\n- area: coverage_area.id UUID\n- scope: 'national,state-wide,county,utility' (comma-separated)\n- project_types: 'solar,wind,efficiency' (comma-separated)\n- status: 'open,upcoming' (comma-separated)\n- amount_min: number\n- amount_max: number\n- search: text\n\nImplementation:\n- Use useRouter() from next/navigation\n- Update URL on filter change without page reload (router.push with shallow: true)\n- Parse URL params on mount to restore state\n- Handle invalid params gracefully (fallback to defaults)",
+            "status": "pending",
+            "testStrategy": null,
+            "parentId": "undefined"
+          },
+          {
+            "id": 16,
+            "title": "Create scope breakdown summary component",
+            "description": "Component showing opportunity counts by scope: X National, Y State-wide, Z County, W Utility. Displays in side panel when state or area selected. Includes drill-down buttons for County and Utility views when in State mode. Shows percentage breakdown with visual bars.",
+            "dependencies": [
+              5,
+              6
+            ],
+            "details": "Create components/map/ScopeBreakdownCard.jsx:\n- Props: { nationalCount, stateCount, countyCount, utilityCount, onDrillDown }\n- Display format:\n  - 'X National Programs (Y%)'\n  - 'Z State-wide Programs (W%)'\n  - 'A County Programs (B%)' with 'View by County' button\n  - 'C Utility Programs (D%)' with 'View by Utility' button\n- Visual bars showing percentage distribution (colored segments)\n- Click drill-down buttons → trigger view mode change\n- Only show in State and County/Utility views\n- Total at top: 'X Total Opportunities'",
+            "status": "done",
+            "testStrategy": null,
+            "parentId": "undefined",
+            "updatedAt": "2025-12-22T20:27:31.985Z"
+          },
+          {
+            "id": 17,
+            "title": "Update opportunity cards to match OpportunityCard.jsx",
+            "description": "Replace existing card display in app/map/page.jsx (lines 823-996) with OpportunityCard component from opportunity explorer (components/funding/OpportunityCard.jsx). Includes project type pills with colors from getCategoryColor(), relevance score display with color gradient (red <6, yellow 6-8, green >8), tracking status integration.",
+            "dependencies": [],
+            "details": "In app/map/page.jsx:\n- Import OpportunityCard from components/funding/OpportunityCard.jsx\n- Replace current card rendering (lines 823-996) with OpportunityCard component\n- Map opportunity data to OpportunityCard props:\n  - title, description, status, closeDate, amount\n  - projectTypes: map to project_types array\n  - relevanceScore: use relevance_score field\n  - trackingStatus: integrate with tracking system\n- Maintain pagination logic (5 cards per page)\n- Preserve onClick → navigate to opportunity detail page\n- Apply same hover/click effects as opportunity explorer",
+            "status": "pending",
+            "testStrategy": null,
+            "parentId": "undefined"
+          },
+          {
+            "id": 18,
+            "title": "Implement pagination with Load More",
+            "description": "Add Load More button for opportunity cards instead of traditional pagination (Previous/Next buttons in lines 778-807, 1001-1029). Track page state and append new results to existing list. Show loading spinner while fetching. Display 'X of Y opportunities shown' counter. Disable button when all opportunities loaded.",
+            "dependencies": [
+              17
+            ],
+            "details": "In app/map/page.jsx:\n- Replace Previous/Next pagination with Load More button\n- Change stateOpportunities state to accumulate results (not replace)\n- Load More onClick:\n  - Increment page\n  - Fetch next page from API\n  - Append to stateOpportunities array\n  - Show loading spinner on button while fetching\n- Display counter: 'Showing X of Y opportunities'\n- Disable Load More when currentCount >= totalCount\n- Add 'Show Less' option to collapse back to first page\n- Smooth scroll to new cards after load",
+            "status": "pending",
+            "testStrategy": null,
+            "parentId": "undefined"
+          },
+          {
+            "id": 19,
+            "title": "Redesign funding summary to be context-aware",
+            "description": "Funding summary changes based on current view: US view shows national totals, State view shows state totals with scope breakdown, Area view shows area totals. Include top project types (top 3-5 by opportunity count) with color-coded pills. Replace static summary in lines 722-750 with dynamic component.",
+            "dependencies": [
+              4,
+              5,
+              6
+            ],
+            "details": "Create components/map/FundingSummaryCard.jsx with view-aware display:\n\nNational View:\n- Total National Opportunities: X\n- Total National Funding: $YM\n- States with Programs: Z\n- Top Project Types: [Solar (23), Wind (18), Efficiency (15)]\n\nState View:\n- Total [State] Opportunities: X\n- Total [State] Funding: $YM\n- Scope Breakdown: X national, Y state-wide, Z county, W utility\n- Top Project Types: [...]\n\nCounty/Utility View:\n- [Area Name] Opportunities: X\n- [Area Name] Funding: $YM\n- Scope: County | Utility\n- Top Project Types: [...]\n\nUse getCategoryColor() for project type pills",
+            "status": "pending",
+            "testStrategy": null,
+            "parentId": "undefined"
+          },
+          {
+            "id": 20,
+            "title": "Add loading states for all async operations",
+            "description": "Add skeleton loaders and spinners for: map loading (already exists in lines 59-68), GeoJSON fetching (coverage areas), opportunity cards loading (already exists in lines 815-818), filter counts loading. Use shadcn/ui Skeleton component. Show loading overlay on map during GeoJSON fetch.",
+            "dependencies": [],
+            "details": "Loading states to add:\n1. GeoJSON loading: Semi-transparent overlay on map with spinner + 'Loading [county/utility] boundaries...'\n2. Filter counts loading: Skeleton in parentheses next to filter options\n3. Scope breakdown loading: Skeleton bars in ScopeBreakdownCard\n4. Summary card loading: Skeleton for totals and top project types\n\nImplementation:\n- Use shadcn/ui Skeleton component for consistent styling\n- Add loading state variables: geojsonLoading, filterCountsLoading, summaryLoading\n- Show skeletons while fetching, replace with data when loaded\n- Minimum loading time 200ms to prevent flashing",
+            "status": "pending",
+            "testStrategy": null,
+            "parentId": "undefined"
+          },
+          {
+            "id": 21,
+            "title": "Error handling for failed GeoJSON loads",
+            "description": "Handle errors gracefully when GeoJSON fails to load: show error message in place of map overlay ('Unable to load [county/utility] boundaries'), retry button, fallback to state-level view if county/utility data fails. Log errors to console for debugging. Show toast notification on API errors.",
+            "dependencies": [
+              10
+            ],
+            "details": "Error handling strategy:\n1. GeoJSON fetch failure:\n   - Catch error in try/catch\n   - Show error card overlay on map: 'Unable to load [county/utility] boundaries. [Retry] or [View State]'\n   - Retry button → re-attempt fetch\n   - View State button → fallback to state view mode\n   - Toast notification: 'Failed to load boundaries. Please try again.'\n\n2. API errors:\n   - Show toast with error message\n   - Log full error to console\n   - Maintain current view (don't crash)\n\n3. Empty data:\n   - Show 'No boundaries available for this state' message\n   - Disable drill-down buttons\n   - Suggest viewing state-wide opportunities instead\n\nUse shadcn/ui Toast component for notifications",
+            "status": "pending",
+            "testStrategy": null,
+            "parentId": "undefined"
+          },
+          {
+            "id": 22,
+            "title": "Dark mode support",
+            "description": "Ensure all new components support dark mode: map colors (use neutral tones), filters (follow FilterSidebar.jsx dark mode patterns), cards (OpportunityCard already has dark mode), summary panels. Use existing dark mode patterns from the app (dark:bg-neutral-800, dark:text-white, dark:border-neutral-600). Test in both light and dark modes.",
+            "dependencies": [],
+            "details": "Dark mode requirements:\n1. Map colors:\n   - Light mode: Blues (#e6f7ff → #003a8c)\n   - Dark mode: Neutral blues (#1e3a5f → #60a5fa)\n   - Stroke: white (light), neutral-700 (dark)\n\n2. Filter components:\n   - Follow FilterSidebar.jsx patterns (dark:bg-neutral-800)\n   - Input backgrounds: dark:bg-neutral-900\n   - Borders: dark:border-neutral-600\n\n3. Cards:\n   - OpportunityCard already supports dark mode\n   - ScopeBreakdownCard: dark:bg-neutral-800\n   - FundingSummaryCard: dark:bg-neutral-800\n\n4. Navigation:\n   - Breadcrumb: dark:text-neutral-400\n   - Buttons: follow shadcn/ui dark mode variants\n\nTest checklist:\n- Toggle dark mode and verify all components render correctly\n- Check contrast ratios for accessibility\n- Ensure hover states visible in both modes",
+            "status": "pending",
+            "testStrategy": null,
+            "parentId": "undefined"
+          },
+          {
+            "id": 23,
+            "title": "Mobile responsiveness",
+            "description": "Make map page responsive: stack layout on mobile (filters on top, map below, cards in drawer), collapsible filter panel with toggle button, touch-friendly map controls (larger click targets), swipeable cards using touch gestures. Breakpoints: sm (640px), md (768px), lg (1024px). Test on iPhone and Android devices.",
+            "dependencies": [],
+            "details": "Mobile layout changes:\n\n1. Layout (< lg):\n   - Stack vertically: Filters → Map → Opportunities\n   - Filter panel: Collapsible drawer with 'Filters' button (sticky top)\n   - Map: Full width, height: 400px\n   - Cards: Sheet component for opportunity list (swipe up from bottom)\n\n2. Filter panel:\n   - Collapsed by default on mobile\n   - Toggle button: 'Filters (X active)' with badge count\n   - Drawer slides in from left\n   - Close button inside drawer\n\n3. Map controls:\n   - Larger click targets: min-height: 44px (Apple HIG)\n   - Navigation buttons: min-width: 44px\n   - Zoom controls: +/- buttons (larger)\n   - Layer toggle: Larger switch (scale: 1.5)\n\n4. Opportunity cards:\n   - Sheet component for mobile\n   - Swipeable: drag handle at top\n   - Snap positions: collapsed (80px), half (50%), full\n   - Load More button: full width, sticky bottom\n\nTest on:\n- iPhone SE (375px)\n- iPhone 14 (390px)\n- iPad (768px)\n- Android devices via Chrome DevTools",
+            "status": "pending",
+            "testStrategy": null,
+            "parentId": "undefined"
+          },
+          {
+            "id": 24,
+            "title": "Performance optimization",
+            "description": "Optimize performance: lazy load GeoJSON (load only when view mode changes to county/utility), cache loaded layers in Map data structure, debounce filter changes (300ms delay before API call), virtualize long opportunity lists (react-window for >50 items), minimize re-renders with React.memo and useMemo. Target: <500ms for view transitions, <200ms for filter updates.",
+            "dependencies": [],
+            "details": "Performance optimizations:\n\n1. GeoJSON lazy loading:\n   - Only fetch when view.mode='county' or 'utility'\n   - Cache in Map<stateCode_layer, GeoJSON>\n   - Preload next likely layer (e.g., preload county when in state view)\n\n2. Filter debouncing:\n   - Use lodash.debounce or custom hook\n   - 300ms delay before API call\n   - Show loading indicator during debounce\n   - Cancel pending requests on unmount\n\n3. Virtualization:\n   - Use react-window for opportunity lists >50 items\n   - Fixed item height: 120px\n   - Overscan count: 5 items\n   - Only render visible + overscan items\n\n4. React optimizations:\n   - React.memo on OpportunityCard, CoverageAreaLayer, FundingSummaryCard\n   - useMemo for expensive computations (color scales, geoCentroid)\n   - useCallback for event handlers passed to children\n   - Avoid inline object/array creation in render\n\n5. Monitoring:\n   - Use React DevTools Profiler to identify slow components\n   - Add performance.mark() for key operations\n   - Log render times in development\n   - Target metrics: <500ms view transitions, <200ms filter updates",
+            "status": "pending",
+            "testStrategy": null,
+            "parentId": "undefined"
+          },
+          {
+            "id": 1,
+            "title": "Create feature branch and project structure",
+            "description": "Create feature branch feature/funding-map-revamp and set up the basic project structure for the map revamp.",
+            "details": "",
+            "status": "done",
+            "dependencies": [],
+            "parentTaskId": 13,
+            "parentId": "undefined",
+            "updatedAt": "2025-12-22T20:03:52.615Z"
+          }
+        ],
+        "updatedAt": "2025-12-22T20:54:51.429Z"
       },
       {
         "id": "14",
@@ -4311,7 +4604,7 @@
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2025-12-22T19:21:24.121Z",
+      "lastModified": "2025-12-22T20:54:51.436Z",
       "taskCount": 23,
       "completedCount": 12,
       "tags": [
