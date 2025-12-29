@@ -21,6 +21,8 @@ import {
 	Building2,
 	Search,
 	X,
+	ChevronLeft,
+	ChevronRight,
 } from 'lucide-react';
 import ScopeSummary from '@/components/map/ScopeSummary';
 import CoverageAreaFilter from '@/components/map/CoverageAreaFilter';
@@ -920,13 +922,39 @@ function MapPageContent() {
 
 								{/* Opportunities List */}
 								<div>
+									{/* Header with title and compact pagination */}
 									<div className='flex justify-between items-center mb-3'>
 										<h4 className='text-sm font-semibold text-muted-foreground uppercase tracking-wide'>
 											Opportunities
 										</h4>
-										{nationalTotalCount > 0 && (
+										{nationalTotalCount > 10 && !nationalOpportunitiesLoading && (
+											<div className='flex items-center gap-2'>
+												<span className='text-xs text-muted-foreground'>
+													{nationalPage > 1 ? `${(nationalPage - 1) * 10 + 1}-${Math.min(nationalPage * 10, nationalTotalCount)}` : `1-${Math.min(10, nationalTotalCount)}`} of {nationalTotalCount.toLocaleString()}
+												</span>
+												<div className='flex gap-1'>
+													<Button
+														size='icon'
+														variant='ghost'
+														className='h-7 w-7'
+														disabled={nationalPage === 1}
+														onClick={() => setNationalPage((p) => p - 1)}>
+														<ChevronLeft className='h-4 w-4' />
+													</Button>
+													<Button
+														size='icon'
+														variant='ghost'
+														className='h-7 w-7'
+														disabled={nationalPage >= Math.ceil(nationalTotalCount / 10)}
+														onClick={() => setNationalPage((p) => p + 1)}>
+														<ChevronRight className='h-4 w-4' />
+													</Button>
+												</div>
+											</div>
+										)}
+										{nationalTotalCount > 0 && nationalTotalCount <= 10 && !nationalOpportunitiesLoading && (
 											<span className='text-xs text-muted-foreground'>
-												{nationalPage > 1 ? `${(nationalPage - 1) * 10 + 1}-${Math.min(nationalPage * 10, nationalTotalCount)}` : `1-${Math.min(10, nationalTotalCount)}`} of {nationalTotalCount.toLocaleString()}
+												{nationalTotalCount.toLocaleString()} total
 											</span>
 										)}
 									</div>
@@ -937,7 +965,9 @@ function MapPageContent() {
 										</div>
 									) : nationalOpportunities.length > 0 ? (
 										<>
-											<div className='space-y-4 animate-fadeIn'>
+											{/* Scrollable container for opportunity cards */}
+											<div className='max-h-[500px] overflow-y-auto pr-1 custom-scrollbar'>
+												<div className='space-y-4 animate-fadeIn'>
 												{nationalOpportunities.map((opp, index) => {
 													const relevanceScore = opp.relevance_score || 0;
 													const relevanceColor = relevanceScore >= 8 ? 'bg-green-400' : relevanceScore >= 6 ? 'bg-orange-400' : 'bg-gray-400';
@@ -1069,6 +1099,7 @@ function MapPageContent() {
 														</div>
 													);
 												})}
+												</div>
 											</div>
 
 											{/* Pagination */}
