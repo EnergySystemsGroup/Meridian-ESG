@@ -162,6 +162,7 @@ function MapPageContent() {
 		deadlineRange: { start: null, end: null },
 		scope: searchParams.get('scope')?.split(',').filter(Boolean) || ['national', 'state_wide', 'county', 'utility'],
 		search: searchParams.get('search') || '',
+		page: parseInt(searchParams.get('page')) || 1,
 	}), []);
 
 	// Sort state
@@ -194,7 +195,7 @@ function MapPageContent() {
 	const [nationalOpportunities, setNationalOpportunities] = useState([]);
 	const [nationalOpportunitiesLoading, setNationalOpportunitiesLoading] =
 		useState(false);
-	const [nationalPage, setNationalPage] = useState(1);
+	const [nationalPage, setNationalPage] = useState(initialFilters.page);
 	const [nationalTotalCount, setNationalTotalCount] = useState(0);
 
 	const [filters, setFilters] = useState(initialFilters);
@@ -347,7 +348,7 @@ function MapPageContent() {
 
 
 	// Update URL params when filters/view change
-	const updateUrlParams = useCallback((newFilters, newViewMode, newState, newSortOption = sortOption, newSortDirection = sortDirection) => {
+	const updateUrlParams = useCallback((newFilters, newViewMode, newState, newSortOption = sortOption, newSortDirection = sortDirection, newPage = 1) => {
 		const params = new URLSearchParams();
 
 		// Add non-default filter values to URL
@@ -384,6 +385,10 @@ function MapPageContent() {
 		}
 		if (newSortDirection && newSortDirection !== 'desc') {
 			params.set('sortDir', newSortDirection);
+		}
+		// Add page param if not on first page
+		if (newPage > 1) {
+			params.set('page', newPage.toString());
 		}
 
 		const queryString = params.toString();
@@ -431,6 +436,14 @@ function MapPageContent() {
 		setSortDirection(newDirection);
 		updateUrlParams(filters, viewMode, selectedStateCode, newOption, newDirection);
 	};
+
+	// Sync pagination to URL when page changes
+	useEffect(() => {
+		// Skip initial render - only sync when user navigates pages
+		if (nationalPage !== initialFilters.page || nationalPage > 1) {
+			updateUrlParams(filters, viewMode, selectedStateCode, sortOption, sortDirection, nationalPage);
+		}
+	}, [nationalPage]); // Only trigger on page change
 
 	// View mode handlers
 	const handleBackToUS = useCallback(() => {
