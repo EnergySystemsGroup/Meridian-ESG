@@ -3965,7 +3965,7 @@
         "id": "13",
         "title": "Enhance Map Feature (Advanced)",
         "description": "Transform the funding map into a comprehensive geographic explorer with 4 view modes (National, US States, State Detail, County/Utility), scope filtering (National/State-wide/County/Utility), project types filtering aligned with opportunity explorer, and drill-down navigation using PostGIS coverage_areas data. Replace current state-only view with multi-level geographic exploration, align filters with opportunity explorer patterns, and integrate coverage_areas.geom for county and utility boundary visualization.",
-        "status": "in-progress",
+        "status": "done",
         "dependencies": [],
         "priority": "low",
         "details": "The current map implementation (app/map/page.jsx, components/map/FundingMapClient.jsx) provides basic state-level visualization with limited filtering. This revamp will:\n\n1. **Multi-Level Geographic Views**: Transform from single US states view to 4-mode system:\n   - National View: Full US as single clickable area\n   - US States View: Individual state selection and drill-down\n   - State Detail View: Selected state with scope breakdown and drill-down options\n   - County/Utility View: PostGIS polygon overlay with toggle between county/utility layers\n\n2. **Coverage Areas Integration**: Leverage existing coverage_areas table (created in 20251105000001_enable_postgis_coverage_areas.sql) with PostGIS geometry:\n   - Query coverage_areas WHERE kind='county' OR kind='utility'\n   - Convert PostGIS MultiPolygon to GeoJSON for react-simple-maps\n   - Handle state_code filtering for efficient data loading\n\n3. **Filter Alignment**: Replace current FilterSidebar.jsx category implementation with opportunity explorer patterns:\n   - Project Types filter (replacing categories) with search, counts, color coding\n   - Status filter (multi-select: Open, Upcoming, Closed)\n   - Award amount range slider\n   - Text search with debounce\n   - Scope filter (National/State-wide/County/Utility checkboxes)\n\n4. **Opportunity Display**: Replace basic cards with OpportunityCard.jsx component:\n   - Project type pills with colors\n   - Relevance score display\n   - Tracking status integration\n   - Load More pagination (not traditional page numbers)\n\n5. **Navigation System**:\n   - Back to US button (County/Utility → State → US)\n   - Back to State button (County/Utility → State)\n   - Breadcrumb trail showing current path\n   - URL param sync for bookmarking\n\n6. **Context-Aware Summary**: Replace static funding summary with dynamic view-based display:\n   - National: Total opportunities, funding, states with programs\n   - State: State totals + scope breakdown (X state-wide, Y county, Z utility)\n   - County/Utility: Area-specific totals + top project types\n\nExisting infrastructure to leverage:\n- FilterSidebar.jsx: Has category multi-select pattern to adapt\n- FundingMapClient.jsx: Has react-simple-maps setup and ZoomableGroup\n- coverage_areas table: PostGIS geometry ready for county/utility boundaries\n- API routes: /api/map/funding-by-state and /api/map/opportunities/[stateCode] need extension for coverage areas",
@@ -4146,9 +4146,10 @@
               13
             ],
             "details": "URL param schema:\n- view: 'national' | 'states' | 'state' | 'county' | 'utility'\n- state: state code (e.g., 'CA')\n- area: coverage_area.id UUID\n- scope: 'national,state-wide,county,utility' (comma-separated)\n- project_types: 'solar,wind,efficiency' (comma-separated)\n- status: 'open,upcoming' (comma-separated)\n- amount_min: number\n- amount_max: number\n- search: text\n\nImplementation:\n- Use useRouter() from next/navigation\n- Update URL on filter change without page reload (router.push with shallow: true)\n- Parse URL params on mount to restore state\n- Handle invalid params gracefully (fallback to defaults)",
-            "status": "pending",
+            "status": "done",
             "testStrategy": null,
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2025-12-29T22:10:15.702Z"
           },
           {
             "id": 16,
@@ -4170,9 +4171,10 @@
             "description": "Replace existing card display in app/map/page.jsx (lines 823-996) with OpportunityCard component from opportunity explorer (components/funding/OpportunityCard.jsx). Includes project type pills with colors from getCategoryColor(), relevance score display with color gradient (red <6, yellow 6-8, green >8), tracking status integration.",
             "dependencies": [],
             "details": "In app/map/page.jsx:\n- Import OpportunityCard from components/funding/OpportunityCard.jsx\n- Replace current card rendering (lines 823-996) with OpportunityCard component\n- Map opportunity data to OpportunityCard props:\n  - title, description, status, closeDate, amount\n  - projectTypes: map to project_types array\n  - relevanceScore: use relevance_score field\n  - trackingStatus: integrate with tracking system\n- Maintain pagination logic (5 cards per page)\n- Preserve onClick → navigate to opportunity detail page\n- Apply same hover/click effects as opportunity explorer",
-            "status": "pending",
+            "status": "cancelled",
             "testStrategy": null,
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2025-12-29T21:19:49.726Z"
           },
           {
             "id": 18,
@@ -4182,9 +4184,10 @@
               17
             ],
             "details": "In app/map/page.jsx:\n- Replace Previous/Next pagination with Load More button\n- Change stateOpportunities state to accumulate results (not replace)\n- Load More onClick:\n  - Increment page\n  - Fetch next page from API\n  - Append to stateOpportunities array\n  - Show loading spinner on button while fetching\n- Display counter: 'Showing X of Y opportunities'\n- Disable Load More when currentCount >= totalCount\n- Add 'Show Less' option to collapse back to first page\n- Smooth scroll to new cards after load",
-            "status": "pending",
+            "status": "done",
             "testStrategy": null,
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2025-12-29T21:54:45.464Z"
           },
           {
             "id": 19,
@@ -4196,9 +4199,10 @@
               6
             ],
             "details": "Create components/map/FundingSummaryCard.jsx with view-aware display:\n\nNational View:\n- Total National Opportunities: X\n- Total National Funding: $YM\n- States with Programs: Z\n- Top Project Types: [Solar (23), Wind (18), Efficiency (15)]\n\nState View:\n- Total [State] Opportunities: X\n- Total [State] Funding: $YM\n- Scope Breakdown: X national, Y state-wide, Z county, W utility\n- Top Project Types: [...]\n\nCounty/Utility View:\n- [Area Name] Opportunities: X\n- [Area Name] Funding: $YM\n- Scope: County | Utility\n- Top Project Types: [...]\n\nUse getCategoryColor() for project type pills",
-            "status": "pending",
+            "status": "done",
             "testStrategy": null,
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2025-12-29T22:19:22.238Z"
           },
           {
             "id": 20,
@@ -4206,9 +4210,10 @@
             "description": "Add skeleton loaders and spinners for: map loading (already exists in lines 59-68), GeoJSON fetching (coverage areas), opportunity cards loading (already exists in lines 815-818), filter counts loading. Use shadcn/ui Skeleton component. Show loading overlay on map during GeoJSON fetch.",
             "dependencies": [],
             "details": "Loading states to add:\n1. GeoJSON loading: Semi-transparent overlay on map with spinner + 'Loading [county/utility] boundaries...'\n2. Filter counts loading: Skeleton in parentheses next to filter options\n3. Scope breakdown loading: Skeleton bars in ScopeBreakdownCard\n4. Summary card loading: Skeleton for totals and top project types\n\nImplementation:\n- Use shadcn/ui Skeleton component for consistent styling\n- Add loading state variables: geojsonLoading, filterCountsLoading, summaryLoading\n- Show skeletons while fetching, replace with data when loaded\n- Minimum loading time 200ms to prevent flashing",
-            "status": "pending",
+            "status": "done",
             "testStrategy": null,
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2025-12-29T22:23:50.607Z"
           },
           {
             "id": 21,
@@ -4218,9 +4223,10 @@
               10
             ],
             "details": "Error handling strategy:\n1. GeoJSON fetch failure:\n   - Catch error in try/catch\n   - Show error card overlay on map: 'Unable to load [county/utility] boundaries. [Retry] or [View State]'\n   - Retry button → re-attempt fetch\n   - View State button → fallback to state view mode\n   - Toast notification: 'Failed to load boundaries. Please try again.'\n\n2. API errors:\n   - Show toast with error message\n   - Log full error to console\n   - Maintain current view (don't crash)\n\n3. Empty data:\n   - Show 'No boundaries available for this state' message\n   - Disable drill-down buttons\n   - Suggest viewing state-wide opportunities instead\n\nUse shadcn/ui Toast component for notifications",
-            "status": "pending",
+            "status": "cancelled",
             "testStrategy": null,
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2025-12-29T22:32:04.116Z"
           },
           {
             "id": 22,
@@ -4228,9 +4234,10 @@
             "description": "Ensure all new components support dark mode: map colors (use neutral tones), filters (follow FilterSidebar.jsx dark mode patterns), cards (OpportunityCard already has dark mode), summary panels. Use existing dark mode patterns from the app (dark:bg-neutral-800, dark:text-white, dark:border-neutral-600). Test in both light and dark modes.",
             "dependencies": [],
             "details": "Dark mode requirements:\n1. Map colors:\n   - Light mode: Blues (#e6f7ff → #003a8c)\n   - Dark mode: Neutral blues (#1e3a5f → #60a5fa)\n   - Stroke: white (light), neutral-700 (dark)\n\n2. Filter components:\n   - Follow FilterSidebar.jsx patterns (dark:bg-neutral-800)\n   - Input backgrounds: dark:bg-neutral-900\n   - Borders: dark:border-neutral-600\n\n3. Cards:\n   - OpportunityCard already supports dark mode\n   - ScopeBreakdownCard: dark:bg-neutral-800\n   - FundingSummaryCard: dark:bg-neutral-800\n\n4. Navigation:\n   - Breadcrumb: dark:text-neutral-400\n   - Buttons: follow shadcn/ui dark mode variants\n\nTest checklist:\n- Toggle dark mode and verify all components render correctly\n- Check contrast ratios for accessibility\n- Ensure hover states visible in both modes",
-            "status": "pending",
+            "status": "done",
             "testStrategy": null,
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2025-12-29T21:18:00.376Z"
           },
           {
             "id": 23,
@@ -4238,9 +4245,10 @@
             "description": "Make map page responsive: stack layout on mobile (filters on top, map below, cards in drawer), collapsible filter panel with toggle button, touch-friendly map controls (larger click targets), swipeable cards using touch gestures. Breakpoints: sm (640px), md (768px), lg (1024px). Test on iPhone and Android devices.",
             "dependencies": [],
             "details": "Mobile layout changes:\n\n1. Layout (< lg):\n   - Stack vertically: Filters → Map → Opportunities\n   - Filter panel: Collapsible drawer with 'Filters' button (sticky top)\n   - Map: Full width, height: 400px\n   - Cards: Sheet component for opportunity list (swipe up from bottom)\n\n2. Filter panel:\n   - Collapsed by default on mobile\n   - Toggle button: 'Filters (X active)' with badge count\n   - Drawer slides in from left\n   - Close button inside drawer\n\n3. Map controls:\n   - Larger click targets: min-height: 44px (Apple HIG)\n   - Navigation buttons: min-width: 44px\n   - Zoom controls: +/- buttons (larger)\n   - Layer toggle: Larger switch (scale: 1.5)\n\n4. Opportunity cards:\n   - Sheet component for mobile\n   - Swipeable: drag handle at top\n   - Snap positions: collapsed (80px), half (50%), full\n   - Load More button: full width, sticky bottom\n\nTest on:\n- iPhone SE (375px)\n- iPhone 14 (390px)\n- iPad (768px)\n- Android devices via Chrome DevTools",
-            "status": "pending",
+            "status": "done",
             "testStrategy": null,
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2025-12-29T22:41:05.057Z"
           },
           {
             "id": 24,
@@ -4248,9 +4256,10 @@
             "description": "Optimize performance: lazy load GeoJSON (load only when view mode changes to county/utility), cache loaded layers in Map data structure, debounce filter changes (300ms delay before API call), virtualize long opportunity lists (react-window for >50 items), minimize re-renders with React.memo and useMemo. Target: <500ms for view transitions, <200ms for filter updates.",
             "dependencies": [],
             "details": "Performance optimizations:\n\n1. GeoJSON lazy loading:\n   - Only fetch when view.mode='county' or 'utility'\n   - Cache in Map<stateCode_layer, GeoJSON>\n   - Preload next likely layer (e.g., preload county when in state view)\n\n2. Filter debouncing:\n   - Use lodash.debounce or custom hook\n   - 300ms delay before API call\n   - Show loading indicator during debounce\n   - Cancel pending requests on unmount\n\n3. Virtualization:\n   - Use react-window for opportunity lists >50 items\n   - Fixed item height: 120px\n   - Overscan count: 5 items\n   - Only render visible + overscan items\n\n4. React optimizations:\n   - React.memo on OpportunityCard, CoverageAreaLayer, FundingSummaryCard\n   - useMemo for expensive computations (color scales, geoCentroid)\n   - useCallback for event handlers passed to children\n   - Avoid inline object/array creation in render\n\n5. Monitoring:\n   - Use React DevTools Profiler to identify slow components\n   - Add performance.mark() for key operations\n   - Log render times in development\n   - Target metrics: <500ms view transitions, <200ms filter updates",
-            "status": "pending",
+            "status": "cancelled",
             "testStrategy": null,
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2025-12-29T22:49:30.626Z"
           },
           {
             "id": 1,
@@ -4264,7 +4273,7 @@
             "updatedAt": "2025-12-22T20:03:52.615Z"
           }
         ],
-        "updatedAt": "2025-12-22T20:54:51.429Z"
+        "updatedAt": "2025-12-29T22:49:36.250Z"
       },
       {
         "id": "14",
@@ -4604,9 +4613,9 @@
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2025-12-22T20:54:51.436Z",
+      "lastModified": "2025-12-29T22:49:36.256Z",
       "taskCount": 23,
-      "completedCount": 12,
+      "completedCount": 13,
       "tags": [
         "v2"
       ]
