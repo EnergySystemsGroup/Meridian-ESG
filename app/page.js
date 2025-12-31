@@ -9,8 +9,6 @@ import {
 	CardHeader,
 	CardTitle,
 } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { AlertTriangle } from 'lucide-react';
 import Link from 'next/link';
 import FundingProjectTypeChart from '@/components/dashboard/FundingProjectTypeChart';
 
@@ -40,8 +38,12 @@ export default function Home() {
 	const [recentOpportunitiesError, setRecentOpportunitiesError] =
 		useState(null);
 
-	// Client matches count
-	const [clientMatchesCount, setClientMatchesCount] = useState(0);
+	// Client matches data
+	const [clientMatchData, setClientMatchData] = useState({
+		clientsWithMatches: 0,
+		totalMatches: 0,
+		totalClients: 0,
+	});
 	const [clientMatchesLoading, setClientMatchesLoading] = useState(true);
 
 	// Max available funding
@@ -152,22 +154,30 @@ export default function Home() {
 			}
 		}
 
-		// Fetch client matches count
-		async function fetchClientMatchesCount() {
+		// Fetch client matches data
+		async function fetchClientMatchData() {
 			try {
 				setClientMatchesLoading(true);
 				const response = await fetch('/api/client-matching/summary');
 				const result = await response.json();
 
 				if (!result.success) {
-					throw new Error(result.error || 'Failed to fetch client matches count');
+					throw new Error(result.error || 'Failed to fetch client matches data');
 				}
 
-				setClientMatchesCount(result.totalMatches);
+				setClientMatchData({
+					clientsWithMatches: result.clientsWithMatches,
+					totalMatches: result.totalMatches,
+					totalClients: result.totalClients,
+				});
 			} catch (err) {
-				console.error('Error fetching client matches count:', err);
-				// Fallback to a default value
-				setClientMatchesCount(81); // Use the previous hardcoded value as fallback
+				console.error('Error fetching client matches data:', err);
+				// Fallback to default values
+				setClientMatchData({
+					clientsWithMatches: 0,
+					totalMatches: 0,
+					totalClients: 0,
+				});
 			} finally {
 				setClientMatchesLoading(false);
 			}
@@ -218,7 +228,7 @@ export default function Home() {
 		fetchThirtyDayCount();
 		fetchOpenOpportunitiesCount();
 		fetchRecentOpportunities();
-		fetchClientMatchesCount();
+		fetchClientMatchData();
 		fetchMaxFunding();
 		fetchTopClientMatches();
 	}, []);
@@ -276,9 +286,13 @@ export default function Home() {
 						value={
 							clientMatchesLoading
 								? '...'
-								: clientMatchesCount.toString()
+								: clientMatchData.clientsWithMatches.toString()
 						}
-						description='New potential matches for clients'
+						description={
+							clientMatchesLoading
+								? 'Loading...'
+								: `of ${clientMatchData.totalClients} clients • ${clientMatchData.totalMatches} total matches`
+						}
 						href='/clients'
 						linkText='View Matches'
 					/>
