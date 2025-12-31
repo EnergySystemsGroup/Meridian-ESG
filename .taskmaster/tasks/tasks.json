@@ -3871,14 +3871,15 @@
         "description": "Make sure top 10 funding categories algorithm is correct. Review if recent activities section is needed or should be commented out for later. Optimize data presentation and performance.",
         "details": "",
         "testStrategy": "",
-        "status": "pending",
+        "status": "done",
         "dependencies": [
           "1",
           "3",
           "4"
         ],
         "priority": "medium",
-        "subtasks": []
+        "subtasks": [],
+        "updatedAt": "2025-12-31T22:51:14.129Z"
       },
       {
         "id": "6",
@@ -3886,10 +3887,11 @@
         "description": "Add filters by state. Consider what happens if legislative events are added. Review timeline display and improve UX. Consider adding export functionality.",
         "details": "",
         "testStrategy": "",
-        "status": "pending",
+        "status": "done",
         "dependencies": [],
         "priority": "medium",
-        "subtasks": []
+        "subtasks": [],
+        "updatedAt": "2025-12-31T22:51:19.374Z"
       },
       {
         "id": "7",
@@ -3897,10 +3899,11 @@
         "description": "Hide unnecessary menu options. Remove or implement Coming Soon placeholders. Ensure Settings and Help functionality are ready or hidden if not needed for launch.",
         "details": "",
         "testStrategy": "",
-        "status": "pending",
+        "status": "done",
         "dependencies": [],
         "priority": "low",
-        "subtasks": []
+        "subtasks": [],
+        "updatedAt": "2025-12-31T22:51:23.825Z"
       },
       {
         "id": "8",
@@ -4609,13 +4612,26 @@
           }
         ],
         "updatedAt": "2025-12-19T02:38:57.395Z"
+      },
+      {
+        "id": "24",
+        "title": "Fix Missing Await on filterOpportunities Call",
+        "description": "Add missing await keyword to the filterOpportunities function call in processCoordinatorV2.js line 622, which causes the filter to be bypassed and allows opportunities with relevance_score < 2 to slip through the deterministic filter.",
+        "details": "## Problem Analysis\n\nThe code at `lib/services/processCoordinatorV2.js:622` calls `filterOpportunities()` without the `await` keyword:\n\n```javascript\nfilterResult = filterOpportunities(analysisResult.opportunities)  // Missing await!\n```\n\nSince `filterOpportunities` is declared as `async` in `lib/agents-v2/core/filterFunction.js:39` and uses `await` internally when calling `evaluateOpportunity` (line 67), the missing `await` causes `filterResult` to be a Promise object instead of the actual filter results.\n\n## Why It Appears to Work\n\nThe code on line 628 accesses `filterResult.includedOpportunities.length`, which should crash if `filterResult` is a Promise. However, JavaScript's dynamic nature means the Promise object is being used instead, potentially causing the filter logic to be bypassed.\n\n## Evidence of the Bug\n\n- **Bad record in database**: Opportunity `f0c703f8-85d3-4702-a274-96d278475606` (\"Cost Share for Federal Clean Energy Funding Opportunities-EPIC Program\") with `relevance_score = 1.3` was stored despite the filter threshold requiring `finalScore >= 2` (see `lib/agents-v2/core/filterFunction.js:173`)\n- **Expected behavior**: All opportunities with score < 2 should be excluded\n- **Observed behavior**: 1 out of 154 California Grants Portal opportunities bypassed the filter\n\n## Implementation Steps\n\n1. **Add await keyword** at `lib/services/processCoordinatorV2.js:622`:\n   ```javascript\n   // BEFORE\n   filterResult = filterOpportunities(analysisResult.opportunities)\n   \n   // AFTER\n   filterResult = await filterOpportunities(analysisResult.opportunities)\n   ```\n\n2. **No other changes needed** - the function is already called within an async context (the entire process is wrapped in try-catch within an async function)\n\n## Files to Modify\n\n- `lib/services/processCoordinatorV2.js` - Add `await` at line 622\n\n## Related Files (Read-only reference)\n\n- `lib/agents-v2/core/filterFunction.js` - Filter implementation with threshold logic\n- `lib/agents-v2/tests/filterFunction.test.js` - Existing unit tests\n- `__tests__/unit/agents/filterFunction.test.js` - Additional test coverage",
+        "testStrategy": "## Testing Strategy\n\n### 1. Verify Existing Tests Pass\nRun existing filter function tests to ensure no regression:\n```bash\nnpm run test:agents  # Run all agent tests including filterFunction\n```\n\n### 2. Manual Verification - Low Score Filtering\nCreate a test script to verify opportunities with score < 2 are properly excluded:\n\n```javascript\n// scripts/test/verify-filter-fix.js\nimport { filterOpportunities } from '../lib/agents-v2/core/filterFunction.js';\n\nconst testOpportunities = [\n  {\n    id: 'test-low-score',\n    title: 'Should Be Filtered',\n    scoring: { finalScore: 1.3, baseScore: 1.3, activityMultiplier: 1.0 }\n  },\n  {\n    id: 'test-passing-score',\n    title: 'Should Pass',\n    scoring: { finalScore: 5.0, baseScore: 5.0, activityMultiplier: 1.0 }\n  }\n];\n\nconst result = await filterOpportunities(testOpportunities);\nconsole.log(`Included: ${result.includedOpportunities.length}`);  // Should be 1\nconsole.log(`Excluded: ${result.metrics.excluded}`);              // Should be 1\nconsole.log(`Low score exclusions: ${result.metrics.exclusionReasons.lowFinalScore}`); // Should be 1\n```\n\n### 3. Database Validation\nCheck that the bad record is the only one with score < 2:\n```sql\nSELECT id, title, relevance_score \nFROM funding_opportunities \nWHERE relevance_score < 2 \nORDER BY relevance_score;\n-- Should only return f0c703f8-85d3-4702-a274-96d278475606\n```\n\n### 4. Integration Test - Process New Batch\nProcess a small batch with known low-score opportunities:\n- Create test data with scores ranging from 0.5 to 5.0\n- Run through processCoordinatorV2\n- Verify pipeline_stages table shows correct filter metrics\n- Confirm only opportunities with finalScore >= 2 are stored\n\n### 5. Verify Promise Resolution\nAdd temporary logging to confirm filterResult is the actual object, not a Promise:\n```javascript\nconsole.log('filterResult type:', typeof filterResult);\nconsole.log('filterResult is Promise:', filterResult instanceof Promise);\nconsole.log('Has includedOpportunities:', 'includedOpportunities' in filterResult);\n```\n\nExpected output after fix:\n- Type: object\n- Is Promise: false\n- Has includedOpportunities: true",
+        "status": "pending",
+        "dependencies": [
+          "1"
+        ],
+        "priority": "medium",
+        "subtasks": []
       }
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2025-12-29T22:49:36.256Z",
-      "taskCount": 23,
-      "completedCount": 13,
+      "lastModified": "2025-12-31T22:51:23.835Z",
+      "taskCount": 24,
+      "completedCount": 16,
       "tags": [
         "v2"
       ]

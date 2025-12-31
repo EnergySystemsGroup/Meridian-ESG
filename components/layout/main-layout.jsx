@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
@@ -14,6 +14,7 @@ import { cn } from '@/lib/utils';
 import { HelpCircle, Moon, Settings, Sun } from 'lucide-react';
 import { useTheme } from '@/components/theme-provider';
 import { UserMenu } from '@/components/auth/UserMenu';
+import HelpModal from '@/components/help/HelpModal';
 
 const ClientSideActiveLink = ({ href, children, className, ...props }) => {
 	const pathname = usePathname();
@@ -37,6 +38,7 @@ const ClientSideActiveLink = ({ href, children, className, ...props }) => {
 
 const MainLayout = ({ children }) => {
 	const { theme, setTheme } = useTheme();
+	const [helpOpen, setHelpOpen] = useState(false);
 
 	const toggleTheme = () => {
 		setTheme(theme === 'dark' ? 'light' : 'dark');
@@ -76,7 +78,9 @@ const MainLayout = ({ children }) => {
 									{theme === 'dark' ? 'Light' : 'Dark'}
 								</span>
 							</button>
-							<button className='text-sm font-medium px-3 py-2 md:px-4 md:py-2 text-neutral-600 dark:text-neutral-300 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-neutral-50 dark:hover:bg-neutral-800/50 rounded-md transition-colors flex items-center gap-1.5'>
+							<button
+								onClick={() => setHelpOpen(true)}
+								className='text-sm font-medium px-3 py-2 md:px-4 md:py-2 text-neutral-600 dark:text-neutral-300 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-neutral-50 dark:hover:bg-neutral-800/50 rounded-md transition-colors flex items-center gap-1.5'>
 								<HelpCircle size={16} />
 								<span className='hidden sm:inline'>Help</span>
 							</button>
@@ -93,6 +97,8 @@ const MainLayout = ({ children }) => {
 			<main className='max-w-[1400px] mx-auto w-full px-4 sm:px-6 md:px-8 py-6 md:py-8 flex-1'>
 				{children}
 			</main>
+
+			<HelpModal open={helpOpen} onClose={() => setHelpOpen(false)} />
 		</div>
 	);
 };
