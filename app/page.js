@@ -245,8 +245,9 @@ export default function Home() {
 						Welcome to Meridian
 					</h1>
 					<p className='text-neutral-500 dark:text-neutral-400 max-w-3xl'>
-						Your centralized platform for funding intelligence. Track
-						opportunities and match clients to relevant funding sources.
+						Your centralized platform for policy and funding intelligence. Track
+						opportunities, monitor legislation, and match clients to relevant
+						funding sources.
 					</p>
 				</div>
 
