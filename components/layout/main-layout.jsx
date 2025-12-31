@@ -209,16 +209,6 @@ const fundingNavItems = [
 		href: '/map',
 		description: 'Visualize funding opportunities by geographic region.',
 	},
-	{
-		title: 'Funding Sources',
-		href: '/funding/sources',
-		description: 'Explore agencies and organizations that provide funding.',
-	},
-	{
-		title: 'Application Tracker',
-		href: '/funding/applications',
-		description: 'Track the status of funding applications.',
-	},
 ];
 
 const legislationNavItems = [
@@ -232,18 +222,6 @@ const legislationNavItems = [
 		title: 'Status Board',
 		href: '/legislation/status-board',
 		description: 'View legislation by stage in the approval process.',
-		comingSoon: true,
-	},
-	{
-		title: 'Impact Analysis',
-		href: '/legislation/impact-analysis',
-		description: 'Analyze how legislation affects funding opportunities.',
-		comingSoon: true,
-	},
-	{
-		title: 'Policy Trends',
-		href: '/legislation/policy-trends',
-		description: 'Identify emerging trends in policy and legislation.',
 		comingSoon: true,
 	},
 ];

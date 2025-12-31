@@ -1,8 +1,5 @@
-'use client';
-
-import { useState, useMemo } from 'react';
 import MainLayout from '@/components/layout/main-layout';
-import { Button } from '@/components/ui/button';
+import { AlertTriangle } from 'lucide-react';
 import {
 	Card,
 	CardContent,
@@ -10,234 +7,56 @@ import {
 	CardHeader,
 	CardTitle,
 } from '@/components/ui/card';
-import { AlertTriangle, ExternalLink } from 'lucide-react';
-import Link from 'next/link';
-import legislationData from '@/data/legislation.json';
 
-export default function LegislationPage() {
-	const [statusFilter, setStatusFilter] = useState('All');
-	const [jurisdictionFilter, setJurisdictionFilter] = useState('All');
-
-	// Filter and sort bills based on current filters
-	const filteredBills = useMemo(() => {
-		return legislationData.bills
-			.filter((bill) => {
-				const matchesStatus = statusFilter === 'All' ||
-					(statusFilter === 'Active' && (bill.status === 'active' || bill.status === 'passed-house')) ||
-					(statusFilter === 'Enacted' && bill.status === 'enacted') ||
-					bill.status === statusFilter.toLowerCase();
-				const matchesJurisdiction = jurisdictionFilter === 'All' ||
-					bill.jurisdiction === jurisdictionFilter.toLowerCase();
-				return matchesStatus && matchesJurisdiction;
-			})
-			.sort((a, b) => {
-				// Sort by last action date, most recent first
-				const dateA = new Date(a.lastAction.date);
-				const dateB = new Date(b.lastAction.date);
-				return dateB - dateA;
-			});
-	}, [statusFilter, jurisdictionFilter]);
-
+export default function BillTrackerPage() {
 	return (
 		<MainLayout>
 			<div className='container py-10'>
 				<div className='flex justify-between items-center mb-6'>
-					<h1 className='text-3xl font-bold'>Legislation Tracker</h1>
-					<div className='flex gap-2'>
-						<Button variant='outline'>Sort</Button>
-						<Button>Export</Button>
-					</div>
+					<h1 className='text-3xl font-bold'>Bill Tracker</h1>
 				</div>
 
-				{/* Filter Controls */}
-				<div className='flex gap-4 mb-6'>
-					<div className='flex gap-2'>
-						<Button
-							variant={statusFilter === 'All' ? 'default' : 'outline'}
-							onClick={() => setStatusFilter('All')}
-							className='rounded-full'>
-							All
-						</Button>
-						<Button
-							variant={statusFilter === 'Active' ? 'default' : 'outline'}
-							onClick={() => setStatusFilter('Active')}
-							className='rounded-full'>
-							Active
-						</Button>
-						<Button
-							variant={statusFilter === 'Enacted' ? 'default' : 'outline'}
-							onClick={() => setStatusFilter('Enacted')}
-							className='rounded-full'>
-							Enacted
-						</Button>
-					</div>
-					<div className='flex gap-2 border-l pl-4'>
-						<Button
-							variant={jurisdictionFilter === 'All' ? 'default' : 'outline'}
-							onClick={() => setJurisdictionFilter('All')}
-							className='rounded-full'>
-							All
-						</Button>
-						<Button
-							variant={jurisdictionFilter === 'Federal' ? 'default' : 'outline'}
-							onClick={() => setJurisdictionFilter('Federal')}
-							className='rounded-full'>
-							Federal
-						</Button>
-						<Button
-							variant={jurisdictionFilter === 'California' ? 'default' : 'outline'}
-							onClick={() => setJurisdictionFilter('California')}
-							className='rounded-full'>
-							California
-						</Button>
-					</div>
-				</div>
-
-				{/* Results summary */}
-				<div className='text-sm text-muted-foreground mb-4'>
-					Showing {filteredBills.length} of {legislationData.bills.length} bills
-				</div>
-
-				<div className='grid gap-6 md:grid-cols-2 lg:grid-cols-3 mb-8'>
-					{filteredBills.map((bill) => (
-						<BillCard key={bill.id} bill={bill} />
-					))}
-				</div>
+				<Card className='border-2 border-dashed border-muted-foreground/20'>
+					<CardHeader>
+						<div className='flex items-center space-x-2'>
+							<AlertTriangle className='h-5 w-5 text-blue-500' />
+							<CardTitle>Coming Soon</CardTitle>
+						</div>
+						<CardDescription>
+							This feature is currently under development
+						</CardDescription>
+					</CardHeader>
+					<CardContent className='flex flex-col items-center justify-center space-y-4 p-6'>
+						<div className='rounded-full bg-blue-50 p-6'>
+							<svg
+								className='h-12 w-12 text-blue-500'
+								xmlns='http://www.w3.org/2000/svg'
+								width='24'
+								height='24'
+								viewBox='0 0 24 24'
+								fill='none'
+								stroke='currentColor'
+								strokeWidth='2'
+								strokeLinecap='round'
+								strokeLinejoin='round'>
+								<path d='M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z' />
+								<polyline points='14 2 14 8 20 8' />
+								<line x1='16' y1='13' x2='8' y2='13' />
+								<line x1='16' y1='17' x2='8' y2='17' />
+								<polyline points='10 9 9 9 8 9' />
+							</svg>
+						</div>
+						<div className='max-w-md text-center'>
+							<p className='mb-4 text-muted-foreground'>
+								The Bill Tracker will help you monitor relevant legislation and
+								policy changes affecting your organization. Track bills through
+								their legislative journey and stay informed on key policy
+								developments. Check back soon as we complete this feature!
+							</p>
+						</div>
+					</CardContent>
+				</Card>
 			</div>
 		</MainLayout>
 	);
-}
-
-function BillCard({ bill }) {
-	const {
-		title,
-		billNumber,
-		jurisdiction,
-		status,
-		lastAction,
-		summary,
-		tags,
-		sponsor,
-		chamber,
-		cosponsors,
-		externalUrl,
-	} = bill;
-
-	return (
-		<Card className='h-full flex flex-col'>
-			<CardHeader className='pb-3'>
-				<div className='flex justify-between items-start'>
-					<CardTitle className='text-lg'>{title}</CardTitle>
-					<span
-						className={`text-xs px-2 py-1 rounded-full ${getStatusColor(
-							status
-						)}`}>
-						{formatStatus(status)}
-					</span>
-				</div>
-				<CardDescription>
-					{billNumber} | {formatJurisdiction(jurisdiction)} | {formatChamber(chamber)}
-				</CardDescription>
-			</CardHeader>
-			<CardContent className='flex-1 flex flex-col'>
-				<div className='space-y-4 flex-1'>
-					<p className='text-sm text-muted-foreground line-clamp-2'>
-						{summary}
-					</p>
-
-					<div className='flex flex-wrap gap-1'>
-						{tags.slice(0, 3).map((tag) => (
-							<span
-								key={`${billNumber}-${tag}`}
-								className='text-xs bg-secondary text-secondary-foreground px-2 py-1 rounded-full'>
-								{tag}
-							</span>
-						))}
-						{tags.length > 3 && (
-							<span className='text-xs text-muted-foreground px-2 py-1'>
-								+{tags.length - 3} more
-							</span>
-						)}
-					</div>
-
-					<div className='grid grid-cols-2 gap-2 text-sm'>
-						<div>
-							<div className='text-muted-foreground'>Sponsor</div>
-							<div className='font-medium truncate'>{sponsor}</div>
-						</div>
-						<div>
-							<div className='text-muted-foreground'>Cosponsors</div>
-							<div className='font-medium'>{cosponsors}</div>
-						</div>
-					</div>
-
-					<div className='text-sm'>
-						<div className='text-muted-foreground mb-1'>Last Action</div>
-						<div className='font-medium'>{lastAction.date}</div>
-						<div className='text-xs text-muted-foreground line-clamp-2'>
-							{lastAction.description}
-						</div>
-					</div>
-				</div>
-
-				<div className='flex gap-2 mt-4'>
-					{externalUrl && (
-						<Button size='sm' className='flex-1 bg-blue-600 hover:bg-blue-700' asChild>
-							<Link href={externalUrl} target='_blank' rel='noopener noreferrer'>
-								<ExternalLink className='w-4 h-4 mr-1' />
-								View Bill
-							</Link>
-						</Button>
-					)}
-				</div>
-			</CardContent>
-		</Card>
-	);
-}
-
-function getStatusColor(status) {
-	switch (status) {
-		case 'active':
-			return 'bg-blue-100 text-blue-800';
-		case 'passed-house':
-			return 'bg-purple-100 text-purple-800';
-		case 'enacted':
-			return 'bg-green-100 text-green-800';
-		case 'failed':
-			return 'bg-red-100 text-red-800';
-		default:
-			return 'bg-gray-100 text-gray-800';
-	}
-}
-
-function formatStatus(status) {
-	switch (status) {
-		case 'active':
-			return 'Active';
-		case 'passed-house':
-			return 'Passed House';
-		case 'enacted':
-			return 'Enacted';
-		case 'failed':
-			return 'Failed';
-		default:
-			return status.charAt(0).toUpperCase() + status.slice(1);
-	}
-}
-
-function formatJurisdiction(jurisdiction) {
-	return jurisdiction.charAt(0).toUpperCase() + jurisdiction.slice(1);
-}
-
-function formatChamber(chamber) {
-	switch (chamber) {
-		case 'house':
-			return 'House';
-		case 'senate':
-			return 'Senate';
-		case 'assembly':
-			return 'Assembly';
-		default:
-			return chamber ? chamber.charAt(0).toUpperCase() + chamber.slice(1) : '';
-	}
 }

@@ -7,8 +7,6 @@ import {
 	CardHeader,
 	CardTitle,
 } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import Link from 'next/link';
 
 export default function StatusBoardPage() {
 	return (
@@ -47,14 +45,11 @@ export default function StatusBoardPage() {
 							</svg>
 						</div>
 						<div className='max-w-md text-center'>
-							<p className='mb-4 text-muted-foreground'>
+							<p className='text-muted-foreground'>
 								The Status Board will provide a visual overview of legislation
 								progress, tracking key milestones and statuses across all
 								monitored bills. Check back soon as we complete this feature!
 							</p>
-							<Button variant='outline' asChild>
-								<Link href='/legislation/bills'>View Current Legislation</Link>
-							</Button>
 						</div>
 					</CardContent>
 				</Card>
