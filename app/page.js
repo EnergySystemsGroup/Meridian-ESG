@@ -262,7 +262,7 @@ export default function Home() {
 						}
 						description='Currently open funding opportunities'
 						href='/funding/opportunities?status=Open'
-						linkText='View All'
+						linkText='View Open'
 					/>
 					{/* 30-Day Deadlines Summary Card */}
 					<DashboardCard
@@ -342,7 +342,7 @@ export default function Home() {
 														: 'Unknown'}
 												</span>
 												<span
-													className={`text-xs px-2 py-1 rounded-full bg-blue-100 text-blue-800`}>
+													className={`text-xs px-2 py-1 rounded-full ${item.relevance_score ? getScoreColor(item.relevance_score) : 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400'}`}>
 													{item.relevance_score
 														? `Score: ${item.relevance_score.toFixed(1)}`
 														: 'New'}
@@ -555,6 +555,14 @@ function getMatchScoreColor(score) {
 	if (score >= 80) return 'bg-green-100 text-green-800';
 	if (score >= 50) return 'bg-yellow-100 text-yellow-800';
 	return 'bg-blue-100 text-blue-800';
+}
+
+// Get color coding for relevance score (0-10 scale)
+function getScoreColor(score) {
+	if (score >= 8) return 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400';
+	if (score >= 6) return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400';
+	if (score >= 4) return 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400';
+	return 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400';
 }
 
 // Format currency for display (e.g., $1.2B, $500M, $50K)
