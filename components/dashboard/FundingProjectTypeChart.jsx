@@ -8,7 +8,6 @@ import {
 	YAxis,
 	CartesianGrid,
 	Tooltip,
-	Legend,
 	ResponsiveContainer,
 	Cell,
 } from 'recharts';
@@ -22,7 +21,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { AlertCircle } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
-// Define consistent colors for categories if needed, otherwise use generated
+// Define consistent colors for project types
 const COLORS = [
 	'#0088FE',
 	'#00C49F',
@@ -74,7 +73,7 @@ const CustomTooltip = ({ active, payload, label }) => {
 	return null;
 };
 
-export default function FundingCategoryChart() {
+export default function FundingProjectTypeChart() {
 	const [data, setData] = useState([]);
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState(null);
@@ -84,7 +83,7 @@ export default function FundingCategoryChart() {
 			setLoading(true);
 			setError(null);
 			try {
-				const response = await fetch('/api/funding/category-summary');
+				const response = await fetch('/api/funding/project-type-summary');
 				if (!response.ok) {
 					throw new Error(`HTTP error! status: ${response.status}`);
 				}
@@ -95,18 +94,16 @@ export default function FundingCategoryChart() {
 					result = [];
 				}
 
-				const chartData = result
-					.sort((a, b) => b.total_funding - a.total_funding)
-					.slice(0, 10)
-					.map((item) => ({
-						name: item.category,
-						value: item.total_funding,
-						count: item.opportunity_count,
-					}));
+				// API returns top 10 already sorted, just transform to chart format
+				const chartData = result.map((item) => ({
+					name: item.category,
+					value: item.total_funding,
+					count: item.opportunity_count,
+				}));
 
 				setData(chartData);
 			} catch (e) {
-				console.error('Failed to fetch funding category data:', e);
+				console.error('Failed to fetch funding by project type data:', e);
 				setError(e.message || 'Failed to load data');
 			} finally {
 				setLoading(false);
@@ -120,7 +117,7 @@ export default function FundingCategoryChart() {
 		return (
 			<Card>
 				<CardHeader>
-					<CardTitle>Top 10 Funding Categories</CardTitle>
+					<CardTitle>Top 10 Project Types</CardTitle>
 				</CardHeader>
 				<CardContent>
 					<Skeleton className='h-[400px] w-full' />
@@ -133,14 +130,14 @@ export default function FundingCategoryChart() {
 		return (
 			<Card>
 				<CardHeader>
-					<CardTitle>Top 10 Funding Categories</CardTitle>
+					<CardTitle>Top 10 Project Types</CardTitle>
 				</CardHeader>
 				<CardContent>
 					<Alert variant='destructive'>
 						<AlertCircle className='h-4 w-4' />
 						<AlertTitle>Error</AlertTitle>
 						<AlertDescription>
-							Could not load funding category data. {error}
+							Could not load funding by project type data. {error}
 						</AlertDescription>
 					</Alert>
 				</CardContent>
@@ -152,12 +149,12 @@ export default function FundingCategoryChart() {
 		return (
 			<Card>
 				<CardHeader>
-					<CardTitle>Top 10 Funding Categories</CardTitle>
+					<CardTitle>Top 10 Project Types</CardTitle>
 				</CardHeader>
 				<CardContent>
 					<div className='flex items-center justify-center h-[400px]'>
 						<p className='text-muted-foreground'>
-							No open funding data available by category.
+							No open funding data available by project type.
 						</p>
 					</div>
 				</CardContent>
@@ -168,7 +165,7 @@ export default function FundingCategoryChart() {
 	return (
 		<Card>
 			<CardHeader>
-				<CardTitle>Top 10 Funding Categories</CardTitle>
+				<CardTitle>Top 10 Project Types</CardTitle>
 			</CardHeader>
 			<CardContent>
 				<ResponsiveContainer width='100%' height={400}>
