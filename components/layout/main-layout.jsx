@@ -11,7 +11,7 @@ import {
 	NavigationMenuTrigger,
 } from '@/components/ui/navigation-menu';
 import { cn } from '@/lib/utils';
-import { HelpCircle, Moon, Settings, Sun } from 'lucide-react';
+import { HelpCircle, Moon, Sun } from 'lucide-react';
 import { useTheme } from '@/components/theme-provider';
 import { UserMenu } from '@/components/auth/UserMenu';
 import HelpModal from '@/components/help/HelpModal';
@@ -84,10 +84,12 @@ const MainLayout = ({ children }) => {
 								<HelpCircle size={16} />
 								<span className='hidden sm:inline'>Help</span>
 							</button>
+{/* Settings button - hidden until implemented
 							<button className='text-sm font-medium px-3 py-2 md:px-4 md:py-2 bg-blue-50 text-blue-600 rounded-md hover:bg-blue-100 dark:bg-blue-900/20 dark:text-blue-400 dark:hover:bg-blue-900/30 transition-colors flex items-center gap-1.5'>
 								<Settings size={16} />
 								<span className='hidden sm:inline'>Settings</span>
 							</button>
+							*/}
 							<UserMenu />
 						</div>
 					</div>
