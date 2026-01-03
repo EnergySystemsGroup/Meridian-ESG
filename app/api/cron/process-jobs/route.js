@@ -112,10 +112,11 @@ export async function GET(request) {
       chunkedData: job.raw_data,
       processingInstructions: job.processing_config?.instructions || {},
       forceFullProcessing: job.processing_config?.forceFullProcessing || false,
-      apiMetrics: job.processing_config?.apiMetrics || {}
-    });
+      apiMetrics: job.processing_config?.apiMetrics || {},
+      rawResponseId: job.processing_config?.rawResponseId // Link opportunities to raw API response
+    }, supabase);  // Pass supabase client with service role key to bypass RLS
     const jobProcessingTime = Date.now() - jobStartTime;
-    
+
     // Update job status based on result
     if (result.status === 'success') {
       await jobQueueManager.updateJobStatus(job.id, 'completed', {
@@ -257,10 +258,11 @@ export async function POST(request) {
       chunkedData: job.raw_data,
       processingInstructions: job.processing_config?.instructions || {},
       forceFullProcessing: job.processing_config?.forceFullProcessing || false,
-      apiMetrics: job.processing_config?.apiMetrics || {}
-    });
+      apiMetrics: job.processing_config?.apiMetrics || {},
+      rawResponseId: job.processing_config?.rawResponseId // Link opportunities to raw API response
+    }, supabase);  // Pass supabase client with service role key to bypass RLS
     const jobProcessingTime = Date.now() - jobStartTime;
-    
+
     // Update job status based on result
     if (result.status === 'success') {
       await jobQueueManager.updateJobStatus(job.id, 'completed', {

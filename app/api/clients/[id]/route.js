@@ -138,8 +138,8 @@ export async function PUT(request, { params }) {
       // Find coverage areas for new location
       const { data: coverageAreas, error: coverageError } = await supabase
         .rpc('find_coverage_areas_for_point', {
-          lng_param: lng,
-          lat_param: lat
+          lng,
+          lat
         });
 
       if (coverageError) {
