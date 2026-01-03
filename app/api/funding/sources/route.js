@@ -1,11 +1,11 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@/utils/supabase/api';
+import { createAdminClient } from '@/utils/supabase/api';
 
 // GET /api/funding/sources - Get all API sources
 export async function GET(request) {
 	try {
-		// Create Supabase client with request context
-		const { supabase } = createClient(request);
+		// Create Supabase client with secret key for admin operations
+		const { supabase } = createAdminClient(request);
 
 		// Get query parameters
 		const { searchParams } = new URL(request.url);
@@ -44,8 +44,8 @@ export async function GET(request) {
 // POST /api/funding/sources - Create a new API source
 export async function POST(request) {
 	try {
-		// Create Supabase client with request context
-		const { supabase } = createClient(request);
+		// Create Supabase client with secret key for admin operations
+		const { supabase } = createAdminClient(request);
 		const body = await request.json();
 
 		// Validate required fields

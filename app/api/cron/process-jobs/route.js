@@ -42,13 +42,13 @@ export async function GET(request) {
     // Check if we're running in Vercel or locally
     const isVercel = process.env.VERCEL === '1';
     console.log(`[CronProcessor] 🌐 Running on ${isVercel ? 'Vercel' : 'Local'}`);
-    
-    // Initialize services
+
+    // Initialize services with secret key (server-side, bypasses RLS)
     const supabase = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+      process.env.SUPABASE_SECRET_KEY
     );
-    
+
     // Create RunManagerV2 instance for job queue tracking
     let runManagerForQueue = null;
     const jobQueueManager = new JobQueueManager(runManagerForQueue); // Will be set when we have a job
@@ -218,16 +218,16 @@ export async function POST(request) {
     // Default action: process job
     console.log('[CronProcessor] 🚀 Manual job processing...');
     
-    // Initialize services
+    // Initialize services with secret key (server-side, bypasses RLS)
     const supabase = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+      process.env.SUPABASE_SECRET_KEY
     );
-    
+
     // Create RunManagerV2 instance for job queue tracking
     let runManagerForQueue = null;
     const jobQueueManager = new JobQueueManager(runManagerForQueue);
-    
+
     // Get next pending job
     const job = await jobQueueManager.getNextPendingJob();
     

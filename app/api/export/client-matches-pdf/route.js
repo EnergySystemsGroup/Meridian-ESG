@@ -6,10 +6,10 @@ import React from 'react';
 // Import PDF components
 import { ClientMatchesPDF } from '@/lib/pdf';
 
-// Initialize Supabase client
+// Initialize Supabase client with secret key (server-side, bypasses RLS)
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  process.env.SUPABASE_SECRET_KEY
 );
 
 /**

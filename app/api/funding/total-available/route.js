@@ -8,9 +8,10 @@
 
 import { createClient } from '@supabase/supabase-js';
 
+// Use secret key to bypass RLS (server-side API route)
 const supabase = createClient(
 	process.env.NEXT_PUBLIC_SUPABASE_URL,
-	process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+	process.env.SUPABASE_SECRET_KEY
 );
 
 // Per-applicant cap (same as map calculations)

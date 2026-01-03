@@ -12,7 +12,7 @@ import { TAXONOMIES, getExpandedClientTypes } from '@/lib/constants/taxonomies';
 
 const supabase = createClient(
 	process.env.NEXT_PUBLIC_SUPABASE_URL,
-	process.env.SUPABASE_SERVICE_ROLE_KEY
+	process.env.SUPABASE_SECRET_KEY
 );
 
 // Simple in-memory cache
