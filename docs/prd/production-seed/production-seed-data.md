@@ -203,20 +203,74 @@ Execute seeds in this order to respect foreign key constraints:
 
 ---
 
-## Export Scripts
+## Migration Method
 
-TODO: Generate SQL export scripts for each table.
+**Tested on staging (2026-01-03)** - Successfully migrated coverage areas and created opportunity links.
+
+### For Production: Use `pg_dump --inserts`
+
+Since production has no existing data, we can directly copy all records using `pg_dump`:
 
 ```bash
-# Example structure
+# Export from local (or staging)
+pg_dump "postgresql://postgres:postgres@127.0.0.1:54322/postgres" \
+  -t TABLE_NAME --data-only --inserts > /tmp/TABLE_NAME.sql
+
+# Import to production
+psql "PRODUCTION_CONNECTION_STRING" -f /tmp/TABLE_NAME.sql
+```
+
+**Why `--inserts` works for production:**
+- Generates portable SQL INSERT statements
+- Handles PostGIS geometry data natively
+- No UUID generation issues (UUIDs are preserved from source)
+- Duplicates will error but won't block other inserts
+
+**Key insight from staging migration:**
+- On staging, we had to *generate* opportunity-coverage links because the opportunities existed but had no links
+- On production, we simply *copy* the existing `opportunity_coverage_areas` records - no link generation needed
+
+### Export Commands
+
+```bash
+# 1. Coverage areas (3,396 records with PostGIS geometry)
+pg_dump "$LOCAL_DB" -t coverage_areas --data-only --inserts > seed/01-coverage-areas.sql
+
+# 2. API sources (2 records - exclude test sources)
+pg_dump "$LOCAL_DB" -t api_sources --data-only --inserts | \
+  grep -v "Test API Source" > seed/02-api-sources.sql
+
+# 3. Funding sources (utilities only)
+psql "$LOCAL_DB" -c "\COPY (SELECT * FROM funding_sources WHERE type = 'Utility') TO STDOUT WITH CSV HEADER" > seed/03-funding-sources.csv
+
+# 4. Funding opportunities (utility programs only)
+psql "$LOCAL_DB" -c "\COPY (SELECT * FROM funding_opportunities WHERE funding_source_id IN (SELECT id FROM funding_sources WHERE type = 'Utility')) TO STDOUT WITH CSV HEADER" > seed/04-funding-opportunities.csv
+
+# 5. Opportunity coverage areas (for utility opportunities)
+pg_dump "$LOCAL_DB" -t opportunity_coverage_areas --data-only --inserts > seed/05-opportunity-coverage-areas.sql
+```
+
+### Import Order
+
+```bash
+# Must respect foreign key dependencies
+psql "$PROD_DB" -f seed/01-coverage-areas.sql
+psql "$PROD_DB" -f seed/02-api-sources.sql
+# ... continue in dependency order
+```
+
+---
+
+## Export Scripts
+
+```bash
+# Target structure
 scripts/seed/
 ├── 01-coverage-areas.sql
-├── 02-states.sql
-├── 03-api-sources.sql
-├── 04-funding-sources-utilities.sql
-├── 05-manual-staging-completed.sql
-├── 06-funding-opportunities-utilities.sql
-└── 07-opportunity-coverage-areas-utilities.sql
+├── 02-api-sources.sql
+├── 03-funding-sources-utilities.sql
+├── 04-funding-opportunities-utilities.sql
+└── 05-opportunity-coverage-areas.sql
 ```
 
 ---
@@ -236,3 +290,4 @@ scripts/seed/
 |------|--------|
 | 2026-01-03 | Initial analysis and documentation |
 | 2026-01-03 | Clarified `system_config` is unused (FFR refactored to use api_sources flags) |
+| 2026-01-03 | Added Migration Method section based on staging test - `pg_dump --inserts` works for all tables |
