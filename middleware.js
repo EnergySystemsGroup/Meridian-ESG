@@ -2,17 +2,6 @@ import { createServerClient } from '@supabase/ssr';
 import { NextResponse } from 'next/server';
 
 export async function middleware(request) {
-	// TEMPORARY: Bypass auth for staging API testing - REMOVE AFTER TESTING
-	// TODO: Remove this bypass after verifying staging API works
-	const bypassAuth = true; // Set to false to re-enable auth
-	if (bypassAuth) {
-		return NextResponse.next({
-			request: {
-				headers: request.headers,
-			},
-		});
-	}
-
 	// In development mode, bypass authentication for easier testing
 	if (process.env.NODE_ENV === 'development') {
 		return NextResponse.next({
