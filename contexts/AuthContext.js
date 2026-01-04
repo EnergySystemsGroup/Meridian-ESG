@@ -1,7 +1,7 @@
 'use client';
 
 import { createContext, useContext, useEffect, useState } from 'react';
-import { supabase } from '@/utils/supabase';
+import { createClient } from '@/utils/supabase/client';
 
 // Create the authentication context
 const AuthContext = createContext();
@@ -21,43 +21,26 @@ export function AuthProvider({ children }) {
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState(null);
 
-	// Function to sign in with email and password
-	const signInWithEmail = async (email, password) => {
+	const supabase = createClient();
+
+	// Function to sign in with Microsoft SSO
+	const signInWithMicrosoft = async (redirectTo = '/') => {
 		try {
 			setLoading(true);
-			const { data, error } = await supabase.auth.signInWithPassword({
-				email,
-				password,
+			setError(null);
+
+			const { error } = await supabase.auth.signInWithOAuth({
+				provider: 'azure',
+				options: {
+					scopes: 'email profile openid',
+					redirectTo: `${window.location.origin}/auth/callback?redirectTo=${encodeURIComponent(redirectTo)}`,
+				},
 			});
 
 			if (error) {
 				throw error;
 			}
-
-			setUser(data.user);
-			return data;
-		} catch (error) {
-			setError(error.message);
-			return { error };
-		} finally {
-			setLoading(false);
-		}
-	};
-
-	// Function to sign up with email and password
-	const signUpWithEmail = async (email, password) => {
-		try {
-			setLoading(true);
-			const { data, error } = await supabase.auth.signUp({
-				email,
-				password,
-			});
-
-			if (error) {
-				throw error;
-			}
-
-			return data;
+			// User will be redirected to Microsoft
 		} catch (error) {
 			setError(error.message);
 			return { error };
@@ -77,6 +60,8 @@ export function AuthProvider({ children }) {
 			}
 
 			setUser(null);
+			// Redirect to login after sign out
+			window.location.href = '/login';
 		} catch (error) {
 			setError(error.message);
 			return { error };
@@ -117,17 +102,25 @@ export function AuthProvider({ children }) {
 		return () => {
 			subscription?.unsubscribe();
 		};
-	}, []);
+	}, [supabase]);
 
 	// Value to be provided by the context
 	const value = {
 		user,
 		loading,
 		error,
-		signInWithEmail,
-		signUpWithEmail,
+		signInWithMicrosoft,
 		signOut,
 		isAuthenticated: !!user,
+		// Helper to get user display name from Microsoft user metadata
+		displayName:
+			user?.user_metadata?.full_name ||
+			user?.user_metadata?.name ||
+			user?.email,
+		// Helper to get user email
+		email: user?.email,
+		// Helper to get user avatar from Microsoft
+		avatarUrl: user?.user_metadata?.avatar_url || user?.user_metadata?.picture,
 	};
 
 	return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

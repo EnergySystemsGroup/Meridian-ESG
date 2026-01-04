@@ -11,10 +11,10 @@ export async function POST(request, { params }) {
 		const { id } = await params;
 		console.log(`Processing source with ID: ${id}`);
 
-		// Initialize Supabase client
+		// Initialize Supabase client with secret key for admin operations
 		const supabase = createClient(
 			process.env.NEXT_PUBLIC_SUPABASE_URL,
-			process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+			process.env.SUPABASE_SECRET_KEY
 		);
 
 		// Create a new run manager

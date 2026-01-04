@@ -1,4 +1,4 @@
-import React, { useCallback, useRef, useLayoutEffect, useEffect } from 'react';
+import React, { useCallback, useEffect } from 'react';
 import {
 	Card,
 	CardHeader,
@@ -59,14 +59,14 @@ const formatLocationEligibility = (opportunity) => {
 		return 'National';
 	}
 
-	// Check for eligible_states array from our view
-	if (opportunity.eligible_states && opportunity.eligible_states.length > 0) {
-		if (opportunity.eligible_states.length > 3) {
-			return `${opportunity.eligible_states.slice(0, 3).join(', ')} +${
-				opportunity.eligible_states.length - 3
+	// Check for coverage_state_codes array from coverage_areas system
+	if (opportunity.coverage_state_codes && opportunity.coverage_state_codes.length > 0) {
+		if (opportunity.coverage_state_codes.length > 3) {
+			return `${opportunity.coverage_state_codes.slice(0, 3).join(', ')} +${
+				opportunity.coverage_state_codes.length - 3
 			} more`;
 		}
-		return opportunity.eligible_states.join(', ');
+		return opportunity.coverage_state_codes.join(', ');
 	}
 
 	// Fallback to eligible_locations array
@@ -92,19 +92,9 @@ const formatLocationEligibility = (opportunity) => {
 	return 'Location not specified';
 };
 
-// Define colors for the NEW badge to match the pill style
-const newBadgeColors = {
-	color: '#2563EB', // Blue text color
-	bgColor: '#EFF6FF', // Light blue background
-};
+// Badge colors are now handled via Tailwind classes for dark mode support
 
-// Define colors for the UPDATED badge to match the pill style
-const updatedBadgeColors = {
-	color: '#0369a1', // Teal text color
-	bgColor: '#f0f9ff', // Light teal background
-};
-
-const OpportunityCard = ({ opportunity }) => {
+const OpportunityCard = ({ opportunity, badgeOverride }) => {
 	// Use Next.js router and search params
 	const router = useRouter();
 	const pathname = usePathname();
@@ -241,26 +231,25 @@ const OpportunityCard = ({ opportunity }) => {
 				<div className='flex justify-between items-start'>
 					<CardTitle className='text-lg line-clamp-2'>{title}</CardTitle>
 
-					{/* Status badge with appropriate colors */}
-					<span
-						className='text-xs px-2 py-1 rounded-full flex-shrink-0 ml-2 font-medium'
-						style={{
-							backgroundColor: getStatusColor(status),
-							color: 'white',
-						}}>
-						{displayStatus}
-					</span>
+					{/* Status badge OR custom badge override */}
+					{badgeOverride ? (
+						badgeOverride
+					) : (
+						<span
+							className='text-xs px-2 py-1 rounded-full flex-shrink-0 ml-2 font-medium'
+							style={{
+								backgroundColor: getStatusColor(status),
+								color: 'white',
+							}}>
+							{displayStatus}
+						</span>
+					)}
 				</div>
 
 				{/* NEW badge if applicable - updated to match category pill styling */}
 				{isNew && (
 					<div className='mt-2'>
-						<span
-							className='text-xs font-medium px-2 py-1 rounded'
-							style={{
-								backgroundColor: newBadgeColors.bgColor,
-								color: newBadgeColors.color,
-							}}>
+						<span className='text-xs font-medium px-2 py-1 rounded bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'>
 							NEW •{' '}
 							{addedDaysAgo === 0
 								? 'Today'
@@ -274,12 +263,7 @@ const OpportunityCard = ({ opportunity }) => {
 				{/* NEWLY UPDATED badge if applicable */}
 				{isNewlyUpdated && (
 					<div className='mt-2'>
-						<span
-							className='text-xs font-medium px-2 py-1 rounded'
-							style={{
-								backgroundColor: updatedBadgeColors.bgColor,
-								color: updatedBadgeColors.color,
-							}}>
+						<span className='text-xs font-medium px-2 py-1 rounded bg-sky-100 text-sky-700 dark:bg-sky-900/30 dark:text-sky-300'>
 							UPDATED •{' '}
 							{updatedDaysAgo === 0
 								? 'Today'
@@ -294,7 +278,7 @@ const OpportunityCard = ({ opportunity }) => {
 			<CardContent className='flex-grow flex flex-col pt-0'>
 				<div className='space-y-4 flex-grow'>
 					{/* Summary */}
-					<p className='text-sm text-gray-600'>{summary}</p>
+					<p className='text-sm text-neutral-600 dark:text-neutral-400'>{summary}</p>
 
 					{/* Project type pills */}
 					<div className='flex flex-wrap gap-1'>
@@ -303,7 +287,7 @@ const OpportunityCard = ({ opportunity }) => {
 							return (
 								<span
 									key={index}
-									className='text-xs px-2 py-1 rounded'
+									className='project-type-tag text-xs px-2 py-1 rounded'
 									style={{
 										backgroundColor: projectTypeColor.bgColor,
 										color: projectTypeColor.color,
@@ -317,17 +301,17 @@ const OpportunityCard = ({ opportunity }) => {
 					{/* Key details */}
 					<div className='space-y-2 text-sm'>
 						<div className='flex items-center gap-2'>
-							<DollarSign size={16} className='text-gray-500' />
+							<DollarSign size={16} className='text-neutral-500 dark:text-neutral-400' />
 							<span>{amount}</span>
 						</div>
 
 						<div className='flex items-center gap-2'>
-							<Calendar size={16} className='text-gray-500' />
+							<Calendar size={16} className='text-neutral-500 dark:text-neutral-400' />
 							<span>{closeDate}</span>
 						</div>
 
 						<div className='flex items-center gap-2'>
-							<Map size={16} className='text-gray-500' />
+							<Map size={16} className='text-neutral-500 dark:text-neutral-400' />
 							<span className='line-clamp-1'>{locationEligibility}</span>
 						</div>
 					</div>
@@ -338,7 +322,7 @@ const OpportunityCard = ({ opportunity }) => {
 					{/* Relevance score if available */}
 					{relevanceScore !== null && relevanceScore !== undefined && (
 						<div className='flex items-center gap-2 mb-4'>
-							<div className='flex-grow bg-gray-200 h-2 rounded-full overflow-hidden'>
+							<div className='flex-grow bg-neutral-200 dark:bg-neutral-700 h-2 rounded-full overflow-hidden'>
 								<div
 									className='h-full rounded-full'
 									style={{
@@ -369,8 +353,8 @@ const OpportunityCard = ({ opportunity }) => {
 							variant={opportunityIsTracked ? 'outline' : 'outline'}
 							className={
 								opportunityIsTracked
-									? 'border-slate-200 text-amber-700 hover:bg-amber-50 flex-1'
-									: 'border-slate-200 text-slate-700 hover:bg-slate-50 flex-1'
+									? 'border-slate-200 dark:border-slate-700 text-amber-700 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-900/30 flex-1'
+									: 'border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 flex-1'
 							}
 							onClick={handleTrackToggle}
 							onMouseDown={(e) => e.stopPropagation()}

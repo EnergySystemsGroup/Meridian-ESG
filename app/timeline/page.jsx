@@ -4,13 +4,13 @@ import { useState, useEffect } from 'react';
 import MainLayout from '@/components/layout/main-layout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import { CalendarDays } from 'lucide-react';
 import Link from 'next/link';
 
 export default function TimelinePage() {
 	const [timelineData, setTimelineData] = useState([]);
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState(null);
-	const [filter, setFilter] = useState('All');
 
 	useEffect(() => {
 		async function fetchTimelineData() {
@@ -77,8 +77,8 @@ export default function TimelinePage() {
 							deadline.actionable_summary.substring(0, 200) + '...' :
 							deadline.actionable_summary
 						: `Deadline for ${deadline.title}`),
-				status: deadline.daysLeft <= 7 ? 'Due Soon' : 'Upcoming',
 				daysLeft: deadline.daysLeft,
+				relevanceScore: deadline.relevance_score,
 			};
 
 			months[monthYear].events.push(event);
@@ -92,50 +92,32 @@ export default function TimelinePage() {
 		});
 	}
 
-	// Filter events based on selected filter
-	const filteredTimelineData = timelineData
-		.map((month) => ({
-			...month,
-			events: month.events.filter(
-				(event) => filter === 'All' || event.type === filter
-			),
-		}))
-		.filter((month) => month.events.length > 0);
-
 	return (
 		<MainLayout>
 			<div className='container py-10'>
-				<div className='flex justify-between items-center mb-6'>
-					<h1 className='text-3xl font-bold'>Timeline</h1>
-					<div className='flex gap-2'>
-						<Button variant='outline'>Filter</Button>
-						<Button variant='outline'>Today</Button>
-						<Button>Add Event</Button>
+				<div className='mb-8'>
+					<h1 className='text-3xl font-bold tracking-tight'>Timeline</h1>
+					<div className='flex items-center gap-2 mt-2 text-muted-foreground'>
+						<CalendarDays className='h-4 w-4' />
+						<span className='text-sm'>
+							{loading ? (
+								'Loading deadlines...'
+							) : timelineData.length === 0 ? (
+								'No upcoming deadlines'
+							) : (
+								<>
+									Showing next{' '}
+									<span className='font-medium text-foreground'>
+										{timelineData.reduce((acc, month) => acc + month.events.length, 0)}
+									</span>{' '}
+									funding deadlines
+								</>
+							)}
+						</span>
 					</div>
 				</div>
 
 				<div className='mb-8'>
-					<div className='flex gap-4 mb-4 overflow-x-auto pb-2'>
-						<Button
-							variant={filter === 'All' ? 'default' : 'outline'}
-							className='rounded-full'
-							onClick={() => setFilter('All')}>
-							All
-						</Button>
-						<Button
-							variant={filter === 'Funding Deadline' ? 'default' : 'outline'}
-							className='rounded-full'
-							onClick={() => setFilter('Funding Deadline')}>
-							Funding Deadlines
-						</Button>
-						<Button
-							variant={filter === 'Legislative Event' ? 'default' : 'outline'}
-							className='rounded-full'
-							onClick={() => setFilter('Legislative Event')}>
-							Legislative Events
-						</Button>
-					</div>
-
 					{loading ? (
 						<div className='flex justify-center items-center min-h-[400px]'>
 							<div className='animate-spin rounded-full h-12 w-12 border-b-2 border-primary'></div>
@@ -146,20 +128,16 @@ export default function TimelinePage() {
 							<Button
 								variant='outline'
 								className='mt-2'
-								onClick={() => {
-									setError(null);
-									fetchTimelineData();
-								}}>
+								onClick={() => window.location.reload()}>
 								Retry
 							</Button>
 						</div>
-					) : filteredTimelineData.length === 0 ? (
+					) : timelineData.length === 0 ? (
 						<div className='text-center py-12'>
-							<h3 className='text-xl font-medium mb-2'>No events found</h3>
-							<p className='text-muted-foreground mb-4'>
-								Try adjusting your filters or check back later.
+							<h3 className='text-xl font-medium mb-2'>No upcoming deadlines</h3>
+							<p className='text-muted-foreground'>
+								Check back later for new funding deadlines.
 							</p>
-							<Button onClick={() => setFilter('All')}>Show All Events</Button>
 						</div>
 					) : (
 						<div className='relative'>
@@ -168,7 +146,7 @@ export default function TimelinePage() {
 
 							{/* Timeline events */}
 							<div className='space-y-8'>
-								{filteredTimelineData.map((month, monthIndex) => (
+								{timelineData.map((month, monthIndex) => (
 									<div key={monthIndex}>
 										<h2 className='text-xl font-bold mb-4 pl-12 md:pl-[140px] relative'>
 											<span className='absolute left-0 top-1/2 -translate-y-1/2 w-12 md:w-[120px] pr-4 text-right text-sm font-normal text-muted-foreground'>
@@ -197,7 +175,10 @@ export default function TimelinePage() {
 }
 
 function TimelineEvent({ event }) {
-	const { title, date, type, description, status } = event;
+	const { title, date, type, description, daysLeft, relevanceScore } = event;
+
+	// Format days left text
+	const daysLeftText = daysLeft === 0 ? 'Today' : daysLeft === 1 ? '1 day left' : `${daysLeft} days left`;
 
 	return (
 		<div className='relative'>
@@ -223,12 +204,18 @@ function TimelineEvent({ event }) {
 					<p className='text-sm mb-3'>{description}</p>
 
 					<div className='flex justify-between items-center'>
-						<span
-							className={`text-xs px-2 py-1 rounded-full ${getStatusClass(
-								status
-							)}`}>
-							{status}
-						</span>
+						<div className='flex items-center gap-2'>
+							<span
+								className={`text-xs px-2 py-1 rounded-full ${getDaysLeftClass(daysLeft)}`}>
+								{daysLeftText}
+							</span>
+							{relevanceScore !== null && relevanceScore !== undefined && (
+								<span
+									className={`text-xs px-2 py-1 rounded-full ${getScorePillClass(relevanceScore)}`}>
+									relevance: <span className='font-medium'>{Math.min(10, relevanceScore).toFixed(1)}</span>
+								</span>
+							)}
+						</div>
 						<Button size='sm' variant='outline' asChild>
 							<Link href={`/funding/opportunities/${event.id}`}>
 								View Details
@@ -239,6 +226,23 @@ function TimelineEvent({ event }) {
 			</Card>
 		</div>
 	);
+}
+
+// Get Tailwind classes for days left pill
+function getDaysLeftClass(days) {
+	if (days <= 3) return 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400';
+	if (days <= 7) return 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400';
+	if (days <= 14) return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400';
+	return 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400';
+}
+
+// Get Tailwind classes for score pill based on relevance score (0-10 scale)
+function getScorePillClass(score) {
+	const normalizedScore = Math.min(10, Math.max(0, score));
+	if (normalizedScore >= 8) return 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400';
+	if (normalizedScore >= 6) return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400';
+	if (normalizedScore >= 4) return 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400';
+	return 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400';
 }
 
 function getEventBorderClass(type) {
@@ -262,19 +266,6 @@ function getEventTypeClass(type) {
 			return 'bg-purple-100 text-purple-800';
 		case 'Task':
 			return 'bg-amber-100 text-amber-800';
-		default:
-			return 'bg-gray-100 text-gray-800';
-	}
-}
-
-function getStatusClass(status) {
-	switch (status) {
-		case 'Upcoming':
-			return 'bg-yellow-100 text-yellow-800';
-		case 'Due Soon':
-			return 'bg-red-100 text-red-800';
-		case 'Completed':
-			return 'bg-green-100 text-green-800';
 		default:
 			return 'bg-gray-100 text-gray-800';
 	}

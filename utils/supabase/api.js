@@ -8,6 +8,7 @@
  */
 
 import { createServerClient } from '@supabase/ssr';
+import { createClient as createDirectClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
 
 /**
@@ -54,15 +55,16 @@ export function createClient(request, options = {}) {
   const { serviceRole = false } = options;
   
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const supabaseKey = serviceRole 
-    ? process.env.SUPABASE_SERVICE_ROLE_KEY 
+  // Use new key nomenclature: publishable key (anon) vs secret key (service role)
+  const supabaseKey = serviceRole
+    ? process.env.SUPABASE_SECRET_KEY
     : process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
   if (!supabaseUrl || !supabaseKey) {
     throw new Error(
       `Missing required Supabase environment variables. ` +
       `Please ensure NEXT_PUBLIC_SUPABASE_URL and ${
-        serviceRole ? 'SUPABASE_SERVICE_ROLE_KEY' : 'NEXT_PUBLIC_SUPABASE_ANON_KEY'
+        serviceRole ? 'SUPABASE_SECRET_KEY' : 'NEXT_PUBLIC_SUPABASE_ANON_KEY'
       } are set.`
     );
   }
@@ -93,24 +95,40 @@ export function createClient(request, options = {}) {
 
 /**
  * Creates an admin Supabase client for API routes
- * 
+ *
  * WARNING: This bypasses Row Level Security (RLS) policies.
  * Only use for administrative operations that require elevated privileges.
- * 
- * @param {import('next/server').NextRequest} request - The incoming API request
- * @returns {{supabase: import('@supabase/supabase-js').SupabaseClient, response: import('next/server').NextResponse}}
- * @throws {Error} If SUPABASE_SERVICE_ROLE_KEY is not set
- * 
+ *
+ * NOTE: This uses createClient from @supabase/supabase-js directly (not createServerClient
+ * from @supabase/ssr) because the SSR client is designed for cookie-based auth and does
+ * NOT bypass RLS even with the service_role key.
+ *
+ * @param {import('next/server').NextRequest} request - The incoming API request (unused but kept for API compatibility)
+ * @returns {{supabase: import('@supabase/supabase-js').SupabaseClient, response: null}}
+ * @throws {Error} If SUPABASE_SECRET_KEY is not set
+ *
  * @example
  * import { createAdminClient } from '@/utils/supabase/api';
- * 
+ *
  * export async function POST(request) {
  *   const { supabase } = createAdminClient(request);
- *   // Performs operations with admin privileges
+ *   // Performs operations with admin privileges, bypassing RLS
  * }
  */
 export function createAdminClient(request) {
-  return createClient(request, { serviceRole: true });
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseSecretKey = process.env.SUPABASE_SECRET_KEY;
+
+  if (!supabaseUrl || !supabaseSecretKey) {
+    throw new Error('Missing Supabase admin environment variables (SUPABASE_SECRET_KEY)');
+  }
+
+  // Use direct client (not SSR) to properly bypass RLS with service_role
+  const supabase = createDirectClient(supabaseUrl, supabaseSecretKey, {
+    auth: { persistSession: false }
+  });
+
+  return { supabase, response: null };
 }
 
 /**
@@ -219,17 +237,17 @@ export function createAdminSupabaseClient(request = null) {
     const { supabase } = createAdminClient(request);
     return supabase;
   }
-  
+
   const { createClient: createBasicClient } = require('@supabase/supabase-js');
-  
+
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  
-  if (!supabaseUrl || !supabaseServiceRoleKey) {
-    throw new Error('Missing Supabase admin environment variables');
+  const supabaseSecretKey = process.env.SUPABASE_SECRET_KEY;
+
+  if (!supabaseUrl || !supabaseSecretKey) {
+    throw new Error('Missing Supabase admin environment variables (SUPABASE_SECRET_KEY)');
   }
-  
-  return createBasicClient(supabaseUrl, supabaseServiceRoleKey, {
+
+  return createBasicClient(supabaseUrl, supabaseSecretKey, {
     auth: {
       persistSession: false,
     },

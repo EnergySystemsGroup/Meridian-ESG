@@ -1,7 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
 import { processApiSourceV2 } from '@/lib/services/processCoordinatorV2';
-import { RunManagerV2 } from '@/lib/services/runManagerV2';
 import { AnthropicClient } from '@/lib/agents-v2/utils/anthropicClient';
 
 export async function POST(request, { params }) {
@@ -12,10 +11,10 @@ export async function POST(request, { params }) {
 		const { id } = await params;
 		console.log(`Processing source with ID: ${id} using V2 pipeline`);
 
-		// Initialize Supabase client
+		// Initialize Supabase client with secret key for admin operations
 		const supabase = createClient(
 			process.env.NEXT_PUBLIC_SUPABASE_URL,
-			process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+			process.env.SUPABASE_SECRET_KEY
 		);
 
 		// Initialize Anthropic client (V2 wrapper with callWithSchema)

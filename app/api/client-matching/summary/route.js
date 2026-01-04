@@ -1,158 +1,234 @@
 /**
  * Client Matching Summary API
  *
- * Returns total number of client matches for dashboard display
+ * Returns client matching statistics for dashboard display:
+ * - clientsWithMatches: number of clients that have at least 1 match
+ * - totalMatches: sum of all matches across all clients
+ * - totalClients: total number of clients in system
  */
 
 import { createClient } from '@supabase/supabase-js';
-import { TAXONOMIES } from '@/lib/constants/taxonomies';
-import clientsData from '@/data/clients.json';
+import { TAXONOMIES, getExpandedClientTypes } from '@/lib/constants/taxonomies';
 
 const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+	process.env.NEXT_PUBLIC_SUPABASE_URL,
+	process.env.SUPABASE_SECRET_KEY
 );
 
 // Simple in-memory cache
 let cache = {
-  data: null,
-  timestamp: null,
-  ttl: 5 * 60 * 1000 // 5 minutes
+	data: null,
+	timestamp: null,
+	ttl: 5 * 60 * 1000, // 5 minutes
 };
 
 export async function GET() {
-  try {
-    // Check cache
-    const now = Date.now();
-    if (cache.data && cache.timestamp && (now - cache.timestamp) < cache.ttl) {
-      return Response.json({
-        success: true,
-        totalMatches: cache.data,
-        cached: true,
-        timestamp: new Date().toISOString()
-      });
-    }
+	try {
+		// Check cache
+		const now = Date.now();
+		if (cache.data && cache.timestamp && now - cache.timestamp < cache.ttl) {
+			return Response.json({
+				success: true,
+				...cache.data,
+				cached: true,
+				timestamp: new Date().toISOString(),
+			});
+		}
 
-    console.log('[ClientMatchingSummary] Calculating total matches');
+		console.log('[ClientMatchingSummary] Calculating match statistics');
 
-    // Get all opportunities from database
-    const { data: opportunities, error } = await supabase
-      .from('funding_opportunities_with_geography')
-      .select(`
-        id, title, eligible_locations, eligible_applicants,
-        eligible_project_types, eligible_activities, is_national
-      `);
+		// Get all clients from database
+		const { data: clients, error: clientError } = await supabase
+			.from('clients')
+			.select('*');
 
-    if (error) {
-      console.error('[ClientMatchingSummary] Database error:', error);
-      return Response.json({ error: 'Failed to fetch opportunities' }, { status: 500 });
-    }
+		if (clientError) {
+			console.error('[ClientMatchingSummary] Error fetching clients:', clientError);
+			return Response.json(
+				{ success: false, error: 'Failed to fetch clients' },
+				{ status: 500 }
+			);
+		}
 
-    let totalMatches = 0;
+		const totalClients = clients?.length || 0;
 
-    // Calculate matches for each client and sum them up
-    for (const client of clientsData.clients) {
-      const clientMatches = calculateMatches(client, opportunities);
-      totalMatches += clientMatches.length;
-    }
+		// Get all open opportunities
+		const { data: rawOpportunities, error: oppError } = await supabase
+			.from('funding_opportunities')
+			.select(
+				`
+				id, title, eligible_locations, eligible_applicants,
+				eligible_project_types, eligible_activities, is_national,
+				status
+			`
+			)
+			.neq('status', 'closed');
 
-    // Cache the result
-    cache.data = totalMatches;
-    cache.timestamp = now;
+		if (oppError) {
+			console.error('[ClientMatchingSummary] Error fetching opportunities:', oppError);
+			return Response.json(
+				{ success: false, error: 'Failed to fetch opportunities' },
+				{ status: 500 }
+			);
+		}
 
-    console.log(`[ClientMatchingSummary] Found ${totalMatches} total matches across all clients`);
+		// Get opportunity coverage areas
+		const { data: opportunityCoverageAreas, error: coverageError } = await supabase
+			.from('opportunity_coverage_areas')
+			.select('opportunity_id, coverage_area_id');
 
-    return Response.json({
-      success: true,
-      totalMatches,
-      cached: false,
-      timestamp: new Date().toISOString()
-    });
+		if (coverageError) {
+			console.error('[ClientMatchingSummary] Error fetching coverage areas:', coverageError);
+		}
 
-  } catch (error) {
-    console.error('[ClientMatchingSummary] API error:', error);
-    return Response.json({
-      error: 'Internal server error',
-      message: error.message
-    }, { status: 500 });
-  }
+		// Build coverage map
+		const opportunityCoverageMap = {};
+		for (const link of opportunityCoverageAreas || []) {
+			if (!opportunityCoverageMap[link.opportunity_id]) {
+				opportunityCoverageMap[link.opportunity_id] = [];
+			}
+			opportunityCoverageMap[link.opportunity_id].push(link.coverage_area_id);
+		}
+
+		// Attach coverage areas to opportunities
+		const opportunities = (rawOpportunities || []).map((opp) => ({
+			...opp,
+			coverage_area_ids: opportunityCoverageMap[opp.id] || [],
+		}));
+
+		// Calculate matches for each client
+		let clientsWithMatches = 0;
+		let totalMatches = 0;
+
+		for (const client of clients || []) {
+			const matchCount = countMatches(client, opportunities);
+			if (matchCount > 0) {
+				clientsWithMatches++;
+				totalMatches += matchCount;
+			}
+		}
+
+		// Cache the result
+		const result = {
+			clientsWithMatches,
+			totalMatches,
+			totalClients,
+		};
+		cache.data = result;
+		cache.timestamp = now;
+
+		console.log(
+			`[ClientMatchingSummary] ${clientsWithMatches}/${totalClients} clients with matches, ${totalMatches} total`
+		);
+
+		return Response.json({
+			success: true,
+			...result,
+			cached: false,
+			timestamp: new Date().toISOString(),
+		});
+	} catch (error) {
+		console.error('[ClientMatchingSummary] API error:', error);
+		return Response.json(
+			{
+				success: false,
+				error: 'Internal server error',
+				message: error.message,
+			},
+			{ status: 500 }
+		);
+	}
 }
 
 /**
- * Calculate matches between a client and opportunities
- * Simplified version for counting only
+ * Count matches between a client and opportunities
  */
-function calculateMatches(client, opportunities) {
-  const matches = [];
+function countMatches(client, opportunities) {
+	let count = 0;
 
-  for (const opportunity of opportunities) {
-    const matchResult = evaluateMatch(client, opportunity);
-    if (matchResult.isMatch) {
-      matches.push(opportunity.id);
-    }
-  }
+	for (const opportunity of opportunities) {
+		if (evaluateMatch(client, opportunity)) {
+			count++;
+		}
+	}
 
-  return matches;
+	return count;
 }
 
 /**
  * Evaluate if an opportunity matches a client
- * Simplified version focusing on match determination
+ * Uses same logic as top-matches API for consistency
  */
 function evaluateMatch(client, opportunity) {
-  // 1. Location Match
-  let locationMatch = false;
-  if (opportunity.is_national) {
-    locationMatch = true;
-  } else if (opportunity.eligible_locations && Array.isArray(opportunity.eligible_locations)) {
-    const clientState = client.location;
-    locationMatch = opportunity.eligible_locations.some(location =>
-      location.toLowerCase().includes(clientState.toLowerCase()) ||
-      clientState.toLowerCase().includes(location.toLowerCase())
-    );
-  }
+	// 1. Location Match
+	let locationMatch = false;
+	if (opportunity.is_national) {
+		locationMatch = true;
+	} else if (
+		client.coverage_area_ids &&
+		Array.isArray(client.coverage_area_ids) &&
+		opportunity.coverage_area_ids &&
+		Array.isArray(opportunity.coverage_area_ids)
+	) {
+		locationMatch = client.coverage_area_ids.some((clientAreaId) =>
+			opportunity.coverage_area_ids.includes(clientAreaId)
+		);
+	}
 
-  // 2. Applicant Type Match
-  let applicantTypeMatch = false;
-  if (opportunity.eligible_applicants && Array.isArray(opportunity.eligible_applicants)) {
-    applicantTypeMatch = opportunity.eligible_applicants.some(applicant =>
-      applicant.toLowerCase().includes(client.type.toLowerCase()) ||
-      client.type.toLowerCase().includes(applicant.toLowerCase())
-    );
-  }
+	if (!locationMatch) return false;
 
-  // 3. Project Needs Match
-  let projectNeedsMatch = false;
-  if (opportunity.eligible_project_types && Array.isArray(opportunity.eligible_project_types) &&
-      client.projectNeeds && Array.isArray(client.projectNeeds)) {
+	// 2. Applicant Type Match
+	let applicantTypeMatch = false;
+	if (opportunity.eligible_applicants && Array.isArray(opportunity.eligible_applicants)) {
+		const expandedTypes = getExpandedClientTypes(client.type);
+		applicantTypeMatch = opportunity.eligible_applicants.some((applicant) =>
+			expandedTypes.some(
+				(clientType) =>
+					applicant.toLowerCase() === clientType.toLowerCase() ||
+					applicant.toLowerCase().includes(clientType.toLowerCase()) ||
+					clientType.toLowerCase().includes(applicant.toLowerCase())
+			)
+		);
+	}
 
-    for (const need of client.projectNeeds) {
-      const hasMatch = opportunity.eligible_project_types.some(projectType =>
-        projectType.toLowerCase().includes(need.toLowerCase()) ||
-        need.toLowerCase().includes(projectType.toLowerCase())
-      );
+	if (!applicantTypeMatch) return false;
 
-      if (hasMatch) {
-        projectNeedsMatch = true;
-        break;
-      }
-    }
-  }
+	// 3. Project Needs Match
+	let projectNeedsMatch = false;
+	if (
+		opportunity.eligible_project_types &&
+		Array.isArray(opportunity.eligible_project_types) &&
+		client.project_needs &&
+		Array.isArray(client.project_needs)
+	) {
+		for (const need of client.project_needs) {
+			const hasMatch = opportunity.eligible_project_types.some(
+				(projectType) =>
+					projectType.toLowerCase().includes(need.toLowerCase()) ||
+					need.toLowerCase().includes(projectType.toLowerCase())
+			);
 
-  // 4. Activities Match (must include "hot" activities for construction/implementation)
-  let activitiesMatch = false;
-  if (opportunity.eligible_activities && Array.isArray(opportunity.eligible_activities)) {
-    const hotActivities = TAXONOMIES.ELIGIBLE_ACTIVITIES.hot;
-    activitiesMatch = opportunity.eligible_activities.some(activity =>
-      hotActivities.some(hotActivity =>
-        activity.toLowerCase().includes(hotActivity.toLowerCase()) ||
-        hotActivity.toLowerCase().includes(activity.toLowerCase())
-      )
-    );
-  }
+			if (hasMatch) {
+				projectNeedsMatch = true;
+				break;
+			}
+		}
+	}
 
-  // Check if all criteria are met
-  const isMatch = locationMatch && applicantTypeMatch && projectNeedsMatch && activitiesMatch;
+	if (!projectNeedsMatch) return false;
 
-  return { isMatch };
+	// 4. Activities Match
+	let activitiesMatch = false;
+	if (opportunity.eligible_activities && Array.isArray(opportunity.eligible_activities)) {
+		const hotActivities = TAXONOMIES.ELIGIBLE_ACTIVITIES.hot;
+		activitiesMatch = opportunity.eligible_activities.some((activity) =>
+			hotActivities.some(
+				(hotActivity) =>
+					activity.toLowerCase().includes(hotActivity.toLowerCase()) ||
+					hotActivity.toLowerCase().includes(activity.toLowerCase())
+			)
+		);
+	}
+
+	return activitiesMatch;
 }

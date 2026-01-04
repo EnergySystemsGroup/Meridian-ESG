@@ -13,15 +13,8 @@ import {
 import { Input } from '@/components/ui/input';
 import {
 	Search,
-	Calendar,
-	DollarSign,
-	Clock,
-	Filter,
-	Tag,
 	X,
 	ChevronDown,
-	Download,
-	Briefcase,
 	Map,
 	ArrowUp,
 	ArrowDown,
@@ -30,22 +23,20 @@ import {
 	ChevronRight,
 	Star,
 } from 'lucide-react';
-import { calculateDaysLeft, determineStatus } from '@/lib/supabase';
 import TAXONOMIES from '@/lib/constants/taxonomies';
 import OpportunityCard from '@/components/opportunities/OpportunityCard';
 import { classNames } from '@/lib/utils';
 import { useTrackedOpportunities } from '@/hooks/useTrackedOpportunities';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import {
-	getCategoryColor,
-	formatCategoryForDisplay,
+	getProjectTypeColor,
 } from '@/lib/utils/uiHelpers';
 
-// Status indicator styling
+// Status indicator styling - keys must match filter values (capitalized)
 const statusIndicator = {
-	open: 'Open',
-	upcoming: 'Upcoming',
-	closed: 'Closed',
+	Open: 'Open',
+	Upcoming: 'Upcoming',
+	Closed: 'Closed',
 };
 
 // Helper to format status for display
@@ -94,12 +85,23 @@ function OpportunitiesContent() {
 	const router = useRouter();
 	const pathname = usePathname();
 
+	// Default coverage types (all checked except unknown)
+	const defaultCoverageTypes = ['national', 'state', 'local'];
+
+	// Default statuses (show Open and Upcoming by default)
+	const defaultStatuses = ['Open', 'Upcoming'];
+
 	// Initialize filter state directly from URL params
 	// This avoids a useEffect and potential extra render
 	const initialFilters = {
-		status: searchParams.get('status') || null,
-		categories: searchParams.get('categories') ? searchParams.get('categories').split(',') : [],
-		states: searchParams.get('states') ? searchParams.get('states').split(',') : [],
+		status: searchParams.get('status')
+			? searchParams.get('status').split(',')
+			: defaultStatuses,  // Default to Open + Upcoming
+		projectTypes: searchParams.get('projectTypes') ? searchParams.get('projectTypes').split(',') : [],
+		state: searchParams.get('state') || null, // Single state code
+		coverageTypes: searchParams.get('coverage_types')
+			? searchParams.get('coverage_types').split(',')
+			: defaultCoverageTypes, // Default to all except unknown
 		page: parseInt(searchParams.get('page')) || 1,
 		page_size: 9,
 		tracked: searchParams.get('tracked') === 'true',
@@ -110,24 +112,11 @@ function OpportunitiesContent() {
 	const [debouncedSearchQuery, setDebouncedSearchQuery] = useState(searchParams.get('search') || '');
 	const [openFilterSection, setOpenFilterSection] = useState(null);
 
-	const [availableTags, setAvailableTags] = useState([]);
-	const [categoriesApiResponse, setCategoriesApiResponse] = useState(null);
-	const [availableCategories, setAvailableCategories] = useState([]);
-	const [isCategoriesLoading, setIsCategoriesLoading] = useState(true);
-	const [availableStates, setAvailableStates] = useState(
-		TAXONOMIES.ELIGIBLE_LOCATIONS.filter(
-			(location) =>
-				location !== 'National' &&
-				location !== 'Regional' &&
-				![
-					'Tribal Lands',
-					'Rural Communities',
-					'Urban Areas',
-					'Underserved Communities',
-					'Opportunity Zones',
-				].includes(location)
-		)
-	);
+	const [projectTypesApiResponse, setProjectTypesApiResponse] = useState(null);
+	const [availableProjectTypes, setAvailableProjectTypes] = useState([]);
+	const [isProjectTypesLoading, setIsProjectTypesLoading] = useState(true);
+	// Use US_STATES from taxonomies for state dropdown
+	const usStates = TAXONOMIES.US_STATES;
 	// Initialize sort options from URL parameters
 	const [sortOption, setSortOption] = useState(
 		searchParams.get('sort') || 'relevance'
@@ -135,12 +124,11 @@ function OpportunitiesContent() {
 	const [sortDirection, setSortDirection] = useState(
 		searchParams.get('sort_direction') || 'desc'
 	);
-	const [categorySearchInput, setCategorySearchInput] = useState('');
-	const [stateSearchInput, setStateSearchInput] = useState('');
+	const [projectTypeSearchInput, setProjectTypeSearchInput] = useState('');
 	const [sortMenuOpen, setSortMenuOpen] = useState(false);
 
 	// Create refs for the dropdown containers
-	const categoryDropdownRef = useRef(null);
+	const projectTypeDropdownRef = useRef(null);
 	const statusDropdownRef = useRef(null);
 	const stateDropdownRef = useRef(null);
 	const filterContainerRef = useRef(null);
@@ -155,8 +143,13 @@ function OpportunitiesContent() {
 		toggleTracked,
 	} = useTrackedOpportunities();
 
-	// Add new state for raw-to-normalized mapping
-	const [categoryMapping, setCategoryMapping] = useState({});
+	// Coverage counts for filter display
+	const [coverageCounts, setCoverageCounts] = useState({
+		national: null,
+		state: null,
+		local: null,
+		unknown: null
+	});
 
 	// Add click outside listener to close dropdown
 	useEffect(() => {
@@ -201,35 +194,43 @@ function OpportunitiesContent() {
 		};
 	}, [openFilterSection, sortMenuOpen]);
 
-	// Update the categories loading effect to handle normalized data
+	// Fetch available project types with counts - updates based on current filters
 	useEffect(() => {
-		async function fetchAllCategories() {
+		async function fetchProjectTypes() {
 			try {
-				setIsCategoriesLoading(true);
-				const response = await fetch('/api/categories');
+				setIsProjectTypesLoading(true);
+
+				// Build query params to pass current filters
+				const params = new URLSearchParams();
+				if (filters.status && filters.status.length > 0) {
+					params.append('status', filters.status.join(','));
+				}
+				if (filters.state) {
+					params.append('state', filters.state);
+				}
+				if (filters.coverageTypes && filters.coverageTypes.length > 0) {
+					params.append('coverage_types', filters.coverageTypes.join(','));
+				}
+
+				const url = `/api/project-types${params.toString() ? `?${params}` : ''}`;
+				const response = await fetch(url);
 				const result = await response.json();
 
 				if (result.success) {
-					setCategoriesApiResponse(result);
-					setAvailableCategories(result.categories);
-					setCategoryMapping(result.rawToNormalizedMap);
-					console.log(
-						'Loaded normalized categories:',
-						result.categories.length
-					);
-					console.log('Category groups:', result.categoryGroups);
+					setProjectTypesApiResponse(result);
+					setAvailableProjectTypes(result.projectTypes);
 				} else {
-					console.error('Error fetching categories:', result.error);
+					console.error('Error fetching project types:', result.error);
 				}
 			} catch (err) {
-				console.error('Failed to fetch categories:', err);
+				console.error('Failed to fetch project types:', err);
 			} finally {
-				setIsCategoriesLoading(false);
+				setIsProjectTypesLoading(false);
 			}
 		}
 
-		fetchAllCategories();
-	}, []); // Empty dependency array - only run once on mount
+		fetchProjectTypes();
+	}, [filters.status, filters.state, filters.coverageTypes]); // Refetch when filters change
 
 	// Debounce search query
 	useEffect(() => {
@@ -245,67 +246,57 @@ function OpportunitiesContent() {
 		};
 	}, [searchQuery, sortOption, sortDirection]); // Only re-run the effect if searchQuery changes
 
-	// Log whenever filters change
+	// Fetch coverage counts when state filter changes
 	useEffect(() => {
-		console.log('[Debug Tracking] Filters state changed:', filters);
-	}, [filters]);
+		async function fetchCoverageCounts() {
+			try {
+				const params = new URLSearchParams();
+				if (filters.state) {
+					params.append('state', filters.state);
+				}
 
-	// Log when isInitialized changes
-	useEffect(() => {
-		console.log('[Debug Tracking] isInitialized state changed:', isInitialized);
-	}, [isInitialized]);
+				const response = await fetch(`/api/funding/coverage-counts?${params}`);
+				const result = await response.json();
+				if (result.success) {
+					setCoverageCounts(result.counts);
+				}
+			} catch (err) {
+				console.error('Failed to fetch coverage counts:', err);
+			}
+		}
+		fetchCoverageCounts();
+	}, [filters.state]);
 
 	useEffect(() => {
 		async function fetchOpportunities() {
 			// Wait until context is initialized before fetching
 			if (!isInitialized) {
-				console.log('[Debug Init] Fetch skipped: Context not initialized.');
-				// Don't set isPageLoading false yet, wait for initialization
 				return;
 			}
 
 			try {
-				setLoading(true); // Indicate internal fetch is running
-				// Don't set isPageLoading here - it's already true initially
-
-				console.log('[Debug Tracking] Fetching opportunities...');
-				console.log('[Debug Tracking] isInitialized:', isInitialized);
-				console.log('[Debug Tracking] Current filters:', filters);
+				setLoading(true);
 
 				// Build query string from filters
 				const queryParams = new URLSearchParams();
 
-				if (filters.status) {
-					queryParams.append('status', filters.status);
+				if (filters.status && filters.status.length > 0) {
+					queryParams.append('status', filters.status.join(','));
 				}
 
-				if (filters.categories.length > 0) {
-					// Get all raw categories that map to any of the selected normalized categories
-					const rawCategoriesToQuery = Object.entries(categoryMapping)
-						.filter(([raw, normalized]) =>
-							filters.categories.includes(normalized)
-						)
-						.map(([raw]) => raw);
-
-					// Add these to the query
-					if (rawCategoriesToQuery.length > 0) {
-						console.log(
-							'Using raw categories for query:',
-							rawCategoriesToQuery
-						);
-						queryParams.append('categories', rawCategoriesToQuery.join(','));
-					} else {
-						// Fallback to just using the selected categories directly
-						console.log(
-							'Using normalized categories directly:',
-							filters.categories
-						);
-						queryParams.append('categories', filters.categories.join(','));
-					}
+				// Add project types filter
+				if (filters.projectTypes && filters.projectTypes.length > 0) {
+					queryParams.append('projectTypes', filters.projectTypes.join(','));
 				}
 
-				if (filters.states.length > 0) {
-					queryParams.append('states', filters.states.join(','));
+				// Add state filter (single state code)
+				if (filters.state) {
+					queryParams.append('state', filters.state);
+				}
+
+				// Add coverage types filter
+				if (filters.coverageTypes && filters.coverageTypes.length > 0) {
+					queryParams.append('coverage_types', filters.coverageTypes.join(','));
 				}
 
 				// Add debounced search query to API request if it exists
@@ -335,27 +326,11 @@ function OpportunitiesContent() {
 
 				// Add tracked IDs filter if tracked filter is on
 				if (filters.tracked && isInitialized) {
-					console.log(
-						'[Debug Tracking] Tracked filter ON. isInitialized:',
-						isInitialized,
-						'Tracked IDs:',
-						trackedOpportunityIds
-					);
-					console.log(
-						'[Debug Tracking] Appending trackedIds to queryParams:',
-						trackedOpportunityIds.join(',')
-					);
 					// Always send trackedIds parameter when tracked filter is on
 					// This ensures the API knows to filter to tracked opportunities only,
 					// even if the list is empty (which should return no results)
 					queryParams.append('trackedIds', trackedOpportunityIds.join(','));
 				}
-
-				// console.log('Current filters:', filters); // Replaced by more specific logs
-				console.log(
-					'[Debug Tracking] Final API URL:',
-					`/api/funding?${queryParams.toString()}`
-				);
 
 				// Fetch data from our API
 				const response = await fetch(`/api/funding?${queryParams.toString()}`);
@@ -389,22 +364,10 @@ function OpportunitiesContent() {
 					throw new Error(result.error || 'Failed to fetch opportunities');
 				}
 
-				// Log API response for debugging
-				console.log('[Debug Tracking] API Response:', result);
-
-				// If trackedIds is used but no opportunities match (empty array),
-				// we handle this edge case by showing no results
 				setOpportunities(result.data);
 				setTotalCount(result.total_count || 0);
-				console.log(
-					'[Debug Tracking] State after API call: Opportunities Count =',
-					result.data?.length,
-					'Total Count =',
-					result.total_count || 0
-				);
 			} catch (err) {
 				console.error('Error fetching opportunities:', err);
-				console.error('[Debug Tracking] Error in fetchOpportunities:', err);
 				setError(err.message);
 			} finally {
 				setLoading(false); // Internal fetch finished
@@ -419,7 +382,6 @@ function OpportunitiesContent() {
 		sortDirection,
 		debouncedSearchQuery,
 		isInitialized,
-		categoryMapping,
 	]);
 
 	// Update URL parameters based on current filters and sort
@@ -431,19 +393,33 @@ function OpportunitiesContent() {
 			params.set('search', newSearchQuery.trim());
 		}
 
-		// Add status filter
-		if (newFilters.status) {
-			params.set('status', newFilters.status);
+		// Add status filter (only if different from default)
+		if (newFilters.status && newFilters.status.length > 0) {
+			const isDefault = newFilters.status.length === defaultStatuses.length &&
+				defaultStatuses.every(s => newFilters.status.includes(s));
+			if (!isDefault) {
+				params.set('status', newFilters.status.join(','));
+			}
 		}
 
-		// Add categories filter
-		if (newFilters.categories && newFilters.categories.length > 0) {
-			params.set('categories', newFilters.categories.join(','));
+		// Add project types filter
+		if (newFilters.projectTypes && newFilters.projectTypes.length > 0) {
+			params.set('projectTypes', newFilters.projectTypes.join(','));
 		}
 
-		// Add states filter
-		if (newFilters.states && newFilters.states.length > 0) {
-			params.set('states', newFilters.states.join(','));
+		// Add state filter (single state)
+		if (newFilters.state) {
+			params.set('state', newFilters.state);
+		}
+
+		// Add coverage types filter (only if different from default)
+		if (newFilters.coverageTypes && newFilters.coverageTypes.length > 0) {
+			const defaultTypes = ['national', 'state', 'local'];
+			const isDefault = newFilters.coverageTypes.length === defaultTypes.length &&
+				defaultTypes.every(t => newFilters.coverageTypes.includes(t));
+			if (!isDefault) {
+				params.set('coverage_types', newFilters.coverageTypes.join(','));
+			}
 		}
 
 		// Add tracked filter
@@ -490,13 +466,15 @@ function OpportunitiesContent() {
 		setFilters((prev) => {
 			const newFilters = { ...prev };
 
-			if (type === 'categories' || type === 'states') {
+			// Multi-select filters (arrays)
+			if (type === 'projectTypes' || type === 'states' || type === 'status') {
 				if (newFilters[type].includes(value)) {
 					newFilters[type] = newFilters[type].filter((item) => item !== value);
 				} else {
 					newFilters[type] = [...newFilters[type], value];
 				}
 			} else {
+				// Single-select filters
 				newFilters[type] = newFilters[type] === value ? null : value;
 				setTimeout(() => setOpenFilterSection(null), 50);
 			}
@@ -511,16 +489,16 @@ function OpportunitiesContent() {
 	// Clear all filters
 	const clearAllFilters = () => {
 		setFilters({
-			status: null,
-			categories: [],
-			states: [],
+			status: defaultStatuses,  // Reset to default (Open + Upcoming)
+			projectTypes: [],
+			state: null,
+			coverageTypes: defaultCoverageTypes,
 			page: 1,
 			page_size: 9,
 			tracked: false,
 		});
 		setSearchQuery('');
-		setCategorySearchInput('');
-		setStateSearchInput('');
+		setProjectTypeSearchInput('');
 
 		// Clear URL parameters
 		setTimeout(() => {
@@ -528,19 +506,12 @@ function OpportunitiesContent() {
 		}, 0);
 	};
 
-	// Filter categories for search
-	const filteredCategories = categorySearchInput
-		? availableCategories.filter((category) =>
-				category.toLowerCase().includes(categorySearchInput.toLowerCase())
+	// Filter project types for search
+	const filteredProjectTypes = projectTypeSearchInput
+		? availableProjectTypes.filter((type) =>
+				type.toLowerCase().includes(projectTypeSearchInput.toLowerCase())
 		  )
-		: availableCategories;
-
-	// Filter states for search
-	const filteredStates = stateSearchInput
-		? availableStates.filter((state) =>
-				state.toLowerCase().includes(stateSearchInput.toLowerCase())
-		  )
-		: availableStates;
+		: availableProjectTypes;
 
 	// Handle export functionality
 	const handleExport = () => {
@@ -631,6 +602,17 @@ function OpportunitiesContent() {
 
 	// Render the status filter dropdown
 	const renderStatusFilter = () => {
+		// Build button label based on selected statuses
+		const getStatusButtonLabel = () => {
+			if (!filters.status || filters.status.length === 0) {
+				return 'Status';
+			}
+			if (filters.status.length === 1) {
+				return `Status: ${formatStatusForDisplay(filters.status[0])}`;
+			}
+			return `Status (${filters.status.length})`;
+		};
+
 		return (
 			<div className='relative inline-block text-left'>
 				<div>
@@ -642,13 +624,11 @@ function OpportunitiesContent() {
 							openFilterSection === 'status'
 								? 'bg-blue-50 text-blue-800 border-blue-200'
 								: 'border-gray-300',
-							openFilterSection === 'status' && filters.status
+							openFilterSection === 'status' && filters.status?.length > 0
 								? 'bg-blue-100'
 								: ''
 						)}>
-						{filters.status
-							? `Status: ${formatStatusForDisplay(filters.status)}`
-							: 'Status'}
+						{getStatusButtonLabel()}
 						<ChevronDown
 							size={16}
 							className={classNames(
@@ -661,7 +641,7 @@ function OpportunitiesContent() {
 
 				{openFilterSection === 'status' && (
 					<div
-						className='absolute left-0 z-20 mt-2 origin-top-left bg-white rounded-md shadow-lg w-48 ring-1 ring-black ring-opacity-5 focus:outline-none'
+						className='absolute left-0 z-20 mt-2 origin-top-left bg-white dark:bg-neutral-800 rounded-md shadow-lg w-48 ring-1 ring-black ring-opacity-5 dark:ring-neutral-600 focus:outline-none'
 						tabIndex={-1}
 						ref={statusDropdownRef}>
 						<div className='p-4'>
@@ -674,7 +654,7 @@ function OpportunitiesContent() {
 										<input
 											type='checkbox'
 											className='mr-2'
-											checked={filters.status === key}
+											checked={filters.status?.includes(key)}
 											readOnly
 										/>
 										<span
@@ -755,34 +735,26 @@ function OpportunitiesContent() {
 		);
 	};
 
-	// Render the category filter dropdown
-	const renderCategoryFilter = () => {
-		// Get category data from API response
-		const categoryGroups = categoriesApiResponse?.categoryGroups || {};
-
-		// Filter visible categories based on search input
-		const filteredCategories = (availableCategories || []).filter((category) =>
-			category.toLowerCase().includes(categorySearchInput.toLowerCase())
-		);
-
-		// Count selected categories for display
-		const selectedCount = filters.categories.length;
+	// Render the project types filter dropdown
+	const renderProjectTypeFilter = () => {
+		// Count selected project types for display
+		const selectedCount = filters.projectTypes.length;
 		const displayText =
-			selectedCount > 0 ? `Categories (${selectedCount})` : 'Categories';
+			selectedCount > 0 ? `Project Types (${selectedCount})` : 'Project Types';
 
 		return (
 			<div className='relative inline-block text-left'>
 				<div>
 					<Button
 						variant='outline'
-						onClick={() => toggleFilterSection('categories')}
+						onClick={() => toggleFilterSection('projectTypes')}
 						className={classNames(
 							'flex items-center justify-between gap-1 px-4 py-2 text-sm',
-							openFilterSection === 'categories'
+							openFilterSection === 'projectTypes'
 								? 'bg-blue-50 text-blue-800 border-blue-200'
 								: 'border-gray-300',
-							openFilterSection === 'categories' &&
-								filters.categories.length > 0
+							openFilterSection === 'projectTypes' &&
+								filters.projectTypes.length > 0
 								? 'bg-blue-100'
 								: ''
 						)}>
@@ -791,17 +763,17 @@ function OpportunitiesContent() {
 							size={16}
 							className={classNames(
 								'transition-transform',
-								openFilterSection === 'categories' ? 'rotate-180' : ''
+								openFilterSection === 'projectTypes' ? 'rotate-180' : ''
 							)}
 						/>
 					</Button>
 				</div>
 
-				{openFilterSection === 'categories' && (
+				{openFilterSection === 'projectTypes' && (
 					<div
-						className='absolute left-0 z-20 mt-2 origin-top-left bg-white rounded-md shadow-lg w-72 ring-1 ring-black ring-opacity-5 focus:outline-none'
+						className='absolute left-0 z-20 mt-2 origin-top-left bg-white dark:bg-neutral-800 rounded-md shadow-lg w-80 ring-1 ring-black ring-opacity-5 dark:ring-neutral-600 focus:outline-none'
 						tabIndex={-1}
-						ref={categoryDropdownRef}>
+						ref={projectTypeDropdownRef}>
 						<div className='p-4'>
 							{/* Search input */}
 							<div className='mb-4'>
@@ -813,43 +785,43 @@ function OpportunitiesContent() {
 									<input
 										type='text'
 										className='w-full pl-9 pr-4 py-2 border border-gray-300 rounded-md text-sm'
-										placeholder='Search categories...'
-										value={categorySearchInput}
-										onChange={(e) => setCategorySearchInput(e.target.value)}
+										placeholder='Search project types...'
+										value={projectTypeSearchInput}
+										onChange={(e) => setProjectTypeSearchInput(e.target.value)}
 									/>
-									{categorySearchInput && (
+									{projectTypeSearchInput && (
 										<X
 											className='absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 cursor-pointer'
 											size={16}
-											onClick={() => setCategorySearchInput('')}
+											onClick={() => setProjectTypeSearchInput('')}
 										/>
 									)}
 								</div>
 							</div>
 
-							{/* Loading indicator for categories */}
-							{isCategoriesLoading && (
+							{/* Loading indicator */}
+							{isProjectTypesLoading && (
 								<div className='py-3 text-center text-sm text-gray-500'>
 									<div className='inline-block animate-spin rounded-full h-4 w-4 border-b-2 border-gray-500 mr-2'></div>
-									Loading categories...
+									Loading project types...
 								</div>
 							)}
 
-							{/* All categories */}
-							{!isCategoriesLoading && (
+							{/* All project types */}
+							{!isProjectTypesLoading && (
 								<div className='max-h-60 overflow-y-auto'>
-									{filteredCategories.map((category) => {
-										const isSelected = filters.categories.includes(category);
-										const categoryColor = getCategoryColor(category);
+									{filteredProjectTypes.map((projectType) => {
+										const isSelected = filters.projectTypes.includes(projectType);
+										const typeColor = getProjectTypeColor(projectType);
 										const count =
-											categoriesApiResponse?.categoryGroups?.[category]
+											projectTypesApiResponse?.projectTypeGroups?.[projectType]
 												?.count || 0;
 										return (
 											<div
-												key={category}
+												key={projectType}
 												className='flex items-center justify-between py-1 cursor-pointer hover:bg-gray-50'
 												onClick={() =>
-													handleFilterSelect('categories', category)
+													handleFilterSelect('projectTypes', projectType)
 												}>
 												<div className='flex items-center'>
 													<input
@@ -860,10 +832,10 @@ function OpportunitiesContent() {
 													/>
 													<span
 														className='w-3 h-3 rounded-full mr-2'
-														style={{ backgroundColor: categoryColor.color }}
+														style={{ backgroundColor: typeColor.color }}
 													/>
 													<span className='text-sm'>
-														{formatCategoryForDisplay(category)}
+														{projectType}
 													</span>
 												</div>
 												<span className='text-xs text-gray-500 ml-1'>
@@ -876,21 +848,21 @@ function OpportunitiesContent() {
 							)}
 
 							{/* No results */}
-							{!isCategoriesLoading && filteredCategories.length === 0 && (
+							{!isProjectTypesLoading && filteredProjectTypes.length === 0 && (
 								<div className='py-3 text-center text-sm text-gray-500'>
-									No categories found
+									No project types found
 								</div>
 							)}
 
 							{/* Clear selections button if any selected */}
-							{filters.categories.length > 0 && (
+							{filters.projectTypes.length > 0 && (
 								<div className='mt-4 pt-3 border-t border-gray-200 flex justify-end'>
 									<Button
 										variant='link'
 										size='sm'
 										className='text-blue-600 hover:text-blue-800'
 										onClick={() => {
-											const newFilters = { ...filters, categories: [], page: 1 };
+											const newFilters = { ...filters, projectTypes: [], page: 1 };
 											setFilters(newFilters);
 											updateUrlParams(newFilters);
 										}}>
@@ -905,129 +877,180 @@ function OpportunitiesContent() {
 		);
 	};
 
-	// Render state filter dropdown
+	// Render state dropdown (single select)
 	const renderStateFilter = () => {
-		// Count selected states for display
-		const selectedCount = filters.states.length;
-		const displayText =
-			selectedCount > 0 ? `Locations (${selectedCount})` : 'Locations';
+		const selectedState = usStates.find(s => s.code === filters.state);
+		const displayText = selectedState ? selectedState.name : 'All States';
 
 		return (
 			<div className='relative inline-block text-left'>
 				<div>
 					<Button
 						variant='outline'
-						onClick={() => toggleFilterSection('states')}
+						onClick={() => toggleFilterSection('state')}
 						className={classNames(
 							'flex items-center justify-between gap-1 px-4 py-2 text-sm',
-							openFilterSection === 'states'
+							openFilterSection === 'state'
 								? 'bg-blue-50 text-blue-800 border-blue-200'
 								: 'border-gray-300',
-							openFilterSection === 'states' && filters.states.length > 0
-								? 'bg-blue-100'
-								: ''
+							filters.state ? 'bg-blue-100' : ''
+						)}>
+						<Map size={16} className='mr-1' />
+						{displayText}
+						<ChevronDown
+							size={16}
+							className={classNames(
+								'transition-transform',
+								openFilterSection === 'state' ? 'rotate-180' : ''
+							)}
+						/>
+					</Button>
+				</div>
+
+				{openFilterSection === 'state' && (
+					<div
+						className='absolute left-0 z-20 mt-2 origin-top-left bg-white dark:bg-neutral-800 rounded-md shadow-lg w-64 ring-1 ring-black ring-opacity-5 dark:ring-neutral-600 focus:outline-none'
+						tabIndex={-1}
+						ref={stateDropdownRef}>
+						<div className='p-4'>
+							{/* All States option */}
+							<div
+								className='flex items-center py-2 cursor-pointer hover:bg-gray-50 mb-2 border-b border-gray-200 pb-2'
+								onClick={() => {
+									const newFilters = { ...filters, state: null, page: 1 };
+									setFilters(newFilters);
+									updateUrlParams(newFilters);
+									setOpenFilterSection(null);
+								}}>
+								<div className='flex items-center'>
+									{!filters.state && <Check size={16} className='mr-2 text-blue-600' />}
+									{filters.state && <span className='w-6' />}
+									<span className='text-sm font-medium'>All States</span>
+								</div>
+							</div>
+
+							{/* State list */}
+							<div className='max-h-60 overflow-y-auto'>
+								{usStates.map((state) => (
+									<div
+										key={state.code}
+										className='flex items-center py-1 cursor-pointer hover:bg-gray-50'
+										onClick={() => {
+											const newFilters = { ...filters, state: state.code, page: 1 };
+											setFilters(newFilters);
+											updateUrlParams(newFilters);
+											setOpenFilterSection(null);
+										}}>
+										<div className='flex items-center'>
+											{filters.state === state.code && <Check size={16} className='mr-2 text-blue-600' />}
+											{filters.state !== state.code && <span className='w-6' />}
+											<span className='text-sm'>{state.name}</span>
+										</div>
+									</div>
+								))}
+							</div>
+						</div>
+					</div>
+				)}
+			</div>
+		);
+	};
+
+	// Render coverage type checkboxes
+	const renderCoverageTypeFilter = () => {
+		const coverageTypeOptions = [
+			{ value: 'national', label: 'Federal/National' },
+			{ value: 'state', label: 'State' },
+			{ value: 'local', label: 'Local' },
+			{ value: 'unknown', label: 'Unknown Location' },
+		];
+
+		const selectedCount = filters.coverageTypes.length;
+		const displayText = selectedCount < 4 ? `Coverage (${selectedCount})` : 'Coverage';
+
+		return (
+			<div className='relative inline-block text-left'>
+				<div>
+					<Button
+						variant='outline'
+						onClick={() => toggleFilterSection('coverage')}
+						className={classNames(
+							'flex items-center justify-between gap-1 px-4 py-2 text-sm',
+							openFilterSection === 'coverage'
+								? 'bg-blue-50 text-blue-800 border-blue-200'
+								: 'border-gray-300',
+							selectedCount !== defaultCoverageTypes.length ? 'bg-blue-100' : ''
 						)}>
 						{displayText}
 						<ChevronDown
 							size={16}
 							className={classNames(
 								'transition-transform',
-								openFilterSection === 'states' ? 'rotate-180' : ''
+								openFilterSection === 'coverage' ? 'rotate-180' : ''
 							)}
 						/>
 					</Button>
 				</div>
 
-				{openFilterSection === 'states' && (
+				{openFilterSection === 'coverage' && (
 					<div
-						className='absolute left-0 z-20 mt-2 origin-top-left bg-white rounded-md shadow-lg w-64 ring-1 ring-black ring-opacity-5 focus:outline-none'
-						tabIndex={-1}
-						ref={stateDropdownRef}>
+						className='absolute left-0 z-20 mt-2 origin-top-left bg-white dark:bg-neutral-800 rounded-md shadow-lg w-56 ring-1 ring-black ring-opacity-5 dark:ring-neutral-600 focus:outline-none'
+						tabIndex={-1}>
 						<div className='p-4'>
-							{/* Search input */}
-							<div className='mb-4'>
-								<div className='relative'>
-									<Search
-										className='absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400'
-										size={16}
-									/>
-									<input
-										type='text'
-										className='w-full pl-9 pr-4 py-2 border border-gray-300 rounded-md text-sm'
-										placeholder='Search locations...'
-										value={stateSearchInput}
-										onChange={(e) => setStateSearchInput(e.target.value)}
-									/>
-									{stateSearchInput && (
-										<X
-											className='absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 cursor-pointer'
-											size={16}
-											onClick={() => setStateSearchInput('')}
-										/>
-									)}
-								</div>
+							<div className='text-xs text-gray-500 mb-3'>
+								Filter by coverage area type
 							</div>
 
-							{/* National option */}
-							<div
-								className='flex items-center py-1 cursor-pointer hover:bg-gray-50 mb-2 border-b border-gray-200 pb-2'
-								onClick={() => handleFilterSelect('states', 'National')}>
-								<div className='flex items-center'>
+							{coverageTypeOptions.map((option) => (
+								<div
+									key={option.value}
+									className='flex items-center py-2 cursor-pointer hover:bg-gray-50'
+									onClick={() => {
+										const isChecked = filters.coverageTypes.includes(option.value);
+										let newCoverageTypes;
+										if (isChecked) {
+											newCoverageTypes = filters.coverageTypes.filter(t => t !== option.value);
+										} else {
+											newCoverageTypes = [...filters.coverageTypes, option.value];
+										}
+										const newFilters = { ...filters, coverageTypes: newCoverageTypes, page: 1 };
+										setFilters(newFilters);
+										updateUrlParams(newFilters);
+									}}>
 									<input
 										type='checkbox'
-										className='mr-2'
-										checked={filters.states.includes('National')}
-										readOnly
+										className='mr-3 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500'
+										checked={filters.coverageTypes.includes(option.value)}
+										onChange={() => {}} // Handled by parent onClick
 									/>
-									<span className='text-sm font-medium'>
-										National (All States)
+									<span className='text-sm flex-1'>
+										{option.label}
+										{coverageCounts[option.value] !== null && (
+											<span className='text-gray-400 ml-1'>
+												({coverageCounts[option.value]})
+											</span>
+										)}
 									</span>
 								</div>
-							</div>
+							))}
 
-							{/* State list */}
-							<div className='max-h-60 overflow-y-auto'>
-								{filteredStates.map((state) => (
-									<div
-										key={state}
-										className='flex items-center py-1 cursor-pointer hover:bg-gray-50'
-										onClick={() => handleFilterSelect('states', state)}>
-										<div className='flex items-center'>
-											<input
-												type='checkbox'
-												className='mr-2'
-												checked={filters.states.includes(state)}
-												readOnly
-											/>
-											<span className='text-sm'>{state}</span>
-										</div>
-									</div>
-								))}
-							</div>
-
-							{/* No results */}
-							{filteredStates.length === 0 && (
-								<div className='py-3 text-center text-sm text-gray-500'>
-									No locations found
-								</div>
-							)}
-
-							{/* Clear selections button if any selected */}
-							{filters.states.length > 0 && (
-								<div className='mt-4 pt-3 border-t border-gray-200 flex justify-end'>
+							{/* Reset to defaults button */}
+							{filters.coverageTypes.length !== defaultCoverageTypes.length ||
+							!defaultCoverageTypes.every(t => filters.coverageTypes.includes(t)) ? (
+								<div className='mt-3 pt-3 border-t border-gray-200'>
 									<Button
 										variant='link'
 										size='sm'
-										className='text-blue-600 hover:text-blue-800'
+										className='text-blue-600 hover:text-blue-800 p-0'
 										onClick={() => {
-											const newFilters = { ...filters, states: [], page: 1 };
+											const newFilters = { ...filters, coverageTypes: defaultCoverageTypes, page: 1 };
 											setFilters(newFilters);
 											updateUrlParams(newFilters);
 										}}>
-										Clear selections
+										Reset to defaults
 									</Button>
 								</div>
-							)}
+							) : null}
 						</div>
 					</div>
 				)}
@@ -1063,56 +1086,62 @@ function OpportunitiesContent() {
 					</span>
 				)}
 
-				{/* Status filter */}
-				{filters.status && (
-					<span
-						className='flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium'
-						style={{
-							backgroundColor: 'white',
-							color: getStatusColor(filters.status),
-							borderWidth: '1px',
-							borderStyle: 'solid',
-							borderColor: getStatusColor(filters.status) + '50',
-						}}>
-						Status: {filters.status}
-						<X
-							size={14}
-							className='cursor-pointer'
-							onClick={() => {
-								const newFilters = {
-									...filters,
-									status: null,
-									page: 1,
-								};
-								setFilters(newFilters);
-								updateUrlParams(newFilters);
-							}}
-						/>
-					</span>
-				)}
-
-				{/* Category filters */}
-				{filters.categories.map((category) => {
-					const categoryColor = getCategoryColor(category);
-					return (
+				{/* Status filters - only show when different from default */}
+				{(() => {
+					const isDefaultStatus = filters.status?.length === defaultStatuses.length &&
+						defaultStatuses.every(s => filters.status?.includes(s));
+					if (isDefaultStatus) return null;
+					return filters.status?.map((status) => (
 						<span
-							key={category}
+							key={status}
 							className='flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium'
 							style={{
-								backgroundColor: categoryColor.bgColor,
-								color: categoryColor.color,
+								backgroundColor: 'white',
+								color: getStatusColor(status),
+								borderWidth: '1px',
+								borderStyle: 'solid',
+								borderColor: getStatusColor(status) + '50',
 							}}>
-							{formatCategoryForDisplay(category)}
+							{formatStatusForDisplay(status)}
 							<X
 								size={14}
 								className='cursor-pointer'
 								onClick={() => {
-									const updatedCategories = filters.categories.filter(
-										(c) => c !== category
+									const newFilters = {
+										...filters,
+										status: filters.status.filter((s) => s !== status),
+										page: 1,
+									};
+									setFilters(newFilters);
+									updateUrlParams(newFilters);
+								}}
+							/>
+						</span>
+					));
+				})()}
+
+				{/* Project type filters */}
+				{filters.projectTypes.map((projectType) => {
+					const typeColor = getProjectTypeColor(projectType);
+					return (
+						<span
+							key={projectType}
+							className='flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium'
+							style={{
+								backgroundColor: typeColor.bgColor,
+								color: typeColor.color,
+							}}>
+							{projectType}
+							<X
+								size={14}
+								className='cursor-pointer'
+								onClick={() => {
+									const updatedTypes = filters.projectTypes.filter(
+										(t) => t !== projectType
 									);
 									const newFilters = {
 										...filters,
-										categories: updatedCategories,
+										projectTypes: updatedTypes,
 										page: 1,
 									};
 									setFilters(newFilters);
@@ -1123,20 +1152,17 @@ function OpportunitiesContent() {
 					);
 				})}
 
-				{/* State filters */}
-				{filters.states.map((state) => (
-					<span
-						key={state}
-						className='flex items-center gap-1 px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs font-medium'>
-						{state}
+				{/* State filter */}
+				{filters.state && (
+					<span className='flex items-center gap-1 px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs font-medium'>
+						{usStates.find(s => s.code === filters.state)?.name || filters.state}
 						<X
 							size={14}
 							className='cursor-pointer'
 							onClick={() => {
-								const updatedStates = filters.states.filter((s) => s !== state);
 								const newFilters = {
 									...filters,
-									states: updatedStates,
+									state: null,
 									page: 1,
 								};
 								setFilters(newFilters);
@@ -1144,7 +1170,28 @@ function OpportunitiesContent() {
 							}}
 						/>
 					</span>
-				))}
+				)}
+
+				{/* Coverage type filters (only show if not default) */}
+				{(filters.coverageTypes.length !== defaultCoverageTypes.length ||
+				!defaultCoverageTypes.every(t => filters.coverageTypes.includes(t))) && (
+					<span className='flex items-center gap-1 px-2 py-1 bg-green-100 text-green-800 rounded-full text-xs font-medium'>
+						Coverage: {filters.coverageTypes.join(', ')}
+						<X
+							size={14}
+							className='cursor-pointer'
+							onClick={() => {
+								const newFilters = {
+									...filters,
+									coverageTypes: defaultCoverageTypes,
+									page: 1,
+								};
+								setFilters(newFilters);
+								updateUrlParams(newFilters);
+							}}
+						/>
+					</span>
+				)}
 
 				{/* Search query */}
 				{debouncedSearchQuery && (
@@ -1170,10 +1217,17 @@ function OpportunitiesContent() {
 
 	// Check if any filters are applied
 	const hasActiveFilters = () => {
+		const hasNonDefaultCoverage = filters.coverageTypes.length !== defaultCoverageTypes.length ||
+			!defaultCoverageTypes.every(t => filters.coverageTypes.includes(t));
+
+		const hasNonDefaultStatus = filters.status?.length !== defaultStatuses.length ||
+			!defaultStatuses.every(s => filters.status?.includes(s));
+
 		return (
-			filters.status !== null ||
-			filters.categories.length > 0 ||
-			filters.states.length > 0 ||
+			hasNonDefaultStatus ||
+			filters.projectTypes.length > 0 ||
+			filters.state !== null ||
+			hasNonDefaultCoverage ||
 			debouncedSearchQuery !== '' ||
 			filters.tracked
 		);
@@ -1195,7 +1249,7 @@ function OpportunitiesContent() {
 				</div>
 
 				{/* Search and filter bar */}
-				<div className='bg-white rounded-xl shadow-sm p-4 mb-6'>
+				<div className='bg-white dark:bg-neutral-900 dark:border dark:border-neutral-700 rounded-xl shadow-sm p-4 mb-6'>
 					<div className='flex flex-col md:flex-row gap-4'>
 						{/* Search input */}
 						<div className='relative flex-grow'>
@@ -1216,14 +1270,17 @@ function OpportunitiesContent() {
 							{/* Tracked opportunities filter */}
 							{renderTrackedFilter()}
 
-							{/* Category filter */}
-							{renderCategoryFilter()}
+							{/* Project Types filter */}
+							{renderProjectTypeFilter()}
 
 							{/* Status filter */}
 							{renderStatusFilter()}
 
-							{/* State filter */}
+							{/* State filter (dropdown) */}
 							{renderStateFilter()}
+
+							{/* Coverage type filter (checkboxes) */}
+							{renderCoverageTypeFilter()}
 						</div>
 					</div>
 
@@ -1255,7 +1312,7 @@ function OpportunitiesContent() {
 							</Button>
 
 							{sortMenuOpen && (
-								<div className='absolute right-0 top-full mt-1 w-44 bg-white rounded-md shadow-lg z-10 border border-gray-200 py-1'>
+								<div className='absolute right-0 top-full mt-1 w-44 bg-white dark:bg-neutral-800 rounded-md shadow-lg z-10 border border-gray-200 dark:border-neutral-600 py-1'>
 									<div className='p-2 text-sm text-gray-500 border-b border-gray-100'>
 										Sort By
 									</div>

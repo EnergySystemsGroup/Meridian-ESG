@@ -42,17 +42,18 @@ import { cookies } from 'next/headers';
 export function createClient(options = {}) {
   const { serviceRole = false } = options;
   const cookieStore = cookies();
-  
+
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const supabaseKey = serviceRole 
-    ? process.env.SUPABASE_SERVICE_ROLE_KEY 
-    : process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  // Support both new and legacy key naming conventions
+  const supabaseKey = serviceRole
+    ? (process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY)
+    : (process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
 
   if (!supabaseUrl || !supabaseKey) {
     throw new Error(
       `Missing required Supabase environment variables. ` +
       `Please ensure NEXT_PUBLIC_SUPABASE_URL and ${
-        serviceRole ? 'SUPABASE_SERVICE_ROLE_KEY' : 'NEXT_PUBLIC_SUPABASE_ANON_KEY'
+        serviceRole ? 'SUPABASE_SECRET_KEY (or SUPABASE_SERVICE_ROLE_KEY)' : 'NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY (or NEXT_PUBLIC_SUPABASE_ANON_KEY)'
       } are set.`
     );
   }

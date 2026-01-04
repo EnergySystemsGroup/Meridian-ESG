@@ -45,6 +45,7 @@ export default function EditFundingSource() {
 				pageSize: 100,
 				maxPages: 5,
 				inBody: false,
+				startOffset: 0,
 			},
 			detail_config: {
 				enabled: false,
@@ -1077,6 +1078,25 @@ export default function EditFundingSource() {
 											onChange={handlePaginationConfigChange}
 											className='w-full px-3 py-2 border border-gray-300 rounded-md'
 										/>
+									</div>
+
+									<div>
+										<label className='block text-sm font-medium text-gray-700 mb-1'>
+											Start Offset
+										</label>
+										<input
+											type='number'
+											name='startOffset'
+											value={
+												formData.configurations.pagination_config.startOffset || 0
+											}
+											onChange={handlePaginationConfigChange}
+											min='0'
+											className='w-full px-3 py-2 border border-gray-300 rounded-md'
+										/>
+										<p className='text-xs text-gray-500 mt-1'>
+											Starting record number (0 = start from beginning)
+										</p>
 									</div>
 								</>
 							)}

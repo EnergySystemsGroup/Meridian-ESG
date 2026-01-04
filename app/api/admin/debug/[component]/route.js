@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@/utils/supabase/api';
+import { createAdminClient } from '@/utils/supabase/api';
 import { sourceManagerAgent } from '@/lib/agents/sourceManagerAgent';
 import { apiHandlerAgent } from '@/lib/agents/apiHandlerAgent';
 import { processDetailedInfo } from '@/lib/agents/detailProcessorAgent';
@@ -26,8 +26,8 @@ export async function POST(request, { params }) {
 		const { component } = params;
 		const body = await request.json();
 		
-		// Create Supabase client with request context
-		const { supabase } = createClient(request);
+		// Create Supabase client with secret key for admin operations
+		const { supabase } = createAdminClient(request);
 
 		console.log(`Debug request for component: ${component}`, body);
 

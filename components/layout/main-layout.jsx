@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
@@ -11,8 +11,10 @@ import {
 	NavigationMenuTrigger,
 } from '@/components/ui/navigation-menu';
 import { cn } from '@/lib/utils';
-import { HelpCircle, Moon, Settings, Sun } from 'lucide-react';
+import { HelpCircle, Moon, Sun } from 'lucide-react';
 import { useTheme } from '@/components/theme-provider';
+import { UserMenu } from '@/components/auth/UserMenu';
+import HelpModal from '@/components/help/HelpModal';
 
 const ClientSideActiveLink = ({ href, children, className, ...props }) => {
 	const pathname = usePathname();
@@ -36,6 +38,7 @@ const ClientSideActiveLink = ({ href, children, className, ...props }) => {
 
 const MainLayout = ({ children }) => {
 	const { theme, setTheme } = useTheme();
+	const [helpOpen, setHelpOpen] = useState(false);
 
 	const toggleTheme = () => {
 		setTheme(theme === 'dark' ? 'light' : 'dark');
@@ -75,14 +78,19 @@ const MainLayout = ({ children }) => {
 									{theme === 'dark' ? 'Light' : 'Dark'}
 								</span>
 							</button>
-							<button className='text-sm font-medium px-3 py-2 md:px-4 md:py-2 text-neutral-600 dark:text-neutral-300 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-neutral-50 dark:hover:bg-neutral-800/50 rounded-md transition-colors flex items-center gap-1.5'>
+							<button
+								onClick={() => setHelpOpen(true)}
+								className='text-sm font-medium px-3 py-2 md:px-4 md:py-2 text-neutral-600 dark:text-neutral-300 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-neutral-50 dark:hover:bg-neutral-800/50 rounded-md transition-colors flex items-center gap-1.5'>
 								<HelpCircle size={16} />
 								<span className='hidden sm:inline'>Help</span>
 							</button>
+{/* Settings button - hidden until implemented
 							<button className='text-sm font-medium px-3 py-2 md:px-4 md:py-2 bg-blue-50 text-blue-600 rounded-md hover:bg-blue-100 dark:bg-blue-900/20 dark:text-blue-400 dark:hover:bg-blue-900/30 transition-colors flex items-center gap-1.5'>
 								<Settings size={16} />
 								<span className='hidden sm:inline'>Settings</span>
 							</button>
+							*/}
+							<UserMenu />
 						</div>
 					</div>
 				</div>
@@ -91,6 +99,8 @@ const MainLayout = ({ children }) => {
 			<main className='max-w-[1400px] mx-auto w-full px-4 sm:px-6 md:px-8 py-6 md:py-8 flex-1'>
 				{children}
 			</main>
+
+			<HelpModal open={helpOpen} onClose={() => setHelpOpen(false)} />
 		</div>
 	);
 };
@@ -163,16 +173,6 @@ const MainNav = () => {
 	);
 };
 
-const MobileNav = () => {
-	const [isOpen, setIsOpen] = React.useState(false);
-
-	return (
-		<div className='md:hidden'>
-			{/* Mobile menu button and implementation would go here */}
-		</div>
-	);
-};
-
 const ListItem = React.forwardRef(
 	({ className, title, children, href, comingSoon, ...props }, ref) => {
 		return (
@@ -217,16 +217,6 @@ const fundingNavItems = [
 		href: '/map',
 		description: 'Visualize funding opportunities by geographic region.',
 	},
-	{
-		title: 'Funding Sources',
-		href: '/funding/sources',
-		description: 'Explore agencies and organizations that provide funding.',
-	},
-	{
-		title: 'Application Tracker',
-		href: '/funding/applications',
-		description: 'Track the status of funding applications.',
-	},
 ];
 
 const legislationNavItems = [
@@ -240,18 +230,6 @@ const legislationNavItems = [
 		title: 'Status Board',
 		href: '/legislation/status-board',
 		description: 'View legislation by stage in the approval process.',
-		comingSoon: true,
-	},
-	{
-		title: 'Impact Analysis',
-		href: '/legislation/impact-analysis',
-		description: 'Analyze how legislation affects funding opportunities.',
-		comingSoon: true,
-	},
-	{
-		title: 'Policy Trends',
-		href: '/legislation/policy-trends',
-		description: 'Identify emerging trends in policy and legislation.',
 		comingSoon: true,
 	},
 ];

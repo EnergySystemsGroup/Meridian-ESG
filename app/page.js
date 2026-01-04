@@ -9,11 +9,8 @@ import {
 	CardHeader,
 	CardTitle,
 } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { AlertTriangle } from 'lucide-react';
 import Link from 'next/link';
-import FundingCategoryChart from '@/components/dashboard/FundingCategoryChart';
-import legislationData from '@/data/legislation.json';
+import FundingProjectTypeChart from '@/components/dashboard/FundingProjectTypeChart';
 
 export default function Home() {
 	//======================================
@@ -41,31 +38,21 @@ export default function Home() {
 	const [recentOpportunitiesError, setRecentOpportunitiesError] =
 		useState(null);
 
-	// Client matches count
-	const [clientMatchesCount, setClientMatchesCount] = useState(0);
+	// Client matches data
+	const [clientMatchData, setClientMatchData] = useState({
+		clientsWithMatches: 0,
+		totalMatches: 0,
+		totalClients: 0,
+	});
 	const [clientMatchesLoading, setClientMatchesLoading] = useState(true);
 
-	// Legislation metrics (calculated from JSON data)
-	const legislationMetrics = {
-		activeBills: legislationData.bills.filter(bill => bill.status === 'active' || bill.status === 'passed-house').length,
-		enactedBills: legislationData.bills.filter(bill => bill.status === 'enacted').length,
-		recentBills: legislationData.bills
-			.filter(bill => {
-				const actionDate = new Date(bill.lastAction.date);
-				const thirtyDaysAgo = new Date();
-				thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-				return actionDate >= thirtyDaysAgo;
-			})
-			.slice(0, 5)
-			.map(bill => ({
-				...bill,
-				formattedDate: new Date(bill.lastAction.date).toLocaleDateString('en-US', {
-					month: 'short',
-					day: 'numeric',
-					year: 'numeric',
-				})
-			}))
-	};
+	// Max available funding
+	const [maxFunding, setMaxFunding] = useState(0);
+	const [maxFundingLoading, setMaxFundingLoading] = useState(true);
+
+	// Top client matches
+	const [topClientMatches, setTopClientMatches] = useState([]);
+	const [topClientMatchesLoading, setTopClientMatchesLoading] = useState(true);
 
 	//======================================
 	// DATA FETCHING
@@ -167,24 +154,72 @@ export default function Home() {
 			}
 		}
 
-		// Fetch client matches count
-		async function fetchClientMatchesCount() {
+		// Fetch client matches data
+		async function fetchClientMatchData() {
 			try {
 				setClientMatchesLoading(true);
 				const response = await fetch('/api/client-matching/summary');
 				const result = await response.json();
 
 				if (!result.success) {
-					throw new Error(result.error || 'Failed to fetch client matches count');
+					throw new Error(result.error || 'Failed to fetch client matches data');
 				}
 
-				setClientMatchesCount(result.totalMatches);
+				setClientMatchData({
+					clientsWithMatches: result.clientsWithMatches,
+					totalMatches: result.totalMatches,
+					totalClients: result.totalClients,
+				});
 			} catch (err) {
-				console.error('Error fetching client matches count:', err);
-				// Fallback to a default value
-				setClientMatchesCount(81); // Use the previous hardcoded value as fallback
+				console.error('Error fetching client matches data:', err);
+				// Fallback to default values
+				setClientMatchData({
+					clientsWithMatches: 0,
+					totalMatches: 0,
+					totalClients: 0,
+				});
 			} finally {
 				setClientMatchesLoading(false);
+			}
+		}
+
+		// Fetch max available funding
+		async function fetchMaxFunding() {
+			try {
+				setMaxFundingLoading(true);
+				const response = await fetch('/api/funding/total-available');
+				const result = await response.json();
+
+				if (!result.success) {
+					throw new Error(result.error || 'Failed to fetch max funding');
+				}
+
+				setMaxFunding(result.total);
+			} catch (err) {
+				console.error('Error fetching max funding:', err);
+				setMaxFunding(0);
+			} finally {
+				setMaxFundingLoading(false);
+			}
+		}
+
+		// Fetch top client matches
+		async function fetchTopClientMatches() {
+			try {
+				setTopClientMatchesLoading(true);
+				const response = await fetch('/api/client-matching/top-matches');
+				const result = await response.json();
+
+				if (!result.success) {
+					throw new Error(result.error || 'Failed to fetch top matches');
+				}
+
+				setTopClientMatches(result.matches);
+			} catch (err) {
+				console.error('Error fetching top client matches:', err);
+				setTopClientMatches([]);
+			} finally {
+				setTopClientMatchesLoading(false);
 			}
 		}
 
@@ -193,7 +228,9 @@ export default function Home() {
 		fetchThirtyDayCount();
 		fetchOpenOpportunitiesCount();
 		fetchRecentOpportunities();
-		fetchClientMatchesCount();
+		fetchClientMatchData();
+		fetchMaxFunding();
+		fetchTopClientMatches();
 	}, []);
 
 	//======================================
@@ -226,7 +263,7 @@ export default function Home() {
 						}
 						description='Currently open funding opportunities'
 						href='/funding/opportunities?status=Open'
-						linkText='View All'
+						linkText='View Open'
 					/>
 					{/* 30-Day Deadlines Summary Card */}
 					<DashboardCard
@@ -236,13 +273,13 @@ export default function Home() {
 						href='/timeline'
 						linkText='View Timeline'
 					/>
-					{/* Active Legislation Summary Card */}
+					{/* Max Available Funding Summary Card */}
 					<DashboardCard
-						title='Active Legislation'
-						value={legislationMetrics.activeBills.toString()}
-						description='Bills and policies in progress'
-						href='/legislation/bills'
-						linkText='View Bills'
+						title='Max Available Funding'
+						value={maxFundingLoading ? '...' : formatCurrency(maxFunding)}
+						description='Per-applicant funding from open opportunities'
+						href='/funding/opportunities?status=Open'
+						linkText='View Opportunities'
 					/>
 					{/* Client Matches Summary Card */}
 					<DashboardCard
@@ -250,9 +287,13 @@ export default function Home() {
 						value={
 							clientMatchesLoading
 								? '...'
-								: clientMatchesCount.toString()
+								: clientMatchData.clientsWithMatches.toString()
 						}
-						description='New potential matches for clients'
+						description={
+							clientMatchesLoading
+								? 'Loading...'
+								: `of ${clientMatchData.totalClients} clients • ${clientMatchData.totalMatches} total matches`
+						}
 						href='/clients'
 						linkText='View Matches'
 					/>
@@ -302,7 +343,7 @@ export default function Home() {
 														: 'Unknown'}
 												</span>
 												<span
-													className={`text-xs px-2 py-1 rounded-full bg-blue-100 text-blue-800`}>
+													className={`text-xs px-2 py-1 rounded-full ${item.relevance_score ? getScoreColor(item.relevance_score) : 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400'}`}>
 													{item.relevance_score
 														? `Score: ${item.relevance_score.toFixed(1)}`
 														: 'New'}
@@ -322,41 +363,53 @@ export default function Home() {
 						</CardContent>
 					</Card>
 
-					{/* Legislative Updates Card */}
+					{/* Top Client Matches Card */}
 					<Card className='flex flex-col h-full'>
 						<CardHeader>
-							<CardTitle>Legislative Updates</CardTitle>
+							<CardTitle>Top Client Matches</CardTitle>
 							<CardDescription>
-								Recent changes to tracked legislation
+								Best opportunity matches for your clients
 							</CardDescription>
 						</CardHeader>
 						<CardContent className='flex flex-col flex-grow'>
-							<ul className='space-y-4 flex-grow'>
-								{legislationMetrics.recentBills.map((bill) => (
-									<li
-										key={`legislative-${bill.id}`}
-										className='border-b pb-2 last:border-0'>
-										<div className='font-medium'>{bill.shortTitle || bill.title}</div>
-										<div className='text-sm text-muted-foreground'>
-											{bill.billNumber} • {bill.jurisdiction.charAt(0).toUpperCase() + bill.jurisdiction.slice(1)}
-										</div>
-										<div className='flex justify-between items-center mt-1'>
-											<span className='text-sm'>Updated: {bill.formattedDate}</span>
-											<span
-												className={`text-xs px-2 py-1 rounded-full ${getLegislationStatusColor(
-													bill.status
-												)}`}>
-												{formatLegislationStatus(bill.status)}
-											</span>
-										</div>
-									</li>
-								))}
-							</ul>
+							{topClientMatchesLoading ? (
+								<div className='flex justify-center items-center h-40'>
+									<div className='animate-spin rounded-full h-8 w-8 border-b-2 border-primary'></div>
+								</div>
+							) : topClientMatches.length === 0 ? (
+								<div className='text-sm text-muted-foreground p-2'>
+									<p>No client matches found.</p>
+								</div>
+							) : (
+								<ul className='space-y-4 flex-grow'>
+									{topClientMatches.map((match) => (
+										<li
+											key={`match-${match.client_id}`}
+											className='border-b pb-2 last:border-0'>
+											<div className='font-medium'>{match.client_name}</div>
+											<div className='text-sm text-muted-foreground line-clamp-1'>
+												{match.top_opportunity_title}
+											</div>
+											<div className='flex justify-between items-center mt-1'>
+												<span className='text-sm'>
+													{match.match_count} matches
+												</span>
+												<span
+													className={`text-xs px-2 py-1 rounded-full ${getMatchScoreColor(
+														match.top_opportunity_score
+													)}`}>
+													Top match: {match.top_opportunity_score}%
+												</span>
+											</div>
+										</li>
+									))}
+								</ul>
+							)}
 							<div className='mt-4'>
 								<Link
-									href='/legislation/bills'
+									href='/clients'
 									className='inline-flex w-full justify-center items-center py-2 px-4 border border-neutral-200 dark:border-neutral-800 rounded-md text-sm font-medium text-neutral-900 dark:text-neutral-100 bg-white dark:bg-neutral-900 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors'>
-									View All Legislation
+									View All Clients
 								</Link>
 							</div>
 						</CardContent>
@@ -415,9 +468,9 @@ export default function Home() {
 
 				{/* Bottom Row - Chart and Quick Actions */}
 				<div className='grid gap-6 md:grid-cols-3'>
-					{/* Funding Category Chart - Remove outer Card wrapper */}
+					{/* Funding Project Type Chart */}
 					<div className='md:col-span-2'>
-						<FundingCategoryChart />
+						<FundingProjectTypeChart />
 					</div>
 
 					{/* Quick Actions Card */}
@@ -439,11 +492,6 @@ export default function Home() {
 									View Funding Map
 								</Link>
 								<Link
-									href='/legislation/bills'
-									className='inline-flex w-full justify-start items-center py-2 px-4 border border-neutral-200 dark:border-neutral-800 rounded-md text-sm font-medium text-neutral-900 dark:text-neutral-100 bg-white dark:bg-neutral-900 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors'>
-									Track Legislation
-								</Link>
-								<Link
 									href='/clients'
 									className='inline-flex w-full justify-start items-center py-2 px-4 border border-neutral-200 dark:border-neutral-800 rounded-md text-sm font-medium text-neutral-900 dark:text-neutral-100 bg-white dark:bg-neutral-900 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors'>
 									Match Clients
@@ -458,43 +506,6 @@ export default function Home() {
 					</Card>
 				</div>
 
-				{/* Recent Activity Section */}
-				<div className='mb-8'>
-					<h2 className='text-xl font-semibold mb-4'>Recent Activity</h2>
-					<div className='border rounded-lg overflow-hidden'>
-						<div className='bg-neutral-50 dark:bg-neutral-800/50 px-4 py-3 border-b'>
-							<div className='flex justify-between items-center'>
-								<span className='font-medium'>Latest Updates</span>
-								<Button variant='outline' size='sm'>
-									View All
-								</Button>
-							</div>
-						</div>
-						<div className='divide-y'>
-							{activityItems.map((item) => (
-								<div
-									key={`activity-${item.title}-${item.date}`}
-									className='p-4 flex items-start gap-3'>
-									<div
-										className={`w-2 h-2 rounded-full mt-2 ${getStatusColor(
-											item.type
-										)}`}></div>
-									<div className='flex-1'>
-										<div className='flex justify-between'>
-											<span className='font-medium text-sm'>{item.title}</span>
-											<span className='text-xs text-neutral-500'>
-												{item.date}
-											</span>
-										</div>
-										<p className='text-sm text-neutral-600 dark:text-neutral-400 mt-1'>
-											{item.description}
-										</p>
-									</div>
-								</div>
-							))}
-						</div>
-					</div>
-				</div>
 			</div>
 		</MainLayout>
 	);
@@ -533,32 +544,6 @@ function DashboardCard({ title, value, description, href, linkText }) {
 //======================================
 // UTILITY FUNCTIONS
 //======================================
-// Get the appropriate color for various status types
-function getStatusColor(status) {
-	switch (status) {
-		case 'opportunity':
-			return 'bg-blue-500';
-		case 'legislation':
-			return 'bg-purple-500';
-		case 'match':
-			return 'bg-green-500';
-		case 'deadline':
-			return 'bg-red-500';
-		case 'policy':
-			return 'bg-amber-500';
-		case 'Introduced':
-			return 'bg-blue-100 text-blue-800';
-		case 'Committee':
-			return 'bg-purple-100 text-purple-800';
-		case 'Passed':
-			return 'bg-green-100 text-green-800';
-		case 'Failed':
-			return 'bg-red-100 text-red-800';
-		default:
-			return 'bg-gray-100 text-gray-800';
-	}
-}
-
 // Get color coding based on number of days left until deadline
 function getDaysColor(days) {
 	if (days <= 7) return 'bg-red-100 text-red-800';
@@ -566,80 +551,38 @@ function getDaysColor(days) {
 	return 'bg-blue-100 text-blue-800';
 }
 
-// Get color coding for legislation status
-function getLegislationStatusColor(status) {
-	switch (status) {
-		case 'active':
-			return 'bg-blue-100 text-blue-800';
-		case 'passed-house':
-			return 'bg-purple-100 text-purple-800';
-		case 'enacted':
-			return 'bg-green-100 text-green-800';
-		case 'failed':
-			return 'bg-red-100 text-red-800';
-		default:
-			return 'bg-gray-100 text-gray-800';
-	}
+// Get color coding for match score
+function getMatchScoreColor(score) {
+	if (score >= 80) return 'bg-green-100 text-green-800';
+	if (score >= 50) return 'bg-yellow-100 text-yellow-800';
+	return 'bg-blue-100 text-blue-800';
 }
 
-// Format legislation status for display
-function formatLegislationStatus(status) {
-	switch (status) {
-		case 'active':
-			return 'Active';
-		case 'passed-house':
-			return 'Passed House';
-		case 'enacted':
-			return 'Enacted';
-		case 'failed':
-			return 'Failed';
-		default:
-			return status.charAt(0).toUpperCase() + status.slice(1);
+// Get color coding for relevance score (0-10 scale)
+function getScoreColor(score) {
+	if (score >= 8) return 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400';
+	if (score >= 6) return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400';
+	if (score >= 4) return 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400';
+	return 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400';
+}
+
+// Format currency for display (e.g., $1.2B, $500M, $50K)
+function formatCurrency(amount) {
+	if (amount >= 1000000000) {
+		return `$${(amount / 1000000000).toFixed(1)}B`;
 	}
+	if (amount >= 1000000) {
+		return `$${(amount / 1000000).toFixed(0)}M`;
+	}
+	if (amount >= 1000) {
+		return `$${(amount / 1000).toFixed(0)}K`;
+	}
+	return `$${amount}`;
 }
 
 //======================================
-// SAMPLE DATA
+// SAMPLE DATA (Fallbacks if API fails)
 //======================================
-// Sample data for the activity feed
-const activityItems = [
-	{
-		title: 'New Funding Opportunity',
-		date: '2 hours ago',
-		type: 'opportunity',
-		description:
-			'Department of Energy released a new $50M funding opportunity for building electrification projects.',
-	},
-	{
-		title: 'Legislation Update',
-		date: '4 hours ago',
-		type: 'legislation',
-		description:
-			'H.R. 123: Building Efficiency Act has moved to committee review.',
-	},
-	{
-		title: 'Client Match',
-		date: 'Yesterday',
-		type: 'match',
-		description:
-			'Springfield School District matched with 3 new funding opportunities.',
-	},
-	{
-		title: 'Deadline Approaching',
-		date: 'Yesterday',
-		type: 'deadline',
-		description:
-			'Energy Efficiency Block Grants application deadline is in 5 days.',
-	},
-	{
-		title: 'New Policy Brief',
-		date: '2 days ago',
-		type: 'policy',
-		description:
-			'New analysis on the impact of recent energy efficiency legislation on funding availability.',
-	},
-];
-
 // Sample data for recent opportunities (fallback if API fails)
 const sampleRecentOpportunities = [
 	{
@@ -669,34 +612,6 @@ const sampleRecentOpportunities = [
 		source_name: 'EPA',
 		created_at: '2023-04-12',
 		relevance_score: 0.67,
-	},
-];
-
-// Sample data for legislation updates section
-const legislativeUpdates = [
-	{
-		title: 'H.R. 123: Building Efficiency Act',
-		jurisdiction: 'Federal',
-		date: 'Mar 28, 2025',
-		status: 'Committee',
-	},
-	{
-		title: 'S.B. 456: Clean Energy Schools Initiative',
-		jurisdiction: 'California',
-		date: 'Mar 15, 2025',
-		status: 'Introduced',
-	},
-	{
-		title: 'H.R. 789: Infrastructure Investment Act',
-		jurisdiction: 'Federal',
-		date: 'Apr 02, 2025',
-		status: 'Passed',
-	},
-	{
-		title: 'A.B. 567: Building Standards Update',
-		jurisdiction: 'California',
-		date: 'Mar 10, 2025',
-		status: 'Committee',
 	},
 ];
 

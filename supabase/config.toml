@@ -45,7 +45,7 @@ file_size_limit = "50MiB"
 # in emails.
 site_url = "http://localhost:3000"
 # A list of *exact* URLs that auth providers are permitted to redirect to post authentication.
-additional_redirect_urls = ["https://localhost:3000"]
+additional_redirect_urls = ["http://localhost:3000", "http://localhost:3000/auth/callback"]
 # How long tokens are valid for, in seconds. Defaults to 3600 (1 hour), maximum 604,800 seconds (1
 # week).
 jwt_expiry = 3600
@@ -73,6 +73,13 @@ redirect_uri = ""
 # Overrides the default auth provider URL. Used to support self-hosted gitlab, single-tenant Azure,
 # or any other third-party OIDC providers.
 url = ""
+
+[auth.external.azure]
+enabled = true
+client_id = "cc25cb27-687d-4113-9720-c58a48691821"
+secret = "env(AZURE_CLIENT_SECRET)"
+redirect_uri = "http://localhost:54321/auth/v1/callback"
+url = "https://login.microsoftonline.com/4b9fcaff-4c34-43a0-967d-07487389aa4e"
 
 [analytics]
 enabled = false

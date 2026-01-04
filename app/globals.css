@@ -159,3 +159,47 @@
 .animate-fadeIn {
 	animation: fadeIn 0.3s ease-out forwards;
 }
+
+/* Dark mode styling for project type tags */
+.dark .project-type-tag {
+	background-color: transparent !important;
+	border: 1px solid currentColor;
+	opacity: 0.9;
+}
+
+/* Custom scrollbar styling for scrollable containers */
+.custom-scrollbar::-webkit-scrollbar {
+	width: 6px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+	background: transparent;
+	border-radius: 3px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+	background: #d1d5db;
+	border-radius: 3px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+	background: #9ca3af;
+}
+
+.dark .custom-scrollbar::-webkit-scrollbar-thumb {
+	background: #4b5563;
+}
+
+.dark .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+	background: #6b7280;
+}
+
+/* Firefox scrollbar support */
+.custom-scrollbar {
+	scrollbar-width: thin;
+	scrollbar-color: #d1d5db transparent;
+}
+
+.dark .custom-scrollbar {
+	scrollbar-color: #4b5563 transparent;
+}

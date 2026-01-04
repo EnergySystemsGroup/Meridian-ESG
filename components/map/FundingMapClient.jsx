@@ -1,20 +1,13 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState } from 'react';
 import {
 	ComposableMap,
 	Geographies,
 	Geography,
 	ZoomableGroup,
 } from 'react-simple-maps';
-import {
-	scaleQuantile,
-	scaleLinear,
-	scaleThreshold,
-	extent,
-	max,
-} from 'd3-scale';
-import { geoCentroid } from 'd3-geo';
+import { scaleLinear, scaleThreshold } from 'd3-scale';
 import { Spinner } from '@/components/ui/spinner';
 
 // US States GeoJSON
@@ -29,16 +22,15 @@ export default function FundingMapClient({
 	onStateClick,
 	stateAbbreviations,
 }) {
-	// Check California data
-	const california = fundingData.find((d) => d.state === 'California');
-	console.log('FundingMapClient California data received:', california);
-
 	// Tooltip state
 	const [tooltipVisible, setTooltipVisible] = useState(false);
 	const [tooltipState, setTooltipState] = useState('');
 	const [tooltipOpportunities, setTooltipOpportunities] = useState(0);
 	const [tooltipValue, setTooltipValue] = useState(0);
 	const [tooltipPosition, setTooltipPosition] = useState({ x: 0, y: 0 });
+
+	// Fixed position - no zoom on state selection
+	const position = { coordinates: [-96, 38], zoom: 1 };
 
 	// Get the values for coloring
 	const values = fundingData.map((d) =>
@@ -48,7 +40,6 @@ export default function FundingMapClient({
 	// Find the maximum value and unique values
 	const maxValue = Math.max(...values);
 	const uniqueValues = [...new Set(values)].sort((a, b) => a - b);
-	console.log('Unique values for coloring:', uniqueValues);
 
 	// Choose the appropriate scale based on the data distribution
 	let colorScale;
@@ -86,23 +77,11 @@ export default function FundingMapClient({
 
 	// Handlers for tooltip
 	const handleMouseEnter = (evt, stateName, stateData) => {
-		// Log special debug info for California
-		if (stateName === 'California') {
-			console.log('California hover - state name matches');
-			console.log('California hover - stateData:', stateData);
-			console.log(
-				'California hover - direct lookup:',
-				fundingData.find((d) => d.state === 'California')
-			);
-		}
-
 		setTooltipState(stateName);
 		setTooltipOpportunities(stateData?.opportunities || 0);
 		setTooltipValue(stateData?.value || 0);
 		setTooltipPosition({ x: evt.clientX, y: evt.clientY });
 		setTooltipVisible(true);
-
-		console.log('Tooltip shown for:', stateName); // Debug
 	};
 
 	const handleMouseMove = (evt) => {
@@ -115,8 +94,21 @@ export default function FundingMapClient({
 
 	return (
 		<div className='relative'>
-			<ComposableMap projection='geoAlbersUsa' className='w-full h-[500px]'>
-				<ZoomableGroup>
+			<ComposableMap
+				projection='geoAlbersUsa'
+				className='w-full h-[500px]'
+				style={{ transition: 'all 0.3s ease-in-out' }}
+			>
+				<ZoomableGroup
+					center={position.coordinates}
+					zoom={position.zoom}
+					minZoom={1}
+					maxZoom={4}
+					translateExtent={[
+						[-500, -300],
+						[1300, 900],
+					]}
+				>
 					<Geographies geography={geoUrl}>
 						{({ geographies }) =>
 							Array.isArray(geographies)
@@ -133,6 +125,10 @@ export default function FundingMapClient({
 												: stateData.opportunities
 											: 0;
 
+										// Dim non-selected states when one is selected
+										const hasSelection = selectedState !== null;
+										const opacity = hasSelection && !isSelected ? 0.5 : 1;
+
 										return (
 											<Geography
 												key={geo.rsmKey}
@@ -146,21 +142,24 @@ export default function FundingMapClient({
 												style={{
 													default: {
 														fill: stateData ? colorScale(value) : '#EEE',
-														stroke: '#FFF',
-														strokeWidth: isSelected ? 2 : 0.5,
+														stroke: isSelected ? '#1e3a5f' : '#FFF',
+														strokeWidth: isSelected ? 2.5 : 0.5,
 														outline: 'none',
+														opacity: opacity,
+														transition: 'all 0.2s ease-in-out',
 													},
 													hover: {
-														fill: '#1890ff',
-														stroke: '#FFF',
-														strokeWidth: 1,
+														fill: isSelected ? colorScale(value) : '#1890ff',
+														stroke: isSelected ? '#1e3a5f' : '#FFF',
+														strokeWidth: isSelected ? 2.5 : 1,
 														outline: 'none',
 														cursor: 'pointer',
+														opacity: 1,
 													},
 													pressed: {
 														fill: '#003a8c',
-														stroke: '#FFF',
-														strokeWidth: 1,
+														stroke: '#1e3a5f',
+														strokeWidth: 2,
 														outline: 'none',
 													},
 												}}
@@ -174,7 +173,7 @@ export default function FundingMapClient({
 			</ComposableMap>
 
 			{/* Map Legend */}
-			<div className='absolute bottom-2 right-2 bg-white p-3 rounded-md shadow-md text-xs'>
+			<div className='absolute bottom-2 right-2 bg-white dark:bg-neutral-800 p-3 rounded-md shadow-md text-xs'>
 				<div className='mb-2 font-medium'>
 					{colorBy === 'amount' ? 'Funding Amount' : 'Opportunity Count'}
 				</div>
@@ -202,7 +201,7 @@ export default function FundingMapClient({
 			{tooltipVisible && (
 				<div
 					id='map-tooltip'
-					className='fixed bg-white p-2 border border-gray-200 rounded shadow-lg text-xs z-[9999]'
+					className='fixed bg-white dark:bg-neutral-800 p-2 border border-gray-200 dark:border-neutral-600 rounded shadow-lg text-xs z-[9999]'
 					style={{
 						left: tooltipPosition.x + 20,
 						top: tooltipPosition.y - 10,

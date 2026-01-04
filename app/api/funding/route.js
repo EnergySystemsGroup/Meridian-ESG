@@ -12,7 +12,6 @@ export async function GET(request) {
 
 		// Build filters from query parameters
 		const filters = {
-			status: searchParams.get('status'),
 			min_amount: searchParams.get('min_amount'),
 			max_amount: searchParams.get('max_amount'),
 			close_date_after: searchParams.get('close_date_after'),
@@ -23,16 +22,34 @@ export async function GET(request) {
 			page_size: parseInt(searchParams.get('page_size') || '10'),
 		};
 
+		// Handle status as array (supports multi-select: Open,Upcoming)
+		const status = searchParams.get('status');
+		if (status) {
+			filters.status = status.split(',');
+		}
+
 		// Handle categories as array
 		const categories = searchParams.get('categories');
 		if (categories) {
 			filters.categories = categories.split(',');
 		}
 
-		// Handle states as array
-		const states = searchParams.get('states');
-		if (states) {
-			filters.states = states.split(',');
+		// Handle project types as array
+		const projectTypes = searchParams.get('projectTypes');
+		if (projectTypes) {
+			filters.projectTypes = projectTypes.split(',');
+		}
+
+		// Handle state as single value (new coverage-based filtering)
+		const stateCode = searchParams.get('state');
+		if (stateCode) {
+			filters.stateCode = stateCode;
+		}
+
+		// Handle coverage types as array
+		const coverageTypes = searchParams.get('coverage_types');
+		if (coverageTypes) {
+			filters.coverageTypes = coverageTypes.split(',');
 		}
 
 		// Handle tracked IDs array
@@ -256,32 +273,6 @@ function getMockOpportunities(filters) {
 				(category) => item.categories && item.categories.includes(category)
 			)
 		);
-	}
-
-	if (filters.states && filters.states.length > 0) {
-		// Handle 'National' as a special case
-		if (filters.states.includes('National')) {
-			filteredData = filteredData.filter(
-				(item) =>
-					item.eligible_locations &&
-					(item.eligible_locations.includes('National') ||
-						// If the user selected National and other states, include opportunities eligible in any of those states
-						filters.states.some(
-							(state) =>
-								state !== 'National' && item.eligible_locations.includes(state)
-						))
-			);
-		} else {
-			// Filter for specific states
-			filteredData = filteredData.filter(
-				(item) =>
-					item.eligible_locations &&
-					(item.eligible_locations.includes('National') || // National opportunities are eligible in all states
-						filters.states.some((state) =>
-							item.eligible_locations.includes(state)
-						))
-			);
-		}
 	}
 
 	if (filters.min_amount) {

@@ -214,8 +214,7 @@ export default function OpportunityDetailPage() {
 							<CardContent className='px-6 pt-2 pb-6'>
 								<Tabs defaultValue='overview' className='w-full'>
 									<TabsList className='mb-6 bg-neutral-100/70 dark:bg-neutral-900/30 p-1 rounded-lg'>
-										{/* Relevance tab temporarily hidden - add 'relevance' back to this array when needed */}
-										{['overview', 'eligibility'].map((tab) => (
+										{['overview', 'eligibility', 'relevance'].map((tab) => (
 											<TabsTrigger
 												key={tab}
 												value={tab}
@@ -643,12 +642,7 @@ export default function OpportunityDetailPage() {
 										</div>
 									</TabsContent>
 
-									{/* 
-									Relevance Tab - Temporarily hidden
-									Uncomment this section when ready to show the Relevance tab
-									Don't forget to add 'relevance' back to the tabs array above
-									*/}
-									{/* <TabsContent value='relevance'>
+									<TabsContent value='relevance'>
 										<div className='space-y-6'>
 											{opportunity.relevance_score !== null && (
 												<div>
@@ -694,7 +688,7 @@ export default function OpportunityDetailPage() {
 												</div>
 											)}
 										</div>
-									</TabsContent> */}
+									</TabsContent>
 								</Tabs>
 							</CardContent>
 						</Card>
@@ -717,16 +711,18 @@ export default function OpportunityDetailPage() {
 											View Official Opportunity
 										</a>
 									</div>
-									<div className='flex items-center hover:bg-blue-50/50 dark:hover:bg-blue-900/10 rounded-lg p-2 transition-colors duration-200 -mx-2'>
-										<Info className='h-5 w-5 mr-3 text-blue-600 dark:text-blue-400' />
-										<a
-											href={opportunity.api_source_url || '#'}
-											target='_blank'
-											rel='noopener noreferrer'
-											className='text-blue-600 hover:text-blue-800 dark:hover:text-blue-300 hover:underline font-medium'>
-											Data Source
-										</a>
-									</div>
+									{opportunity.api_source_url && (
+										<div className='flex items-center hover:bg-blue-50/50 dark:hover:bg-blue-900/10 rounded-lg p-2 transition-colors duration-200 -mx-2'>
+											<Info className='h-5 w-5 mr-3 text-blue-600 dark:text-blue-400' />
+											<a
+												href={opportunity.api_source_url}
+												target='_blank'
+												rel='noopener noreferrer'
+												className='text-blue-600 hover:text-blue-800 dark:hover:text-blue-300 hover:underline font-medium'>
+												Data Source
+											</a>
+										</div>
+									)}
 									{opportunity.application_url && (
 										<div className='flex items-center hover:bg-blue-50/50 dark:hover:bg-blue-900/10 rounded-lg p-2 transition-colors duration-200 -mx-2'>
 											<FileText className='h-5 w-5 mr-3 text-neutral-600 dark:text-neutral-400' />
@@ -1030,9 +1026,9 @@ export default function OpportunityDetailPage() {
 											</div>
 											<div className='text-neutral-700 dark:text-neutral-300 mt-0.5'>
 												{opportunity.cost_share_required
-													? `Required (${
-															opportunity.cost_share_percentage || ''
-													  }${opportunity.cost_share_percentage ? '%' : ''})`
+													? opportunity.cost_share_percentage
+														? `Required (${opportunity.cost_share_percentage}%)`
+														: 'Required'
 													: 'Not required'}
 											</div>
 										</div>
@@ -1140,24 +1136,39 @@ export default function OpportunityDetailPage() {
 											<div className='text-sm text-neutral-800 dark:text-neutral-200'>
 												National - All states
 											</div>
-										) : opportunity.eligible_states &&
-										  opportunity.eligible_states.length > 0 ? (
+										) : opportunity.coverage_area_names &&
+										  opportunity.coverage_area_names.length > 0 ? (
 											<div>
 												<div className='text-sm text-neutral-800 dark:text-neutral-200 mb-1'>
-													Available in {opportunity.eligible_states.length}{' '}
-													states:
+													Available in {opportunity.coverage_area_names.length}{' '}
+													location{opportunity.coverage_area_names.length > 1 ? 's' : ''}:
 												</div>
 												<div className='flex flex-wrap gap-1 max-w-[240px]'>
-													{opportunity.eligible_states
-														.sort()
-														.map((state, index) => (
-															<Badge
-																key={index}
-																variant='outline'
-																className='text-xs border-neutral-200 dark:border-neutral-700'>
-																{state}
-															</Badge>
-														))}
+													{opportunity.coverage_area_names.map((name, index) => (
+														<Badge
+															key={index}
+															variant='outline'
+															className='text-xs border-neutral-200 dark:border-neutral-700'>
+															{name}
+														</Badge>
+													))}
+												</div>
+											</div>
+										) : opportunity.eligible_locations &&
+										  opportunity.eligible_locations.length > 0 ? (
+											<div>
+												<div className='flex flex-wrap gap-1 max-w-[240px]'>
+													{opportunity.eligible_locations.map((loc, index) => (
+														<Badge
+															key={index}
+															variant='outline'
+															className='text-xs border-neutral-200 dark:border-neutral-700'>
+															{loc}
+														</Badge>
+													))}
+												</div>
+												<div className='text-xs text-amber-600 dark:text-amber-500 mt-1'>
+													Coverage areas not linked
 												</div>
 											</div>
 										) : (
