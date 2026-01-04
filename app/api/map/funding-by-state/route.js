@@ -10,28 +10,24 @@ export async function GET(request) {
 		// Get URL parameters
 		const { searchParams } = new URL(request.url);
 
-		// Map API parameters to function parameters with correct names
+		// Map API parameters to function parameters
+		// Function accepts: p_status, p_categories, p_project_types
 		const filters = {
-			p_status: searchParams.get('status'),
-			p_source_type: searchParams.get('source_type'),
-			p_min_amount: searchParams.get('min_amount')
-				? parseFloat(searchParams.get('min_amount'))
-				: null,
+			p_status: searchParams.get('status') || null,
+			p_categories: null,
+			p_project_types: null,
 		};
-
-		// Only add max_amount if it's greater than 0
-		const maxAmount = searchParams.get('max_amount');
-		if (maxAmount && parseFloat(maxAmount) > 0) {
-			filters.p_max_amount = parseFloat(maxAmount);
-		} else {
-			// Don't include max_amount if it's 0 or null
-			filters.p_max_amount = null;
-		}
 
 		// Handle categories as array
 		const categories = searchParams.get('categories');
 		if (categories) {
 			filters.p_categories = categories.split(',');
+		}
+
+		// Handle project types as array
+		const projectTypes = searchParams.get('projectTypes');
+		if (projectTypes) {
+			filters.p_project_types = projectTypes.split(',');
 		}
 
 		// Log the filters being sent to the database

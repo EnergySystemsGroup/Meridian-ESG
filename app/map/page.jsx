@@ -265,6 +265,11 @@ function MapPageContent() {
 					queryParams.append('categories', categoriesToSend.join(','));
 				}
 
+				// Handle project types filtering
+				if (filters.projectTypes?.length > 0) {
+					queryParams.append('projectTypes', filters.projectTypes.join(','));
+				}
+
 				// AMOUNT FILTER DISABLED (Dec 2025)
 				// Reason: 65% of opportunities have NULL maximum_award, making this filter
 				// ineffective and confusing. Re-enable if data quality improves or users request it.
