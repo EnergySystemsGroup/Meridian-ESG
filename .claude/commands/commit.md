@@ -7,4 +7,4 @@ Rules:
 4. Write a concise summary on the first line
 5. Add bullet points for details if there are multiple changes
 
-If no files are staged, stage the relevant changed files first (excluding .taskmaster/tasks/tasks.json unless explicitly requested).
+If no files are staged, stage the relevant changed files first
