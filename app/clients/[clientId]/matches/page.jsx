@@ -106,7 +106,7 @@ export default function ClientMatchesPage() {
 	}
 
 	const { client, matches, matchCount } = clientResult;
-	const tags = generateClientTags(client, matches);
+	const tags = generateClientTags(client, matches, null); // Show all project needs on detail page
 
 	// Budget labels for display
 	const budgetLabels = {
