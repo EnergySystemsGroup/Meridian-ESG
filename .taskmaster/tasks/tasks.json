@@ -427,80 +427,14 @@
       },
       {
         "id": 9,
-        "title": "Develop Migration Strategy",
-        "description": "Implement a migration strategy for gradual transition from v1 to v2, focusing on job processing, result aggregation, and master run completion detection.",
+        "title": "Implement Comprehensive Test Suite",
+        "description": "Write comprehensive tests for the Meridian ESG application following the testing strategy defined in docs/testing-strategy.md. This task covers all user-facing modules (client matching, explorer, map, dashboard, timeline, clients) and the AI pipeline. Tests will be organized by tier: Critical (Tier 1), API Contracts (Tier 2), Database Integration (Tier 3), and Pipeline (Tier 4).",
         "status": "pending",
-        "dependencies": [
-          8
-        ],
+        "dependencies": [],
         "priority": "high",
-        "details": "1. Replace simpleJobProcessor with real jobProcessor.processJob function in /app/api/cron/process-jobs/route.js\n2. Implement master run aggregation logic with checkAndCompleteMasterRun() function\n3. Rename endpoint from test-processor to process-jobs for production use\n4. Add comprehensive metrics tracking and aggregation\n5. Implement full V2 pipeline processing for each job:\n   - LLM extraction, duplicate detection, analysis, filtering, storage\n   - Full RunManagerV2 integration with stage-by-stage tracking\n6. Enhance master run aggregation:\n   - Aggregate metrics from all jobs\n   - Change master run status from \"processing\" to \"completed\" when all jobs complete\n   - Include total opportunities, tokens, processing time, duplicates, storage stats\n   - Calculate job success rate and efficiency metrics\n7. Capture comprehensive metrics:\n   - Per-job metrics: processingTimeMs, opportunitiesProcessed, tokensUsed, duplicatesFound, newStored, updatesApplied\n   - Aggregated metrics: jobs_processed, jobs_successful, total_opportunities_processed, total_tokens_used, etc.\n   - Efficiency metrics: duplicate_detection_efficiency, job_success_rate, average_processing_time_per_job_ms\n8. Implement production-ready features:\n   - Proper error handling with job failure tracking\n   - Auth check for cron endpoint security\n   - Queue status monitoring\n   - Vercel/local environment detection\n   - Comprehensive logging and debugging\n9. Update all references throughout codebase\n10. Implement Strangler Fig pattern as outlined in the architecture guide\n11. Start with 5% traffic routing to v2\n12. Implement comparison logging between v1 and v2 results\n13. Monitor performance and accuracy metrics\n14. Implement automated rollback triggers\n15. Create dashboard for migration progress monitoring\n16. Implement database schema migrations (use Prisma Migrate)\n17. Develop data consistency checks between v1 and v2\n18. Create detailed rollback procedures\n19. Implement blue-green deployment strategy\n20. Use Terraform v1.5.0 for infrastructure as code",
-        "testStrategy": "1. Test job processing with jobProcessor.processJob function in /app/api/cron/process-jobs/route.js\n2. Validate master run aggregation logic using checkAndCompleteMasterRun() function\n3. Verify master run completion detection and status change\n4. Test job status tracking accuracy\n5. Validate cron processor functionality:\n   - Test job retrieval and processing\n   - Verify result aggregation\n   - Check master run completion marking\n   - Test error handling\n6. Test full V2 pipeline processing for jobs\n7. Verify comprehensive metrics capture and aggregation\n8. Test production-ready features:\n   - Error handling and job failure tracking\n   - Auth check for cron endpoint\n   - Queue status monitoring\n   - Environment detection\n   - Logging and debugging\n9. Test gradual traffic routing mechanism\n10. Validate comparison logging accuracy\n11. Verify automated rollback functionality\n12. Test data consistency between v1 and v2\n13. Perform mock migration scenarios\n14. Validate monitoring and alerting systems\n15. Conduct full rollback test\n16. Review migration dashboard effectiveness",
-        "subtasks": [
-          {
-            "id": 1,
-            "title": "Replace simpleJobProcessor",
-            "description": "Replace simpleJobProcessor with real jobProcessor.processJob function in the V2 pipeline",
-            "status": "done",
-            "dependencies": [],
-            "details": "Implemented in /app/api/cron/process-jobs/route.js",
-            "testStrategy": "Verify correct implementation and integration of jobProcessor.processJob function"
-          },
-          {
-            "id": 2,
-            "title": "Implement master run aggregation",
-            "description": "Add master run aggregation logic to consolidate results when individual jobs complete",
-            "status": "done",
-            "dependencies": [],
-            "details": "Implemented checkAndCompleteMasterRun() function for aggregation",
-            "testStrategy": "Test aggregation of metrics and status change upon all jobs completion"
-          },
-          {
-            "id": 3,
-            "title": "Develop master run completion detection",
-            "description": "Implement logic to detect when all jobs for a master run are completed",
-            "status": "done",
-            "dependencies": [],
-            "details": "Integrated with checkAndCompleteMasterRun() function",
-            "testStrategy": "Verify accurate detection of all jobs completion and master run status update"
-          },
-          {
-            "id": 4,
-            "title": "Update job status tracking",
-            "description": "Enhance job status tracking to properly reflect current state throughout processing",
-            "status": "done",
-            "dependencies": [],
-            "details": "Implemented comprehensive job status tracking in RunManagerV2",
-            "testStrategy": "Test accuracy of job status updates throughout processing stages"
-          },
-          {
-            "id": 5,
-            "title": "Implement cron processor",
-            "description": "Develop cron processor to handle job retrieval, processing, result aggregation, and master run completion",
-            "status": "done",
-            "dependencies": [],
-            "details": "Implemented in /app/api/cron/process-jobs/route.js with full V2 pipeline integration",
-            "testStrategy": "Validate end-to-end functionality of cron processor including job retrieval, processing, and result aggregation"
-          },
-          {
-            "id": 6,
-            "title": "Implement comprehensive metrics tracking",
-            "description": "Add detailed metrics tracking for jobs and master runs",
-            "status": "pending",
-            "dependencies": [],
-            "details": "Implement tracking for per-job and aggregated metrics including processing time, opportunities processed, tokens used, etc.",
-            "testStrategy": "Verify accuracy and completeness of metrics capture and aggregation"
-          },
-          {
-            "id": 7,
-            "title": "Enhance production readiness",
-            "description": "Implement additional features for production deployment",
-            "status": "pending",
-            "dependencies": [],
-            "details": "Add auth checks, error handling, queue monitoring, and environment detection",
-            "testStrategy": "Test all production-ready features for reliability and security"
-          }
-        ]
+        "details": "## Purpose\nEnsure application reliability for sales people using the platform. The primary concern is user-facing functionality: client matching accuracy, filtering correctness, map aggregation calculations, dashboard statistics, and timeline displays.\n\n## Strategy Reference\nFull testing strategy documented in: docs/testing-strategy.md\n\n## Completion Criteria\nThis task is ONLY complete when ALL of the following are true:\n\n1. **All Tests Written**: All ~58 test files are created following the structure in docs/testing-strategy.md:\n   - tests/critical/ (Tier 1): ~30 files covering client-matching, explorer, opportunityDetail, map, dashboard, timeline, clients\n   - tests/api/ (Tier 2): ~7 API contract test files\n   - tests/database/ (Tier 3): ~6 database integration test files\n   - tests/pipeline/ (Tier 4): ~15 AI pipeline test files\n   - tests/fixtures/: Shared test data files\n   - tests/helpers/: Test utilities including supabaseMock.js\n\n2. **All Tests Pass**: Running 'npm run test' completes with 0 failures.\n\n3. **Code Quality Verification**: The agent MUST verify that tests are not written just to pass erroneous code. Tests must validate that code meets the INTENDED standard, not just the current implementation.\n   - If the agent discovers code that is erroneous (does not meet intended functionality), it will NOT edit the code directly.\n   - Instead, it will create a SUBTASK under Task 9 to document and fix the specific code issue.\n   - Only after the subtask is completed and the fix verified should the related test be considered valid.\n\n4. **File Structure Compliance**: The test directory structure MUST match the organization specified in docs/testing-strategy.md:\n   - Single 'tests/' directory at project root\n   - Organized by tier: critical/, api/, database/, pipeline/\n   - fixtures/ and helpers/ directories for shared resources\n   - Vitest as the sole test framework (delete Jest configs)\n\n5. **Old Tests Archived**: All existing test files from __tests__/, __mocks__/, lib/agents-v2/tests/, and lib/services/tests/ must be:\n   - Consolidated into a single archive file: tests/_archived/legacy-tests-archive.md\n   - This archive should list each original file path and note any valuable patterns/fixtures to preserve\n   - The original test files should remain in place until I explicitly approve their deletion\n   - Do NOT delete the old test files - only archive them for my review\n\n## Test Priorities (in order)\n1. Client matching (4 criteria: location, applicant type, project needs, activities)\n2. Explorer filtering, sorting, pagination, URL state\n3. Map aggregations, scope breakdown, state selection\n4. Dashboard statistics, deadlines\n5. Timeline month grouping, days-left colors\n6. Client CRUD, geocoding, PDF export\n7. AI Pipeline: scoring (100% coverage), schema compliance, invariants\n\n## Framework\n- Use Vitest exclusively\n- Use fast-check for property-based/invariant testing\n- Create smart supabaseMock.js (in-memory DB behavior)\n- Delete all 6 Jest config files after migration",
+        "testStrategy": "Run 'npm run test' and verify: (1) All tests pass, (2) Coverage meets thresholds for critical paths, (3) No erroneous code masked by weak tests",
+        "subtasks": []
       },
       {
         "id": 10,
@@ -3604,21 +3538,171 @@
   "test": {
     "tasks": [
       {
-        "id": 1,
+        "id": "1",
         "title": "Fix debug API route Vitest import issue causing runtime errors",
         "description": "Resolve the runtime error in /app/api/debug/anthropic-client/route.js caused by importing Vitest test files that are not available in production environment.",
         "details": "The debug API route is currently importing Vitest test utilities or test files directly, which causes runtime errors when the application runs outside of the test environment. Three potential solutions: 1) Extract shared utility functions from test files into separate modules that can be safely imported in both test and runtime contexts, 2) Add conditional imports with proper error handling to gracefully handle missing test dependencies, or 3) Remove the debug route entirely if it's not essential for production debugging. Recommended approach is to create utility modules in lib/utils/ that contain the needed functionality without test-specific dependencies, then update both the debug route and test files to use these utilities. If conditional imports are chosen, wrap the imports in try-catch blocks and provide fallback functionality when test utilities are unavailable.",
         "testStrategy": "1) Verify the debug API route loads without runtime errors by making a request to /api/debug/anthropic-client in both development and production-like environments, 2) Run npm run build to ensure no build-time errors occur, 3) Execute npm run test to confirm existing tests still pass after refactoring, 4) Test the debug route functionality to ensure it provides the expected debugging information, 5) Verify that any extracted utility functions work correctly in both test and runtime contexts",
-        "status": "pending",
+        "status": "cancelled",
         "dependencies": [],
         "priority": "medium",
+        "subtasks": [],
+        "updatedAt": "2026-02-05T17:16:41.521Z"
+      },
+      {
+        "id": "2",
+        "title": "Verify and commit existing test suite",
+        "description": "Run all 38 existing Vitest tests across all 4 tiers (critical, api, database, pipeline), verify they pass, then commit the working test suite along with updated documentation files (CLAUDE.md, tests/README.md, docs/testing-strategy.md).",
+        "details": "This task verifies and commits the complete Vitest-based testing infrastructure that was built according to the tier-based testing strategy documented in docs/testing-strategy.md.\n\n## Test Suite Overview\n\nThe codebase contains 38 test files organized into 4 tiers with 1,023 individual test cases:\n\n**Tier 1: Critical (20 files, user-facing business logic)**\n- Client matching (5 files): matchCriteria, synonymExpansion, coverageIntersection, scoring, hiddenMatches\n- Explorer (3 files): filters, sorting, pagination\n- Map (2 files): scopeBreakdown, fundingByState\n- Dashboard (3 files): summaryCards, deadlines, topMatches\n- Timeline (3 files): monthGrouping, daysLeftColors, eventCards\n- Clients (2 files): search, filters\n- Opportunity Detail (2 files): tabContent, daysLeft\n\n**Tier 2: API (3 files, response contracts)**\n- funding.api.test.js\n- client-matching.api.test.js\n- clients.api.test.js\n\n**Tier 3: Database (10 files, database behavior)**\n- RPC functions (4 files): getFundingDynamicSort, findCoverageAreasForPoint, getScopeBreakdown, getFundingByState\n- Views (1 file): fundingOpportunitiesWithGeography\n- Constraints (2 files): duplicatePrevention, cascadeDeletes\n\n**Tier 4: Pipeline (8 files, AI processing)**\n- Extraction (2 files): schemaCompliance, errorRecovery\n- Analysis (2 files): scoring, scoreInvariants\n- Storage (3 files): dataSanitizer, upsertLogic, duplicateDetection\n- Orchestration (1 file): runManager\n\n## Verification Steps\n\n1. **Run full test suite**: Execute `npm run test` to run all 1,023 tests\n2. **Verify tier-specific runs**: Confirm each tier can run independently:\n   - `npm run test:critical` (Tier 1)\n   - `npm run test:api` (Tier 2)\n   - `npm run test:database` (Tier 3)\n   - `npm run test:pipeline` (Tier 4)\n3. **Check test output**: Ensure all 38 test files pass with no failures\n4. **Verify configuration**: Confirm tests/vitest.config.js is properly configured with:\n   - Correct path aliases (@, @/lib, @/app, @/components)\n   - Setup file (tests/helpers/setup.js) loaded\n   - Fixtures and helpers excluded from coverage\n   - Single fork pool for consistent test isolation\n\n## Files to Commit\n\n### Test Infrastructure (new files)\n```\ntests/\n├── critical/              (20 test files)\n├── api/                   (3 test files)\n├── database/              (10 test files)\n├── pipeline/              (8 test files)\n├── fixtures/              (5 fixture files + index.js)\n├── helpers/               (2 helper files: setup.js, supabaseMock.js)\n├── vitest.config.js\n└── README.md\n```\n\n### Documentation Updates (modified files)\n- **CLAUDE.md**: Updated testing section with tier-based approach, commands, and conventions\n- **docs/testing-strategy.md**: Complete testing strategy document explaining the rationale, tier organization, and implementation guidelines\n- **package.json**: Updated test scripts to use Vitest commands instead of Jest\n\n### Modified Package Configuration\n- Test scripts replaced: old Jest-based commands replaced with new Vitest tier-based commands\n- Legacy scripts preserved: `test:legacy:unit`, `test:legacy:integration`, `test:legacy:run` kept for backward compatibility during migration\n\n## Commit Message Template\n\n```\nfeat: add comprehensive Vitest test suite with tier-based organization\n\nImplement 38 test files with 1,023 test cases organized into 4 tiers:\n- Tier 1: Critical user-facing logic (client matching, filtering, map, dashboard)\n- Tier 2: API response contracts (field types, error format)\n- Tier 3: Database behavior (RPC functions, views, constraints)\n- Tier 4: AI pipeline processing (extraction, analysis, storage)\n\nAll tests passing (1.44s execution time).\n\nTest Infrastructure:\n- Vitest configuration with path aliases and setup files\n- Shared fixtures (clients, opportunities, coverage areas, match scenarios)\n- Test helpers (Supabase mock, time freezing utilities)\n\nDocumentation Updates:\n- CLAUDE.md: Testing section with tier-based commands\n- tests/README.md: Complete testing guide with examples\n- docs/testing-strategy.md: Detailed strategy and rationale\n\nPackage Updates:\n- Replace Jest scripts with Vitest tier-based commands\n- Preserve legacy scripts for backward compatibility\n\nCo-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>\n```\n\n## Important Notes\n\n1. **DO NOT commit unrelated files**: The git status shows several untracked files in `docs/prd/opp_staging/` that are unrelated to testing. These should NOT be included in this commit.\n\n2. **Handle modified task files carefully**: `.taskmaster/state.json` and `.taskmaster/tasks/tasks.json` are shown as modified but may contain unrelated task management state. Review these carefully and consider excluding them from this commit if changes are unrelated.\n\n3. **Verify test execution before committing**: The task MUST verify that all tests pass before creating the commit. If any test fails, the commit should be aborted and failures investigated.\n\n4. **Follow git commit policy**: According to CLAUDE.md, NEVER commit without explicit user permission. This task should prepare the commit but ask for confirmation before executing `git commit`.\n\n5. **Test execution confirmed**: According to the verification run, all 38 test files with 1,023 tests are passing (Duration: 1.44s).",
+        "testStrategy": "1. **Pre-commit verification**: Run `npm run test` and confirm all 1,023 tests pass across all 38 test files\n2. **Tier-specific verification**: Run each tier independently to confirm correct organization:\n   - `npm run test:critical` → 20 files pass\n   - `npm run test:api` → 3 files pass\n   - `npm run test:database` → 10 files pass\n   - `npm run test:pipeline` → 8 files pass\n3. **Git staging verification**: \n   - Verify only test-related files are staged: `git status` should show tests/ directory, CLAUDE.md, tests/README.md, docs/testing-strategy.md, and package.json\n   - Confirm unrelated files (docs/prd/opp_staging/, .taskmaster/) are NOT staged\n4. **Diff review**: Use `git diff --staged` to review all changes before committing\n5. **Post-commit verification**: After commit, run `npm run test` again to ensure tests still pass on HEAD\n6. **Branch verification**: Confirm commit is on feature/testing branch (not main)\n7. **Documentation cross-reference check**: \n   - Verify CLAUDE.md references tests/README.md correctly\n   - Verify tests/README.md references docs/testing-strategy.md correctly\n   - Confirm all test commands in documentation match package.json scripts",
+        "status": "done",
+        "dependencies": [],
+        "priority": "high",
+        "subtasks": [],
+        "updatedAt": "2026-02-05T17:25:32.964Z"
+      },
+      {
+        "id": "3",
+        "title": "Write remaining Critical tier tests (10 files)",
+        "description": "Create the 10 missing test files in tests/critical/ covering explorer URL state and tracked opportunities, map interactions (state selection, color toggle, tooltips), dashboard recent opportunities, client CRUD/geocoding/PDF export, and opportunity detail related opportunities. Each test must follow the zero-mock pure-function pattern with shared fixtures.",
+        "details": "This task completes the Tier 1 Critical test suite by adding 10 missing test files, bringing the total from 20 to 30 files. All tests must follow the established patterns from existing critical tests: import from shared fixtures, test pure business logic functions without mocks, and cover comprehensive edge cases.\n\n## Files to Create\n\n### Explorer Module (2 files)\n\n**1. tests/critical/explorer/urlState.test.js**\n- Test URL parameter serialization/deserialization for filters\n- Validate shareable filter URLs reconstruct correct state\n- Cover all filter types: search, status, projectTypes, state, coverageType, trackedOnly\n- Test pagination params (page, limit) in URL\n- Test sort params (sortBy, sortDir) in URL\n- Edge cases: malformed params, missing params, invalid values\n- Reference implementation: App router search params handling\n\n**2. tests/critical/explorer/trackedOpportunities.test.js**\n- Test \"My Opportunities\" filter logic (trackedOnly=true)\n- Validate filtering returns only opportunities in tracked_opportunities table\n- Test combining tracked filter with other filters (status, state, etc.)\n- Test empty tracked list (no results)\n- Test tracked status persistence across filter changes\n- Reference fixture: `opportunities.trackedOpportunity` and tracked_opportunities join logic\n\n### Map Module (3 files)\n\n**3. tests/critical/map/stateSelection.test.js**\n- Test state click → drill-down to county/utility view\n- Test state click again → return to national view\n- Test state deselection behavior\n- Validate selected state highlighting/active state\n- Test navigation between different states\n- Test initial load state (no selection)\n- Edge cases: clicking same state twice, rapid clicks\n- Reference: Map component state management\n\n**4. tests/critical/map/colorToggle.test.js**\n- Test \"Color by Amount\" vs \"Color by Count\" toggle\n- Validate correct color scale calculation for funding amounts\n- Validate correct color scale calculation for opportunity counts\n- Test color ranges and thresholds (e.g., 0-10M, 10-50M, 50M+)\n- Test states with zero funding/opportunities (gray/no-data color)\n- Test national vs state-drill-down color scales differ\n- Reference: Map legend component, color scale utilities\n\n**5. tests/critical/map/tooltips.test.js**\n- Test tooltip content on state hover (name, count, total funding)\n- Test tooltip content on county/utility hover in drill-down view\n- Validate funding amount formatting (e.g., $1.2M, $500K)\n- Test tooltip positioning (not provided, but data accuracy focus)\n- Test tooltip data matches underlying opportunity aggregation\n- Test tooltip for states with no opportunities (shows \"No opportunities\")\n- Reference: Tooltip data preparation functions\n\n### Dashboard Module (1 file)\n\n**6. tests/critical/dashboard/recentOpps.test.js**\n- Test \"Recent Opportunities\" card displays latest 5 opportunities\n- Validate sorting by created_at/updated_at descending\n- Test date formatting for \"Added X days ago\" display\n- Test empty state (no opportunities)\n- Test fewer than 5 opportunities available\n- Test opportunities from different sources mixed correctly\n- Test link generation to opportunity detail page\n- Reference: Dashboard API route, recent opportunities query\n\n### Clients Module (3 files)\n\n**7. tests/critical/clients/crud.test.js**\n- Test client creation validation (required fields: name, type, location)\n- Test client update logic (partial updates, immutable fields)\n- Test client deletion (soft delete vs hard delete behavior)\n- Test form field validation rules (email format, budget range, etc.)\n- Test duplicate client detection (same name + location)\n- Test empty/null field handling\n- Reference: Client API routes (POST, PATCH, DELETE)\n\n**8. tests/critical/clients/geocoding.test.js**\n- Test address → coverage_area_ids detection logic\n- Validate geocoding service response parsing (Mapbox format)\n- Test coverage area matching: point-in-polygon detection for utilities, counties, states\n- Test address not found (graceful failure, manual selection fallback)\n- Test ambiguous address (multiple results, user picks one)\n- Test coverage area priority: utility > county > state\n- Test multi-coverage scenario (client in multiple utility territories)\n- Reference: `scripts/clients/test-geocoding.js`, geocoding utilities\n\n**9. tests/critical/clients/pdfExport.test.js**\n- Test PDF export generates correct structure (client info, match list, opportunity details)\n- Validate all required sections present: client header, match breakdown, opportunities table\n- Test data formatting: funding amounts, deadlines, match scores\n- Test handling of clients with no matches (shows empty state message)\n- Test handling of hidden matches (excluded from export)\n- Test long opportunity lists (pagination or truncation)\n- Test special characters in client/opportunity names (escaping)\n- Reference: PDF generation utility, `@react-pdf/renderer` usage\n\n### Opportunity Detail Module (1 file)\n\n**10. tests/critical/opportunityDetail/relatedOpps.test.js**\n- Test related opportunities recommendation algorithm\n- Validate recommendations based on similarity: same project types, same coverage areas, same funding source\n- Test scoring/ranking of related opportunities (most similar first)\n- Test limiting to top 5 related opportunities\n- Test excluding current opportunity from results\n- Test no related opportunities available (empty state)\n- Test related opportunities respect status filter (only show open/upcoming)\n- Reference: Related opportunities API logic, similarity scoring\n\n## Implementation Guidelines\n\n### Pattern to Follow (from existing tests)\n\n```javascript\n// Import fixtures\nimport { opportunities } from '../../fixtures/opportunities.js';\nimport { clients } from '../../fixtures/clients.js';\nimport { coverageAreas } from '../../fixtures/coverageAreas.js';\n\n// Import business logic functions to test\nimport { functionToTest } from '@/app/api/route-name/utils.js';\n\n// Pure function tests - no mocks\ndescribe('Feature Name: Specific Behavior', () => {\n  test('describes expected behavior', () => {\n    const result = functionToTest(fixtures.input);\n    expect(result).toBe(expected);\n  });\n  \n  describe('Edge Cases', () => {\n    test('handles null input gracefully', () => {\n      expect(() => functionToTest(null)).not.toThrow();\n    });\n  });\n});\n```\n\n### Key Requirements\n\n1. **Zero mocks**: Test pure functions directly with fixture data\n2. **Shared fixtures**: Import from `tests/fixtures/`, never hardcode data inline\n3. **Comprehensive coverage**: Test happy path + edge cases + error conditions\n4. **Clear describe blocks**: Group by feature area, then specific behavior\n5. **Descriptive test names**: Plain English describing expected outcome\n6. **Extract logic**: If route handlers have inline logic, extract to utils for testability\n\n### Where Logic May Need Extraction\n\nSome of the target behaviors may currently be in React components or API route handlers. For pure testing:\n- Extract business logic to `utils.js` files in the relevant API route directory\n- Test the extracted pure functions\n- Leave React components/route handlers as thin wrappers\n\nExample:\n```javascript\n// app/api/clients/geocoding/utils.js (create if needed)\nexport function detectCoverageAreas(geocodingResult, allCoverageAreas) {\n  // Pure function logic here\n}\n\n// tests/critical/clients/geocoding.test.js\nimport { detectCoverageAreas } from '@/app/api/clients/geocoding/utils.js';\ntest('detects coverage areas from geocoding result', () => {\n  const result = detectCoverageAreas(fixtures.geocodingResponse, coverageAreas);\n  expect(result).toEqual([1, 2, 3]);\n});\n```\n\n## Test Count Estimate\n\nEach file should contain 15-25 individual test cases covering:\n- Happy path (3-5 tests)\n- Edge cases (5-10 tests)\n- Error conditions (3-5 tests)\n- Integration scenarios combining multiple conditions (3-5 tests)\n\n**Total**: ~10 files × 20 tests/file = ~200 new test cases\n\n## Success Criteria\n\n1. All 10 test files created in correct `tests/critical/` subdirectories\n2. All tests pass when run with `npm run test:critical`\n3. Zero mocks used (pure function pattern followed)\n4. All tests import from shared `tests/fixtures/`\n5. Edge cases comprehensively covered (nulls, empty arrays, boundary values)\n6. Test names clearly describe expected behavior\n7. Code coverage for tested functions approaches 100%",
+        "testStrategy": "1. **File Creation Verification**: Confirm all 10 test files exist with correct paths:\n   - `tests/critical/explorer/urlState.test.js`\n   - `tests/critical/explorer/trackedOpportunities.test.js`\n   - `tests/critical/map/stateSelection.test.js`\n   - `tests/critical/map/colorToggle.test.js`\n   - `tests/critical/map/tooltips.test.js`\n   - `tests/critical/dashboard/recentOpps.test.js`\n   - `tests/critical/clients/crud.test.js`\n   - `tests/critical/clients/geocoding.test.js`\n   - `tests/critical/clients/pdfExport.test.js`\n   - `tests/critical/opportunityDetail/relatedOpps.test.js`\n\n2. **Pattern Compliance Check**: Review each test file to ensure:\n   - Imports fixtures from `../../fixtures/` (no inline test data)\n   - Tests pure functions directly (no mocks)\n   - Has clear describe blocks grouping related tests\n   - Test names use plain English describing expected outcomes\n   - Includes edge case and error condition tests\n\n3. **Test Execution**: Run `npm run test:critical` and verify:\n   - All 30 critical test files pass (20 existing + 10 new)\n   - Total test count increases by ~200 cases\n   - No test failures or errors\n   - Execution time remains under 5 seconds (pure functions are fast)\n\n4. **Coverage Analysis**: Run `npm run test:coverage` for the critical directory:\n   - New utility functions have >90% code coverage\n   - Edge cases are exercised (nulls, empty arrays, invalid inputs)\n   - All conditional branches tested\n\n5. **Integration Verification**: Run the full test suite:\n   - `npm run test` → All 4 tiers pass\n   - Critical tier still runs independently: `npm run test:critical`\n   - New tests don't break existing tests\n\n6. **Code Quality Review**: \n   - Verify business logic was extracted from components to testable utils where needed\n   - Check that test fixtures were extended if new scenarios required\n   - Confirm no test duplicates behavior already covered elsewhere\n   - Validate test names match the behavior being tested\n\n7. **Documentation Update**: After implementation, update `tests/README.md`:\n   - Update test count: \"30 Critical tier test files\" (was 20)\n   - Add note about new files in directory structure section\n   - Document any new fixture data added",
+        "status": "done",
+        "dependencies": [
+          "2"
+        ],
+        "priority": "high",
+        "subtasks": [],
+        "updatedAt": "2026-02-05T17:40:40.267Z"
+      },
+      {
+        "id": "4",
+        "title": "Write remaining API contract tests (4 files)",
+        "description": "Create 4 missing API test files in tests/api/: map.api.test.js, deadlines.api.test.js, counts.api.test.js, export.api.test.js. Each validates response schemas (required fields, types, pagination metadata) without testing data correctness.",
+        "details": "This task completes the Tier 2 API test suite by adding 4 missing test files, bringing the total from 3 to 7 files. All tests must follow the established schema validation pattern used in existing API tests (funding.api.test.js, clients.api.test.js, client-matching.api.test.js).\n\n## Pattern to Follow\n\nAll API tests use shared helper functions for schema validation:\n\n```javascript\n// Import Vitest\nimport { describe, test, expect } from 'vitest';\n\n// Define schemas as objects mapping field names to type strings\nconst exampleSchema = {\n  id: 'string',\n  count: 'number',\n  optional_field: 'string|null',\n  array_field: 'array',\n};\n\n// Use validateFieldType and validateSchema helpers (copy from existing tests)\nfunction validateFieldType(value, expectedType) { /* ... */ }\nfunction validateSchema(obj, schema) { /* ... */ }\n```\n\n## Files to Create\n\n### 1. tests/api/map.api.test.js\n\nTests for `/api/map/opportunities` endpoint (app/api/map/opportunities/route.js:1-167).\n\n**Schemas to define:**\n- `mapOpportunitySchema`: Complete opportunity object returned in map API (similar to funding.api.test.js but includes coverage_area_types array)\n- `mapResponseSchema`: Response wrapper with opportunities array, total, page, pageSize, totalPages\n- `errorResponseSchema`: Error response shape { success: false, error: string }\n\n**Test cases:**\n1. Validate complete map opportunity object with all required fields\n2. Validate map response wrapper structure\n3. Validate pagination metadata (currentPage, totalPages, totalItems, hasMore if present)\n4. Validate error response format\n5. Validate optional query parameter handling (state, status, scope, projectTypes, sort_by, sort_direction)\n\n**Key fields in map opportunity:**\n- id, title, status, close_date, is_national, maximum_award, total_funding_available\n- coverage_state_codes (array|null)\n- coverage_area_types (array) - unique to map API\n- categories, eligible_project_types, eligible_applicants (all arrays)\n\n---\n\n### 2. tests/api/deadlines.api.test.js\n\nTests for `/api/deadlines` endpoint (app/api/deadlines/route.js:1-93).\n\n**Schemas to define:**\n- `deadlineOpportunitySchema`: Opportunity with deadline metadata (base opportunity + daysLeft, urgency, formattedDate, source_name, source_type)\n- `deadlinesResponseSchema`: Response wrapper { success: true, data: array }\n- `thirtyDayCountResponseSchema`: Response for type=thirty_day_count { success: true, count: number }\n\n**Test cases:**\n1. Validate deadline opportunity object with enhancement fields (daysLeft, urgency, formattedDate)\n2. Validate source information fields (source_name, source_type)\n3. Validate deadlines response array wrapper\n4. Validate thirty-day count response format\n5. Validate urgency categorization ('high' | 'medium' | 'low')\n6. Validate error response format\n\n**Key enhancement fields:**\n- daysLeft (number)\n- urgency ('high' | 'medium' | 'low')\n- formattedDate (string)\n- source_name (string)\n- source_type (string|null)\n\n---\n\n### 3. tests/api/counts.api.test.js\n\nTests for `/api/counts` endpoint (app/api/counts/route.js:1-43).\n\n**Schemas to define:**\n- `countResponseSchema`: { success: true, count: number }\n- `errorResponseSchema`: { success: false, error: string }\n\n**Test cases:**\n1. Validate open_opportunities count response structure\n2. Validate count field is a number\n3. Validate error response for invalid type parameter\n4. Validate success boolean field presence and type\n\n**Query parameters:**\n- type: 'open_opportunities' (only valid value currently)\n\n---\n\n### 4. tests/api/export.api.test.js\n\nTests for `/api/export/client-matches-pdf` endpoint (app/api/export/client-matches-pdf/route.js:1-112).\n\n**Schemas to define:**\n- `pdfRequestSchema`: POST body { clientId: string, options: object }\n- `pdfOptionsSchema`: Options object { viewMode: string, includeCover: boolean, sortBy: string }\n- `errorResponseSchema`: Error response { error: string }\n\n**Test cases:**\n1. Validate PDF request body schema\n2. Validate options object structure (viewMode, includeCover, sortBy)\n3. Validate error response for missing clientId\n4. Validate error response for client not found\n5. Validate error response for failed match fetch\n6. **Note**: Cannot validate actual PDF binary response in contract test - only error responses\n\n**Valid option values:**\n- viewMode: 'summary' | 'detailed'\n- includeCover: boolean\n- sortBy: 'deadline' | 'score' | 'amount'\n\n---\n\n## Implementation Guidelines\n\n1. **Copy validation helpers**: Each test file should include the `validateFieldType` and `validateSchema` helper functions from existing API tests (or extract to shared helper in tests/helpers/schemaValidation.js if preferred)\n\n2. **Schema-only validation**: These are contract tests - do NOT make actual API calls, do NOT test data correctness, do NOT mock Supabase. Only validate that test objects matching expected API responses conform to defined schemas.\n\n3. **Test object creation**: Create mock objects that represent valid API responses and validate them:\n   ```javascript\n   test('validates complete map opportunity object', () => {\n     const opportunity = {\n       id: 'opp-123',\n       title: 'Clean Energy Grant',\n       // ... all required fields\n     };\n     const errors = validateSchema(opportunity, mapOpportunitySchema);\n     expect(errors).toHaveLength(0);\n   });\n   ```\n\n4. **Edge cases to test**:\n   - All required fields present\n   - Optional fields with null values\n   - Array fields (empty arrays, arrays with values)\n   - Nested objects (like pagination metadata)\n   - Error response formats\n\n5. **File structure**: Follow the pattern from funding.api.test.js:\n   - File header comment explaining what endpoints are tested\n   - Schema definitions at top\n   - Helper functions (validateFieldType, validateSchema)\n   - Describe blocks grouping related tests\n   - Clear test names describing what's validated\n\n6. **Response wrapper patterns**:\n   - Success responses: `{ success: true, data: ... }` or `{ success: true, count: ... }`\n   - Error responses: `{ success: false, error: string }`\n   - Map responses include pagination: `{ success: true, data: { opportunities: [], total: 0, page: 1, pageSize: 10, totalPages: 0 } }`\n\n---\n\n## Reference Files\n\n- **Existing API tests**: tests/api/funding.api.test.js, tests/api/clients.api.test.js, tests/api/client-matching.api.test.js\n- **API routes to understand response structure**:\n  - app/api/map/opportunities/route.js\n  - app/api/deadlines/route.js\n  - app/api/counts/route.js\n  - app/api/export/client-matches-pdf/route.js\n- **Testing guide**: tests/README.md (Tier 2 section, lines 126-146)",
+        "testStrategy": "1. **File creation verification**: Confirm all 4 test files exist with correct paths:\n   - `tests/api/map.api.test.js`\n   - `tests/api/deadlines.api.test.js`\n   - `tests/api/counts.api.test.js`\n   - `tests/api/export.api.test.js`\n\n2. **Individual file execution**: Run each test file independently to verify it passes:\n   ```bash\n   npm run test -- tests/api/map.api.test.js\n   npm run test -- tests/api/deadlines.api.test.js\n   npm run test -- tests/api/counts.api.test.js\n   npm run test -- tests/api/export.api.test.js\n   ```\n\n3. **Tier 2 suite execution**: Run all API tests together:\n   ```bash\n   npm run test:api\n   ```\n   Expected: 7 files pass (3 existing + 4 new)\n\n4. **Schema coverage verification**: For each new test file, confirm schemas are defined for:\n   - Main response object(s)\n   - Success response wrapper\n   - Error response wrapper\n   - Nested objects (pagination, options, metadata)\n   - All fields from actual API route examined\n\n5. **Validation helper verification**: Confirm each file includes or imports:\n   - `validateFieldType(value, expectedType)` function\n   - `validateSchema(obj, schema)` function\n   - Or imports from shared helper if extracted\n\n6. **Pattern compliance**: Review each test file to confirm:\n   - Uses Vitest (not Jest)\n   - Follows schema validation pattern (no API calls, no mocks)\n   - Test objects represent valid API responses\n   - Covers required fields, optional fields, arrays, nested objects\n   - Includes error response validation\n   - Clear describe blocks and test names\n\n7. **Full test suite regression**: Run complete test suite to ensure new tests don't break anything:\n   ```bash\n   npm run test\n   ```\n   Expected: All 1,023+ tests pass across all 4 tiers\n\n8. **Coverage check**: Verify new tests cover all endpoints:\n   - Map API: GET /api/map/opportunities with all query params\n   - Deadlines API: Both type=upcoming and type=thirty_day_count\n   - Counts API: type=open_opportunities + error cases\n   - Export API: Request schema + error responses (not binary PDF)",
+        "status": "done",
+        "dependencies": [
+          "2"
+        ],
+        "priority": "high",
+        "subtasks": [],
+        "updatedAt": "2026-02-05T17:40:44.082Z"
+      },
+      {
+        "id": "5",
+        "title": "Write remaining Pipeline tests (7 files)",
+        "description": "Create 7 missing test files: pipeline/analysis/contentEnhancement.test.js, pipeline/analysis/batchProcessing.test.js, pipeline/extraction/apiHandlers.test.js, pipeline/extraction/pagination.test.js, pipeline/orchestration/sourceOrchestrator.test.js, pipeline/orchestration/performanceMetrics.test.js, pipeline/storage/coverageLinking.test.js. Mock Anthropic SDK + use supabaseMock. Test deterministic parts with exact assertions, LLM parts with schema compliance.",
+        "details": "",
+        "testStrategy": "",
+        "status": "done",
+        "dependencies": [
+          "2"
+        ],
+        "priority": "high",
+        "subtasks": [],
+        "updatedAt": "2026-02-05T17:40:47.530Z"
+      },
+      {
+        "id": "6",
+        "title": "Write test infrastructure helpers (3 files)",
+        "description": "Create 3 missing helper files: helpers/apiTestClient.js (HTTP testing helper for integration tests), helpers/factories.js (data generation for dynamic test scenarios), helpers/dateHelpers.js (time freeze/restore utilities beyond what setup.js provides). These support Phases 3-4 tests.",
+        "details": "",
+        "testStrategy": "",
+        "status": "done",
+        "dependencies": [
+          "2"
+        ],
+        "priority": "medium",
+        "subtasks": [],
+        "updatedAt": "2026-02-05T17:40:51.090Z"
+      },
+      {
+        "id": "7",
+        "title": "Write integration tests (3 files)",
+        "description": "Create tests/integration/ folder with 3 flow tests: clientMatchingFlow.test.js (API route -> matching logic -> mock DB -> response), explorerFlow.test.js (API route -> filtering/sorting -> mock DB -> pagination), dashboardFlow.test.js (API route -> stats -> mock DB -> summary cards). These wire together all layers using supabaseMock, NOT real DB.",
+        "details": "",
+        "testStrategy": "",
+        "status": "done",
+        "dependencies": [
+          "2"
+        ],
+        "priority": "medium",
+        "subtasks": [],
+        "updatedAt": "2026-02-05T17:45:15.078Z"
+      },
+      {
+        "id": "8",
+        "title": "Write pipeline handoff tests (2 files)",
+        "description": "Create tests/pipeline/handoff/ folder with 2 tests: extractionToAnalysis.test.js (validates Stage 1 output schema is valid Stage 2 input), analysisToStorage.test.js (validates Stage 2 output schema is valid Stage 3 input). These catch schema contract violations between pipeline stages.",
+        "details": "",
+        "testStrategy": "",
+        "status": "done",
+        "dependencies": [
+          "2"
+        ],
+        "priority": "medium",
+        "subtasks": [],
+        "updatedAt": "2026-02-05T17:45:18.200Z"
+      },
+      {
+        "id": "9",
+        "title": "Write error boundary tests (2 files)",
+        "description": "Create 2 error-focused test files: api/errorResponses.api.test.js (validates error response format - status codes, error shapes, consistent error structure) and pipeline/extraction/supabaseDown.test.js (tests graceful degradation when Supabase is unreachable).",
+        "details": "",
+        "testStrategy": "",
+        "status": "done",
+        "dependencies": [
+          "2"
+        ],
+        "priority": "medium",
+        "subtasks": [],
+        "updatedAt": "2026-02-05T17:45:21.280Z"
+      },
+      {
+        "id": "10",
+        "title": "Write staging pipeline tests (2 files)",
+        "description": "Create tests/pipeline/staging/ folder with 2 tests: stagingStateMachine.test.js (tests pending->complete->failed status transitions for extraction/analysis/storage phases in manual_funding_opportunities_staging) and stagingImport.test.js (tests discovery file -> staging table insertion logic).",
+        "details": "",
+        "testStrategy": "",
+        "status": "done",
+        "dependencies": [
+          "2"
+        ],
+        "priority": "medium",
+        "subtasks": [],
+        "updatedAt": "2026-02-05T17:45:24.386Z"
+      },
+      {
+        "id": "11",
+        "title": "Archive old test infrastructure",
+        "description": "After ALL new tests pass: 1) Delete __tests__/ (57 files), __mocks__/ (27 files), and 6 jest config files. 2) Remove legacy npm scripts (test:legacy:*) from package.json. 3) Remove Jest from devDependencies. 4) Document deletion in commit message with git hash reference. ONLY execute after full test suite passes.",
+        "details": "",
+        "testStrategy": "",
+        "status": "pending",
+        "dependencies": [
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "7",
+          "8",
+          "9",
+          "10"
+        ],
+        "priority": "low",
         "subtasks": []
       }
     ],
     "metadata": {
-      "created": "2025-08-05T04:35:00.718Z",
-      "updated": "2025-08-05T04:35:33.740Z",
-      "description": "=Testing-related tasks and bug fixes"
+      "version": "1.0.0",
+      "lastModified": "2026-02-05T17:45:24.387Z",
+      "taskCount": 11,
+      "completedCount": 9,
+      "tags": [
+        "test"
+      ]
     }
   },
   "v2": {
@@ -3919,14 +4003,15 @@
       },
       {
         "id": 9,
-        "title": "Write and Run Comprehensive Tests",
-        "description": "Develop testing plan for the whole app. Write unit tests, integration tests, and E2E tests for critical paths. Run tests to ensure everything is functional before launch.",
-        "details": "",
-        "testStrategy": "",
-        "status": "pending",
+        "title": "Implement Comprehensive Test Suite",
+        "description": "Write comprehensive tests for the Meridian ESG application following the testing strategy defined in docs/testing-strategy.md. This task covers all user-facing modules (client matching, explorer, map, dashboard, timeline, clients) and the AI pipeline. Tests will be organized by tier: Critical (Tier 1), API Contracts (Tier 2), Database Integration (Tier 3), and Pipeline (Tier 4).",
+        "status": "done",
         "dependencies": [],
         "priority": "high",
-        "subtasks": []
+        "details": "## Purpose\nEnsure application reliability for sales people using the platform. The primary concern is user-facing functionality: client matching accuracy, filtering correctness, map aggregation calculations, dashboard statistics, and timeline displays.\n\n## Strategy Reference\nFull testing strategy documented in: docs/testing-strategy.md\n\n## Completion Criteria\nThis task is ONLY complete when ALL of the following are true:\n\n1. **All Tests Written**: All ~58 test files are created following the structure in docs/testing-strategy.md:\n   - tests/critical/ (Tier 1): ~30 files covering client-matching, explorer, opportunityDetail, map, dashboard, timeline, clients\n   - tests/api/ (Tier 2): ~7 API contract test files\n   - tests/database/ (Tier 3): ~6 database integration test files\n   - tests/pipeline/ (Tier 4): ~15 AI pipeline test files\n   - tests/fixtures/: Shared test data files\n   - tests/helpers/: Test utilities including supabaseMock.js\n\n2. **All Tests Pass**: Running 'npm run test' completes with 0 failures.\n\n3. **Code Quality Verification**: The agent MUST verify that tests are not written just to pass erroneous code. Tests must validate that code meets the INTENDED standard, not just the current implementation.\n   - If the agent discovers code that is erroneous (does not meet intended functionality), it will NOT edit the code directly.\n   - Instead, it will create a SUBTASK under Task 9 to document and fix the specific code issue.\n   - Only after the subtask is completed and the fix verified should the related test be considered valid.\n\n4. **File Structure Compliance**: The test directory structure MUST match the organization specified in docs/testing-strategy.md:\n   - Single 'tests/' directory at project root\n   - Organized by tier: critical/, api/, database/, pipeline/\n   - fixtures/ and helpers/ directories for shared resources\n   - Vitest as the sole test framework (delete Jest configs)\n\n5. **Old Tests Archived**: All existing test files from __tests__/, __mocks__/, lib/agents-v2/tests/, and lib/services/tests/ must be:\n   - Consolidated into a single archive file: tests/_archived/legacy-tests-archive.md\n   - This archive should list each original file path and note any valuable patterns/fixtures to preserve\n   - The original test files should remain in place until I explicitly approve their deletion\n   - Do NOT delete the old test files - only archive them for my review\n\n## Test Priorities (in order)\n1. Client matching (4 criteria: location, applicant type, project needs, activities)\n2. Explorer filtering, sorting, pagination, URL state\n3. Map aggregations, scope breakdown, state selection\n4. Dashboard statistics, deadlines\n5. Timeline month grouping, days-left colors\n6. Client CRUD, geocoding, PDF export\n7. AI Pipeline: scoring (100% coverage), schema compliance, invariants\n\n## Framework\n- Use Vitest exclusively\n- Use fast-check for property-based/invariant testing\n- Create smart supabaseMock.js (in-memory DB behavior)\n- Delete all 6 Jest config files after migration",
+        "testStrategy": "Run 'npm run test' and verify: (1) All tests pass, (2) Coverage meets thresholds for critical paths, (3) No erroneous code masked by weak tests",
+        "subtasks": [],
+        "updatedAt": "2026-01-09T05:27:36.391Z"
       },
       {
         "id": 10,
@@ -4284,10 +4369,11 @@
         "description": "Identify and resolve duplicate entries in the funding_sources table. This includes finding duplicate records by name/type combinations, consolidating references from funding_opportunities, and removing redundant entries while maintaining data integrity.",
         "details": "",
         "testStrategy": "",
-        "status": "pending",
+        "status": "in-progress",
         "dependencies": [],
         "priority": "medium",
-        "subtasks": []
+        "subtasks": [],
+        "updatedAt": "2026-01-09T05:28:35.470Z"
       },
       {
         "id": 15,
@@ -4634,8 +4720,8 @@
         "testStrategy": "## Testing Strategy\n\n### 1. Database Schema Tests\n\n**Test the table creation:**\n```bash\n# Run migration\nsupabase migration up\n\n# Verify table structure\npsql -c \"\\d client_matches\"\npsql -c \"SELECT * FROM pg_indexes WHERE tablename = 'client_matches';\"\n```\n\n**Expected results:**\n- Primary key on (client_id, opportunity_id)\n- 5 indexes created (client_id, opportunity_id, score, last_refreshed_at, match_details GIN)\n- Foreign key constraints to clients and funding_opportunities tables\n\n### 2. Match Calculation Function Tests\n\n**Create test script:** `scripts/clients/test-match-calculation.js`\n\n```javascript\n// Test calculate_client_match() function\nconst testCases = [\n  {\n    name: 'National opportunity matches all clients',\n    clientId: '<test-client-uuid>',\n    opportunityId: '<national-opp-uuid>',\n    expectedScore: '>= 0'\n  },\n  {\n    name: 'Geographic mismatch returns score 0',\n    clientId: '<ca-client-uuid>',\n    opportunityId: '<ny-only-opp-uuid>',\n    expectedScore: 0\n  },\n  {\n    name: 'Full match with 100% project needs overlap',\n    clientId: '<solar-client-uuid>',\n    opportunityId: '<solar-only-opp-uuid>',\n    expectedScore: 100\n  }\n];\n\nfor (const test of testCases) {\n  const { data, error } = await supabase.rpc('calculate_client_match', {\n    p_client_id: test.clientId,\n    p_opportunity_id: test.opportunityId\n  });\n  \n  console.assert(data.score meets test.expectedScore, `${test.name} failed`);\n  console.assert(data.match_details.locationMatch !== undefined, 'Missing match details');\n}\n```\n\n### 3. Refresh Function Tests\n\n**Test refresh_client_matches():**\n```sql\n-- Create test client\nINSERT INTO clients (name, type, project_needs, coverage_area_ids)\nVALUES ('Test School', 'K-12 School Districts', ARRAY['Solar/Renewable Energy'], ARRAY['<ca-coverage-area-uuid>']);\n\n-- Trigger refresh\nSELECT refresh_client_matches('<new-client-uuid>');\n\n-- Verify matches were created\nSELECT COUNT(*) FROM client_matches WHERE client_id = '<new-client-uuid>';\n```\n\n**Test refresh_opportunity_matches():**\n```sql\n-- Trigger refresh for specific opportunity\nSELECT refresh_opportunity_matches('<test-opportunity-uuid>');\n\n-- Verify matches exist\nSELECT COUNT(*) FROM client_matches WHERE opportunity_id = '<test-opportunity-uuid>';\n```\n\n### 4. Trigger Tests\n\n**Test client INSERT trigger:**\n```javascript\n// Create new client via API\nconst response = await fetch('/api/clients', {\n  method: 'POST',\n  body: JSON.stringify({\n    name: 'Trigger Test School',\n    type: 'K-12 School Districts',\n    address: '123 Main St, Sacramento, CA',\n    project_needs: ['HVAC Systems', 'Solar/Renewable Energy']\n  })\n});\n\nconst { client } = await response.json();\n\n// Wait for trigger to complete\nawait new Promise(resolve => setTimeout(resolve, 2000));\n\n// Verify matches were automatically created\nconst { data: matches } = await supabase\n  .from('client_matches')\n  .select('*')\n  .eq('client_id', client.id);\n\nconsole.assert(matches.length > 0, 'No matches created by trigger');\n```\n\n**Test client UPDATE trigger (type change):**\n```javascript\n// Update client type\nawait fetch(`/api/clients/${clientId}`, {\n  method: 'PUT',\n  body: JSON.stringify({\n    ...existingClient,\n    type: 'Municipal Government' // Change type\n  })\n});\n\n// Verify matches were recalculated\nconst { data: updatedMatches } = await supabase\n  .from('client_matches')\n  .select('*')\n  .eq('client_id', clientId)\n  .gte('last_refreshed_at', new Date(Date.now() - 5000).toISOString());\n\nconsole.assert(updatedMatches.length > 0, 'Matches not refreshed after type change');\n```\n\n**Test opportunity_coverage_areas trigger:**\n```sql\n-- Add new coverage area to opportunity\nINSERT INTO opportunity_coverage_areas (opportunity_id, coverage_area_id)\nVALUES ('<test-opp-uuid>', '<new-coverage-area-uuid>');\n\n-- Verify trigger fired and updated matches\nSELECT COUNT(*) \nFROM client_matches \nWHERE opportunity_id = '<test-opp-uuid>'\n  AND last_refreshed_at > NOW() - INTERVAL '10 seconds';\n```\n\n### 5. Backfill Script Tests\n\n```bash\n# Run backfill with dry-run mode first\nnpm run backfill-client-matches\n\n# Verify total match count\npsql -c \"SELECT COUNT(*) FROM client_matches;\"\n\n# Verify distribution across clients\npsql -c \"SELECT client_id, COUNT(*) as match_count FROM client_matches GROUP BY client_id ORDER BY match_count DESC LIMIT 10;\"\n```\n\n### 6. Performance Tests\n\n**Measure query performance:**\n```sql\nEXPLAIN ANALYZE\nSELECT * FROM client_matches\nWHERE client_id = '<uuid>'\nORDER BY score DESC\nLIMIT 10;\n\n-- Should use idx_client_matches_client_id index\n-- Execution time should be < 5ms\n```\n\n**Test concurrent refresh load:**\n```javascript\n// Simulate 10 concurrent client updates\nconst promises = testClientIds.map(id => \n  supabase.rpc('refresh_client_matches', { p_client_id: id })\n);\n\nconst start = Date.now();\nawait Promise.all(promises);\nconst duration = Date.now() - start;\n\nconsole.log(`Concurrent refresh of 10 clients: ${duration}ms`);\n// Should complete in < 5 seconds\n```\n\n### 7. Integration Tests\n\n**Compare API results with table results:**\n```javascript\n// Get matches from real-time calculation API\nconst apiMatches = await fetch(`/api/client-matching?clientId=${clientId}`).then(r => r.json());\n\n// Get matches from persistent table\nconst { data: tableMatches } = await supabase\n  .from('client_matches')\n  .select('*')\n  .eq('client_id', clientId);\n\n// Scores should match (within 5% tolerance due to calculation differences)\nfor (const apiMatch of apiMatches.results.matches) {\n  const tableMatch = tableMatches.find(m => m.opportunity_id === apiMatch.id);\n  console.assert(\n    Math.abs(apiMatch.score - tableMatch.score) <= 5,\n    `Score mismatch: API=${apiMatch.score}, Table=${tableMatch.score}`\n  );\n}\n```\n\n### 8. Edge Case Tests\n\n- **Empty project_needs:** Client with empty project_needs array should get 0 scores\n- **Null eligible_applicants:** Opportunity with null eligible_applicants should not match any clients\n- **Deleted opportunity:** Deleting an opportunity should cascade-delete all related client_matches rows\n- **Deleted client:** Deleting a client should cascade-delete all related client_matches rows\n- **Closed opportunity:** Changing status to 'closed' should refresh matches (likely removing them)\n\n### 9. Monitoring and Validation\n\n**Create validation query:**\n```sql\n-- Find matches that haven't been refreshed in 7 days\nSELECT cm.*, c.name as client_name, fo.title as opportunity_title\nFROM client_matches cm\nJOIN clients c ON cm.client_id = c.id\nJOIN funding_opportunities fo ON cm.opportunity_id = fo.id\nWHERE cm.last_refreshed_at < NOW() - INTERVAL '7 days';\n```\n\n**Check for orphaned matches:**\n```sql\n-- Find matches with no corresponding client or opportunity\nSELECT * FROM client_matches cm\nLEFT JOIN clients c ON cm.client_id = c.id\nLEFT JOIN funding_opportunities fo ON cm.opportunity_id = fo.id\nWHERE c.id IS NULL OR fo.id IS NULL;\n```\n\n### Success Criteria\n\n✅ Table created with correct schema and indexes  \n✅ calculate_client_match() returns same scores as JavaScript implementation  \n✅ refresh_client_matches() successfully populates matches  \n✅ refresh_opportunity_matches() successfully populates matches  \n✅ Client INSERT trigger auto-creates matches  \n✅ Client UPDATE trigger refreshes matches when type/project_needs/coverage_areas change  \n✅ Opportunity UPDATE trigger refreshes matches when eligibility criteria change  \n✅ opportunity_coverage_areas trigger refreshes matches when links change  \n✅ Backfill script successfully populates all existing client-opportunity pairs  \n✅ Query performance is < 5ms for typical client match lookups  \n✅ No orphaned or stale matches exist after 24 hours",
         "status": "pending",
         "dependencies": [
-          3,
-          19
+          "3",
+          "19"
         ],
         "priority": "medium",
         "subtasks": []
@@ -4648,8 +4734,8 @@
         "testStrategy": "## Testing Strategy\n\n### 1. Unit Tests for Validation Logic\n\n**File**: `lib/agents-v2/tests/core/taxonomyValidationAgent.test.js`\n\nTest cases:\n```javascript\n// Exact matching (case-insensitive)\nexpect(validateField(['public agencies'], 'ELIGIBLE_APPLICANTS'))\n  .toEqual(['Public Agencies'])\n\n// Rule-based normalization\nexpect(validateField(['Public Agency'], 'ELIGIBLE_APPLICANTS'))\n  .toEqual(['Public Agencies'])\n\n// Fuzzy matching\nexpect(validateField(['K12 School Districts'], 'ELIGIBLE_APPLICANTS'))\n  .toEqual(['K-12 School Districts']) // Score: 0.92\n\n// Unknown values removed\nexpect(validateField(['Foo Bar Unknown'], 'ELIGIBLE_APPLICANTS'))\n  .toEqual([])\n\n// Mixed valid/invalid\nexpect(validateField(['Public Agencies', 'Unknown Type', 'Hospitals'], 'ELIGIBLE_APPLICANTS'))\n  .toEqual(['Public Agencies', 'Hospitals'])\n\n// Singular field (funding_type)\nexpect(validateSingleValue('grant', 'FUNDING_TYPES'))\n  .toEqual('Grant')\n\n// All taxonomy fields\nconst testOpp = {\n  eligible_applicants: ['public agency', 'K-12 Schools'],\n  eligible_project_types: ['Solar Panel', 'HVAC systems'],\n  eligible_activities: ['new construction'],\n  categories: ['energy', 'Infrastructure'],\n  funding_type: 'grant'\n}\nconst result = await validateTaxonomies([testOpp])\nexpect(result.opportunities[0]).toMatchObject({\n  eligible_applicants: ['Public Agencies', 'K-12 Schools'],\n  eligible_project_types: ['Solar Panels', 'HVAC Systems'],\n  eligible_activities: ['New Construction'],\n  categories: ['Energy', 'Infrastructure'],\n  funding_type: 'Grant'\n})\n```\n\n### 2. Integration Tests with Pipeline\n\n**File**: `lib/agents-v2/tests/integration/pipeline-with-taxonomy-validation.test.js`\n\nTest the full pipeline flow:\n```javascript\n// Mock opportunities with taxonomy inconsistencies\nconst mockOpportunities = [\n  {\n    title: 'Test Grant',\n    eligible_applicants: ['Public Agency', 'K12 Schools'],\n    eligible_project_types: ['solar panel', 'Wind Turbine'],\n    categories: ['energy'],\n    funding_type: 'grant'\n  }\n]\n\n// Run through filter → validation → storage\nconst filterResult = filterOpportunities(mockOpportunities)\nconst validationResult = await validateTaxonomies(filterResult.includedOpportunities)\nconst storageResult = await storeOpportunities(validationResult.opportunities, source, supabase)\n\n// Verify normalized values were stored\nconst { data } = await supabase\n  .from('funding_opportunities')\n  .select('*')\n  .eq('api_opportunity_id', 'test-id')\n  .single()\n\nexpect(data.eligible_applicants).toContain('Public Agencies')\nexpect(data.eligible_project_types).toContain('Solar Panels')\nexpect(data.funding_type).toBe('Grant')\n```\n\n### 3. Performance Testing\n\nTest with large batches (100+ opportunities):\n```javascript\nconst largeSet = Array(100).fill(null).map((_, i) => ({\n  id: `test-${i}`,\n  eligible_applicants: ['Public Agencies', 'K-12 Schools'],\n  eligible_project_types: ['Solar Panels'],\n  categories: ['Energy']\n}))\n\nconst result = await validateTaxonomies(largeSet)\nexpect(result.executionTime).toBeLessThan(5000) // < 5 seconds\nexpect(result.metrics.totalProcessed).toBe(100)\n```\n\n### 4. Manual Testing with Real Data\n\nRun validation on existing opportunities to identify unknown values:\n```bash\nnpm run test:taxonomy-validation -- --source-id=<real-source-id>\n```\n\nCreate audit script: `scripts/audit-taxonomy-values.js`\n```javascript\n// Query existing opportunities\nconst { data } = await supabase\n  .from('funding_opportunities')\n  .select('eligible_applicants, eligible_project_types, eligible_activities, categories, funding_type')\n\n// Check each value against taxonomies\nconst unknownValues = findUnknownValues(data)\nconsole.log('Unknown values found:', unknownValues)\n\n// Generate normalization map entries\ngenerateNormalizationMapSuggestions(unknownValues)\n```\n\n### 5. Metrics Validation\n\nVerify metrics are tracked correctly:\n```javascript\nconst result = await validateTaxonomies(testOpportunities)\n\nexpect(result.metrics).toMatchObject({\n  totalProcessed: expect.any(Number),\n  totalNormalizations: expect.any(Number),\n  ruleBasedMatches: expect.any(Number),\n  fuzzyMatches: expect.any(Number),\n  unknownValues: expect.any(Number),\n  fieldBreakdown: expect.any(Object)\n})\n```\n\n### 6. Database Schema Verification\n\nVerify RunManager stage tracking:\n```javascript\nawait runManager.updateV2TaxonomyValidation('completed', result, metrics, 10, 10)\n\nconst { data: stageData } = await supabase\n  .from('pipeline_stages')\n  .select('*')\n  .eq('run_id', runManager.runId)\n  .eq('stage_name', 'taxonomy_validation')\n  .single()\n\nexpect(stageData.status).toBe('completed')\nexpect(stageData.input_count).toBe(10)\nexpect(stageData.output_count).toBe(10)\n```\n\n### 7. Edge Cases\n\nTest edge cases:\n- Empty arrays: `validateField([], 'CATEGORIES')` → `[]`\n- Null values: `validateField(null, 'CATEGORIES')` → `null`\n- Undefined: `validateField(undefined, 'CATEGORIES')` → `undefined`\n- Invalid field type: `validateField('string', 'CATEGORIES')` → error or graceful handling\n- All unknown values: should return empty array and log warnings\n- Mixed case: `['ENERGY', 'energy', 'Energy']` → all normalize to `'Energy'`\n\n### Success Criteria\n\n✅ All taxonomy fields normalized to standard values\n✅ Unknown values logged but pipeline continues\n✅ Metrics accurately tracked in pipeline_stages\n✅ Performance: < 50ms per opportunity on average\n✅ Integration: Pipeline completes successfully with validation stage\n✅ Database: Stored values match taxonomies exactly\n✅ No regressions: Existing pipeline tests still pass",
         "status": "pending",
         "dependencies": [
-          16,
-          22
+          "16",
+          "22"
         ],
         "priority": "medium",
         "subtasks": []
@@ -4657,15 +4743,15 @@
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2025-12-31T22:51:23.835Z",
-      "taskCount": 24,
-      "completedCount": 16,
+      "lastModified": "2026-01-09T05:28:35.477Z",
+      "taskCount": 26,
+      "completedCount": 17,
       "tags": [
         "v2"
       ],
-      "created": "2026-01-08T06:41:34.123Z",
+      "created": "2026-02-05T17:14:17.182Z",
       "description": "Tasks for v2 context",
-      "updated": "2026-01-09T01:47:44.014Z"
+      "updated": "2026-02-05T17:14:17.182Z"
     }
   }
 }

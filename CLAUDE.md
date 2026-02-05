@@ -137,9 +137,32 @@ ANTHROPIC_API_KEY=your_anthropic_api_key
 ```
 
 ### Testing
-- Use Vitest for unit tests
-- Agent tests are located in `app/lib/agents-v2/tests/`
-- Run individual tests: `npm run test -- specific-test-file.test.js`
+
+**Framework**: Vitest only. All tests live in `tests/`. See [`tests/README.md`](tests/README.md) for the full testing guide.
+
+**Commands**:
+```bash
+npm run test              # Run all tests
+npm run test:critical     # Tier 1: user-facing logic (every commit)
+npm run test:api          # Tier 2: API contracts (every commit)
+npm run test:database     # Tier 3: DB behavior (PR/deploy)
+npm run test:pipeline     # Tier 4: AI pipeline (nightly)
+```
+
+**When to write tests**: Every new feature or bug fix that touches business logic, API routes, or database queries must include tests. Use this decision tree for placement:
+
+| Question | Tier | Folder |
+|----------|------|--------|
+| Does a user see this result? (matching, filtering, dashboard stats) | Critical | `tests/critical/` |
+| Is this about API response shape? (field types, error format) | API | `tests/api/` |
+| Is this a database query or RPC? | Database | `tests/database/` |
+| Is this AI pipeline processing? | Pipeline | `tests/pipeline/` |
+
+**Conventions**:
+- Import test data from `tests/fixtures/` — never hardcode data inline
+- Use `tests/helpers/supabaseMock.js` for DB-dependent pipeline tests
+- Critical tests should test **pure functions** with no mocks when possible
+- Pipeline tests: exact assertions for deterministic code, schema-only for LLM output
 
 ### Agent Development
 When working with agents:
