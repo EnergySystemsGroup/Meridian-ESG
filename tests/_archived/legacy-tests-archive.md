@@ -94,25 +94,34 @@ Mock files mirroring source structure - replaced by single `tests/helpers/supaba
 | `__tests__/integration/database/` | `tests/database/` | Tier 3 - Pending |
 | `__tests__/integration/msw/` | Not migrated | API mocking patterns preserved |
 
-## How to Access Archived Tests
+## Deletion Record
 
-The original test files remain in their locations and are excluded from the test run via `vitest.config.js`:
+**Deleted on**: 2025-02-05
+**Commit before deletion**: `8d7384a` (all new tests committed and passing)
+**Commit with deletion**: See git log for next commit after `8d7384a`
 
-```javascript
-exclude: ['node_modules', 'dist', '.next', '__tests__', 'lib/**/*.test.js']
+### Files Deleted
+
+- `__tests__/` directory (57 files) — legacy Jest test files
+- `__mocks__/` directory (27 files) — legacy mock files
+- `jest.config.js` — root Jest config
+- `jest.config.ci.js` — CI Jest config
+- `jest.config.unit.js` — unit test Jest config
+- `jest.config.integration.js` — integration test Jest config
+- `jest.config.node.js` — Node environment Jest config
+- `jest.setup.js` — Jest setup file
+
+### Package.json Cleanup
+
+- Removed `test:legacy:unit`, `test:legacy:integration`, `test:legacy:run` scripts
+- Removed `jest`, `jest-environment-jsdom`, `@testing-library/jest-dom` from devDependencies
+
+### How to Access Deleted Files
+
+If you need to reference any of these tests, use git:
+```bash
+git show 8d7384a:__tests__/path/to/file.test.js
 ```
-
-If you need to reference or restore any of these tests:
-1. Files are still present in the codebase
-2. Can be selectively included by modifying vitest config
-3. May need Jest for some tests that relied on Jest-specific features
-
-## Jest Configuration Files (Archived)
-
-The following Jest config files existed and are no longer used:
-- `jest.config.js` (root)
-- `jest.setup.js`
-- Various Jest configs in subdirectories
 
 ## New Test Structure
 
@@ -136,15 +145,23 @@ tests/
 └── _archived/         # This documentation
 ```
 
-## Test Counts
+## Final Test Counts
 
-| Category | Old Count | New Count |
-|----------|-----------|-----------|
-| Legacy `__tests__/` | 41 files | Archived |
-| New `tests/critical/` | - | 20 files |
-| New `tests/api/` | - | 3 files |
-| Total passing tests | Unknown | 597+ |
+| Category | Old (Deleted) | New (Active) |
+|----------|---------------|--------------|
+| Legacy `__tests__/` | 57 files | Deleted |
+| Legacy `__mocks__/` | 27 files | Deleted |
+| Jest configs | 6 files | Deleted |
+| `tests/critical/` | - | 30 files |
+| `tests/api/` | - | 8 files |
+| `tests/database/` | - | 7 files |
+| `tests/pipeline/` | - | 15 files |
+| `tests/integration/` | - | 3 files |
+| `tests/fixtures/` | - | 6 files |
+| `tests/helpers/` | - | 5 files |
+| **Total test files** | **90 deleted** | **68 active** |
+| **Total tests** | **Unknown** | **1,509 passing** |
 
 ---
 
-*This archive is for documentation purposes. Original test files remain in place but are excluded from test runs.*
+*Legacy files have been permanently deleted. Use `git show 8d7384a:<path>` to access them.*
