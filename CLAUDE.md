@@ -249,7 +249,7 @@ The orchestrator parses your request, checks database state, determines the corr
 - **Task tool** for processing phases (4-6): deterministic batch work via extraction-agent, analysis-agent, storage-agent
 - **Phase 7** (Review & Publish) is NEVER auto-triggered — requires explicit admin action
 - **Database reads**: `mcp__postgres__query` (read-only MCP)
-- **Database writes**: `psql "$PIPELINE_DB_URL"` via Bash tool
+- **Database writes**: `psql "$PROD_CLAUDE_URL"` via Bash tool (or `$STAGING_CLAUDE_URL` / `$DEV_CLAUDE_URL`)
 
 ### Full Documentation
 

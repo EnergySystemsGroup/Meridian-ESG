@@ -31,9 +31,15 @@ non-negotiable — a missed source means missed opportunities for our sales team
 - 0% duplicate target (5-layer dedup stack)
 - Complete data extraction (24 structured fields)
 
-**Database**: All operations target production via `$PIPELINE_DB_URL`.
-- Reads: `mcp__postgres__query` (read-only MCP tool)
-- Writes: `psql "$PIPELINE_DB_URL"` via Bash tool
+**Database**: **NO DEFAULT ENVIRONMENT.** The user MUST specify which environment to use.
+- **STOP and ask** if the user does not specify: "Which environment? dev, staging, or production?"
+- Reads: `mcp__postgres__query` (read-only MCP tool — connected to whichever DB is configured)
+- Writes require explicit environment selection:
+  - `"use dev"` → `source .env.local && psql "$DEV_CLAUDE_URL"`
+  - `"use staging"` → `source .env.local && psql "$STAGING_CLAUDE_URL"`
+  - `"use prod"` / `"use production"` → `source .env.local && psql "$PROD_CLAUDE_URL"`
+- **NEVER assume production.** If environment is not specified, DO NOT PROCEED with any writes.
+- Pass the selected env var name to all spawned agents so they write to the correct database.
 - Reference: `docs/prd/db-security/production-database-configuration.md`
 
 ---
@@ -63,6 +69,7 @@ Parse the user's request to determine starting phase and auto-chain behavior:
 |-----------|------------|------------|
 | "Run pipeline for [STATE] [TYPE]" | 1 | 1→2→3→4→5→6 |
 | "Register sources: [STATE] [TYPE]" | 1 | 1 only |
+| "Find all sources in [STATE]" | 1 | 1 only (multi-type — see Section 3.5) |
 | "Discover programs for [X]" | 2 | 2 only (or 2→3→4→5→6 if "and process") |
 | "Find opportunities for [X]" | 3 | 3→4→5→6 |
 | "Process staging" / "Run staging" | 4 | 4→5→6 |
@@ -72,35 +79,139 @@ Parse the user's request to determine starting phase and auto-chain behavior:
 | "Review pending" / "Publish approved" | 7 | 7 only |
 | "Check staging status" / "Pipeline status for [X]" | — | Read-only report |
 
-**Scope parsing** — extract state_code, funder_type, or source name:
+### Scope Parsing
+
+Extract state_code, funder_type(s), or source name from the request:
+
+**Clear scope** — proceed without asking:
 - "Arizona utilities" → `state_code='AZ'`, `funder_type='Utility'`
 - "PG&E" → lookup `funding_sources` by name
-- "all delinquent sources" → `programs_last_searched_at IS NULL OR < 90 days`
 - "California county grants" → `state_code='CA'`, `funder_type='County'`
+- "all delinquent sources" → `programs_last_searched_at IS NULL OR < 90 days`
+
+**Broad scope — funder_type not specified** — determine applicable types:
+- "Find all sources in Nevada" → NV, all applicable funder types (see Section 3.5)
+- "Everything in Clark County area" → NV, focus on County + Municipality
+- "Sources relevant to energy and housing in Arizona" → AZ, all types that fund energy/housing
+
+**Common natural language → funder_type mapping** (use as guidance, not strict rules):
+- "utilities", "electric companies", "power companies" → Utility
+- "counties", "county government", "local government" → County
+- "cities", "municipal", "local" → Municipality (or County + Municipality if ambiguous)
+- "state agencies", "state programs" → State
+- "foundations", "philanthropic" → Foundation
+- "tribal", "tribal authorities" → Tribal
+- "federal", "federal agencies" → Federal
+
+**When funder_type is not specified or is broad**, the orchestrator determines which
+types are relevant and spawns one team per type (see Section 3.5 and Section 6).
+
+### Ask When Uncertain
+
+**If you can reasonably interpret the request, proceed.** Do NOT ask for confirmation
+on every request — only when there is genuine ambiguity that could lead to wasted work.
+
+**ASK the user when:**
+- The geographic scope is unclear: "sources in the Southwest" — which states?
+- The request mixes scopes that don't make sense together
+- A key term is genuinely ambiguous and the two interpretations would produce very different results
+- The user references something that doesn't exist in the database and you're unsure what they mean
+
+**DO NOT ask when:**
+- You can reasonably infer funder_type from context (e.g., "local and county" → County + Municipality)
+- The scope is broad but actionable (e.g., "all sources in Nevada" → spawn agents for each type)
+- Minor ambiguity that won't affect results (e.g., "utilities" clearly means electric/gas utilities)
+
+**Format for clarification** — ask ONE focused question, not a menu of options:
+> "You said 'sources in the Southwest.' Which states should I cover? (e.g., AZ, NV, NM, UT, CO)"
+
+---
+
+## 3.5. Multi-Type Scope Resolution
+
+When the user's request covers multiple funder types (or doesn't specify one), the
+orchestrator determines which types are applicable and spawns **one team per type**
+in parallel. Each team gets its own clean context focused on a single funder type.
+
+### Determining Applicable Funder Types
+
+Not every funder type applies to every state or request. Use this logic:
+
+| Funder Type | When to Include |
+|-------------|----------------|
+| Utility | Almost always — every state has utilities with rebate programs |
+| County | When scope includes local government or specific counties |
+| Municipality | When scope includes cities/local or specific metro areas |
+| State | When scope is broad ("all sources") or user mentions state agencies |
+| Foundation | When scope is broad or user mentions grants/philanthropy |
+| Tribal | Only if the state has tribal lands/tribal utilities |
+| Federal | Only if user specifically mentions federal or scope is national |
+
+### Multi-Type Spawning Pattern
+
+Create **one team** with **paired teammates** for each funder type. All teammates
+run in parallel within the single team. Cross-checking happens between pair partners
+of the same funder type. (TeamCreate only allows one team per leader.)
+
+```
+User: "Find all sources in Nevada"
+
+TeamCreate(team_name="source-discovery-NV", ...)
+
+Spawn all teammates in parallel:
+  → utility-regulatory  (strategies 2+3)   ┐
+  → utility-aggregator  (strategies 4+6)   ├ Utility trio
+  → utility-direct      (strategies 1+5)   ┘
+  → county-direct       (strategies 1+5+7) ┐ County pair
+  → county-aggregator   (strategy 4)       ┘
+  → muni-direct         (strategies 1+5+7) ┐ Municipality pair
+  → muni-aggregator     (strategy 4)       ┘
+  → state-direct        (strategies 5+7)   ┐ State pair
+  → state-aggregator    (strategy 4)       ┘
+  → foundation-aggregator (strategies 4+6) ┐ Foundation pair
+  → foundation-direct   (strategy 1+7)     ┘
+  = 11 teammates in one team, all searching in parallel
+```
+
+Each pair cross-checks within its funder type. Teammates from different types
+do NOT need to cross-check each other.
+
+### Combining Results
+
+After all teams complete, the orchestrator:
+1. Collects all team reports
+2. Checks for cross-type duplicates (e.g., a city utility registered as both Utility and Municipality)
+3. Presents a unified summary grouped by funder type
+4. Writes a single audit log entry covering all types
 
 ---
 
 ## 4. Database State Assessment
 
-Before executing any phase, run these prerequisite checks to understand the current state:
+Before executing any phase, run these prerequisite checks. Use `mcp__postgres__query`
+with raw SQL — substitute actual values (no bind variables).
 
 ```sql
 -- Check 1: Sources exist for this scope?
+-- Example for Arizona utilities (substitute actual state_code and funder_type):
 SELECT COUNT(*) as source_count
 FROM funding_sources
-WHERE state_code = :state AND funder_type = :type;
+WHERE state_code = 'AZ' AND funder_type = 'Utility';
 
 -- Check 2: Programs exist for these sources?
 SELECT COUNT(*) as program_count
 FROM funding_programs fp
 JOIN funding_sources fs ON fs.id = fp.source_id
-WHERE fs.state_code = :state AND fs.funder_type = :type;
+WHERE fs.state_code = 'AZ' AND fs.funder_type = 'Utility';
 
 -- Check 3: Programs due for checking? (smart schedule)
+-- Note: fp.status, fp.next_check_at, fo.program_id, fo.promotion_status
+-- columns will be added in future migrations. Skip checks 3/5 if columns
+-- don't exist yet — they are Phase 2/3/7 prerequisites, not Phase 1.
 SELECT COUNT(*) as due_count
 FROM funding_programs fp
 JOIN funding_sources fs ON fs.id = fp.source_id
-WHERE fs.state_code = :state
+WHERE fs.state_code = 'AZ'
   AND fp.status = 'active'
   AND fp.next_check_at <= NOW()
   AND NOT EXISTS (
@@ -119,13 +230,20 @@ SELECT
   COUNT(*) FILTER (WHERE storage_status = 'error') as errors
 FROM manual_funding_opportunities_staging;
 
--- Check 5: Review queue
+-- Check 5: Review queue (requires promotion_status column — future migration)
 SELECT COUNT(*) as review_count
 FROM funding_opportunities
 WHERE promotion_status = 'pending_review';
 ```
 
-Report all counts to the user before proceeding. Example:
+**Not all checks apply to every phase.** Run only relevant checks:
+- Phase 1: Check 1 only (sources)
+- Phase 2: Checks 1-2 (sources + programs)
+- Phase 3: Checks 1-3 (sources + programs + due schedule)
+- Phase 4-6: Check 4 (staging counts)
+- Phase 7: Check 5 (review queue)
+
+Report counts to the user before proceeding. Example:
 "Found 8 sources, 34 programs, 12 due for checking → proceeding with Phase 3."
 
 ---
@@ -156,82 +274,213 @@ If a user requests Phase N but prerequisites are missing, handle intelligently:
 
 ## 6. Agent Team Spawning (Discovery Phases 1-3)
 
-Use Agent Teams for discovery phases where thoroughness matters. Teammates search in parallel
-and cross-check each other to ensure nothing is missed.
+### CRITICAL: ALWAYS Use TeamCreate for Discovery Phases
 
-### Phase 1 — Source Registry Team (3 teammates)
+**Discovery phases (1-3) MUST use the `TeamCreate` tool to create Agent Teams.**
+This is NOT optional. The ONLY exceptions are:
+- The user explicitly says "quick", "test", or "standalone"
+- `TeamCreate` returns an error (then fall back to standalone — see Fallback below)
 
-```
-Spawn Agent Team "source-discovery-[STATE]-[TYPE]":
+**WHY**: Standalone `Task()` calls produce a single agent that runs all strategies
+sequentially with no cross-checking. Teams produce multiple agents that search in
+parallel and validate each other's findings — this is how we ensure thoroughness.
 
-  Teammate 1 (regulatory):
-    - Search PUC filings and docket databases
-    - Query EIA utility database for registered entities
-    - Check state regulatory commission records
+**SELF-CHECK before every discovery phase spawn:**
+> "Am I about to call `TeamCreate`? If not, STOP. I must use TeamCreate."
+> If I'm about to call `Task(subagent_type=...)` without a `team_name`, I am doing it wrong.
 
-  Teammate 2 (aggregator):
-    - Search DSIRE database for [STATE] incentive providers
-    - Check EnergySage, industry databases
-    - Search foundation databases (for foundation funder types)
+### Concrete Tool Call Pattern
 
-  Teammate 3 (direct):
-    - Search utility/agency websites directly
-    - Query state energy office listings
-    - Web search: "[STATE] [TYPE] list", "[STATE] electric utilities"
-
-Cross-check protocol:
-  After individual searches, teammates broadcast and compare:
-  - "I found these entities: [list]. Anyone have entities I missed?"
-  - Each teammate validates others' findings against their sources
-  - Converge on master deduplicated list
-  - Flag low-confidence entries for orchestrator review
-
-Output: Validated entity list → orchestrator writes to funding_sources + source_program_urls
-```
-
-### Phase 2 — Program Discovery Team (N teammates)
+Here is the EXACT sequence of tool calls for spawning a discovery team.
+**Follow this pattern literally — do not improvise an alternative.**
 
 ```
-Spawn Agent Team "program-discovery-[SCOPE]":
+STEP 1: Create ONE team for all funder types in this run
+─────────────────────────
+TeamCreate(
+  team_name="source-discovery-FL",
+  description="Phase 1: Discover FL County + State funding sources"
+)
 
-  One teammate per source (or per 2-3 small sources):
-  - Crawl catalog URLs from source_program_urls table
-  - Extract individual program name, URL, description, category
-  - Supplementary web search for programs not on catalog page
+STEP 2: Create shared tasks for the team
+─────────────────────────
+TaskCreate(subject="Search via regulatory strategies (2+3)", ...)
+TaskCreate(subject="Search via aggregator strategies (4+6)", ...)
+TaskCreate(subject="Search via direct strategies (1+5)", ...)
+TaskCreate(subject="Cross-check and deduplicate findings", ...)
 
-Cross-check protocol:
-  - "I found X programs for [source]. Cross-referencing with catalog..."
-  - Teammates covering similar sectors compare: "Did you find [program type]?"
-  - Flag unusually low counts: "Only 1 program for a major utility — seems low"
+STEP 3: Spawn ALL teammates IN PARALLEL (one message, all Task calls together)
+─────────────────────────
+// County pair:
+Task(
+  subagent_type="source-registry-agent",
+  team_name="source-discovery-FL",
+  name="county-direct",
+  prompt="You are the COUNTY-DIRECT teammate. Execute strategies 1+5+7.
+          State: FL, Funder type: County.
+          Read SEARCH-REFERENCE.md for detailed instructions.
+          DB writes: source .env.local && psql \"$DEV_CLAUDE_URL\"
+          When done, broadcast your entity list to the team.
+          Cross-check with county-aggregator's findings."
+)
 
-Output: Program list per source → orchestrator writes to funding_programs
+Task(
+  subagent_type="source-registry-agent",
+  team_name="source-discovery-FL",
+  name="county-aggregator",
+  prompt="You are the COUNTY-AGGREGATOR teammate. Execute strategy 4.
+          State: FL, Funder type: County.
+          Read SEARCH-REFERENCE.md for detailed instructions.
+          DB writes: source .env.local && psql \"$DEV_CLAUDE_URL\"
+          When done, broadcast your entity list to the team.
+          Cross-check with county-direct's findings."
+)
+
+// State pair:
+Task(
+  subagent_type="source-registry-agent",
+  team_name="source-discovery-FL",
+  name="state-direct",
+  prompt="You are the STATE-DIRECT teammate. Execute strategies 5+7.
+          State: FL, Funder type: State.
+          Read SEARCH-REFERENCE.md for detailed instructions.
+          DB writes: source .env.local && psql \"$DEV_CLAUDE_URL\"
+          When done, broadcast your entity list to the team.
+          Cross-check with state-aggregator's findings."
+)
+
+Task(
+  subagent_type="source-registry-agent",
+  team_name="source-discovery-FL",
+  name="state-aggregator",
+  prompt="You are the STATE-AGGREGATOR teammate. Execute strategy 4.
+          State: FL, Funder type: State.
+          Read SEARCH-REFERENCE.md for detailed instructions.
+          DB writes: source .env.local && psql \"$DEV_CLAUDE_URL\"
+          When done, broadcast your entity list to the team.
+          Cross-check with state-direct's findings."
+)
+
+STEP 4: Wait for teammates to complete and cross-check
+─────────────────────────
+Teammates will:
+  a) Execute their assigned strategies
+  b) Broadcast their entity list to the team via SendMessage
+  c) Cross-check other teammates' lists
+  d) Converge on a master deduplicated list
+
+STEP 5: Collect results and clean up
+─────────────────────────
+- Orchestrator collects the final validated entity list
+- Sends shutdown_request to all teammates
+- TeamDelete to clean up
+- Proceeds to next phase or reports summary
 ```
 
-### Phase 3 — Opportunity Discovery Team (N teammates)
+### Team Sizing Per Funder Type
+
+| Funder Type | Team Size | Teammates & Strategy Groups |
+|-------------|-----------|---------------------------|
+| Utility | 3 | `regulatory` (strategies 2+3), `aggregator` (strategies 4+6), `direct` (strategies 1+5) |
+| Tribal | 3 | `regulatory` (strategy 3/EIA), `aggregator` (strategy 4), `direct` (strategies 1+5) |
+| County | 2 | `direct` (strategies 1+5+7), `aggregator` (strategy 4) |
+| Municipality | 2 | `direct` (strategies 1+5+7), `aggregator` (strategy 4) |
+| State | 2 | `direct` (strategy 5+7), `aggregator` (strategy 4) |
+| Foundation | 2 | `aggregator` (strategies 4+6), `direct` (strategy 1+7) |
+| Federal | 2 | `direct` (strategy 5), `aggregator` (strategy 4) |
+
+### Multi-Type Spawning — Single Team with Paired Teammates
+
+**LIMITATION**: `TeamCreate` allows only ONE team per leader. You CANNOT create
+multiple parallel teams. Instead, create **one team** containing ALL teammates,
+organized into **pairs by funder type**.
+
+Each pair cross-checks within its funder type. Teammates from different types
+do NOT cross-check each other (a county teammate doesn't validate state findings).
 
 ```
-Spawn Agent Team "opportunity-check-[SCOPE]":
+User: "Find county and state sources in Florida"
 
-  One teammate per source group:
-  - Crawl program_urls for current open/upcoming status
-  - Extract application dates, amounts, eligibility
-  - Determine next_check_at scheduling for each program
+TeamCreate(team_name="source-discovery-FL", description="Phase 1: FL County + State sources")
 
-Cross-check protocol:
-  - "This program page says 'applications open' — can you confirm current?"
-  - Validate date parsing: "Close date reads as August 2026 — agreed?"
-  - Cross-reference with DSIRE or other sources for accuracy
-
-Output: Staging records → orchestrator writes to manual_funding_opportunities_staging
+Spawn all teammates in parallel (one message):
+  → county-direct    (strategies 1+5+7, funder_type=County)     ┐ County pair
+  → county-aggregator (strategy 4, funder_type=County)           ┘ cross-checks
+  → state-direct     (strategies 5+7, funder_type=State)        ┐ State pair
+  → state-aggregator  (strategy 4, funder_type=State)            ┘ cross-checks
+  = 4 teammates, all searching in parallel
 ```
 
-### Fallback
+**Naming convention for multi-type teammates**: Prefix with funder type to keep
+pairs clear: `county-direct`, `county-aggregator`, `state-direct`, `state-aggregator`,
+`utility-regulatory`, `utility-aggregator`, `utility-direct`, etc.
 
-If Agent Teams is unavailable or errors out, fall back to sequential Task tool calls:
+**Broader example:**
 ```
-Task(subagent_type="discovery-agent", prompt="Search for [TYPE] sources in [STATE]...")
+User: "Find all sources in Georgia"
+
+TeamCreate(team_name="source-discovery-GA", description="Phase 1: All GA sources")
+
+Spawn all teammates in parallel:
+  → utility-regulatory  (strategies 2+3)   ┐
+  → utility-aggregator  (strategies 4+6)   ├ Utility trio
+  → utility-direct      (strategies 1+5)   ┘
+  → county-direct       (strategies 1+5+7) ┐ County pair
+  → county-aggregator   (strategy 4)       ┘
+  → state-direct        (strategies 5+7)   ┐ State pair
+  → state-aggregator    (strategy 4)       ┘
+  = 7 teammates total in one team
 ```
-Execute Skills 1-3 inline with sequential web searches instead.
+
+### Cross-Check Protocol
+
+Teammates cross-check **within their funder-type pair only**:
+1. Each teammate **broadcasts** their entity list to the team via `SendMessage(type="broadcast")`
+2. Their **pair partner** validates the findings against their own sources
+3. Teammates from other pairs may optionally confirm cross-type overlaps
+4. Each pair **converges** on a deduplicated list for their funder type
+5. **Flag** low-confidence entries or discrepancies for orchestrator review
+
+**If a teammate's pair partner shuts down early**, other teammates can still
+cross-check those findings (as happened in FL test: state-direct validated
+county-aggregator's findings when county-direct had already shut down).
+
+### Strategy Group → Strategy Mapping
+
+| Group Name | Strategy Numbers | Focus |
+|------------|-----------------|-------|
+| `regulatory` | Strategies 2 + 3 | PUC databases, EIA federal data |
+| `aggregator` | Strategies 4 + 6 | DSIRE, EnergySage, ACEEE, foundation databases |
+| `direct` | Strategies 1 + 5 + 7 | Direct listing search, agency search, taxonomy-driven search |
+
+### Phase 1 — Source Registry Teams
+
+Follow the Concrete Tool Call Pattern above. Key points:
+- Each teammate gets `subagent_type="source-registry-agent"` (loads the source-registry skill)
+- Include strategy group name AND numbers in the prompt
+- Include state_code, funder_type, database env var, and batch_id in the prompt
+- Teammates write to DB independently, then cross-check for completeness
+
+### Phase 2 — Program Discovery Teams
+
+Team name: `program-discovery-[SCOPE]`
+One teammate per source (or per 2-3 small sources).
+Follow same TeamCreate pattern — each teammate crawls catalog URLs for their assigned source(s).
+
+### Phase 3 — Opportunity Discovery Teams
+
+Team name: `opportunity-check-[SCOPE]`
+One teammate per source group.
+Follow same TeamCreate pattern — each teammate checks program URLs for open/upcoming status.
+
+### Fallback (ONLY if TeamCreate fails)
+
+If `TeamCreate` returns an error, fall back to standalone Task tool:
+```
+Task(subagent_type="source-registry-agent", prompt="Search for [TYPE] sources in [STATE]...")
+```
+Log a warning: "**TeamCreate failed — falling back to standalone mode. Cross-checking skipped.**"
+This is the ONLY acceptable reason to use standalone mode for discovery phases.
 
 ---
 
@@ -240,43 +489,59 @@ Execute Skills 1-3 inline with sequential web searches instead.
 Use the Task tool for deterministic processing phases. These don't need cross-checking —
 just fetch, process, and write.
 
+### Batch Processing Pattern
+
+Phases 4-6 use a **claim-then-process** pattern to avoid race conditions when
+multiple agents run in parallel. Each agent claims a batch by querying pending
+records sorted by `id`, processing them sequentially, and updating status on
+each record before moving to the next. Do NOT use `LIMIT/OFFSET` for parallel
+batching — it causes missed or double-processed records if the dataset changes.
+
+**Sequential batching** (safe): Spawn one agent at a time. Each agent queries
+`WHERE status='pending' ORDER BY id LIMIT 20`, processes the batch, updates
+status to `'complete'` or `'error'`, then the orchestrator spawns the next agent
+for the remaining pending records.
+
 ### Phase 4 — Extraction
 
 ```sql
--- Count pending
+-- Count pending (via mcp__postgres__query)
 SELECT COUNT(*) FROM manual_funding_opportunities_staging
 WHERE extraction_status = 'pending';
 ```
 
-- If count > 20: spawn multiple extraction agents (1 per batch of 20)
+- If count > 0: spawn extraction agents sequentially (1 per batch of 20)
   ```
   Task(subagent_type="extraction-agent",
-       prompt="Extract batch [N]. Query staging WHERE extraction_status='pending'
-               LIMIT 20 OFFSET [N*20]. Fetch each URL, extract structured data,
-               update extraction_data and raw_content columns.")
+       prompt="Extract pending records. Query staging WHERE extraction_status='pending'
+               ORDER BY id LIMIT 20. For each record: fetch URL, extract structured
+               data, update extraction_data and raw_content columns, set
+               extraction_status='complete' (or 'error' on failure).")
   ```
-- If count <= 20: spawn 1 extraction agent
+  After each agent completes, re-check count. If more pending, spawn another.
 - If count == 0: skip, report "No pending extraction records"
 
 ### Phase 5 — Analysis
 
-Same batching pattern as extraction:
+Same sequential batching pattern:
 ```
 Task(subagent_type="analysis-agent",
      prompt="Analyze extracted records. Query staging WHERE extraction_status='complete'
-             AND analysis_status='pending'. Run content enhancement (6 fields)
-             and deterministic V2 scoring. Update analysis_data column.")
+             AND analysis_status='pending' ORDER BY id LIMIT 20.
+             Run content enhancement (6 fields) and deterministic V2 scoring.
+             Update analysis_data column, set analysis_status='complete'.")
 ```
 
 ### Phase 6 — Storage
 
-Usually 1 agent (all pending records), unless 100+ → batch:
+Usually 1 agent handles all pending records:
 ```
 Task(subagent_type="storage-agent",
      prompt="Store analyzed records to production. Query staging WHERE
-             analysis_status='complete' AND storage_status='pending'.
+             analysis_status='complete' AND storage_status='pending' ORDER BY id.
              Apply dataSanitizer, UPSERT to funding_opportunities with
-             promotion_status='pending_review', link coverage areas.")
+             promotion_status='pending_review', link coverage areas.
+             Set storage_status='complete' per record.")
 ```
 
 ---
@@ -303,6 +568,7 @@ Apply these rules throughout pipeline execution:
 
 | Situation | Action |
 |-----------|--------|
+| Scope is genuinely ambiguous | **ASK** — one focused clarification question, then proceed (see Section 3) |
 | Zero results from any phase | **STOP** — ask user before continuing |
 | Unusually low count (1 program for major utility) | **WARN** — continue but flag in summary |
 | URL failures > 30% for a source | **WARN** — flag source as potentially stale |
@@ -343,7 +609,39 @@ For single-phase runs, show only the relevant phase stats.
 
 ---
 
-## 11. Maintenance & Auto-Close
+## 11. Audit Logging
+
+The orchestrator handles all audit logging — individual agents have zero audit overhead.
+
+**At pipeline start**, generate a batch_id:
+```
+batch_id = "run-YYYYMMDD-HHMM"  (e.g., "run-20260206-1430")
+```
+
+**After each phase completes**, log a summary row per table affected:
+
+```sql
+INSERT INTO claude_change_log
+  (table_name, operation, pipeline_phase, batch_id, record_count, change_reason)
+VALUES
+  ('funding_sources', 'INSERT', 'source_registry', 'run-20260206-1430', 8,
+   'Registered 8 utility sources for Arizona (5 new, 3 enriched)');
+```
+
+**After pipeline completes**, the final summary can also query the audit log:
+```sql
+SELECT pipeline_phase, table_name, operation, record_count, change_reason
+FROM claude_change_log
+WHERE batch_id = 'run-20260206-1430'
+ORDER BY executed_at;
+```
+
+This provides full traceability without burdening individual agents. For record-level
+detail, query the actual tables by `created_at` within the pipeline run timeframe.
+
+---
+
+## 12. Maintenance & Auto-Close
 
 Run auto-close at the start of every pipeline execution:
 
@@ -357,8 +655,4 @@ WHERE status = 'Open'
 
 Report how many were auto-closed: "Auto-closed X expired opportunities."
 
-**Database connection reference**:
-- Reads: `mcp__postgres__query` (read-only MCP tool)
-- Writes: `psql "$PIPELINE_DB_URL"` via Bash tool
-- Config: `docs/prd/db-security/production-database-configuration.md`
-- All pipeline operations run against production. `$PIPELINE_DB_URL` env var controls target.
+**Database connection**: See Section 1 (Mission) for read/write connection details.

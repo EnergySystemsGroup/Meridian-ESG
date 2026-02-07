@@ -101,6 +101,9 @@ GRANT INSERT ON claude_change_log TO claude_writer;
 # =============================================================================
 LOCAL_DB_URL=postgresql://postgres:postgres@127.0.0.1:54322/postgres
 
+# Claude Code local dev connection (full postgres access)
+DEV_CLAUDE_URL=postgresql://postgres:postgres@127.0.0.1:54322/postgres
+
 # =============================================================================
 # PRODUCTION DATABASE - LIMITED ACCESS FOR CLAUDE CODE (via Pooler)
 # =============================================================================
@@ -262,29 +265,47 @@ psql "$PROD_DB_URL" -f /tmp/new_opportunities.sql
 
 ---
 
-### Audit Trail (Optional Enhancement)
+### Audit Trail: `claude_change_log`
 
-For tracking what Claude Code changes, we can create an audit table:
+Tracks all pipeline write operations. Logging is orchestrator-only — individual agents
+stay lightweight with zero audit overhead. The pipeline orchestrator queries counts
+before/after each phase and logs one summary row per phase per table.
 
 ```sql
 CREATE TABLE claude_change_log (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   table_name TEXT NOT NULL,
-  record_id UUID,
-  operation TEXT NOT NULL,  -- 'INSERT', 'UPDATE'
+  record_id UUID,                -- nullable for batch operations
+  operation TEXT NOT NULL,       -- 'INSERT' or 'UPDATE'
   change_details JSONB,
   change_reason TEXT,
-  executed_at TIMESTAMPTZ DEFAULT NOW()
+  executed_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  pipeline_phase TEXT,           -- source_registry, program_discovery, extraction, analysis, storage, review
+  batch_id TEXT,                 -- groups all ops from one pipeline run (format: run-YYYYMMDD-HHMM)
+  record_count INTEGER           -- for batch summaries
 );
+
+-- Indexes
+CREATE INDEX idx_claude_change_log_batch_id ON claude_change_log(batch_id);
+CREATE INDEX idx_claude_change_log_executed_at ON claude_change_log(executed_at);
+CREATE INDEX idx_claude_change_log_pipeline_phase ON claude_change_log(pipeline_phase);
+
+-- Permissions: append-only for claude_writer (no UPDATE/DELETE on log entries)
+GRANT INSERT ON claude_change_log TO claude_writer;
 ```
 
-Claude logs changes after executing them:
+The orchestrator logs after each phase:
 
 ```sql
-INSERT INTO claude_change_log (table_name, record_id, operation, change_details, change_reason)
-VALUES ('funding_opportunities', 'abc123', 'UPDATE',
-        '{"close_date": {"old": null, "new": "2025-06-30"}}',
-        'Corrected close date from source website');
+-- Example: after Phase 1 completes
+INSERT INTO claude_change_log (table_name, operation, pipeline_phase, batch_id, record_count, change_reason)
+VALUES ('funding_sources', 'INSERT', 'source_registry', 'run-20260206-1430', 8,
+        'Registered 8 utility sources for Arizona (5 new, 3 enriched)');
+```
+
+Query by pipeline run:
+```sql
+SELECT * FROM claude_change_log WHERE batch_id = 'run-20260206-1430' ORDER BY executed_at;
 ```
 
 ---
@@ -326,6 +347,7 @@ VALUES ('funding_opportunities', 'abc123', 'UPDATE',
 | Environment | Connection Type | Purpose | Who Uses It |
 |-------------|-----------------|---------|-------------|
 | `LOCAL_DB_URL` | Direct (localhost) | Local development | Developers, Claude Code (exports) |
+| `DEV_CLAUDE_URL` | Direct (localhost) | Local dev (full postgres access) | Claude Code pipeline (dev) |
 | `PROD_DB_URL` | Pooler (IPv4) | Production (limited) | Claude Code (imports, edits) |
 | Vercel `SUPABASE_SERVICE_ROLE_KEY` | API | Production (full) | App backend only |
 

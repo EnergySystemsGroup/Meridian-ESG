@@ -79,10 +79,12 @@ local→production transfer step. The approval gate for manual pipeline records 
 `promotion_status` column on the `funding_opportunities` table (see Section 3c).
 
 **Database connection**:
-- `PIPELINE_DB_URL` env var — the single connection string used by all pipeline skills
-- **Production** (default): Points to production Supabase (`PROD_DB_URL`)
-- **Development/testing**: Point at local Supabase for safe experimentation
-- The `claude_writer` database role restricts destructive operations in production
+- Three environment-specific connection strings:
+  - `PROD_CLAUDE_URL` — production Supabase (default, `claude_writer` role)
+  - `STAGING_CLAUDE_URL` — staging Supabase (`claude_writer` role)
+  - `DEV_CLAUDE_URL` — local Supabase (full `postgres` access)
+- The orchestrator defaults to `PROD_CLAUDE_URL`. User can say "use staging" or "use dev" to switch.
+- The `claude_writer` database role restricts destructive operations in production/staging
   (see `docs/prd/db-security/production-database-configuration.md`)
 
 **What goes where**:
@@ -95,7 +97,7 @@ local→production transfer step. The approval gate for manual pipeline records 
 | Opportunities | `funding_opportunities` | Skill 6 | Yes — enters as `pending_review` |
 | Published opportunities | `published_funding_opportunities` VIEW | Skill 7 | Admin flips to `promoted` |
 
-**Note**: The hardcoded psql connection string in `CLAUDE.md` should be replaced with `$PIPELINE_DB_URL`.
+**Note**: The hardcoded psql connection string in `CLAUDE.md` has been replaced with `$PROD_CLAUDE_URL` (with `$STAGING_CLAUDE_URL` / `$DEV_CLAUDE_URL` alternatives).
 
 ---
 
@@ -1057,7 +1059,7 @@ GROUP BY fs.id, fp.id;
 | Enrichment | First run updates existing + adds new | API-created sources with missing data get backfilled. |
 | Skills vs agents | Skills (SKILL.md) + subagents for parallelism | Skills define WHAT to do. Task tool spawns parallel subagents for HOW. Agent Teams (future) may enable peer-to-peer coordination. |
 | Pipeline orchestration (original) | Meta-skill + coordinator pattern | Skills 1-7 run individually or chained. See Section 11 for full orchestration design. |
-| Database target | All production, always | Sources, programs, catalog URLs, opportunities all go to production. `PIPELINE_DB_URL` env var for dev/testing. No local→prod transfer. |
+| Database target | All production, always | Sources, programs, catalog URLs, opportunities all go to production. Three env vars: `PROD_CLAUDE_URL` (default), `STAGING_CLAUDE_URL`, `DEV_CLAUDE_URL`. No local→prod transfer. |
 | Approval gate | `promotion_status` on `funding_opportunities` | No shadow table. Status flip for approval. Coverage areas linked immediately. Both pipelines benefit from demotion. |
 | API auto-promotion | `promotion_status = NULL` (auto-visible) | API pipeline unchanged. NULL treated as promoted in VIEW. Zero API pipeline impact. |
 | Demotion | Universal via `promotion_status = 'rejected'` | Works on API AND manual records. Bad API data can be permanently hidden. Audit trail preserved. |
@@ -1065,7 +1067,7 @@ GROUP BY fs.id, fp.id;
 | Coverage area timing | Linked immediately during Skill 6 | Real `funding_opportunities.id` exists from UPSERT. No JSONB workaround needed. |
 | Review metadata | `reviewed_by`, `reviewed_at`, `review_notes` on real table | Admin decisions tracked inline. No separate audit table needed. |
 | Skill 7 purpose | Review & Publish (status flip) | Not DB transfer. Admin reviews pending records, flips to promoted/rejected. Simple UPDATE. |
-| Pipeline DB connection | `PIPELINE_DB_URL` env var | Defaults to production. Set to local for development/testing. Single env var, not hardcoded. |
+| Pipeline DB connection | Three env vars: `PROD_CLAUDE_URL`, `STAGING_CLAUDE_URL`, `DEV_CLAUDE_URL` | Defaults to `PROD_CLAUDE_URL`. User can switch to staging or dev on request. |
 | Needs revision flow | Reset staging → re-process → UPSERT updates existing row | `needs_revision` resets staging extraction. Pipeline re-runs. UPSERT updates the same row. Back to `pending_review`. |
 | API pipeline impact | None immediate | `program_id` nullable, backfill later |
 | Scoring | Unchanged (`scoringAnalyzer.js`) | Deterministic, works well |
