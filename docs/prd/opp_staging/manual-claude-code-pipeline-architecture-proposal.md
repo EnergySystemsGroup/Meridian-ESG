@@ -268,6 +268,13 @@ ALTER TABLE funding_programs ADD COLUMN IF NOT EXISTS eligible_applicants TEXT[]
 ALTER TABLE funding_programs ADD COLUMN IF NOT EXISTS eligible_project_types TEXT[];
   -- General project types the program covers
 
+ALTER TABLE funding_programs ADD COLUMN IF NOT EXISTS eligible_activities TEXT[];
+  -- Aligned with TAXONOMIES.ELIGIBLE_ACTIVITIES (hot/strong/mild tiers)
+  -- e.g., ["Installation", "Replacement", "Upgrade", "Equipment Purchase"]
+  -- Used by the Activity Filter Gate: programs with zero hot/strong/mild
+  -- activity matches are excluded during Phase 2 extraction.
+  -- See "Dual Filter Gates" in Skill 2 section.
+
 ALTER TABLE funding_programs ADD COLUMN IF NOT EXISTS funding_type TEXT;
   -- Primary funding type: "Grant", "Rebate", "Loan", etc.
 
@@ -543,6 +550,14 @@ For each registered source that has a website:
 ### Skill 2: Program Discovery (`/discover-programs`)
 
 > **REVIEWED — Step 2 Discussion (Approved)**
+>
+> **IMPLEMENTATION NOTE (Feb 2026)**: Implemented as a **two-round scout/extractor
+> pattern** instead of the single-pass approach described below. Round 1 spawns
+> lightweight scouts to find program URLs. Round 2 spawns extractors to extract
+> data and write to DB. This split manages context size for heavy sources.
+> See `.claude/skills/program-discovery/SKILL.md` for the actual implementation
+> and `.claude/skills/pipeline-orchestrator/SKILL.md` Section 6 "Phase 2" for
+> the team spawning pattern.
 
 **Purpose**: For a given source (or set of sources), crawl its catalog URLs
 (`source_program_urls`) to discover individual programs, extract their static
@@ -616,8 +631,30 @@ This is the "general/default" program info. Some of these fields may appear on
 specific opportunities too (opportunity can narrow eligibility, etc.), but the
 program captures the persistent baseline.
 
-**Step 5 — Register programs:**
-For each program discovered:
+**Step 5 — Dual Filter Gates (both must pass before INSERT):**
+
+Programs are filtered BEFORE insertion to ensure only commercially relevant,
+activity-aligned programs enter `funding_programs`:
+
+| Gate | Check | Logic | Fail Action |
+|------|-------|-------|-------------|
+| **Gate 1: Applicant Type** | `eligible_applicants` | If the program serves **only** individual/residential applicants (homeowners, renters, individual consumers) and no organizations, businesses, institutions, or government entities → **REJECT**. If it serves **any** commercial/institutional entity, even alongside residential → **PASS**. | Log as "Filtered Out (residential/individual only)" |
+| **Gate 2: Activity Type** | `eligible_activities` | Map program to `ELIGIBLE_ACTIVITIES` from `lib/constants/taxonomies.js`. If zero hot/strong/mild tier matches → **REJECT**. | Log as "Filtered Out (no eligible activities)" |
+
+Gate 1 uses reasoning-based evaluation (not a hardcoded list) — extractors determine
+whether applicants are individual/residential vs commercial/institutional based on
+program descriptions and eligibility criteria.
+
+Extractor reports MUST include both **"Inserted"** and **"Filtered Out"** sections
+with the reason for each filtered program (which gate failed).
+
+**Observed filter rates** (NV + AZ runs, Feb 2026):
+- NV local sources: 52% filtered (51 of 97 candidates) — mostly Gate 2
+- AZ utilities (TEP): 57% filtered by Gate 1 (residential-only), 4% by Gate 2
+- AZ utilities (APS): 7% filtered (1 discontinued program)
+
+**Step 6 — Register programs:**
+For each program that passes both gates:
 1. Dedup against existing `funding_programs` by name + source_id (fuzzy match)
 2. If NEW: INSERT into `funding_programs` with:
    - All extracted static info
@@ -626,8 +663,9 @@ For each program discovered:
    - `next_check_at = NOW()` (immediately eligible for Skill 3)
    - `pipeline = 'manual'`
 3. If EXISTS: UPDATE changed fields (description, URLs, status, etc.)
-4. Update `funding_sources.programs_last_searched_at = NOW()`
-5. Update `source_program_urls.last_crawled_at = NOW()` for crawled catalog URLs
+4. Set `next_check_at = NOW()` for new programs (immediate Phase 3 eligibility)
+5. Update `funding_sources.programs_last_searched_at = NOW()`
+6. Update `source_program_urls.last_crawled_at = NOW()` for crawled catalog URLs
 
 **Output**:
 - Populated `funding_programs` table with persistent program entities
@@ -1057,8 +1095,11 @@ GROUP BY fs.id, fp.id;
 | Entity registry | Database-only | `funding_sources` IS the registry. No file system, no separate registry concept. |
 | Pipeline origin | Single value: 'api' or 'manual' | Records how we first learned about the source. Doesn't change later. |
 | Enrichment | First run updates existing + adds new | API-created sources with missing data get backfilled. |
-| Skills vs agents | Skills (SKILL.md) + subagents for parallelism | Skills define WHAT to do. Task tool spawns parallel subagents for HOW. Agent Teams (future) may enable peer-to-peer coordination. |
+| Skills vs agents | Skills (SKILL.md) + Agent Teams + Task tool | Skills define WHAT to do. Agent Teams (TeamCreate) for discovery phases (1-3) enabling parallel search + cross-checking. Task tool for processing phases (4-6). Thin agent .md files preload skills via `skills:` frontmatter. |
 | Pipeline orchestration (original) | Meta-skill + coordinator pattern | Skills 1-7 run individually or chained. See Section 11 for full orchestration design. |
+| Phase 2 execution | Two-round scout/extractor pattern | Round 1: scouts crawl catalog URLs to find program links (lightweight). Round 2: extractors visit program pages, extract 7+ fields, write to DB (heavy). Split prevents context bloat for sources with many programs. Batched 3 sources at a time. |
+| Phase 2 filter gates | Dual gate: Applicant Type + Activity Type | Gate 1 (reasoning-based): reject programs serving only individual/residential applicants. Gate 2 (taxonomy-based): reject programs with zero hot/strong/mild ELIGIBLE_ACTIVITIES matches. Both must pass before INSERT. Observed 7-57% filter rate depending on source type. |
+| Eligible activities | `eligible_activities TEXT[]` on `funding_programs` | Maps to `TAXONOMIES.ELIGIBLE_ACTIVITIES` (hot/strong/mild tiers only, weak excluded). Used by Gate 2 filter and downstream Phase 5 analysis scoring. Added via migration `20260208000001`. |
 | Database target | All production, always | Sources, programs, catalog URLs, opportunities all go to production. Three env vars: `PROD_CLAUDE_URL` (default), `STAGING_CLAUDE_URL`, `DEV_CLAUDE_URL`. No local→prod transfer. |
 | Approval gate | `promotion_status` on `funding_opportunities` | No shadow table. Status flip for approval. Coverage areas linked immediately. Both pipelines benefit from demotion. |
 | API auto-promotion | `promotion_status = NULL` (auto-visible) | API pipeline unchanged. NULL treated as promoted in VIEW. Zero API pipeline impact. |
@@ -1082,7 +1123,7 @@ GROUP BY fs.id, fp.id;
 | Cross-pipeline dedup | Enhanced NOT EXISTS in Skill 3 scheduling query | Single query catches both pipelines via `program_id` OR fuzzy `title+source`. Status-aware (Open only blocks). Zero extra steps. Self-healing as API records get backfilled. |
 | Dedup status awareness | Only Open opportunities block new processing | Closed = old round, should be re-processable. Upcoming = still allow re-checking (detect when Open). |
 | Pipeline orchestration | Meta-skill + sequential skill chaining | Each skill independently usable. Meta-skill (`/run-pipeline`) chains 1→6 automatically. Review & Publish (7) always manual. |
-| Orchestration mechanism | Coordinator pattern (main context) | Claude Code main context orchestrates. Task tool spawns parallel subagents per skill. No Agent Teams dependency. |
+| Orchestration mechanism | Pipeline orchestrator skill + Agent Teams | Single orchestrator skill (`pipeline-orchestrator`) parses requests, assesses DB state, spawns Agent Teams for discovery (phases 1-3) and Task tool agents for processing (phases 4-6). TeamCreate for cross-checking, Task tool for deterministic batch work. |
 
 ---
 
@@ -1291,8 +1332,8 @@ User: "Register sources: SRP"  (or: "Discover programs for SRP")
 
 ---
 
-*Document Version: 6.0*
+*Document Version: 7.0*
 *Created: 2026-02-04*
-*Updated: 2026-02-06*
-*Status: Proposal — Steps 1-4 reviewed (schema, skills, dedup, orchestration, production-first, approval flow)*
+*Updated: 2026-02-09*
+*Status: Proposal — Steps 1-4 reviewed. Phase 1+2 implemented and tested (NV local, AZ utilities). Dual filter gates added (v7).*
 *Supersedes: manual-v2-pipeline-architecture-proposal.md*

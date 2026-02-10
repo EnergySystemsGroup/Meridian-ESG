@@ -366,7 +366,8 @@ via message. If running standalone via Task tool, return it as the task result.
 | Source website returns 404 or connection error | Try `www.` prefix variant and `https://` vs `http://`. If still failing, flag: "Website unreachable — may be stale" |
 | Website loads but has no program/rebate pages | Log: "No catalog URLs found — source may not have public program listings". Still register the source. |
 | Website is login-gated | Flag: "Requires login, could not crawl". Do NOT register catalog URLs for gated pages |
-| WebFetch returns garbled/empty content | Try WebSearch `site:[domain] rebates` as alternative. If no usable results, flag and move on |
+| WebFetch returns garbled/empty content (JS-rendered) | Fallback to Playwright (`browser_navigate` + `browser_snapshot`). If still empty, try WebSearch `site:[domain] rebates`. If no usable results, flag and move on |
+| PDF URL encountered during catalog discovery | Bookmark the URL with label including "(PDF)". Do NOT use WebFetch for PDFs. Downstream skills use `curl \| python3 PyMuPDF` for extraction |
 
 ### Database Failures
 

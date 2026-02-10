@@ -250,6 +250,7 @@ The orchestrator parses your request, checks database state, determines the corr
 - **Phase 7** (Review & Publish) is NEVER auto-triggered — requires explicit admin action
 - **Database reads**: `mcp__postgres__query` (read-only MCP)
 - **Database writes**: `psql "$PROD_CLAUDE_URL"` via Bash tool (or `$STAGING_CLAUDE_URL` / `$DEV_CLAUDE_URL`)
+- **Content retrieval**: Each skill file contains inline content retrieval instructions. HTML → WebFetch (fallback: Playwright). PDFs → `curl | python3 PyMuPDF` (never WebFetch). Login-gated → skip and flag. See Section 0a in each skill's SKILL.md.
 
 ### Full Documentation
 

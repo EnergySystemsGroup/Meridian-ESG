@@ -49,7 +49,7 @@ non-negotiable — a missed source means missed opportunities for our sales team
 | # | Phase | Reads | Writes | Execution |
 |---|-------|-------|--------|-----------|
 | 1 | Source Registry | Web search | `funding_sources` + `source_program_urls` | Agent Team (3 search teammates + cross-check) |
-| 2 | Program Discovery | `source_program_urls` | `funding_programs` | Agent Team (N teammates, 1 per source) |
+| 2 | Program Discovery | `source_program_urls` | `funding_programs` | Two rounds: Scout Team (find URLs) → Extractor Team (extract + store) |
 | 3 | Opportunity Discovery | `funding_programs` (smart schedule) | `manual_funding_opportunities_staging` | Agent Team (N teammates per source group) |
 | 4 | Extraction | Staging `extraction_status='pending'` | Staging `extraction_data`, `raw_content` | Task tool: extraction-agent (batches of 20) |
 | 5 | Analysis | Staging `analysis_status='pending'` | Staging `analysis_data` | Task tool: analysis-agent (batches of 20) |
@@ -198,7 +198,14 @@ SELECT COUNT(*) as source_count
 FROM funding_sources
 WHERE state_code = 'AZ' AND funder_type = 'Utility';
 
--- Check 2: Programs exist for these sources?
+-- Check 2a: Catalog URLs exist for these sources? (Phase 2 prerequisite)
+SELECT COUNT(*) as url_count,
+  COUNT(DISTINCT spu.source_id) as sources_with_urls
+FROM source_program_urls spu
+JOIN funding_sources fs ON fs.id = spu.source_id
+WHERE fs.state_code = 'AZ' AND fs.funder_type = 'Utility';
+
+-- Check 2b: Programs exist for these sources?
 SELECT COUNT(*) as program_count
 FROM funding_programs fp
 JOIN funding_sources fs ON fs.id = fp.source_id
@@ -238,7 +245,7 @@ WHERE promotion_status = 'pending_review';
 
 **Not all checks apply to every phase.** Run only relevant checks:
 - Phase 1: Check 1 only (sources)
-- Phase 2: Checks 1-2 (sources + programs)
+- Phase 2: Checks 1-2 (sources + catalog URLs)
 - Phase 3: Checks 1-3 (sources + programs + due schedule)
 - Phase 4-6: Check 4 (staging counts)
 - Phase 7: Check 5 (review queue)
@@ -254,6 +261,12 @@ If a user requests Phase N but prerequisites are missing, handle intelligently:
 
 **Phase 2 requested, no sources**:
 > "No [TYPE] sources registered for [STATE]. Want me to register sources first? (Phase 1 → Phase 2)"
+
+**Phase 2 requested, sources exist but no catalog URLs**:
+> "Found X sources but no catalog URLs in source_program_urls. Want me to re-run Phase 1 to discover catalog URLs first?"
+
+**Phase 2 requested, sources exist with catalog URLs**:
+> "Found X sources with Y catalog URLs. Proceeding with program discovery."
 
 **Phase 3 requested, no sources**:
 > "No [TYPE] sources registered for [STATE]. Want me to run the full pipeline? (register → discover programs → find opportunities → process)"
@@ -461,11 +474,220 @@ Follow the Concrete Tool Call Pattern above. Key points:
 - Include state_code, funder_type, database env var, and batch_id in the prompt
 - Teammates write to DB independently, then cross-check for completeness
 
-### Phase 2 — Program Discovery Teams
+### Phase 2 — Program Discovery Teams (Two-Round Pattern)
 
-Team name: `program-discovery-[SCOPE]`
-One teammate per source (or per 2-3 small sources).
-Follow same TeamCreate pattern — each teammate crawls catalog URLs for their assigned source(s).
+Phase 2 uses a **two-round approach** to manage context size:
+- **Round 1 (Scouts)**: Lightweight agents crawl catalog URLs to find program links
+- **Between rounds**: Orchestrator collects, deduplicates, and plans extraction
+- **Round 2 (Extractors)**: Heavy agents visit program URLs, extract data, write to DB
+
+This split prevents context bloat — scouts stay lightweight (browse + identify), while
+extractors handle the heavy extraction work with focused assignments.
+
+#### Batch Sizing Rules
+
+| Parameter | Rule |
+|-----------|------|
+| Sources per batch | 3 at a time (group by funder type within batches) |
+| Scouts per batch | 1 scout per 2-3 catalog URLs + 1 searcher per source |
+| Max teammates | Target 6-12 per team (3 sources × ~3-4 teammates each) |
+| Extractors | 1 per ~10 programs (sized after Round 1 results) |
+| Source ordering | Within funder type, order by DB entry time (`created_at`) |
+
+#### Round 1 — Scout Team (Find Program URLs)
+
+```
+STEP 0: Query sources + catalog URL counts for the scope
+─────────────────────────
+SELECT fs.id, fs.name, fs.funder_type,
+  (SELECT COUNT(*) FROM source_program_urls spu WHERE spu.source_id = fs.id) as url_count
+FROM funding_sources fs
+WHERE fs.state_code = 'FL' AND fs.funder_type = 'County'
+AND (fs.programs_last_searched_at IS NULL
+     OR fs.programs_last_searched_at < NOW() - INTERVAL '90 days')
+ORDER BY fs.created_at;
+
+→ Plan batches: 3 sources at a time
+
+STEP 1: Create scout team for batch
+─────────────────────────
+TeamCreate(
+  team_name="program-discovery-FL-county-batch-1",
+  description="Phase 2 Round 1: Find programs for FL County sources (batch 1)"
+)
+
+STEP 2: Create shared tasks
+─────────────────────────
+TaskCreate(subject="Scout catalog URLs for programs", ...)
+TaskCreate(subject="Supplementary web search for missed programs", ...)
+TaskCreate(subject="Cross-check and deduplicate program lists", ...)
+
+STEP 3: Spawn ALL scout teammates IN PARALLEL
+─────────────────────────
+// For each source in batch, spawn scouts for its catalog URLs:
+// Source 1: Alachua County (3 catalog URLs → 1 scout + 1 searcher)
+Task(
+  subagent_type="program-discovery-agent",
+  team_name="program-discovery-FL-county-batch-1",
+  name="alachua-scout",
+  prompt="mode: scout
+          Source: Alachua County Office of Sustainability (source_id: abc-123)
+          Catalog URLs to crawl:
+            1. https://sustainability.alachuacounty.us/programs
+            2. https://sustainability.alachuacounty.us/grants
+            3. https://dsire.org/alachua-county
+          Crawl each URL, follow links 1 level deep, identify funding programs.
+          DB reads: mcp__postgres__query
+          Report your program list to the team when done.
+          Cross-check with alachua-searcher's findings."
+)
+
+Task(
+  subagent_type="program-discovery-agent",
+  team_name="program-discovery-FL-county-batch-1",
+  name="alachua-searcher",
+  prompt="mode: scout, role: searcher
+          Source: Alachua County Office of Sustainability (source_id: abc-123)
+          Do supplementary web search for programs NOT on the catalog pages.
+          Search queries:
+            - 'Alachua County sustainability rebate programs'
+            - 'Alachua County energy efficiency incentives 2026'
+            - 'Alachua County grants environment'
+          DB reads: mcp__postgres__query
+          Report your program list to the team when done.
+          Cross-check with alachua-scout's findings."
+)
+
+// Source 2: Broward County (2 catalog URLs → 1 scout + 1 searcher)
+Task(
+  subagent_type="program-discovery-agent",
+  team_name="program-discovery-FL-county-batch-1",
+  name="broward-scout",
+  prompt="mode: scout
+          Source: Broward County ... (source_id: def-456)
+          Catalog URLs: [...]
+          ..."
+)
+
+Task(
+  subagent_type="program-discovery-agent",
+  team_name="program-discovery-FL-county-batch-1",
+  name="broward-searcher",
+  prompt="mode: scout, role: searcher
+          Source: Broward County ... (source_id: def-456)
+          ..."
+)
+
+// Source 3: similar pattern
+// = 6 teammates for 3 sources (2 per source: 1 scout + 1 searcher)
+
+STEP 4: Wait for scouts to complete and cross-check
+─────────────────────────
+Scouts will:
+  a) Crawl their assigned URLs / run web searches
+  b) Report program lists to the team
+  c) Cross-check with their pair partner (scout ↔ searcher per source)
+  d) Converge on a merged program list per source
+
+STEP 5: Collect scout results and clean up
+─────────────────────────
+- Orchestrator collects all program lists from scouts
+- Deduplicates across sources (same program might appear under multiple sources)
+- Sends shutdown_request to all teammates
+- TeamDelete to clean up
+- Repeat for next batch until all sources processed
+```
+
+**Source_id MUST travel through the entire handoff chain.** Every program reported by
+scouts must include its source_id. The orchestrator passes source_id to extractors.
+Extractors write source_id as the FK on `funding_programs`.
+
+#### Between Rounds — Orchestrator Deduplication
+
+After all scout batches complete:
+1. Merge program lists from all batches
+2. Dedup by URL (exact match) and by name+source (fuzzy match)
+3. Count total unique programs
+4. Plan extractor assignments: ~10 programs per extractor
+5. Report to user: "Round 1 complete: X programs found across Y sources. Starting extraction."
+
+#### Round 2 — Extractor Team (Extract + Store)
+
+```
+STEP 1: Create extractor team
+─────────────────────────
+TeamCreate(
+  team_name="program-extraction-FL-county",
+  description="Phase 2 Round 2: Extract and store FL County programs"
+)
+
+STEP 2: Spawn extractor teammates with explicit assignments
+─────────────────────────
+// Divide programs among extractors (~10 programs each)
+Task(
+  subagent_type="program-discovery-agent",
+  team_name="program-extraction-FL-county",
+  name="extractor-1",
+  prompt="mode: extractor
+          DB writes: source .env.local && psql \"$DEV_CLAUDE_URL\"
+          DB reads: mcp__postgres__query
+
+          Extract and store these programs:
+          1. Green Business Program — https://sustainability.alachuacounty.us/programs/green-business
+             source_id: abc-123, source_name: Alachua County Office of Sustainability
+          2. Energy Audit Program — https://sustainability.alachuacounty.us/programs/energy-audit
+             source_id: abc-123, source_name: Alachua County Office of Sustainability
+          3. Tree Planting Grants — https://sustainability.alachuacounty.us/programs/tree-grants
+             source_id: abc-123, source_name: Alachua County Office of Sustainability
+             PDFs: [https://sustainability.alachuacounty.us/docs/tree-grant-app.pdf]
+          ... (up to ~10 programs)
+
+          For each: visit URL, extract structured fields, dedup check, INSERT/UPDATE
+          funding_programs. Set status='active', next_check_at=NOW(), pipeline='manual'.
+          Update programs_last_searched_at on each source when all its programs are done."
+)
+
+Task(
+  subagent_type="program-discovery-agent",
+  team_name="program-extraction-FL-county",
+  name="extractor-2",
+  prompt="mode: extractor
+          ... (next batch of ~10 programs)"
+)
+
+// = 1 extractor per ~10 programs
+
+STEP 3: Wait for extractors to complete
+─────────────────────────
+Extractors will:
+  a) Visit each program URL
+  b) Extract structured data (7+ fields)
+  c) Dedup against existing funding_programs
+  d) INSERT/UPDATE funding_programs
+  e) Report results to team lead
+
+STEP 4: Collect results and clean up
+─────────────────────────
+- Orchestrator collects extraction reports
+- Sends shutdown_request to all extractors
+- TeamDelete to clean up
+- Reports: "Phase 2 complete: X programs (Y new, Z updated) across N sources"
+```
+
+#### Fallback (ONLY if TeamCreate fails)
+
+For Round 1 (scouts), fall back to standalone Task tool:
+```
+Task(subagent_type="program-discovery-agent",
+     prompt="mode: scout. Run standalone for [source]. Crawl all catalog URLs AND do web search...")
+```
+
+For Round 2 (extractors), Task tool is an acceptable primary alternative:
+```
+Task(subagent_type="program-discovery-agent",
+     prompt="mode: extractor. Extract these programs: [list]. DB writes: ...")
+```
+Extractors are deterministic — they don't need cross-checking, so standalone mode is fine.
 
 ### Phase 3 — Opportunity Discovery Teams
 

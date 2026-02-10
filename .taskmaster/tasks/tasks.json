@@ -4761,12 +4761,12 @@
   "pipeline": {
     "tasks": [
       {
-        "id": 1,
+        "id": "1",
         "title": "Database Migration: Alter funding_sources table",
         "description": "Add 5 new columns to the existing funding_sources table and create 3 indexes to support the manual pipeline Phase 1 (Source Registry). Columns: funder_type TEXT (replaces agency_type/type), sectors TEXT[], state_code CHAR(2), pipeline TEXT DEFAULT 'api', programs_last_searched_at TIMESTAMPTZ. Indexes: state_code+funder_type composite, sectors GIN, delinquent sources partial. Must also migrate existing data from agency_type/type into funder_type before dropping old columns. Reference: docs/prd/opp_staging/manual-claude-code-pipeline-architecture-proposal.md Section 3a.",
         "details": "",
         "testStrategy": "",
-        "status": "pending",
+        "status": "done",
         "dependencies": [],
         "priority": "medium",
         "subtasks": [
@@ -4775,55 +4775,66 @@
             "title": "Check current funding_sources schema",
             "description": "Query information_schema.columns for funding_sources to see what columns already exist. Check if funder_type, sectors, state_code, pipeline, or programs_last_searched_at already exist. Also check the agency_type ENUM type definition and existing type column values.",
             "details": "",
-            "status": "pending",
+            "status": "done",
             "dependencies": [],
-            "parentTaskId": 1
+            "parentTaskId": 1,
+            "updatedAt": "2026-02-06T20:43:32.545Z",
+            "parentId": "undefined"
           },
           {
             "id": 2,
             "title": "Write migration SQL: add new columns",
             "description": "Create supabase migration file (YYYYMMDD_add_pipeline_columns_to_funding_sources.sql). ADD COLUMN IF NOT EXISTS for: funder_type TEXT, sectors TEXT[], state_code CHAR(2), pipeline TEXT DEFAULT 'api', programs_last_searched_at TIMESTAMPTZ.",
             "details": "",
-            "status": "pending",
+            "status": "done",
             "dependencies": [],
-            "parentTaskId": 1
+            "parentTaskId": 1,
+            "parentId": "undefined",
+            "updatedAt": "2026-02-06T20:43:36.306Z"
           },
           {
             "id": 3,
             "title": "Write migration SQL: migrate data from old columns",
             "description": "In the same or follow-up migration, migrate existing data: UPDATE funding_sources SET funder_type = agency_type::TEXT WHERE agency_type IS NOT NULL; UPDATE funding_sources SET funder_type = type WHERE funder_type IS NULL AND type IS NOT NULL. Verify data migrated correctly before marking old columns for removal.",
             "details": "",
-            "status": "pending",
+            "status": "done",
             "dependencies": [],
-            "parentTaskId": 1
+            "parentTaskId": 1,
+            "parentId": "undefined",
+            "updatedAt": "2026-02-06T20:43:40.233Z"
           },
           {
             "id": 4,
             "title": "Write migration SQL: create indexes",
             "description": "Create 3 indexes: (1) idx_funding_sources_state_funder_type ON (state_code, funder_type) WHERE state_code IS NOT NULL, (2) idx_funding_sources_sectors USING GIN(sectors), (3) idx_funding_sources_delinquent ON (programs_last_searched_at) WHERE programs_last_searched_at IS NULL OR < NOW() - INTERVAL 90 days.",
             "details": "",
-            "status": "pending",
+            "status": "done",
             "dependencies": [],
-            "parentTaskId": 1
+            "parentTaskId": 1,
+            "parentId": "undefined",
+            "updatedAt": "2026-02-06T20:43:44.085Z"
           },
           {
             "id": 5,
             "title": "Run migration and verify",
             "description": "Run supabase migration up against local or dev database. Verify columns exist, indexes created, data migrated correctly. Check that existing API pipeline functionality is not broken by the new columns.",
             "details": "",
-            "status": "pending",
+            "status": "done",
             "dependencies": [],
-            "parentTaskId": 1
+            "parentTaskId": 1,
+            "parentId": "undefined",
+            "updatedAt": "2026-02-06T20:57:48.497Z"
           }
-        ]
+        ],
+        "updatedAt": "2026-02-06T20:57:48.497Z"
       },
       {
-        "id": 2,
+        "id": "2",
         "title": "Database Migration: Create source_program_urls table",
         "description": "Create new source_program_urls table that links funding sources to their program catalog page URLs. Columns: id UUID PK, source_id UUID FK→funding_sources ON DELETE CASCADE, url TEXT NOT NULL, label TEXT (human-readable like 'Main rebate catalog'), last_crawled_at TIMESTAMPTZ, created_at TIMESTAMPTZ DEFAULT NOW(). Constraints: UNIQUE(source_id, url). Indexes: source_id lookup, stale crawl detection (last_crawled_at IS NULL OR < 90 days). Reference: docs/prd/opp_staging/manual-claude-code-pipeline-architecture-proposal.md Section 3a-2.",
         "details": "",
         "testStrategy": "",
-        "status": "pending",
+        "status": "done",
         "dependencies": [],
         "priority": "medium",
         "subtasks": [
@@ -4832,35 +4843,42 @@
             "title": "Write migration SQL: create source_program_urls table",
             "description": "Create supabase migration file. CREATE TABLE source_program_urls with: id UUID PK DEFAULT uuid_generate_v4(), source_id UUID NOT NULL REFERENCES funding_sources(id) ON DELETE CASCADE, url TEXT NOT NULL, label TEXT, last_crawled_at TIMESTAMPTZ, created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL. Add UNIQUE(source_id, url) constraint.",
             "details": "",
-            "status": "pending",
+            "status": "done",
             "dependencies": [],
-            "parentTaskId": 2
+            "parentTaskId": 2,
+            "parentId": "undefined",
+            "updatedAt": "2026-02-06T20:43:48.265Z"
           },
           {
             "id": 2,
             "title": "Write migration SQL: create indexes for source_program_urls",
             "description": "Create 2 indexes: (1) idx_source_program_urls_source ON source_program_urls(source_id) for FK lookups, (2) idx_source_program_urls_stale ON source_program_urls(last_crawled_at) WHERE last_crawled_at IS NULL OR last_crawled_at < NOW() - INTERVAL 90 days for stale crawl detection.",
             "details": "",
-            "status": "pending",
+            "status": "done",
             "dependencies": [],
-            "parentTaskId": 2
+            "parentTaskId": 2,
+            "parentId": "undefined",
+            "updatedAt": "2026-02-06T20:43:52.254Z"
           },
           {
             "id": 3,
             "title": "Run migration and verify table creation",
             "description": "Run supabase migration up. Verify table exists, FK constraint works (test with valid/invalid source_id), UNIQUE constraint works (test duplicate source_id+url), indexes created.",
             "details": "",
-            "status": "pending",
+            "status": "done",
             "dependencies": [],
-            "parentTaskId": 2
+            "parentTaskId": 2,
+            "parentId": "undefined",
+            "updatedAt": "2026-02-06T20:57:52.230Z"
           }
-        ]
+        ],
+        "updatedAt": "2026-02-06T20:57:52.230Z"
       },
       {
-        "id": 3,
+        "id": "3",
         "title": "Configure Claude URL environment variables and update references",
         "description": "Use the three-URL pattern (DEV_CLAUDE_URL, STAGING_CLAUDE_URL, PROD_CLAUDE_URL) instead of creating a PIPELINE_DB_URL. DEV_CLAUDE_URL already added to .env.local. The other two already exist. Orchestrator defaults to PROD_CLAUDE_URL, switches on request. Must update: CLAUDE.md (replace hardcoded psql strings), pipeline-orchestrator SKILL.md (reference real URL vars), db-security doc (add DEV_CLAUDE_URL to reference table), GRANT new pipeline tables to claude_writer role.",
-        "status": "pending",
+        "status": "done",
         "dependencies": [],
         "priority": "medium",
         "details": "The three-URL pattern is already established in .env.local:\n- DEV_CLAUDE_URL: postgresql://postgres:postgres@127.0.0.1:54322/postgres (local Supabase, full access)\n- STAGING_CLAUDE_URL: postgresql://claude_writer.wpcytpefkbsakjsryoiz:*ESG2026*@aws-0-us-east-2.pooler.supabase.com:6543/postgres (staging with limited role)\n- PROD_CLAUDE_URL: postgresql://claude_writer.xpzhsyxtxmxxzkijabqa:*ESG2026*@aws-1-us-east-1.pooler.supabase.com:6543/postgres (production with limited role)\n\nKey files to update:\n- CLAUDE.md: Line 252 references $PIPELINE_DB_URL, should reference the three-URL pattern\n- .claude/skills/pipeline-orchestrator/SKILL.md: Lines 34-36 and 362-364 reference $PIPELINE_DB_URL\n- docs/prd/db-security/production-database-configuration.md: Appendix section has connection strings reference table (lines 324-330) - add DEV_CLAUDE_URL\n\nNew pipeline tables that need claude_writer GRANT:\n- funding_programs (INSERT, UPDATE)\n- source_program_urls (INSERT, UPDATE)\n- manual_funding_opportunities_staging (INSERT, UPDATE)\n- claude_change_log (INSERT only - already in db-security doc)",
@@ -4871,55 +4889,66 @@
             "title": "Update CLAUDE.md: replace hardcoded psql strings",
             "description": "Search CLAUDE.md for any hardcoded psql connection strings (like postgresql://postgres:postgres@127.0.0.1:54322/postgres) and PIPELINE_DB_URL references. Replace with the three-URL pattern: DEV_CLAUDE_URL (local), STAGING_CLAUDE_URL (staging), PROD_CLAUDE_URL (production). Document that the orchestrator defaults to PROD_CLAUDE_URL.",
             "details": "",
-            "status": "pending",
+            "status": "done",
             "dependencies": [],
-            "parentTaskId": 3
+            "parentTaskId": 3,
+            "parentId": "undefined",
+            "updatedAt": "2026-02-06T20:43:56.396Z"
           },
           {
             "id": 2,
             "title": "Update pipeline-orchestrator SKILL.md: replace PIPELINE_DB_URL",
             "description": "Update .claude/skills/pipeline-orchestrator/SKILL.md Section 1 (mission) and Section 11 (maintenance) to replace all PIPELINE_DB_URL references with: Reads via mcp__postgres__query, Writes via psql PROD_CLAUDE_URL (default), STAGING_CLAUDE_URL, or DEV_CLAUDE_URL. Document that user can say 'use staging' or 'use dev' to switch.",
             "details": "",
-            "status": "pending",
+            "status": "done",
             "dependencies": [],
-            "parentTaskId": 3
+            "parentTaskId": 3,
+            "parentId": "undefined",
+            "updatedAt": "2026-02-06T20:44:01.081Z"
           },
           {
             "id": 3,
             "title": "Update db-security doc: add DEV_CLAUDE_URL",
             "description": "Update docs/prd/db-security/production-database-configuration.md: add DEV_CLAUDE_URL to the .env.local structure example and the Connection Strings quick reference table in the appendix. Three rows: DEV_CLAUDE_URL (local, full postgres), STAGING_CLAUDE_URL (pooler, claude_writer), PROD_CLAUDE_URL (pooler, claude_writer).",
             "details": "",
-            "status": "pending",
+            "status": "done",
             "dependencies": [],
-            "parentTaskId": 3
+            "parentTaskId": 3,
+            "parentId": "undefined",
+            "updatedAt": "2026-02-06T20:44:05.691Z"
           },
           {
             "id": 4,
             "title": "GRANT pipeline tables to claude_writer",
             "description": "Run on both staging and production: GRANT INSERT, UPDATE ON source_program_urls TO claude_writer; GRANT INSERT, UPDATE ON manual_funding_opportunities_staging TO claude_writer; Also add these to the db-security doc GRANT section so future setup is documented. Verify with test INSERT from claude_writer role.",
             "details": "",
-            "status": "pending",
+            "status": "deferred",
             "dependencies": [],
-            "parentTaskId": 3
+            "parentTaskId": 3,
+            "parentId": "undefined",
+            "updatedAt": "2026-02-06T20:49:57.666Z"
           },
           {
             "id": 5,
             "title": "Update proposal doc: replace PIPELINE_DB_URL references",
             "description": "Update docs/prd/opp_staging/manual-claude-code-pipeline-architecture-proposal.md to replace all PIPELINE_DB_URL references with the three-URL pattern (DEV_CLAUDE_URL, STAGING_CLAUDE_URL, PROD_CLAUDE_URL). Key sections to update: Section 2b (Production Database Model), Section 3c (promotion_status), Section 7 (design decisions), Section 11 (orchestration). Default is PROD_CLAUDE_URL, orchestrator switches on user request.",
             "details": "",
-            "status": "pending",
+            "status": "done",
             "dependencies": [],
-            "parentTaskId": 3
+            "parentTaskId": 3,
+            "parentId": "undefined",
+            "updatedAt": "2026-02-06T20:44:09.902Z"
           }
-        ]
+        ],
+        "updatedAt": "2026-02-09T19:17:09.022Z"
       },
       {
-        "id": 4,
+        "id": "4",
         "title": "Create source-registry SKILL.md",
         "description": "Write .claude/skills/source-registry/SKILL.md — the procedural knowledge for Phase 1 Source Registration. This skill contains the 3-step process: Step 1 - Multi-strategy parallel web search (6 strategies: direct listing, regulatory/PUC, EIA database, aggregator sites like DSIRE/EnergySage, state agencies, foundation databases). For each entity capture: name, website URL, funder_type, sectors[], state_code. Step 2 - Deduplication and registration: check against existing funding_sources by fuzzy name match, INSERT new or UPDATE incomplete records (enrichment case for API-created sources missing fields). Step 3 - Program catalog URL discovery: WebFetch source websites, search for rebate/incentive catalog pages, INSERT into source_program_urls with descriptive labels. Output: summary report of X new sources, Y enriched, Z catalog URLs found. Tools: WebSearch, WebFetch, mcp__postgres__query (reads), psql via Bash (writes). Reference: proposal Section Skill 1 (lines 470-538).",
         "details": "",
         "testStrategy": "",
-        "status": "pending",
+        "status": "done",
         "dependencies": [
           "1",
           "2"
@@ -4931,55 +4960,66 @@
             "title": "Create skill directory structure",
             "description": "mkdir -p .claude/skills/source-registry. Verify path exists.",
             "details": "",
-            "status": "pending",
+            "status": "done",
             "dependencies": [],
-            "parentTaskId": 4
+            "parentTaskId": 4,
+            "parentId": "undefined",
+            "updatedAt": "2026-02-06T21:01:26.449Z"
           },
           {
             "id": 2,
             "title": "Write SKILL.md frontmatter and mission section",
             "description": "Write YAML frontmatter (name: source-registry, description). Write Section 1: Mission — what this skill does, the three-tier data model context, quality standards. Reference the orchestrator skill for how this fits into the pipeline.",
             "details": "",
-            "status": "pending",
+            "status": "done",
             "dependencies": [],
-            "parentTaskId": 4
+            "parentTaskId": 4,
+            "parentId": "undefined",
+            "updatedAt": "2026-02-06T21:01:30.628Z"
           },
           {
             "id": 3,
             "title": "Write Step 1: Multi-strategy search instructions",
             "description": "Document the 6 parallel search strategies with example queries for each: direct listing, regulatory/PUC cross-reference, EIA industry database, aggregator sites (DSIRE/EnergySage), state agency searches, foundation database searches. Include the capture fields: name, website URL, funder_type, sectors[], state_code.",
             "details": "",
-            "status": "pending",
+            "status": "done",
             "dependencies": [],
-            "parentTaskId": 4
+            "parentTaskId": 4,
+            "parentId": "undefined",
+            "updatedAt": "2026-02-06T21:01:34.866Z"
           },
           {
             "id": 4,
             "title": "Write Step 2: Dedup and registration instructions",
             "description": "Document the dedup-then-register process: fuzzy name match against existing funding_sources, INSERT new sources, UPDATE incomplete sources (enrichment case for API-created sources). Include example SQL for both paths. Reference the funding_sources schema from task 1.",
             "details": "",
-            "status": "pending",
+            "status": "done",
             "dependencies": [],
-            "parentTaskId": 4
+            "parentTaskId": 4,
+            "parentId": "undefined",
+            "updatedAt": "2026-02-06T21:01:38.825Z"
           },
           {
             "id": 5,
             "title": "Write Step 3: Catalog URL discovery instructions",
             "description": "Document how to find program catalog URLs: WebFetch source websites, search for rebate/incentive listing pages, follow links to catalog pages, INSERT into source_program_urls with descriptive labels. Include example labels and the output summary format.",
             "details": "",
-            "status": "pending",
+            "status": "done",
             "dependencies": [],
-            "parentTaskId": 4
+            "parentTaskId": 4,
+            "parentId": "undefined",
+            "updatedAt": "2026-02-06T21:01:42.966Z"
           }
-        ]
+        ],
+        "updatedAt": "2026-02-06T21:01:42.966Z"
       },
       {
-        "id": 5,
+        "id": "5",
         "title": "Create source-registry-agent.md",
         "description": "Write .claude/agents/source-registry-agent.md — a lightweight agent role definition that preloads the source-registry skill via skills: [source-registry] in YAML frontmatter. This agent is spawned by the pipeline orchestrator as part of an Agent Team during Phase 1 discovery. Each teammate gets this agent definition, which injects the full source-registry SKILL.md into their context. The agent file should define: name, description, model preference (opus for search quality), color for UI, role statement (research teammate for source discovery), and the skills frontmatter field. Follow the pattern established in existing agents like .claude/agents/extraction-agent.md and .claude/agents/discovery-agent.md.",
         "details": "",
         "testStrategy": "",
-        "status": "pending",
+        "status": "done",
         "dependencies": [
           "4"
         ],
@@ -4990,35 +5030,42 @@
             "title": "Review existing agent file patterns",
             "description": "Read .claude/agents/extraction-agent.md and .claude/agents/discovery-agent.md to understand the YAML frontmatter pattern, role statement structure, and how existing agents are defined. Note the fields: name, description, model, color, skills (if present).",
             "details": "",
-            "status": "pending",
+            "status": "done",
             "dependencies": [],
-            "parentTaskId": 5
+            "parentTaskId": 5,
+            "parentId": "undefined",
+            "updatedAt": "2026-02-06T21:57:13.128Z"
           },
           {
             "id": 2,
             "title": "Write source-registry-agent.md",
             "description": "Create .claude/agents/source-registry-agent.md with YAML frontmatter: name (source-registry-agent), description (research teammate for Phase 1 source discovery), model (opus for search quality), color (for UI), skills: [source-registry] to preload the skill. Body: role statement, core responsibility (find and register funding sources), tools it uses (WebSearch, WebFetch, mcp__postgres__query, psql). Keep it lightweight — the skill has the detailed instructions.",
             "details": "",
-            "status": "pending",
+            "status": "done",
             "dependencies": [],
-            "parentTaskId": 5
+            "parentTaskId": 5,
+            "parentId": "undefined",
+            "updatedAt": "2026-02-06T21:57:18.136Z"
           },
           {
             "id": 3,
             "title": "Verify skill preloading works",
             "description": "Test that spawning the source-registry-agent via Task tool correctly injects the source-registry SKILL.md content. Spawn a quick test agent and confirm it has access to the skill's procedural knowledge (ask it to describe its search strategies).",
             "details": "",
-            "status": "pending",
+            "status": "done",
             "dependencies": [],
-            "parentTaskId": 5
+            "parentTaskId": 5,
+            "parentId": "undefined",
+            "updatedAt": "2026-02-06T21:57:22.252Z"
           }
-        ]
+        ],
+        "updatedAt": "2026-02-06T21:57:22.252Z"
       },
       {
         "id": "6",
         "title": "Create claude_change_log audit table and integrate into pipeline",
         "description": "Create the claude_change_log audit table for tracking all pipeline write operations at the orchestrator level only. Individual agents remain lightweight with zero audit overhead — the orchestrator queries counts before/after each phase and logs one summary row per phase per table. This includes: (1) DB migration to create the table with columns: id UUID PK, table_name TEXT, record_id UUID, operation TEXT (INSERT/UPDATE), change_details JSONB, change_reason TEXT, executed_at TIMESTAMPTZ DEFAULT NOW(), pipeline_phase TEXT (source_registry/extraction/storage/etc), batch_id TEXT (groups all ops from one pipeline run), record_count INTEGER (for batch summaries). (2) GRANT INSERT on claude_change_log to claude_writer role on both staging and production. (3) Update docs/prd/db-security/production-database-configuration.md to document the finalized table schema (replace the optional section with the actual schema including pipeline additions). (4) Update the pipeline-orchestrator SKILL.md to document orchestrator-only audit logging: the orchestrator generates a batch_id at pipeline start and logs summary entries after each phase completes by querying counts before/after and recording one summary row per phase per table affected.",
-        "status": "pending",
+        "status": "done",
         "dependencies": [],
         "priority": "medium",
         "details": "",
@@ -5030,8 +5077,10 @@
             "description": "Create supabase migration file. CREATE TABLE claude_change_log with: id UUID PK DEFAULT gen_random_uuid(), table_name TEXT NOT NULL, record_id UUID, operation TEXT NOT NULL (INSERT/UPDATE), change_details JSONB, change_reason TEXT, executed_at TIMESTAMPTZ DEFAULT NOW(), pipeline_phase TEXT, batch_id TEXT, record_count INTEGER. Add index on batch_id for querying by pipeline run. Add index on executed_at for time-based queries.",
             "dependencies": [],
             "details": "Migration file should be created in supabase/migrations/ with timestamp prefix (YYYYMMDDHHMMSS_create_claude_change_log.sql). Follow existing migration patterns in the codebase. Include proper constraints and indexes for performance.",
-            "status": "pending",
-            "testStrategy": "After migration: verify table exists, verify indexes exist (check pg_indexes), verify default UUID generation works on INSERT."
+            "status": "done",
+            "testStrategy": "After migration: verify table exists, verify indexes exist (check pg_indexes), verify default UUID generation works on INSERT.",
+            "parentId": "undefined",
+            "updatedAt": "2026-02-06T20:44:13.700Z"
           },
           {
             "id": 2,
@@ -5039,8 +5088,10 @@
             "description": "Run GRANT INSERT ON claude_change_log TO claude_writer on both staging and production databases. The role should only be able to INSERT (append-only audit log), not UPDATE or DELETE log entries. Verify with a test INSERT from the claude_writer role.",
             "dependencies": [],
             "details": "Execute the GRANT statement using psql connected to both database environments. Test by attempting INSERT (should succeed), UPDATE (should fail), and DELETE (should fail) to verify append-only permissions are correct.",
-            "status": "pending",
-            "testStrategy": "Test INSERT succeeds, UPDATE fails with permission error, DELETE fails with permission error. Verify with SELECT from pg_tables that permissions are set correctly."
+            "status": "deferred",
+            "testStrategy": "Test INSERT succeeds, UPDATE fails with permission error, DELETE fails with permission error. Verify with SELECT from pg_tables that permissions are set correctly.",
+            "parentId": "undefined",
+            "updatedAt": "2026-02-06T20:50:01.765Z"
           },
           {
             "id": 3,
@@ -5048,8 +5099,10 @@
             "description": "Update docs/prd/db-security/production-database-configuration.md: replace the Optional Enhancement section (lines 265-288) with the finalized claude_change_log schema including the pipeline_phase, batch_id, and record_count columns. Add the GRANT statement to the claude_writer role section. Update the What Claude Code Can and Cannot Do table to include audit log INSERT. Document that audit logging is orchestrator-only (not agent-level).",
             "dependencies": [],
             "details": "Read the current documentation at lines 265-288 to understand the Optional Enhancement section. Replace it with the finalized schema from the migration. Add a note that individual agents do NOT log — only the orchestrator logs summary entries. Update the security table to reflect that claude_writer can INSERT to claude_change_log.",
-            "status": "pending",
-            "testStrategy": "Review updated documentation for accuracy, completeness, and clarity. Verify schema matches migration file exactly."
+            "status": "done",
+            "testStrategy": "Review updated documentation for accuracy, completeness, and clarity. Verify schema matches migration file exactly.",
+            "parentId": "undefined",
+            "updatedAt": "2026-02-06T20:50:57.309Z"
           },
           {
             "id": 4,
@@ -5057,8 +5110,10 @@
             "description": "Add a section to .claude/skills/pipeline-orchestrator/SKILL.md documenting orchestrator-only audit logging: (1) orchestrator generates a batch_id (format: run-YYYYMMDD-HHMM) at pipeline start, (2) after each phase completes, the orchestrator queries counts before/after to determine what changed (e.g., SELECT COUNT(*) FROM funding_sources before source registration, then after, then log one summary row: INSERT INTO claude_change_log (table_name, operation, pipeline_phase, batch_id, record_count, change_reason) VALUES ('funding_sources', 'INSERT', 'source_registry', batch_id, new_count - old_count, 'Registered X new sources')), (3) the final summary can query claude_change_log WHERE batch_id = current run to show what was done. Include example INSERT statements for common operations. Document that individual agents do NOT log — only the orchestrator logs.",
             "dependencies": [],
             "details": "Add a new section after Section 8 (Phase Reporting) titled '9. Audit Logging (Orchestrator-Only)'. Include code examples showing how to query counts before/after each phase and how to construct the audit log INSERT statement. Reference the batch_id generation format. Emphasize that extraction-agent, analysis-agent, and storage-agent remain lightweight with zero audit overhead.",
-            "status": "pending",
-            "testStrategy": "Review SKILL.md for clarity and completeness. Verify example SQL statements are syntactically correct and match the claude_change_log schema."
+            "status": "done",
+            "testStrategy": "Review SKILL.md for clarity and completeness. Verify example SQL statements are syntactically correct and match the claude_change_log schema.",
+            "parentId": "undefined",
+            "updatedAt": "2026-02-06T20:51:01.161Z"
           },
           {
             "id": 5,
@@ -5066,16 +5121,431 @@
             "description": "Run the migration. Test INSERT from claude_writer role. Verify indexes exist. Test a sample audit log entry with pipeline_phase and batch_id. Verify UPDATE/DELETE on claude_change_log is denied for claude_writer (append-only).",
             "dependencies": [],
             "details": "Execute migration with supabase migration up (or equivalent). Connect as claude_writer role and attempt test operations. Query pg_indexes to verify index creation. Insert a sample audit log row and verify it appears in the table with correct timestamp and UUID.",
-            "status": "pending",
-            "testStrategy": "Migration runs without errors. Test INSERT succeeds with all expected columns populated (including auto-generated id and executed_at). Verify indexes exist in pg_indexes. Verify UPDATE/DELETE are denied (permission error). Query claude_change_log to confirm test row exists."
+            "status": "done",
+            "testStrategy": "Migration runs without errors. Test INSERT succeeds with all expected columns populated (including auto-generated id and executed_at). Verify indexes exist in pg_indexes. Verify UPDATE/DELETE are denied (permission error). Query claude_change_log to confirm test row exists.",
+            "parentId": "undefined",
+            "updatedAt": "2026-02-06T20:57:56.155Z"
           }
-        ]
+        ],
+        "updatedAt": "2026-02-06T20:58:12.945Z"
+      },
+      {
+        "id": "7",
+        "title": "Database Migration: Enhance funding_programs table",
+        "description": "Create migration supabase/migrations/20260206000004_enhance_funding_programs.sql to add columns and indexes to the existing funding_programs table. Table exists with basic columns (id, source_id, name, description, created_at, updated_at) but needs 10 new columns for Phase 2: program_urls JSONB, categories TEXT[], eligible_applicants TEXT[], eligible_project_types TEXT[], funding_type TEXT, status TEXT default unknown, recurrence TEXT default unknown, last_checked_at TIMESTAMPTZ, next_check_at TIMESTAMPTZ, pipeline TEXT default manual, api_program_id TEXT. Plus 4 indexes and claude_writer permissions. Reference: architecture proposal Section 3b (lines 220-311).",
+        "details": "",
+        "testStrategy": "",
+        "status": "done",
+        "dependencies": [],
+        "priority": "high",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Add program data columns",
+            "description": "Add program_urls JSONB DEFAULT '[]', categories TEXT[], eligible_applicants TEXT[], eligible_project_types TEXT[], funding_type TEXT to funding_programs table",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 7,
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "Add lifecycle columns",
+            "description": "Add status TEXT DEFAULT 'unknown', recurrence TEXT DEFAULT 'unknown', last_checked_at TIMESTAMPTZ, next_check_at TIMESTAMPTZ to funding_programs table",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 7,
+            "parentId": "undefined"
+          },
+          {
+            "id": 3,
+            "title": "Add pipeline tracking columns",
+            "description": "Add pipeline TEXT DEFAULT 'manual', api_program_id TEXT to funding_programs table",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 7,
+            "parentId": "undefined"
+          },
+          {
+            "id": 4,
+            "title": "Add indexes",
+            "description": "Add indexes: idx_funding_programs_source(source_id), idx_funding_programs_status(status), idx_funding_programs_categories GIN(categories), idx_funding_programs_next_check partial index on next_check_at WHERE status='active'",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 7,
+            "parentId": "undefined"
+          },
+          {
+            "id": 5,
+            "title": "Grant claude_writer permissions",
+            "description": "GRANT SELECT, INSERT, UPDATE ON funding_programs TO claude_writer",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 7,
+            "parentId": "undefined"
+          },
+          {
+            "id": 6,
+            "title": "Test migration locally",
+            "description": "Run supabase migration up and verify all columns, indexes, and permissions are applied correctly",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 7,
+            "parentId": "undefined"
+          }
+        ],
+        "updatedAt": "2026-02-08T20:27:42.008Z"
+      },
+      {
+        "id": "8",
+        "title": "Database Migration: Add program_id to staging table",
+        "description": "Create migration supabase/migrations/20260206000005_add_program_id_to_staging.sql to add program_id UUID REFERENCES funding_programs(id) to manual_funding_opportunities_staging. This links staging records to their parent program for Phase 3 usage. Column is nullable. Also add index on program_id.",
+        "details": "",
+        "testStrategy": "",
+        "status": "done",
+        "dependencies": [
+          "7"
+        ],
+        "priority": "high",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Add program_id column",
+            "description": "ALTER TABLE manual_funding_opportunities_staging ADD COLUMN program_id UUID REFERENCES funding_programs(id)",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 8,
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "Add program_id index",
+            "description": "CREATE INDEX idx_staging_program_id ON manual_funding_opportunities_staging(program_id)",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 8,
+            "parentId": "undefined"
+          },
+          {
+            "id": 3,
+            "title": "Test migration locally",
+            "description": "Run supabase migration up and verify program_id column and index exist on staging table",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 8,
+            "parentId": "undefined"
+          }
+        ],
+        "updatedAt": "2026-02-08T20:27:47.347Z"
+      },
+      {
+        "id": "9",
+        "title": "Create program-discovery SKILL.md",
+        "description": "Write .claude/skills/program-discovery/SKILL.md — the procedural knowledge for Phase 2 Program Discovery. Defines two modes: (1) Scout Mode — crawl catalog URLs from source_program_urls, follow links 1 level deep, identify programs using taxonomy guidance (TAXONOMIES.CATEGORIES, funding types), note PDF URLs, supplementary web search for searcher variant, output program list with {name, url, source_id, source_name, pdf_urls[], brief_description}, cross-check protocol. (2) Extractor Mode — receive program assignments from orchestrator (url, source_id, name), visit program URL, extract 7+ structured fields (name, description, categories[], eligible_applicants[], eligible_project_types[], funding_type, status, recurrence, program_urls JSONB), handle PDFs, dedup by name+source_id fuzzy match, INSERT/UPDATE funding_programs, set next_check_at=NOW(), update programs_last_searched_at on source. Include SQL templates and output format sections. Reference: architecture proposal Skill 2 (lines 543-648), source-registry SKILL.md as template.",
+        "details": "",
+        "testStrategy": "",
+        "status": "done",
+        "dependencies": [
+          "7"
+        ],
+        "priority": "high",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Create directory and write frontmatter + mission",
+            "description": "mkdir -p .claude/skills/program-discovery, write SKILL.md frontmatter (name, description, skills ref) and mission section. Define inputs (source_ids, catalog URLs, funder_type, state_code), outputs (funding_programs rows), two modes (scout and extractor detected from prompt).",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 9,
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "Write Scout Mode instructions",
+            "description": "Crawl assigned catalog URL(s), follow links 1 level deep to find program pages, identify programs using TAXONOMIES.CATEGORIES and funding type guidance, note PDF URLs with type:pdf label, searcher variant does supplementary web search. Output format: list of {program_name, program_url, source_id, source_name, pdf_urls[], brief_description}. Cross-check protocol: broadcast findings, compare with pair partner, dedup overlapping results.",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 9,
+            "parentId": "undefined"
+          },
+          {
+            "id": 3,
+            "title": "Write Extractor Mode instructions",
+            "description": "Receive program assignments from orchestrator (program_url, source_id, program_name). Visit each URL, extract: name, description, categories[], eligible_applicants[], eligible_project_types[], funding_type, status (active), recurrence, program_urls JSONB. Handle PDFs. Dedup by name+source_id fuzzy match. INSERT new / UPDATE existing. Set next_check_at=NOW(). Update funding_sources.programs_last_searched_at.",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 9,
+            "parentId": "undefined"
+          },
+          {
+            "id": 4,
+            "title": "Write SQL templates section",
+            "description": "Query to get sources + catalog URLs for a scope, INSERT/UPDATE templates for funding_programs, dedup check query (fuzzy name + source_id), update programs_last_searched_at on source, update source_program_urls.last_crawled_at.",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 9,
+            "parentId": "undefined"
+          },
+          {
+            "id": 5,
+            "title": "Write output format and reporting section",
+            "description": "Scout report format (program list per source with URLs and confidence), extractor report format (programs stored per source with field completeness), cross-check report format.",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 9,
+            "parentId": "undefined"
+          }
+        ],
+        "updatedAt": "2026-02-08T20:32:40.067Z"
+      },
+      {
+        "id": "10",
+        "title": "Create program-discovery-agent.md",
+        "description": "Write .claude/agents/program-discovery-agent.md — a lightweight agent role definition that preloads the program-discovery skill via skills: [program-discovery] in YAML frontmatter. Spawned by orchestrator in two contexts: as scout teammate (Round 1 — crawl catalog URLs, find programs) or as extractor teammate (Round 2 — visit program URLs, extract structured data, write to DB). Include mode detection (scout vs extractor based on prompt keywords), tools required (WebFetch, WebSearch, Playwright, mcp__postgres__query, psql, Read), model preference (opus). Follow pattern from .claude/agents/source-registry-agent.md.",
+        "details": "",
+        "testStrategy": "",
+        "status": "done",
+        "dependencies": [
+          "9"
+        ],
+        "priority": "medium",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Review source-registry-agent.md pattern",
+            "description": "Read .claude/agents/source-registry-agent.md to understand the template: frontmatter structure, mode detection, tools required, role description format.",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 10,
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "Write program-discovery-agent.md",
+            "description": "Write agent with skills: [program-discovery] frontmatter, mode detection (scout vs extractor from prompt keywords), tools required (WebFetch, WebSearch, Playwright, mcp__postgres__query, psql, Read), model: opus, role description.",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 10,
+            "parentId": "undefined"
+          },
+          {
+            "id": 3,
+            "title": "Verify skill preloading works",
+            "description": "Spawn a test agent via Task tool to confirm the program-discovery skill content is injected into context.",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 10,
+            "parentId": "undefined"
+          }
+        ],
+        "updatedAt": "2026-02-08T20:27:52.431Z"
+      },
+      {
+        "id": "11",
+        "title": "Update Orchestrator SKILL.md — Phase 2 Details",
+        "description": "Update .claude/skills/pipeline-orchestrator/SKILL.md Section 6 Phase 2 placeholder (lines 464-468) with the full two-round scout/extractor pattern. Step 0: orchestrator queries sources + URL counts per source, plans batches (3 sources at a time, grouped by funder type). Round 1: TeamCreate scout team — 1 scout per catalog URL + 1 searcher per source, all parallel, cross-check, report program lists, TeamDelete. Between rounds: orchestrator deduplicates, counts programs, plans extractors. Round 2: TeamCreate extractor team or Task tool — assign programs to extractors, extract + store, TeamDelete. Add batch sizing rules (6-12 teammates per team, 1 scout per URL, 1 searcher per source, extractors based on program count ~1 per 10 programs). Add Phase 2 prerequisite checks to Section 4/5. Update request parsing table in Section 3.",
+        "details": "",
+        "testStrategy": "",
+        "status": "done",
+        "dependencies": [
+          "9",
+          "10"
+        ],
+        "priority": "high",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Write full Phase 2 two-round pattern",
+            "description": "Replace Phase 2 placeholder in orchestrator SKILL.md (lines 464-468) with: Step 0 (query sources + URL counts, plan batches), Round 1 (TeamCreate scout team, 1 scout per URL + 1 searcher per source, cross-check, collect program lists, TeamDelete), Between rounds (orchestrator deduplicates, counts programs, plans extractors), Round 2 (TeamCreate extractor team or Task tool, assign programs, extract + store, TeamDelete).",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 11,
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "Add batch sizing rules",
+            "description": "Target 6-12 teammates per batch, 1 scout per catalog URL, 1 searcher per source in batch, extractor count ~1 per 10 programs, group sources by funder type within batches.",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 11,
+            "parentId": "undefined"
+          },
+          {
+            "id": 3,
+            "title": "Add Phase 2 prerequisite checks",
+            "description": "Update Section 4/5: check sources exist for scope, check source_program_urls has URLs, offer to chain from Phase 1 if missing.",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 11,
+            "parentId": "undefined"
+          },
+          {
+            "id": 4,
+            "title": "Update request parsing table",
+            "description": "Ensure Section 3 includes: Discover programs for [X] -> Phase 2, Discover programs for all delinquent sources -> Phase 2 with 90-day delinquency filter.",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 11,
+            "parentId": "undefined"
+          }
+        ],
+        "updatedAt": "2026-02-08T20:30:32.293Z"
+      },
+      {
+        "id": "12",
+        "title": "Update Architecture Documentation for Phase 2",
+        "description": "Update docs/prd/opp_staging/manual-claude-code-pipeline-architecture-proposal.md to reflect Phase 2 design changes from planning session: two-round scout/extractor pattern (not in original proposal which just said parallel subagents), Agent Team-based execution via TeamCreate, batch sizing rules, source-by-source processing, taxonomy-driven discovery. Update Skill 2 section (lines 543-648), decisions table (lines 1048+), and CLAUDE.md Phase 2 command descriptions if needed.",
+        "details": "",
+        "testStrategy": "",
+        "status": "done",
+        "dependencies": [
+          "11"
+        ],
+        "priority": "medium",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Update Skill 2 section in architecture proposal",
+            "description": "Update lines 543-648 of manual-claude-code-pipeline-architecture-proposal.md with two-round scout/extractor pattern, Agent Team execution via TeamCreate, batch sizing.",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 12,
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "Update decisions table",
+            "description": "Update decisions table (lines 1048+) for any Phase 2 entries that changed (e.g., execution strategy, team pattern).",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 12,
+            "parentId": "undefined"
+          },
+          {
+            "id": 3,
+            "title": "Update CLAUDE.md if needed",
+            "description": "Check if CLAUDE.md Phase 2 command descriptions need updates for the two-round pattern.",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 12,
+            "parentId": "undefined"
+          }
+        ],
+        "updatedAt": "2026-02-08T20:31:58.695Z"
+      },
+      {
+        "id": "13",
+        "title": "Test Phase 2 with FL Dev Data",
+        "description": "End-to-end test of Phase 2 using the 28 FL sources (16 County + 12 State) already in dev DB with 85 catalog URLs. Run migration on dev, invoke via orchestrator: Discover programs for Florida sources (dev). Verify: programs written to funding_programs with correct source_id FKs, program_urls JSONB populated, categories/eligibility/funding_type extracted, dedup working (name+source_id fuzzy match), programs_last_searched_at updated on sources, source_program_urls.last_crawled_at updated. Test Round 1 scout team with small batch first (1-2 sources), then Round 2 extractors, then full run. Assess batch sizing and performance.",
+        "details": "",
+        "testStrategy": "",
+        "status": "done",
+        "dependencies": [
+          "7",
+          "8",
+          "9",
+          "10",
+          "11"
+        ],
+        "priority": "high",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Run migrations on dev DB",
+            "description": "Apply migrations 20260206000004 and 20260206000005 to local dev database via supabase migration up. Verify columns exist.",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 13,
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "Test Round 1 scout team (small batch)",
+            "description": "Test with 1-2 FL sources to validate scout team flow: TeamCreate, spawn scouts per URL + searcher, cross-check, collect program lists.",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 13,
+            "parentId": "undefined"
+          },
+          {
+            "id": 3,
+            "title": "Test Round 2 extractor team",
+            "description": "Use scout results to spawn extractors. Verify programs written to funding_programs with correct source_id, populated fields, program_urls JSONB.",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 13,
+            "parentId": "undefined"
+          },
+          {
+            "id": 4,
+            "title": "Verify data quality",
+            "description": "Check funding_programs: all fields populated, source_id FK correct, no duplicates, programs_last_searched_at updated, last_crawled_at updated on source_program_urls.",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 13,
+            "parentId": "undefined"
+          },
+          {
+            "id": 5,
+            "title": "Full FL run and performance assessment",
+            "description": "Run full Phase 2 for all 28 FL sources. Assess batch sizing, total programs found, agent performance, context window usage.",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 13,
+            "parentId": "undefined"
+          },
+          {
+            "id": 6,
+            "title": "Fix issues from testing",
+            "description": "Address any bugs, edge cases, or performance issues discovered during testing. Update skill/agent/orchestrator as needed.",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 13,
+            "parentId": "undefined"
+          }
+        ],
+        "updatedAt": "2026-02-09T19:17:12.453Z"
       }
     ],
     "metadata": {
-      "created": "2026-02-06T19:20:20.359Z",
-      "updated": "2026-02-06T19:45:41.731Z",
-      "description": "Tag created on 2/6/2026"
+      "version": "1.0.0",
+      "lastModified": "2026-02-09T19:17:12.453Z",
+      "taskCount": 13,
+      "completedCount": 13,
+      "tags": [
+        "pipeline"
+      ]
     }
   }
 }
