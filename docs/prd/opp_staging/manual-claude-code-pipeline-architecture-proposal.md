@@ -296,8 +296,9 @@ ALTER TABLE funding_programs ADD COLUMN IF NOT EXISTS last_checked_at TIMESTAMPT
 ALTER TABLE funding_programs ADD COLUMN IF NOT EXISTS next_check_at TIMESTAMPTZ;
   -- When to next check for opportunities. Smart scheduling:
   --   Skill 3 sets this based on what it learns during crawling:
-  --   - "Opens March 2026" → next_check_at = '2026-02-25'
-  --   - "Currently open through August" → next_check_at = '2026-09-01'
+  --   - "Opens March 2026" → next_check_at = '2026-02-01' (open_date - 30 days)
+  --   - "Currently open through August" → next_check_at = close_date
+  --   - Perpetual (no close_date) → next_check_at = NOW() + 180 days
   --   - No info → next_check_at = NOW() + 30 days (default monthly)
   -- Initial value: NOW() (check immediately after discovery)
 
@@ -314,7 +315,7 @@ CREATE INDEX idx_funding_programs_status ON funding_programs(status);
 CREATE INDEX idx_funding_programs_categories ON funding_programs USING GIN(categories);
 CREATE INDEX idx_funding_programs_next_check
   ON funding_programs(next_check_at)
-  WHERE status = 'active' AND next_check_at IS NOT NULL;
+  WHERE status IN ('active', 'unknown') AND next_check_at IS NOT NULL;
 ```
 
 **What this enables**:
@@ -331,11 +332,12 @@ WHERE 'Energy' = ANY(p.categories) AND p.status = 'active';
 -- "Which programs need checking for opportunities?"
 -- (Smart scheduling: due for check + no existing open opportunity)
 SELECT fp.* FROM funding_programs fp
-WHERE fp.status = 'active'
+WHERE fp.status IN ('active', 'unknown')
   AND fp.next_check_at <= NOW()
   AND NOT EXISTS (
     SELECT 1 FROM funding_opportunities fo
     WHERE fo.program_id = fp.id AND fo.status = 'Open'
+    AND fo.close_date IS NOT NULL
   );
 
 -- "Programs we haven't checked in 30+ days?"
@@ -413,6 +415,17 @@ ALTER TABLE manual_funding_opportunities_staging
   -- URLs discovered for this program (carried through pipeline)
 ```
 
+**Dedup strategy for staging**: Staging has no unique constraints (except UUID PK).
+Previous `UNIQUE(url)` and `UNIQUE(source_id, title)` constraints have been dropped.
+The staging table is a pure processing inbox:
+- Smart scheduling on `funding_programs.next_check_at` prevents redundant checks
+- Each check round creates NEW staging records (no updates to existing records)
+- Phase 6 storage agent handles production dedup via UPSERT
+
+**Staging has NO status column** for Open/Upcoming. The decision tree outcome
+(Open vs Upcoming) is implicit in the staging record — Phase 4 extraction
+determines the opportunity status from page content.
+
 ### 3e. Cross-Pipeline Dedup Strategy
 
 > **REVIEWED — Step 3 Discussion (Approved)**
@@ -433,9 +446,11 @@ is built INTO the scheduling check — no separate step, no extra query.
 
 ```sql
 -- Enhanced: catches dupes from BOTH pipelines
+-- Perpetual (no close_date) excluded so they stay recheckable every 180 days
 AND NOT EXISTS (
   SELECT 1 FROM funding_opportunities fo
   WHERE fo.status = 'Open'
+  AND fo.close_date IS NOT NULL
   AND (
     fo.program_id = fp.id                    -- manual pipeline records (have program_id)
     OR (fo.funding_source_id = fp.source_id  -- API pipeline records (no program_id yet)
@@ -463,14 +478,15 @@ pipeline registers "Arizona Public Service", they get the same UUID.
 
 | Layer | Check | Where | What It Catches |
 |-------|-------|-------|-----------------|
-| 1. Staging URL | `ON CONFLICT (url) DO NOTHING` | Staging INSERT | Same URL discovered twice |
-| 2. Staging source+title | `UNIQUE(source_id, title)` | Staging INSERT | Same program from same source |
-| 3. **Cross-pipeline** | **Enhanced NOT EXISTS in Skill 3** | **Before staging** | **API opportunity already exists for this program** |
-| 4. Storage manual UPSERT | `ON CONFLICT (funding_source_id, title) WHERE api_source_id IS NULL` | Storage INSERT | Manual record already exists |
-| 5. Storage API UPSERT | `ON CONFLICT (title, api_source_id)` | Storage INSERT (force mode) | API record already exists |
+| 1. **Smart scheduling** | **`next_check_at` on `funding_programs`** | **Before staging** | **Prevents redundant checks for the same opportunity window** |
+| 2. **Cross-pipeline** | **Enhanced NOT EXISTS in Skill 3** | **Before staging** | **API opportunity already exists for this program** |
+| 3. Storage manual UPSERT | `ON CONFLICT (funding_source_id, title) WHERE api_source_id IS NULL` | Storage INSERT | Manual record already exists |
+| 4. Storage API UPSERT | `ON CONFLICT (title, api_source_id)` | Storage INSERT (force mode) | API record already exists |
 
-**Layer 3 is the key addition** — it catches cross-pipeline duplicates BEFORE any processing
-happens, saving extraction/analysis/storage work on records that would be rejected at Layer 4/5.
+**Note**: Staging has no unique constraints (except UUID PK). It is a pure processing inbox.
+Layers 1-2 prevent redundant staging records before they're created. Layer 3-4 handle
+production dedup via UPSERT. This replaces the previous `UNIQUE(url)` and `UNIQUE(source_id, title)`
+constraints on staging, which were dropped in favor of smart scheduling.
 
 ---
 
@@ -708,11 +724,12 @@ URLs — but with a different goal: not "what is this program?" (Skill 2's job) 
 SELECT fp.*, fs.name as source_name, fs.state_code
 FROM funding_programs fp
 JOIN funding_sources fs ON fs.id = fp.source_id
-WHERE fp.status = 'active'
+WHERE fp.status IN ('active', 'unknown')
   AND fp.next_check_at <= NOW()
   AND NOT EXISTS (
     SELECT 1 FROM funding_opportunities fo
     WHERE fo.status = 'Open'
+    AND fo.close_date IS NOT NULL              -- perpetual (no close_date) stays recheckable
     AND (
       fo.program_id = fp.id                    -- manual pipeline records (have program_id)
       OR (fo.funding_source_id = fp.source_id  -- API pipeline records (no program_id yet)
@@ -720,7 +737,7 @@ WHERE fp.status = 'active'
     )
   );
 ```
-This means: only check active programs, only when `next_check_at` says it's time,
+This means: only check active or unknown programs, only when `next_check_at` says it's time,
 and skip programs that already have an open opportunity **from either pipeline**.
 The cross-pipeline check catches API-created opportunities via fuzzy title+source
 matching (see Section 3e for details).
@@ -741,25 +758,26 @@ If a program URL returns 404 or has moved:
 2. Fall back to `source_program_urls` catalog pages (re-crawl catalog to find updated URL)
 3. Web search: "[source name] [program name] application"
 4. If new URL found: update `funding_programs.program_urls`
-5. If all fail: flag program `status = 'url_stale'` for manual review
+5. If all fail: set program `status = 'inactive'`
 
 **Step 4 — Determine opportunity status and set smart scheduling:**
 For each program, one of these outcomes:
 
-| Finding | Action | `next_check_at` |
-|---------|--------|-----------------|
-| **Open now**, has close_date | Create staging record (status=Open) | `close_date + 30 days` |
-| **Open now**, no close_date (perpetual) | Create staging record (status=Open) | `NOW() + 365 days` (annual) |
-| **Upcoming** with specific date ("opens July") | Create staging record (status=Upcoming) | Expected open date (e.g., July 1) |
-| **Upcoming** vague ("coming summer 2026") | Create staging record (status=Upcoming) | First day of that period (e.g., June 1) |
-| **Learned future date** but no details yet | No staging record (not enough to create) | Expected open date |
-| **No indication** of upcoming rounds | No staging record | `NOW() + 30 days` (monthly default) |
+| Finding | Has Guidelines? | Date Known? | Action | `next_check_at` |
+|---------|----------------|-------------|--------|-----------------|
+| **Open now**, has close_date | n/a | Yes | Create staging record | `close_date` |
+| **Open now**, perpetual (no close_date) | n/a | n/a | Create staging record | `NOW() + 180 days` |
+| **Upcoming**, substantive guidelines | n/a | Yes (open date known) | Create staging record | `open_date - 30 days` |
+| **Upcoming**, substantive guidelines | Yes | No (no open date) | SKIP (check again later) | `NOW() + 30 days` |
+| **Upcoming**, no/thin guidelines | Either | Either | SKIP (not enough to act on) | `NOW() + 30 days` |
+| **Nothing found** | n/a | n/a | SKIP | `NOW() + 30 days` |
 
-**Why the NOT EXISTS clause checks only `status = 'Open'`:**
+**Why the NOT EXISTS clause checks `status = 'Open' AND close_date IS NOT NULL`:**
 ```sql
 AND NOT EXISTS (
   SELECT 1 FROM funding_opportunities fo
   WHERE fo.status = 'Open'
+  AND fo.close_date IS NOT NULL
   AND (
     fo.program_id = fp.id
     OR (fo.funding_source_id = fp.source_id
@@ -767,13 +785,15 @@ AND NOT EXISTS (
   )
 );
 ```
-- **Open** opportunity → skip checking (already live, don't re-check until after close)
+- **Open + dated** opportunity → skip checking (already live, auto-close will clear the gate)
+- **Open + perpetual** (no close_date) → ALLOW checking (rechecked every 180 days; auto-close
+  can never fire on these, so without this exclusion they'd be blocked forever)
 - **Closed** opportunity → ALLOW checking (old round, program may have a new round now)
 - **Upcoming** opportunity → ALLOW checking (need to see if it's now actually open)
 - **Cross-pipeline**: The OR clause catches API-created Open opportunities that lack
   `program_id` but match the same source + similar title (see Section 3e)
 - This means: when `next_check_at` arrives for an Upcoming opportunity, Skill 3
-  re-checks and can trigger `needs_refresh` to upgrade Upcoming → Open
+  re-checks and creates a new staging record to upgrade Upcoming → Open
 
 **Auto-close mechanism (maintenance query):**
 Opportunities close automatically based on their close_date:
@@ -790,18 +810,16 @@ the program gets checked for its next round.
 checks all programs where `next_check_at <= NOW()` matching the scope. No cron/scheduling.
 
 **Step 5 — Create staging records:**
-For opportunities found (Open or Upcoming):
-- INSERT into `manual_funding_opportunities_staging`
+For opportunities found (Open or Upcoming per decision table):
+- INSERT into `manual_funding_opportunities_staging` — no ON CONFLICT needed. Staging is a pure processing inbox. Smart scheduling prevents duplicate checks for the same opportunity window. Phase 6 storage agent handles production dedup via UPSERT.
 - Set `program_id`, `source_id`
 - Store relevant URLs in `program_urls` JSONB (carried through pipeline)
 - Set `extraction_status = 'pending'`
-- Dedup: `ON CONFLICT (url) DO NOTHING`
 
 **Step 6 — For previously-Upcoming opportunities now Open:**
-If a program previously had an "Upcoming" staging record and is now Open:
-- Set `needs_refresh = TRUE` on the existing staging record
-- Reset `extraction_status = 'pending'` (triggers re-extraction with full content)
-- The pipeline re-processes with richer data, updating Upcoming → Open
+Re-checks create new staging records. When `next_check_at` arrives for a program that
+previously had an Upcoming opportunity, Skill 3 re-crawls and creates a NEW staging
+record with the updated information. The storage agent handles merging via UPSERT.
 
 **Step 7 — Update program scheduling:**
 - Set `last_checked_at = NOW()` on the program
@@ -809,13 +827,15 @@ If a program previously had an "Upcoming" staging record and is now Open:
 
 **Pipeline-wide "Upcoming" awareness (affects Skills 4-6):**
 When an opportunity enters the pipeline as "Upcoming":
-- **Extraction (Skill 4)**: Extracts what's available from the program page. Notes limited
-  data. Does NOT hallucinate missing fields — leaves them null/empty.
+- **Extraction (Skill 4)**: Determines opportunity status from page content. Extracts
+  what's available from the program page. Notes limited data. Does NOT hallucinate
+  missing fields — leaves them null/empty.
 - **Analysis (Skill 5)**: Recognizes "Upcoming" status. Scores based on available data.
   Content enhancement focuses on what's known from the program's general info.
 - **Storage (Skill 6)**: Stores as `status = 'Upcoming'` in `funding_opportunities`.
   Program-level fields (categories, eligible_applicants, etc.) fill in gaps where
-  opportunity-specific data isn't yet available.
+  opportunity-specific data isn't yet available. UPSERT merges re-check records
+  with existing Upcoming records when they transition to Open.
 - **Frontend**: Can show a summary view for Upcoming opportunities rather than full
   details page (future frontend enhancement).
 
@@ -980,11 +1000,11 @@ funding_sources.programs_last_searched_at = NOW()
   │     → staging record (extraction_status='pending')
   │     → program.next_check_at = close_date + buffer
   │
-  ├─── UPCOMING: expected date known, no full details
-  │     → staging record (status=Upcoming, extraction_status='pending')
-  │     → program.next_check_at = before expected open date
+  ├─── UPCOMING: substantive guidelines + known date
+  │     → staging record (extraction_status='pending')
+  │     → program.next_check_at = open_date - 30 days
   │     → pipeline extracts what's available, stores as Upcoming
-  │     → later: re-extract via needs_refresh when Open
+  │     → later: re-check creates new staging record when Open
   │
   └─── NO INFO: no upcoming rounds detected
         → no staging record
@@ -1089,8 +1109,8 @@ GROUP BY fs.id, fp.id;
 | Program vs opportunity data | Program has static/general info; opportunity has temporal/round-specific | Some fields overlap (categories, eligibility). Opportunity table keeps ALL existing fields — no removals, no JOINs for basic info. |
 | Open status tracking | Via linked Open opportunity, NOT on program table | Program `status` = does it exist (active/inactive). "Is it open?" = EXISTS open opportunity with that program_id. |
 | Smart scheduling | `next_check_at` on funding_programs, set by Skill 3 | Skill 3 learns expected dates during crawling and schedules next check intelligently. Default monthly fallback. |
-| Upcoming opportunities | Two-phase lifecycle: Upcoming (partial) → Open (full) | Upcoming created with partial info from program page. Re-extracted via `needs_refresh` when guidelines published. Users see early notice. |
-| URL recovery | Built into Skill 3 (inline) | On 404: try alt URLs → catalog pages → web search → flag as url_stale. No separate maintenance skill. |
+| Upcoming opportunities | Two-phase lifecycle: Upcoming (partial) → Open (full) | Upcoming created with partial info from program page. Re-checks create new staging records; storage agent merges via UPSERT. Users see early notice. |
+| URL recovery | Built into Skill 3 (inline) | On 404: try alt URLs → catalog pages → web search → set `status = 'inactive'`. No separate maintenance skill. |
 | Source seeding | Web search only — NOT from coverage_areas | coverage_areas is geography, not entity data. Sources from web search + enrichment. |
 | Entity registry | Database-only | `funding_sources` IS the registry. No file system, no separate registry concept. |
 | Pipeline origin | Single value: 'api' or 'manual' | Records how we first learned about the source. Doesn't change later. |
@@ -1113,15 +1133,15 @@ GROUP BY fs.id, fp.id;
 | API pipeline impact | None immediate | `program_id` nullable, backfill later |
 | Scoring | Unchanged (`scoringAnalyzer.js`) | Deterministic, works well |
 | Search capability | Opus 4.6 agentic search | Highest BrowseComp score. Multi-strategy parallel search. |
-| Perpetually open opportunities | Check annually (365 days) | Opportunities with no close_date might close unexpectedly. Annual check catches this without monthly overhead. |
+| Perpetually open opportunities | Check semi-annually (180 days) | Opportunities with no close_date might close unexpectedly. Semi-annual check catches this without monthly overhead. NOT EXISTS excludes perpetual (no close_date) so the gate never blocks rechecking. |
 | Auto-close | Maintenance query: `SET status='Closed' WHERE close_date < NOW()` | Automatic, no skill needed. Once closed, program becomes eligible for next-round checking. |
-| NOT EXISTS scope | Only checks for `status = 'Open'` (not Upcoming) | Upcoming opportunities still allow re-checking — Skill 3 needs to detect when Upcoming → Open. |
-| Scheduling intelligence | Skill 3 sets `next_check_at` based on what it learns | "Opens in July" → July 1. "Coming summer" → June 1. No info → +30 days. Perpetual → +365 days. |
+| NOT EXISTS scope | Checks `status = 'Open' AND close_date IS NOT NULL` | Dated open opportunities block re-checking (auto-close clears the gate). Perpetual (no close_date) excluded — rechecked every 180 days. Upcoming/Closed never block. |
+| Scheduling intelligence | Skill 3 sets `next_check_at` based on what it learns | "Opens in July" → June 1 (open_date - 30). Upcoming with no date → +30 days. No info → +30 days. Perpetual → +180 days. |
 | Execution model | On-demand, no cron | User triggers "Find opportunities for X". Checks all due programs matching scope. |
 | Legacy discovery-agent | Replaced by Skills 2+3 | Skills provide better structure (programs as persistent entities + opportunities as temporal). Old agent retired. |
 | Crawling tools | WebFetch + Playwright + Claude-in-Chrome | WebFetch for simple HTML, Playwright for JS-rendered, Claude-in-Chrome for complex interactive. Full tool set available to all skills. |
 | Cross-pipeline dedup | Enhanced NOT EXISTS in Skill 3 scheduling query | Single query catches both pipelines via `program_id` OR fuzzy `title+source`. Status-aware (Open only blocks). Zero extra steps. Self-healing as API records get backfilled. |
-| Dedup status awareness | Only Open opportunities block new processing | Closed = old round, should be re-processable. Upcoming = still allow re-checking (detect when Open). |
+| Dedup status awareness | Only dated Open opportunities block new processing | Closed = old round, re-processable. Upcoming = allow re-checking (detect when Open). Perpetual Open = allow re-checking (auto-close can't fire, so 180-day recheck needed). |
 | Pipeline orchestration | Meta-skill + sequential skill chaining | Each skill independently usable. Meta-skill (`/run-pipeline`) chains 1→6 automatically. Review & Publish (7) always manual. |
 | Orchestration mechanism | Pipeline orchestrator skill + Agent Teams | Single orchestrator skill (`pipeline-orchestrator`) parses requests, assesses DB state, spawns Agent Teams for discovery (phases 1-3) and Task tool agents for processing (phases 4-6). TeamCreate for cross-checking, Task tool for deterministic batch work. |
 
@@ -1332,8 +1352,8 @@ User: "Register sources: SRP"  (or: "Discover programs for SRP")
 
 ---
 
-*Document Version: 7.0*
+*Document Version: 8.0*
 *Created: 2026-02-04*
-*Updated: 2026-02-09*
-*Status: Proposal — Steps 1-4 reviewed. Phase 1+2 implemented and tested (NV local, AZ utilities). Dual filter gates added (v7).*
+*Updated: 2026-02-14*
+*Status: Proposal — Steps 1-4 reviewed. Phase 1+2 implemented and tested (NV local, AZ utilities). Dual filter gates (v7). Phase 3 opportunity discovery refinements (v8).*
 *Supersedes: manual-v2-pipeline-architecture-proposal.md*

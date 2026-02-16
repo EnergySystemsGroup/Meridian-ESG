@@ -212,18 +212,18 @@ JOIN funding_sources fs ON fs.id = fp.source_id
 WHERE fs.state_code = 'AZ' AND fs.funder_type = 'Utility';
 
 -- Check 3: Programs due for checking? (smart schedule)
--- Note: fp.status, fp.next_check_at, fo.program_id, fo.promotion_status
--- columns will be added in future migrations. Skip checks 3/5 if columns
--- don't exist yet — they are Phase 2/3/7 prerequisites, not Phase 1.
+-- Note: fo.promotion_status column will be added in a future migration.
+-- Skip check 5 if that column doesn't exist yet (Phase 7 prerequisite).
 SELECT COUNT(*) as due_count
 FROM funding_programs fp
 JOIN funding_sources fs ON fs.id = fp.source_id
 WHERE fs.state_code = 'AZ'
-  AND fp.status = 'active'
+  AND fp.status IN ('active', 'unknown')
   AND fp.next_check_at <= NOW()
   AND NOT EXISTS (
     SELECT 1 FROM funding_opportunities fo
     WHERE fo.status = 'Open'
+    AND fo.close_date IS NOT NULL
     AND (fo.program_id = fp.id
       OR (fo.funding_source_id = fp.source_id
           AND fo.title ILIKE '%' || fp.name || '%'))
@@ -691,16 +691,120 @@ Extractors are deterministic — they don't need cross-checking, so standalone m
 
 ### Phase 3 — Opportunity Discovery Teams
 
-Team name: `opportunity-check-[SCOPE]`
-One teammate per source group.
-Follow same TeamCreate pattern — each teammate checks program URLs for open/upcoming status.
+Team name: `opportunity-check-[SCOPE]` (e.g., `opportunity-check-AZ-utility`)
 
-### Fallback (ONLY if TeamCreate fails)
+```
+STEP 0: Pre-flight (orchestrator runs directly — NOT delegated to teammates)
+─────────────────────────
+// Auto-close expired opportunities
+psql "$DEV_CLAUDE_URL" -c "
+  UPDATE funding_opportunities
+  SET status = 'Closed'
+  WHERE status = 'Open'
+    AND close_date < NOW()
+    AND close_date IS NOT NULL;
+"
 
-If `TeamCreate` returns an error, fall back to standalone Task tool:
+// Smart scheduling query — get eligible programs
+mcp__postgres__query:
+SELECT fp.id, fp.name, fp.description, fp.program_urls,
+       fp.status as program_status, fp.source_id,
+       fs.name as source_name, fs.state_code, fs.funder_type
+FROM funding_programs fp
+JOIN funding_sources fs ON fs.id = fp.source_id
+WHERE fp.status IN ('active', 'unknown')
+  AND fp.next_check_at <= NOW()
+  -- Scope filter (substitute actual values):
+  AND fs.state_code = 'AZ' AND fs.funder_type = 'Utility'
+  AND NOT EXISTS (
+    SELECT 1 FROM funding_opportunities fo
+    WHERE fo.status = 'Open'
+    AND fo.close_date IS NOT NULL
+    AND (fo.program_id = fp.id
+      OR (fo.funding_source_id = fp.source_id
+          AND fo.title ILIKE '%' || fp.name || '%'))
+  )
+ORDER BY fp.source_id, fp.name;
+
+// Report: "Pre-flight: auto-closed X opportunities. Y programs eligible for checking."
+// If zero eligible, report and stop.
+
+STEP 1: Create team
+─────────────────────────
+TeamCreate(
+  team_name="opportunity-check-AZ-utility",
+  description="Phase 3: Check AZ utility programs for open/upcoming opportunities"
+)
+
+STEP 2: Spawn opportunity-discovery-agent teammates
+─────────────────────────
+// Group programs by source (~10-15 programs per teammate)
+// Each teammate gets all programs from one or more sources
+
+Task(
+  subagent_type="opportunity-discovery-agent",
+  team_name="opportunity-check-AZ-utility",
+  name="checker-aps",
+  prompt="You are an opportunity discovery teammate.
+          Read your skill file: .claude/skills/opportunity-discovery/SKILL.md
+
+          Your assigned programs (APS — Arizona Public Service):
+          1. Program Name (id: UUID, urls: [...])
+          2. Program Name (id: UUID, urls: [...])
+          ... (all APS programs from the query)
+
+          For each program:
+          - Crawl program_urls per Content Retrieval Standard
+          - Follow application links 1-2 levels deep
+          - Apply Decision Tree (Skill Section 4)
+          - INSERT staging records for Open/Upcoming findings
+          - UPDATE last_checked_at and next_check_at on each program
+
+          Database writes: psql \"$DEV_CLAUDE_URL\" -c \"...\"
+          Report results when done."
+)
+
+Task(
+  subagent_type="opportunity-discovery-agent",
+  team_name="opportunity-check-AZ-utility",
+  name="checker-tep",
+  prompt="... (same pattern, TEP programs)"
+)
+
+// = 1 teammate per source (or per ~10-15 programs if source is very large)
+
+STEP 3: Collect results
+─────────────────────────
+Teammates will:
+  a) Crawl each program's URLs
+  b) Determine Open/Upcoming/Nothing status
+  c) INSERT staging records for Open/Upcoming findings
+  d) UPDATE program scheduling (last_checked_at, next_check_at)
+  e) Report results to team lead
+
+STEP 4: Clean up and chain
+─────────────────────────
+- Collect all teammate reports
+- Send shutdown_request to all teammates
+- TeamDelete to clean up
+- Report: "Phase 3 complete: X open, Y upcoming, Z skipped across N programs"
+- If auto-chaining to Phase 4: check staging counts and proceed
 ```
-Task(subagent_type="source-registry-agent", prompt="Search for [TYPE] sources in [STATE]...")
+
+### Phase 3 Fallback (ONLY if TeamCreate fails)
+
+Fall back to standalone Task tool:
 ```
+Task(subagent_type="opportunity-discovery-agent",
+     prompt="Standalone mode. Check all programs matching [SCOPE] for open/upcoming
+             opportunities. Run pre-flight yourself, then process all eligible programs.
+             DB writes: psql \"$DEV_CLAUDE_URL\" -c \"...\"")
+```
+Log a warning: "**TeamCreate failed — falling back to standalone mode.**"
+
+### General Fallback (ONLY if TeamCreate fails)
+
+If `TeamCreate` returns an error for any discovery phase, fall back to standalone Task tool.
 Log a warning: "**TeamCreate failed — falling back to standalone mode. Cross-checking skipped.**"
 This is the ONLY acceptable reason to use standalone mode for discovery phases.
 
