@@ -830,6 +830,10 @@ for the remaining pending records.
 
 ### Phase 4 — Extraction
 
+The extraction-agent loads the `extraction` skill (`.claude/skills/extraction/SKILL.md`).
+It fetches content from staging record URLs, extracts 24 structured fields into
+`extraction_data` JSONB, stores `raw_content` (50KB cap), and computes `source_hash`.
+
 ```sql
 -- Count pending (via mcp__postgres__query)
 SELECT COUNT(*) FROM manual_funding_opportunities_staging
@@ -839,12 +843,22 @@ WHERE extraction_status = 'pending';
 - If count > 0: spawn extraction agents sequentially (1 per batch of 20)
   ```
   Task(subagent_type="extraction-agent",
-       prompt="Extract pending records. Query staging WHERE extraction_status='pending'
-               ORDER BY id LIMIT 20. For each record: fetch URL, extract structured
-               data, update extraction_data and raw_content columns, set
-               extraction_status='complete' (or 'error' on failure).")
+       prompt="Phase 4: Extract pending staging records.
+
+               Skill file: .claude/skills/extraction/SKILL.md
+               Taxonomy file: lib/constants/taxonomies.js (MUST read before extraction)
+
+               Process:
+               1. Read taxonomies
+               2. Query staging WHERE extraction_status='pending' ORDER BY id LIMIT 20
+               3. For each record: claim → fetch URLs → hash → dedup check → extract → update
+               4. Output batch report
+
+               Database reads: mcp__postgres__query
+               Database writes: source .env.local && psql \"$DEV_CLAUDE_URL\"")
   ```
-  After each agent completes, re-check count. If more pending, spawn another.
+  After each agent completes, re-check pending count. If more remain, spawn another.
+  Expected report format: complete/skipped/duplicate/error counts per record.
 - If count == 0: skip, report "No pending extraction records"
 
 ### Phase 5 — Analysis

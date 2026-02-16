@@ -847,20 +847,49 @@ When an opportunity enters the pipeline as "Upcoming":
 
 ### Skill 4: Extraction (`/extract-pending`)
 
-**Purpose**: Fetch content and extract structured data from staging records.
+**Purpose**: Fetch content from staging record URLs, extract ~24 structured fields into
+`extraction_data` JSONB, store `raw_content` (markdown, 50KB cap), and compute `source_hash`
+for change detection. Source-type agnostic.
 
 **Trigger**: `"Extract pending"` or `"Extract opportunities for [SOURCE]"`
 
-**Process** (existing pipeline, formalized):
-1. Query staging: `WHERE extraction_status = 'pending'`
-2. For each record:
-   - Fetch ALL URLs from `program_urls` (not just one URL)
-   - Use combined content for richer extraction
-   - LLM extracts 24 structured fields into `extraction_data`
-   - Store `raw_content`
-3. Update staging: `extraction_status = 'complete'`
+**Skill file**: `.claude/skills/extraction/SKILL.md`
+**Agent**: `.claude/agents/extraction-agent.md` (slim wrapper referencing the extraction skill)
 
-**Enhancement over current**: Extraction now has MULTIPLE URLs per record (program page + application page + guidelines PDF), giving the LLM much richer context.
+**Process**:
+1. Query staging: `WHERE extraction_status = 'pending' ORDER BY id LIMIT 20`
+2. Claim records: mark each as `processing` before starting
+3. For each record:
+   a. Parse `program_urls` JSONB array — fetch priority: application → main → pdf → others
+   b. Apply Content Retrieval Standard per URL (HTML: WebFetch → Playwright; PDF: curl | PyMuPDF)
+   c. Combine content with section markers, cap `raw_content` at 50KB
+   d. Compute `source_hash` (MD5 of full un-truncated content)
+   e. **Early dedup**: check source_hash against previously-extracted records — if match,
+      copy `extraction_data` without LLM call (saves tokens). Status: `duplicate`
+   f. If no match: LLM extracts 24 structured fields into `extraction_data` JSONB
+   g. If extracted status is `closed` or `closeDate` in past: `extraction_status = 'skipped'`
+   h. Otherwise: `extraction_status = 'complete'`
+4. After batch: orchestrator re-checks pending count, spawns another agent if more remain
+
+**24-field extraction_data schema** (matches V2 `schemas.dataExtraction` minus `api_updated_at`):
+- Core: `id` (staging UUID), `title`, `description`, `url`, `status`, `isNational`
+- Taxonomy: `eligibleApplicants`, `eligibleProjectTypes`, `eligibleActivities`, `categories`, `tags`
+- Funding: `fundingType`, `totalFundingAvailable`, `minimumAward`, `maximumAward`, `notes`
+- Source: `funding_source` (object: name, type, website, contact_email, contact_phone, description)
+- Dates: `openDate`, `closeDate`
+- Location: `eligibleLocations`
+- Process: `matchingRequired`, `matchingPercentage`, `disbursementType`, `awardProcess`
+
+**extraction_status values**: `pending` → `processing` → `complete` | `skipped` | `duplicate` | `error`
+
+**raw_content strategy**: Combined markdown/text from all fetched URLs, capped at 50KB.
+WebFetch returns markdown (not raw HTML). PyMuPDF returns plain text. Dollar-quoted in SQL.
+
+**source_hash**: MD5 of full combined content (32 chars). Enables early dedup and change detection
+on re-checks. If content hasn't changed since last extraction, no need to re-extract.
+
+**Execution model**: Task tool, batches of 20, sequential. No Agent Teams needed —
+extraction is deterministic work.
 
 ---
 
