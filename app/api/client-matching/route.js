@@ -72,7 +72,8 @@ export async function GET(request) {
         status, created_at, program_overview, program_insights,
         funding_sources(type)
       `)
-      .neq('status', 'closed');
+      .neq('status', 'closed')
+      .or('promotion_status.is.null,promotion_status.eq.promoted');
 
     if (error) {
       console.error('[ClientMatching] Database error:', error);

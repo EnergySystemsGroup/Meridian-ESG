@@ -16,6 +16,18 @@ Run a single file: `npm run test -- tests/critical/client-matching/matchCriteria
 
 ---
 
+## AI Agent Workflow
+
+If you are an AI agent building features in this codebase:
+1. **Check the decision gate** in CLAUDE.md for every file you modified — API routes and lib functions require tests; skill/agent/migration files do not
+2. **Follow the inline-function pattern** — define functions in the test file, never import from `app/` or `lib/` (Next.js module resolution breaks in Vitest)
+3. **Use fixtures** — import from `tests/fixtures/`, never hardcode test data inline
+4. **Run before commit** — at minimum `npm run test:critical && npm run test:api`
+5. **Pipeline changes** — if you modified scoring, sanitization, or extraction logic, also run `npm run test:pipeline`
+6. **Update inline functions** — if you changed logic in production code that has a corresponding test, update the test's inline function to match
+
+---
+
 ## Where Does My Test Go?
 
 **One question determines the tier:**

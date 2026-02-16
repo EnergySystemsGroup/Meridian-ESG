@@ -8,6 +8,7 @@
  */
 
 import { describe, test, expect } from 'vitest';
+import { opportunities } from '../fixtures/opportunities.js';
 
 const dashboardCountsSchema = {
   openOpportunities: 'number',
@@ -105,6 +106,50 @@ describe('Counts API Contracts', () => {
         expect(typeof value).toBe('number');
         expect(value).toBeGreaterThanOrEqual(0);
       }
+    });
+  });
+
+  describe('Promotion Status Filter (open_opportunities count)', () => {
+    // Inline filter replicating: .ilike('status', 'open').or('promotion_status.is.null,promotion_status.eq.promoted')
+    function countOpenVisible(opps) {
+      return opps.filter(
+        (o) =>
+          o.status?.toLowerCase() === 'open' &&
+          (o.promotion_status === null || o.promotion_status === 'promoted')
+      ).length;
+    }
+
+    const fixtures = [
+      { ...opportunities.nationalGrant, status: 'open', promotion_status: null },
+      { ...opportunities.nationalGrant, status: 'open', promotion_status: 'promoted' },
+      { ...opportunities.nationalGrant, status: 'open', promotion_status: 'pending_review' },
+      { ...opportunities.nationalGrant, status: 'open', promotion_status: 'rejected' },
+      { ...opportunities.nationalGrant, status: 'closed', promotion_status: null },
+      { ...opportunities.nationalGrant, status: 'closed', promotion_status: 'promoted' },
+    ];
+
+    test('includes open records with null promotion_status', () => {
+      const count = countOpenVisible([{ ...opportunities.nationalGrant, status: 'open', promotion_status: null }]);
+      expect(count).toBe(1);
+    });
+
+    test('includes open records with promoted status', () => {
+      const count = countOpenVisible([{ ...opportunities.nationalGrant, status: 'open', promotion_status: 'promoted' }]);
+      expect(count).toBe(1);
+    });
+
+    test('excludes open records with pending_review status', () => {
+      const count = countOpenVisible([{ ...opportunities.nationalGrant, status: 'open', promotion_status: 'pending_review' }]);
+      expect(count).toBe(0);
+    });
+
+    test('excludes closed records even if promoted', () => {
+      const count = countOpenVisible([{ ...opportunities.nationalGrant, status: 'closed', promotion_status: 'promoted' }]);
+      expect(count).toBe(0);
+    });
+
+    test('counts correctly across mixed fixture set (2 of 6 visible)', () => {
+      expect(countOpenVisible(fixtures)).toBe(2);
     });
   });
 

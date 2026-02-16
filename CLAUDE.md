@@ -164,6 +164,53 @@ npm run test:pipeline     # Tier 4: AI pipeline (nightly)
 - Critical tests should test **pure functions** with no mocks when possible
 - Pipeline tests: exact assertions for deterministic code, schema-only for LLM output
 
+### AI Agent Testing Workflow
+
+**STOP and check this gate before reporting any task as complete.** For every file you modified, ask:
+
+| Change Type | Tests Required? | Tier |
+|-------------|:-:|------|
+| New/modified API route (`app/api/`) | **YES** | Critical + API |
+| New/modified lib function (`lib/`) | **YES** | Pipeline or Critical |
+| Bug fix in business logic | **YES** (regression test) | Matches affected tier |
+| Skill file (`.claude/skills/`) | NO | — |
+| Agent file (`.claude/agents/`) | NO | — |
+| Database migration (`.sql`) | NO | Verify via `supabase migration up` |
+| Documentation / config | NO | — |
+| UI components only | NO | — |
+
+**Workflow** (test-after — write tests once implementation is stable):
+1. Implement the change
+2. **Check the decision gate above** for every file you touched
+3. If tests required: write them using the **inline-function pattern** (see below)
+4. Run the relevant tier: `npm run test:critical` or `npm run test:pipeline`
+5. Fix any failures before reporting the task as complete
+6. **Always run `npm run test:critical && npm run test:api` before requesting a commit**
+
+**Inline-function pattern** — This project's test architecture requires it:
+
+```javascript
+// CORRECT: Define the function inline in the test file
+function isPromotionVisible(promotionStatus) {
+  return promotionStatus === null || promotionStatus === 'promoted';
+}
+
+test('pending_review records are excluded', () => {
+  expect(isPromotionVisible('pending_review')).toBe(false);
+});
+```
+
+```javascript
+// WRONG: Never import from app code — Next.js module resolution breaks in Vitest
+import { isPromotionVisible } from '@/app/api/counts/route';  // WILL FAIL
+```
+
+**Why**: Vitest cannot resolve Next.js path aliases (`@/`) or server-only modules. All 68+ test files in this repo use inline pure functions that replicate the production logic.
+
+**Inline function drift**: When you modify logic in an API route or lib function, you MUST also update the corresponding inline function in the test file. The test function must mirror the production logic — if they drift apart, the tests become meaningless.
+
+**"But my change is just one line"**: One-line changes to query filters, scoring logic, or matching criteria are business logic changes. They determine what users see. If the decision gate says YES, write the test. No exceptions for "trivial" changes.
+
 ### Agent Development
 When working with agents:
 - Use `app/lib/agents-v2/utils/anthropicClient.js` for AI calls

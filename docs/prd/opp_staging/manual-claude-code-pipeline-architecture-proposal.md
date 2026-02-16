@@ -948,19 +948,28 @@ and link coverage areas.
 
 **Process** (existing pipeline, enhanced):
 1. Query staging: `WHERE analysis_status = 'complete' AND storage_status = 'pending'`
-2. Sanitize via `dataSanitizer.js`
+2. Sanitize via `dataSanitizer.js` — TEXT FIELDS COPIED VERBATIM (no truncation)
 3. UPSERT to `funding_opportunities`:
    - **Now includes `program_id`** linking to the discovered program
-   - Set `promotion_status = 'pending_review'`
+   - Set `promotion_status = 'pending_review'` (hidden from dashboard — see migration `20260216000001`)
+   - Set `api_source_id = NULL`, `api_opportunity_id = 'manual'` (manual pipeline markers)
    - UPSERT conflict key: `(funding_source_id, title) WHERE api_source_id IS NULL`
-4. Link coverage areas via `locationMatcher.js`
+4. Enrich funding source (COALESCE — fill NULLs only from `extraction_data.funding_source`)
+5. Link coverage areas via `locationMatcher.js` logic (SQL fuzzy match)
    - Creates real `opportunity_coverage_areas` FK rows immediately
    - (This works because the `funding_opportunities.id` exists from step 3)
-5. Update staging: `storage_status = 'complete'`, `opportunity_id = <uuid>`
+6. Update staging: `storage_status = 'complete'`, `opportunity_id = <uuid>`,
+   `stored_at = NOW()`, `stored_by = 'storage-agent'`
+
+**storage_status values**: `pending` → `processing` → `complete` | `failed`
 
 **Key advantage of this approach**: Coverage areas are FK-linked immediately during storage.
 The `funding_opportunities.id` exists from the UPSERT in step 3, so `locationMatcher.js`
 works normally — no JSONB workaround, no deferred linking.
+
+**Migration**: `20260216000001_add_promotion_status.sql` adds the `promotion_status` column,
+filters the `funding_opportunities_with_geography` view, and updates 9 RPC functions to
+exclude `pending_review`/`rejected` records from dashboard queries.
 
 ---
 

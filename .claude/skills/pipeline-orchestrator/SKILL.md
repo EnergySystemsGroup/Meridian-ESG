@@ -696,14 +696,9 @@ Team name: `opportunity-check-[SCOPE]` (e.g., `opportunity-check-AZ-utility`)
 ```
 STEP 0: Pre-flight (orchestrator runs directly — NOT delegated to teammates)
 ─────────────────────────
-// Auto-close expired opportunities
-psql "$DEV_CLAUDE_URL" -c "
-  UPDATE funding_opportunities
-  SET status = 'Closed'
-  WHERE status = 'Open'
-    AND close_date < NOW()
-    AND close_date IS NOT NULL;
-"
+// NOTE: Auto-close is handled by pg_cron daily job (update_opportunity_statuses())
+// running at 00:05 UTC. No manual auto-close needed here.
+// The view also has a calculated_status column for real-time display.
 
 // Smart scheduling query — get eligible programs
 mcp__postgres__query:
@@ -919,15 +914,40 @@ WHERE extraction_status = 'complete' AND analysis_status = 'pending';
 
 ### Phase 6 — Storage
 
-Usually 1 agent handles all pending records:
+```sql
+-- Count pending (via mcp__postgres__query)
+SELECT COUNT(*) FROM manual_funding_opportunities_staging
+WHERE analysis_status = 'complete' AND storage_status = 'pending';
 ```
-Task(subagent_type="storage-agent",
-     prompt="Store analyzed records to production. Query staging WHERE
-             analysis_status='complete' AND storage_status='pending' ORDER BY id.
-             Apply dataSanitizer, UPSERT to funding_opportunities with
-             promotion_status='pending_review', link coverage areas.
-             Set storage_status='complete' per record.")
-```
+
+- If count > 0: spawn storage agent (1 agent per batch of 20)
+  ```
+  Task(subagent_type="storage-agent",
+       prompt="Store analyzed records to production.
+               REQUIRED — read these V2 reference files first:
+                 - lib/agents-v2/core/storageAgent/dataSanitizer.js
+                 - lib/services/locationMatcher.js
+                 - lib/agents-v2/core/storageAgent/utils/fieldMapping.js
+               Query staging WHERE analysis_status='complete'
+                 AND storage_status='pending' ORDER BY id LIMIT 20.
+               For each record:
+                 1. Sanitize fields per dataSanitizer functions
+                 2. UPSERT to funding_opportunities with:
+                    - promotion_status = 'pending_review'
+                    - api_source_id = NULL
+                    - api_opportunity_id = 'manual'
+                    - program_id from staging.program_id
+                    - funding_source_id from staging.source_id
+                 3. Link coverage areas from eligible_locations
+                 4. Update staging: storage_status='complete',
+                    opportunity_id=<returned UUID>, stored_by='storage-agent'
+               TEXT FIELDS MUST BE COPIED VERBATIM — no truncation.
+               Dollar-quote with $STOR$...$STOR$.
+               DB writes: source .env.local && psql \"$<ENV_VAR>\"")
+  ```
+  After each agent completes, re-check count. If more pending, spawn another.
+  Report: "Stored X records (Y new, Z updated). Coverage areas linked: N."
+- If count == 0: skip, report "No pending storage records"
 
 ---
 
@@ -1028,16 +1048,20 @@ detail, query the actual tables by `created_at` within the pipeline run timefram
 
 ## 12. Maintenance & Auto-Close
 
-Run auto-close at the start of every pipeline execution:
+Auto-close is handled automatically by the `update_opportunity_statuses()` PostgreSQL
+function, scheduled via `pg_cron` to run daily at 00:05 UTC. It performs three operations:
 
+1. **Upcoming → Open**: when `open_date <= CURRENT_DATE`
+2. **Open → Closed**: when `close_date < CURRENT_DATE`
+3. **Closed → Open**: when status is 'Closed' but `close_date` is still in the future (fixes bad data)
+
+The `funding_opportunities_with_geography` view also has a `calculated_status` column
+that computes these transitions on-the-fly for display.
+
+**No manual auto-close is needed in the pipeline.** The orchestrator relies on the
+cron job and view for accurate status. If you need to force a status refresh, run:
 ```sql
-UPDATE funding_opportunities
-SET status = 'Closed'
-WHERE status = 'Open'
-  AND close_date < NOW()
-  AND close_date IS NOT NULL;
+SELECT update_opportunity_statuses();
 ```
-
-Report how many were auto-closed: "Auto-closed X expired opportunities."
 
 **Database connection**: See Section 1 (Mission) for read/write connection details.

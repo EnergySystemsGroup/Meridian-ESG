@@ -8,6 +8,7 @@
  */
 
 import { describe, test, expect } from 'vitest';
+import { opportunities } from '../fixtures/opportunities.js';
 
 const deadlineSchema = {
   id: 'string',
@@ -120,6 +121,52 @@ describe('Deadlines API Contracts', () => {
       testValues.forEach(val => {
         expect(val === null || Number.isInteger(val)).toBe(true);
       });
+    });
+  });
+
+  describe('Promotion Status Filter (deadlines visibility)', () => {
+    // Inline filter replicating: .gte('close_date', today).or('promotion_status.is.null,promotion_status.eq.promoted')
+    function filterVisibleDeadlines(opps, today) {
+      return opps.filter(
+        (o) =>
+          o.close_date !== null &&
+          o.close_date >= today &&
+          (o.promotion_status === null || o.promotion_status === 'promoted')
+      );
+    }
+
+    const today = '2025-01-01T00:00:00Z';
+
+    test('includes future deadlines with null promotion_status', () => {
+      const result = filterVisibleDeadlines(
+        [{ ...opportunities.nationalGrant, close_date: '2025-06-30T23:59:59Z', promotion_status: null }],
+        today
+      );
+      expect(result).toHaveLength(1);
+    });
+
+    test('includes future deadlines with promoted status', () => {
+      const result = filterVisibleDeadlines(
+        [{ ...opportunities.nationalGrant, close_date: '2025-06-30T23:59:59Z', promotion_status: 'promoted' }],
+        today
+      );
+      expect(result).toHaveLength(1);
+    });
+
+    test('excludes future deadlines with pending_review status', () => {
+      const result = filterVisibleDeadlines(
+        [{ ...opportunities.nationalGrant, close_date: '2025-06-30T23:59:59Z', promotion_status: 'pending_review' }],
+        today
+      );
+      expect(result).toHaveLength(0);
+    });
+
+    test('excludes past deadlines even if promoted', () => {
+      const result = filterVisibleDeadlines(
+        [{ ...opportunities.nationalGrant, close_date: '2024-01-01T00:00:00Z', promotion_status: 'promoted' }],
+        today
+      );
+      expect(result).toHaveLength(0);
     });
   });
 

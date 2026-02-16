@@ -9,6 +9,7 @@
  */
 
 import { describe, test, expect } from 'vitest';
+import { opportunities } from '../fixtures/opportunities.js';
 
 /**
  * Expected match object shape
@@ -302,6 +303,70 @@ describe('Client Matching API Contract', () => {
       };
 
       expect(response.hidden_matches).toHaveLength(0);
+    });
+  });
+
+  describe('Promotion Status Filter (opportunity visibility)', () => {
+    // Inline filter replicating: .neq('status', 'closed').or('promotion_status.is.null,promotion_status.eq.promoted')
+    // Used by client-matching, top-matches, and summary routes
+    function filterVisibleOpportunities(opps) {
+      return opps.filter(
+        (o) =>
+          o.status !== 'closed' &&
+          (o.promotion_status === null || o.promotion_status === 'promoted')
+      );
+    }
+
+    const fixtures = [
+      { ...opportunities.nationalGrant, id: 'vis-1', status: 'open', promotion_status: null },
+      { ...opportunities.nationalGrant, id: 'vis-2', status: 'open', promotion_status: 'promoted' },
+      { ...opportunities.nationalGrant, id: 'hid-1', status: 'open', promotion_status: 'pending_review' },
+      { ...opportunities.nationalGrant, id: 'hid-2', status: 'open', promotion_status: 'rejected' },
+      { ...opportunities.nationalGrant, id: 'hid-3', status: 'closed', promotion_status: null },
+      { ...opportunities.nationalGrant, id: 'hid-4', status: 'closed', promotion_status: 'promoted' },
+    ];
+
+    test('null promotion_status is visible (legacy API records)', () => {
+      const visible = filterVisibleOpportunities(
+        [{ ...opportunities.nationalGrant, status: 'open', promotion_status: null }]
+      );
+      expect(visible).toHaveLength(1);
+    });
+
+    test('promoted records are visible (admin approved)', () => {
+      const visible = filterVisibleOpportunities(
+        [{ ...opportunities.nationalGrant, status: 'open', promotion_status: 'promoted' }]
+      );
+      expect(visible).toHaveLength(1);
+    });
+
+    test('pending_review records are excluded', () => {
+      const visible = filterVisibleOpportunities(
+        [{ ...opportunities.nationalGrant, status: 'open', promotion_status: 'pending_review' }]
+      );
+      expect(visible).toHaveLength(0);
+    });
+
+    test('rejected records are excluded', () => {
+      const visible = filterVisibleOpportunities(
+        [{ ...opportunities.nationalGrant, status: 'open', promotion_status: 'rejected' }]
+      );
+      expect(visible).toHaveLength(0);
+    });
+
+    test('closed + promoted is excluded (status filter takes precedence)', () => {
+      const visible = filterVisibleOpportunities(
+        [{ ...opportunities.nationalGrant, status: 'closed', promotion_status: 'promoted' }]
+      );
+      expect(visible).toHaveLength(0);
+    });
+
+    test('filters correctly across mixed set (2 of 6 visible)', () => {
+      const visible = filterVisibleOpportunities(fixtures);
+      const visibleIds = visible.map((o) => o.id);
+      expect(visible).toHaveLength(2);
+      expect(visibleIds).toContain('vis-1');
+      expect(visibleIds).toContain('vis-2');
     });
   });
 
