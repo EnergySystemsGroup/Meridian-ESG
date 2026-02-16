@@ -863,14 +863,59 @@ WHERE extraction_status = 'pending';
 
 ### Phase 5 — Analysis
 
-Same sequential batching pattern:
+The analysis-agent loads the `analysis` skill (`.claude/skills/analysis/SKILL.md`).
+It reads V2 analysis reference files, performs LLM content enhancement (6 fields)
+and deterministic scoring (5 components from scoringAnalyzer.js), and merges results
+into `analysis_data` JSONB. Filtering is handled by the orchestrator post-batch.
+
+```sql
+-- Count pending (via mcp__postgres__query)
+SELECT COUNT(*) FROM manual_funding_opportunities_staging
+WHERE extraction_status = 'complete' AND analysis_status = 'pending';
 ```
-Task(subagent_type="analysis-agent",
-     prompt="Analyze extracted records. Query staging WHERE extraction_status='complete'
-             AND analysis_status='pending' ORDER BY id LIMIT 20.
-             Run content enhancement (6 fields) and deterministic V2 scoring.
-             Update analysis_data column, set analysis_status='complete'.")
-```
+
+- If count > 0: spawn analysis agents sequentially (1 per batch of 20)
+  ```
+  Task(subagent_type="analysis-agent",
+       prompt="Phase 5: Analyze extracted staging records.
+
+               Skill file: .claude/skills/analysis/SKILL.md
+               V2 reference files (MUST read before analysis):
+                 - lib/agents-v2/core/analysisAgent/contentEnhancer.js
+                 - lib/agents-v2/core/analysisAgent/scoringAnalyzer.js
+                 - lib/agents-v2/core/analysisAgent/parallelCoordinator.js
+               Taxonomy file: lib/constants/taxonomies.js (MUST read before analysis)
+
+               Process:
+               1. Read taxonomies + V2 analysis files
+               2. Query staging WHERE extraction_status='complete'
+                  AND analysis_status='pending' ORDER BY id LIMIT 20
+               3. For each record: claim → content enhancement (6 fields)
+                  → deterministic scoring → merge → update as 'complete'
+               4. Output batch report with score distribution
+
+               Note: actionableSummary uses the 'How to Win' prompt from Skill Section 3b.
+               Note: Filtering is NOT the agent's job — orchestrator handles it post-batch.
+
+               Database reads: mcp__postgres__query
+               Database writes: source .env.local && psql \"$DEV_CLAUDE_URL\"")
+  ```
+  After each agent completes, re-check pending count. If more remain, spawn another.
+  Expected report format: complete/error counts per record + score distribution.
+
+- After ALL analysis agents complete, run the **filter SQL**:
+  ```sql
+  -- Orchestrator runs this via psql (NOT the analysis agent)
+  UPDATE manual_funding_opportunities_staging
+  SET analysis_status = 'filtered',
+      analysis_error = 'Filtered: finalScore ' ||
+        (analysis_data->'scoring'->>'finalScore') || ' below threshold 2'
+  WHERE analysis_status = 'complete'
+    AND (analysis_data->'scoring'->>'finalScore')::numeric < 2;
+  ```
+  Report: "Filtered X of Y records (finalScore < 2)"
+
+- If count == 0: skip, report "No pending analysis records"
 
 ### Phase 6 — Storage
 

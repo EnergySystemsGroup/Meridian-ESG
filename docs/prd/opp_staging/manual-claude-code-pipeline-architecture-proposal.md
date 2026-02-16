@@ -893,16 +893,47 @@ extraction is deterministic work.
 
 ### Skill 5: Analysis (`/analyze-pending`)
 
-**Purpose**: Content enhancement + deterministic scoring.
+> **REVIEWED — Phase 5 Implementation (Approved)**
+
+**Purpose**: LLM content enhancement (6 fields) + deterministic scoring + orchestrator-handled filtering.
 
 **Trigger**: `"Analyze pending"` or `"Analyze opportunities for [SOURCE]"`
 
-**Process** (existing pipeline, unchanged):
-1. Query staging: `WHERE extraction_status = 'complete' AND analysis_status = 'pending'`
-2. Content enhancement (LLM): 6 fields
-3. Scoring (deterministic): `scoringAnalyzer.js`
-4. Merge into `analysis_data`
-5. Update staging: `analysis_status = 'complete'`
+**Skill file**: `.claude/skills/analysis/SKILL.md`
+**Agent**: `.claude/agents/analysis-agent.md` (slim wrapper referencing the `analysis` skill)
+
+**Process**:
+1. Query staging: `WHERE extraction_status = 'complete' AND analysis_status = 'pending' ORDER BY id LIMIT 20`
+2. Claim records: mark each as `processing` before starting
+3. For each record:
+   a. Read `extraction_data` JSONB from the staging record
+   b. Content enhancement (LLM): Generate 6 fields following V2 `contentEnhancer.js` prompt
+      - Fields 1, 3-6: follow V2 prompts exactly (enhancedDescription, programOverview,
+        programUseCases, applicationSummary, programInsights)
+      - Field 2 (`actionableSummary`): **Repurposed as "How to Win This Grant"** — strategic
+        brief covering narrative to tell, evaluation criteria, pitfalls, competitive actions
+   c. Scoring (deterministic): replicate V2 `scoringAnalyzer.js` functions exactly
+      - 5 components: clientRelevance (0-3), projectTypeRelevance (0-3),
+        fundingAttractiveness (0-3), fundingType (0-1), activityMultiplier (0.25-1.0)
+      - `finalScore = baseScore * activityMultiplier` (range 0-10)
+   d. Merge: `analysis_data = { ...extraction_data, ...6 content fields, scoring, relevanceReasoning, concerns }`
+   e. UPDATE staging: `analysis_status = 'complete'`
+4. After batch: orchestrator re-checks pending count, spawns another agent if more remain
+
+**Filtering** (orchestrator-handled, NOT the analysis agent):
+- After all analysis agents complete, orchestrator runs filter SQL:
+  `UPDATE ... SET analysis_status = 'filtered' WHERE (finalScore)::numeric < 2`
+- Threshold matches V2 `filterFunction.js` (Stage 4 of API pipeline)
+- Full `analysis_data` remains on filtered records for review/debugging
+- Phase 6 queries `WHERE analysis_status = 'complete'` — filtered records excluded
+
+**analysis_data JSONB**: Complete merged object containing all extraction fields (spread),
+6 content enhancement fields, scoring object (7 fields), relevanceReasoning, and concerns.
+Storage agent reads this as the single source of truth for `funding_opportunities` insertion.
+
+**analysis_status values**: `pending` → `processing` → `complete` | `filtered` (by orchestrator) | `error`
+
+**Execution model**: Task tool, batches of 20, sequential. No Agent Teams needed.
 
 ---
 
