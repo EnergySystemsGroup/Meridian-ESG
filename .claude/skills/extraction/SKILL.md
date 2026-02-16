@@ -161,7 +161,7 @@ For skipped pre-filter records: set `extraction_status = 'skipped'`,
 
 ---
 
-## 3. Content Fetching + Early Duplicate Detection
+## 3. Content Fetching
 
 ### 3a. Parse program_urls
 
@@ -207,6 +207,7 @@ If the combined content exceeds 50KB, truncate and append:
 ```
 
 **source_hash**: Compute MD5 of the FULL (un-truncated) combined content.
+Useful for future change detection ("has this page changed since last extraction?").
 
 ```bash
 echo -n "FULL_COMBINED_CONTENT" | md5sum | cut -d' ' -f1
@@ -222,29 +223,7 @@ Or via Python if content has special characters:
 python3 -c "import hashlib, sys; print(hashlib.md5(sys.stdin.buffer.read()).hexdigest())" <<< "CONTENT"
 ```
 
-### 3d. Early Duplicate Detection (Before LLM Extraction)
-
-After computing source_hash, check for existing matches BEFORE doing LLM extraction:
-
-```sql
-SELECT id, title, extraction_status, extraction_data
-FROM manual_funding_opportunities_staging
-WHERE source_hash = '[computed_hash]'
-  AND extraction_status IN ('complete', 'skipped')
-  AND id != '[current_record_id]'
-LIMIT 1;
-```
-
-**If match found** — content is identical to a previously-extracted record:
-- Copy `extraction_data` from the matched record (no LLM call needed)
-- Set `extraction_status = 'duplicate'`
-- Set `extraction_error = 'Dedup: content matches [matched_id]'`
-- Store `raw_content` and `source_hash` as normal
-- This saves LLM tokens — the manual pipeline equivalent of V2's raw response hash dedup
-
-**If no match** — proceed with normal LLM extraction (Section 4).
-
-### 3e. All URLs Fail
+### 3d. All URLs Fail
 
 If every URL in `program_urls` (and the fallback `mfos.url`) returns an error:
 - Set `extraction_status = 'error'`
@@ -503,23 +482,6 @@ SET
 WHERE id = '[staging_record_uuid]';
 ```
 
-### Duplicate (source_hash match)
-
-```sql
-UPDATE manual_funding_opportunities_staging
-SET
-  extraction_status = 'duplicate',
-  raw_content = $RAW_CONTENT$[combined content]$RAW_CONTENT$,
-  raw_content_fetched_at = NOW(),
-  source_hash = '[32-char MD5 hash]',
-  extraction_data = '[copied JSON from matched record]'::jsonb,
-  extraction_error = 'Dedup: content matches [matched_record_id]',
-  extracted_at = NOW(),
-  extracted_by = 'extraction-agent',
-  updated_at = NOW()
-WHERE id = '[staging_record_uuid]';
-```
-
 ### Error
 
 ```sql
@@ -576,13 +538,11 @@ After processing all records in a batch, output:
 Records processed: X of Y pending
   Complete:   A (extraction_data populated)
   Skipped:    B (closed/expired)
-  Duplicate:  C (source_hash match — LLM calls saved)
-  Errors:     D
+  Errors:     C
 
 Details:
   [record_id] "Title" → complete
   [record_id] "Title" → skipped (closed, close_date: 2025-12-31)
-  [record_id] "Title" → duplicate (matches record_id)
   [record_id] "Title" → error (All URLs returned 404)
 
 Remaining pending: Z records
@@ -607,7 +567,7 @@ Remaining pending: Z records
 | MD5 computation fails | Use 'no_hash' as source_hash, log warning, continue |
 
 **Never silently skip a record.** Every record must end with an extraction_status
-of `complete`, `skipped`, `duplicate`, or `error`.
+of `complete`, `skipped`, or `error`.
 
 ---
 

@@ -864,9 +864,7 @@ for change detection. Source-type agnostic.
    b. Apply Content Retrieval Standard per URL (HTML: WebFetch → Playwright; PDF: curl | PyMuPDF)
    c. Combine content with section markers, cap `raw_content` at 50KB
    d. Compute `source_hash` (MD5 of full un-truncated content)
-   e. **Early dedup**: check source_hash against previously-extracted records — if match,
-      copy `extraction_data` without LLM call (saves tokens). Status: `duplicate`
-   f. If no match: LLM extracts 24 structured fields into `extraction_data` JSONB
+   e. LLM extracts 24 structured fields into `extraction_data` JSONB
    g. If extracted status is `closed` or `closeDate` in past: `extraction_status = 'skipped'`
    h. Otherwise: `extraction_status = 'complete'`
 4. After batch: orchestrator re-checks pending count, spawns another agent if more remain
@@ -880,13 +878,13 @@ for change detection. Source-type agnostic.
 - Location: `eligibleLocations`
 - Process: `matchingRequired`, `matchingPercentage`, `disbursementType`, `awardProcess`
 
-**extraction_status values**: `pending` → `processing` → `complete` | `skipped` | `duplicate` | `error`
+**extraction_status values**: `pending` → `processing` → `complete` | `skipped` | `error`
 
 **raw_content strategy**: Combined markdown/text from all fetched URLs, capped at 50KB.
 WebFetch returns markdown (not raw HTML). PyMuPDF returns plain text. Dollar-quoted in SQL.
 
-**source_hash**: MD5 of full combined content (32 chars). Enables early dedup and change detection
-on re-checks. If content hasn't changed since last extraction, no need to re-extract.
+**source_hash**: MD5 of full combined content (32 chars). Enables change detection on re-checks
+(has this page changed since we last extracted?). Every record gets fresh LLM extraction regardless.
 
 **Execution model**: Task tool, batches of 20, sequential. No Agent Teams needed —
 extraction is deterministic work.

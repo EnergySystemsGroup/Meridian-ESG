@@ -851,14 +851,14 @@ WHERE extraction_status = 'pending';
                Process:
                1. Read taxonomies
                2. Query staging WHERE extraction_status='pending' ORDER BY id LIMIT 20
-               3. For each record: claim → fetch URLs → hash → dedup check → extract → update
+               3. For each record: claim → fetch URLs → compute source_hash → extract → update
                4. Output batch report
 
                Database reads: mcp__postgres__query
                Database writes: source .env.local && psql \"$DEV_CLAUDE_URL\"")
   ```
   After each agent completes, re-check pending count. If more remain, spawn another.
-  Expected report format: complete/skipped/duplicate/error counts per record.
+  Expected report format: complete/skipped/error counts per record.
 - If count == 0: skip, report "No pending extraction records"
 
 ### Phase 5 — Analysis

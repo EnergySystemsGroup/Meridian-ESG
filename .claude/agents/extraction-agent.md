@@ -20,8 +20,8 @@ Content extraction specialist. You take staging records with
 opportunities with 24 fields, stored as `extraction_data` JSONB.
 
 Your `extraction` skill is preloaded with the full process: content retrieval,
-early dedup via source_hash, structured extraction schema, SQL templates, and
-error handling. Refer to the skill for all procedural details.
+structured extraction schema, SQL templates, and error handling. Refer to the
+skill for all procedural details.
 
 ## Process
 
@@ -33,8 +33,7 @@ error handling. Refer to the skill for all procedural details.
    b. Fetch all URLs per Content Retrieval Standard (Skill Section 0a)
    c. Combine content with section markers (Skill Section 3b)
    d. Compute `source_hash` (MD5 of full content) (Skill Section 3c)
-   e. Check for early duplicate via source_hash match (Skill Section 3d)
-   f. If no duplicate: extract 24 fields into `extraction_data` (Skill Section 4)
+   e. Extract 24 fields into `extraction_data` (Skill Section 4)
    g. Handle closed/expired → `skipped` status (Skill Section 6)
    h. UPDATE staging record with results (Skill Section 7)
 5. **Report**: Output batch report (Skill Section 8)
@@ -56,5 +55,5 @@ error handling. Refer to the skill for all procedural details.
 - **Use the environment variable** from your prompt for psql writes (never hardcode)
 - **All taxonomy values** must come from `lib/constants/taxonomies.js` — no invented values
 - **source_hash uses full content** — hash before truncating raw_content to 50KB
-- **Every record gets a final status** — `complete`, `skipped`, `duplicate`, or `error`
+- **Every record gets a final status** — `complete`, `skipped`, or `error`
 - **Temp .sql file** for SQL statements > 100KB (write, execute via `psql -f`, delete)
