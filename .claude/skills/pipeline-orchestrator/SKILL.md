@@ -54,7 +54,7 @@ non-negotiable — a missed source means missed opportunities for our sales team
 | 4 | Extraction | Staging `extraction_status='pending'` | Staging `extraction_data`, `raw_content` | Task tool: extraction-agent (batches of 20) |
 | 5 | Analysis | Staging `analysis_status='pending'` | Staging `analysis_data` | Task tool: analysis-agent (batches of 20) |
 | 6 | Storage | Staging `storage_status='pending'` | `funding_opportunities` (pending_review) + coverage areas | Task tool: storage-agent |
-| 7 | Review & Publish | `promotion_status='pending_review'` | `promotion_status` flip | Interactive (orchestrator handles) |
+| 7 | Review & Publish | `promotion_status='pending_review'` | `promotion_status` flip | Read-only reporter → directs to `/admin/review` UI |
 
 **Dependencies**: Each phase depends on the previous. Chain them in order.
 Phase 7 is NEVER auto-triggered — always requires explicit admin action.
@@ -212,8 +212,6 @@ JOIN funding_sources fs ON fs.id = fp.source_id
 WHERE fs.state_code = 'AZ' AND fs.funder_type = 'Utility';
 
 -- Check 3: Programs due for checking? (smart schedule)
--- Note: fo.promotion_status column will be added in a future migration.
--- Skip check 5 if that column doesn't exist yet (Phase 7 prerequisite).
 SELECT COUNT(*) as due_count
 FROM funding_programs fp
 JOIN funding_sources fs ON fs.id = fp.source_id
@@ -237,10 +235,13 @@ SELECT
   COUNT(*) FILTER (WHERE storage_status = 'error') as errors
 FROM manual_funding_opportunities_staging;
 
--- Check 5: Review queue (requires promotion_status column — future migration)
-SELECT COUNT(*) as review_count
+-- Check 5: Review queue
+SELECT
+  COUNT(*) FILTER (WHERE promotion_status = 'pending_review') as pending_review,
+  COUNT(*) FILTER (WHERE promotion_status = 'promoted') as promoted,
+  COUNT(*) FILTER (WHERE promotion_status = 'rejected') as rejected
 FROM funding_opportunities
-WHERE promotion_status = 'pending_review';
+WHERE promotion_status IS NOT NULL;
 ```
 
 **Not all checks apply to every phase.** Run only relevant checks:

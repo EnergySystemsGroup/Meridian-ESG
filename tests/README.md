@@ -291,6 +291,22 @@ describe('Client-Opportunity Matching: Match Criteria', () => {
 | Real Supabase for Tier 3 | Medium | Currently simulated; needs `supabase start` in Docker |
 | Stage-to-stage pipeline handoff | Low | Tested in isolation; pipeline failures visible in staging table |
 
+### TODO: Tier 3 Database Tests Do Not Test the Database
+
+**Problem**: Every test in `tests/database/` (views, RPCs, constraints) uses inline JS functions that *simulate* expected behavior against fixture data. None of them connect to a real database. This means:
+
+1. **Schema drift is invisible.** If a SQL view is missing a column that an API route depends on, no test fails. The JS simulation just spreads the input object, so any column you put in test data appears in the output — regardless of whether the real view exposes it. (This caused a production bug: `program_id` was added to `funding_opportunities` but never to the view. The admin review page broke at runtime, and no test caught it.)
+
+2. **SQL logic is untested.** The CASE expression for `status`, the ARRAY_AGG for `coverage_state_codes`, the GROUP BY behavior, NULL handling in aggregates — all of this is reimplemented in JS rather than tested against the real SQL. If the SQL and JS drift apart, the tests still pass.
+
+3. **Migration correctness is assumed.** After running `supabase migration up`, we have no automated verification that the resulting schema matches what the application code expects.
+
+**Scope of the problem**: 7 test files across `tests/database/` (views, RPCs, constraints) all share this pattern. The `tests/integration/` tier also uses fixture-only simulation.
+
+**Stopgap in place**: `fundingOpportunitiesWithGeography.test.js` now has a "View Schema Contract" describe block with a manually-maintained column list. This catches consumer-vs-view mismatches but still doesn't verify against the actual database.
+
+**What a fix looks like**: A small set of tests that connect to the local Supabase instance (`supabase start`) and run real queries — e.g., `SELECT * FROM funding_opportunities_with_geography LIMIT 1` to assert on actual columns, or call an RPC and verify the return shape. These would live in a new tier or sub-tier that requires Docker/Supabase to be running.
+
 ---
 
 ## Full Strategy Document

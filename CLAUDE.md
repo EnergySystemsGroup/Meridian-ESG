@@ -222,7 +222,11 @@ When working with agents:
 - Use Supabase migrations in `supabase/migrations/`
 - Test locally with `supabase start`
 - Migration naming: `YYYYMMDD_description.sql`
-- **IMPORTANT**: For dev environments, always use `supabase migration up` - NEVER do database resets during migrations
+- **CRITICAL: Migration Workflow**:
+  - **Local dev**: Always use `supabase migration up` to apply migrations. This runs the SQL AND records it in the tracking table.
+  - **NEVER use `psql -f migration.sql`** — this applies schema changes but skips tracking, causing `supabase migration list` to show migrations as unapplied.
+  - **Staging/Production**: Automatic via GitHub Actions (`supabase db push`) when the branch merges.
+  - **NEVER do database resets** during migrations — use `supabase migration up` only.
 
 ### API Routes
 - Follow Next.js 15 async API patterns
@@ -284,17 +288,23 @@ The orchestrator parses your request, checks database state, determines the corr
 | "Extract pending" | Phase 4 only |
 | "Analyze pending" | Phase 5 only |
 | "Store pending" | Phase 6 only |
-| "Review pending" / "Publish approved" | Phase 7: approve/reject pending_review records |
+| "Review pending" / "Publish approved" | Phase 7: reports counts, directs to `/admin/review` UI |
 | "Check staging status" | Read-only report of pipeline counts |
 
 **Intelligent prerequisites**: If you request Phase 3 but no sources exist, the orchestrator reports what's missing and offers to chain from the right starting point.
+
+### Admin Review UI
+
+- **Review queue**: `/admin/review` — filter, sort, bulk approve/reject pending_review records
+- **Detail page admin tab**: `/funding/opportunities/[id]` → Admin tab — approve, reject, or downgrade individual records
+- **API routes**: `GET /api/admin/review`, `POST /api/admin/review/approve`, `POST /api/admin/review/reject`, `POST /api/admin/review/demote`
 
 ### Key Rules
 
 - **All pipeline work** goes through the orchestrator skill — no inline processing
 - **Agent Teams** for discovery phases (1-3): parallel search with cross-checking
 - **Task tool** for processing phases (4-6): deterministic batch work via extraction-agent, analysis-agent, storage-agent
-- **Phase 7** (Review & Publish) is NEVER auto-triggered — requires explicit admin action
+- **Phase 7** (Review & Publish) is NEVER auto-triggered — requires explicit admin action via `/admin/review`
 - **Database reads**: `mcp__postgres__query` (read-only MCP)
 - **Database writes**: `psql "$PROD_CLAUDE_URL"` via Bash tool (or `$STAGING_CLAUDE_URL` / `$DEV_CLAUDE_URL`)
 - **Content retrieval**: Each skill file contains inline content retrieval instructions. HTML → WebFetch (fallback: Playwright). PDFs → `curl | python3 PyMuPDF` (never WebFetch). Login-gated → skip and flag. See Section 0a in each skill's SKILL.md.

@@ -71,7 +71,8 @@ export async function GET(request, context) {
 			// --- Step 1: Fetch ALL matching IDs to get the total count ---
 			let idQuery = supabase
 				.from('funding_opportunities_with_geography')
-				.select('id'); // Select only ID
+				.select('id')
+				.or('promotion_status.is.null,promotion_status.eq.promoted');
 
 			// Apply state filter
 			idQuery = idQuery.or(
@@ -111,6 +112,7 @@ export async function GET(request, context) {
 				let amountQuery = supabase
 					.from('funding_opportunities_with_geography')
 					.select('id')
+					.or('promotion_status.is.null,promotion_status.eq.promoted')
 					.or(`is_national.eq.true,eligible_states.cs.{${stateCode}}`)
 					.gte('maximum_award', filterAmount);
 
@@ -168,6 +170,7 @@ export async function GET(request, context) {
 				let nullAmountQuery = supabase
 					.from('funding_opportunities_with_geography')
 					.select('id')
+					.or('promotion_status.is.null,promotion_status.eq.promoted')
 					.or(`is_national.eq.true,eligible_states.cs.{${stateCode}}`)
 					.is('maximum_award', null); // Specifically look for NULL maximum_award values
 
@@ -248,6 +251,7 @@ export async function GET(request, context) {
 				let dataQuery = supabase
 					.from('funding_opportunities_with_geography')
 					.select('*')
+					.or('promotion_status.is.null,promotion_status.eq.promoted')
 					.or(`is_national.eq.true,eligible_states.cs.{${stateCode}}`);
 
 				// Apply the same filters from above
@@ -349,7 +353,8 @@ export async function GET(request, context) {
 			// --- Step 2: Fetch the paginated data ---
 			let dataQuery = supabase
 				.from('funding_opportunities_with_geography')
-				.select('*'); // Select all columns for the actual data
+				.select('*')
+				.or('promotion_status.is.null,promotion_status.eq.promoted');
 
 			// Apply state filter
 			dataQuery = dataQuery.or(

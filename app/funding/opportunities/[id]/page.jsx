@@ -38,6 +38,15 @@ import {
 	TabsTrigger,
 } from '@/components/ui/tabs';
 import { Separator } from '@/components/ui/separator';
+import {
+	Dialog,
+	DialogContent,
+	DialogDescription,
+	DialogFooter,
+	DialogHeader,
+	DialogTitle,
+} from '@/components/ui/dialog';
+import { Textarea } from '@/components/ui/textarea';
 import { useTrackedOpportunities } from '@/hooks/useTrackedOpportunities';
 import {
 	getCategoryColor,
@@ -53,6 +62,13 @@ export default function OpportunityDetailPage() {
 
 	// Use our custom hook for tracking opportunities
 	const { isTracked, toggleTracked } = useTrackedOpportunities();
+
+	// Admin review state
+	const [adminActionLoading, setAdminActionLoading] = useState(false);
+	const [adminNotification, setAdminNotification] = useState(null);
+	const [downgradeDialogOpen, setDowngradeDialogOpen] = useState(false);
+	const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
+	const [reviewNotes, setReviewNotes] = useState('');
 
 	useEffect(() => {
 		async function fetchOpportunityDetails() {
@@ -156,6 +172,70 @@ export default function OpportunityDetailPage() {
 		return `$${Number(amount).toLocaleString()}`;
 	};
 
+	// Admin review action handlers
+	const showAdminNotification = (message, type = 'info') => {
+		setAdminNotification({ message, type });
+		setTimeout(() => setAdminNotification(null), 4000);
+	};
+
+	const handleAdminApprove = async () => {
+		setAdminActionLoading(true);
+		try {
+			const res = await fetch('/api/admin/review/approve', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ ids: [opportunity.id], reviewed_by: 'admin' }),
+			});
+			if (!res.ok) throw new Error('Approve failed');
+			setOpportunity(prev => ({ ...prev, promotion_status: 'promoted', reviewed_by: 'admin', reviewed_at: new Date().toISOString() }));
+			showAdminNotification('Record approved successfully', 'success');
+		} catch (err) {
+			showAdminNotification(`Error: ${err.message}`, 'error');
+		} finally {
+			setAdminActionLoading(false);
+		}
+	};
+
+	const handleAdminReject = async () => {
+		setAdminActionLoading(true);
+		try {
+			const res = await fetch('/api/admin/review/reject', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ ids: [opportunity.id], reviewed_by: 'admin', review_notes: reviewNotes || undefined }),
+			});
+			if (!res.ok) throw new Error('Reject failed');
+			setOpportunity(prev => ({ ...prev, promotion_status: 'rejected', reviewed_by: 'admin', reviewed_at: new Date().toISOString(), review_notes: reviewNotes || null }));
+			setRejectDialogOpen(false);
+			setReviewNotes('');
+			showAdminNotification('Record rejected', 'success');
+		} catch (err) {
+			showAdminNotification(`Error: ${err.message}`, 'error');
+		} finally {
+			setAdminActionLoading(false);
+		}
+	};
+
+	const handleAdminDowngrade = async () => {
+		setAdminActionLoading(true);
+		try {
+			const res = await fetch('/api/admin/review/demote', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ id: opportunity.id, reviewed_by: 'admin', review_notes: reviewNotes || undefined }),
+			});
+			if (!res.ok) throw new Error('Downgrade failed');
+			setOpportunity(prev => ({ ...prev, promotion_status: 'rejected', reviewed_by: 'admin', reviewed_at: new Date().toISOString(), review_notes: reviewNotes || null }));
+			setDowngradeDialogOpen(false);
+			setReviewNotes('');
+			showAdminNotification('Record downgraded to rejected', 'success');
+		} catch (err) {
+			showAdminNotification(`Error: ${err.message}`, 'error');
+		} finally {
+			setAdminActionLoading(false);
+		}
+	};
+
 	return (
 		<MainLayout>
 			<div className='container py-10'>
@@ -214,7 +294,7 @@ export default function OpportunityDetailPage() {
 							<CardContent className='px-6 pt-2 pb-6'>
 								<Tabs defaultValue='overview' className='w-full'>
 									<TabsList className='mb-6 bg-neutral-100/70 dark:bg-neutral-900/30 p-1 rounded-lg'>
-										{['overview', 'eligibility', 'relevance'].map((tab) => (
+										{['overview', 'eligibility', 'relevance', 'admin'].map((tab) => (
 											<TabsTrigger
 												key={tab}
 												value={tab}
@@ -687,6 +767,107 @@ export default function OpportunityDetailPage() {
 													</div>
 												</div>
 											)}
+										</div>
+									</TabsContent>
+									<TabsContent value='admin'>
+										<div className='space-y-6'>
+											{/* Admin notification */}
+											{adminNotification && (
+												<div className={`p-3 rounded-md text-sm ${
+													adminNotification.type === 'success' ? 'bg-green-50 text-green-800 border border-green-200' :
+													adminNotification.type === 'error' ? 'bg-red-50 text-red-800 border border-red-200' :
+													'bg-blue-50 text-blue-800 border border-blue-200'
+												}`}>
+													{adminNotification.message}
+												</div>
+											)}
+
+											{/* Current Status */}
+											<div className='bg-white dark:bg-neutral-900/30 p-5 rounded-lg border border-neutral-200/70 dark:border-neutral-800/30 shadow-sm'>
+												<h3 className='text-lg font-medium mb-3'>Promotion Status</h3>
+												<div className='flex items-center gap-3'>
+													{opportunity.promotion_status === 'pending_review' && (
+														<Badge className='bg-amber-500 text-white px-3 py-1 text-sm'>Pending Review</Badge>
+													)}
+													{opportunity.promotion_status === 'promoted' && (
+														<Badge className='bg-green-600 text-white px-3 py-1 text-sm'>Promoted (Visible)</Badge>
+													)}
+													{opportunity.promotion_status === 'rejected' && (
+														<Badge variant='destructive' className='px-3 py-1 text-sm'>Rejected (Hidden)</Badge>
+													)}
+													{opportunity.promotion_status === null && (
+														<Badge variant='outline' className='px-3 py-1 text-sm'>API Record (Legacy)</Badge>
+													)}
+												</div>
+											</div>
+
+											{/* Review Metadata */}
+											{opportunity.reviewed_by && (
+												<div className='bg-white dark:bg-neutral-900/30 p-5 rounded-lg border border-neutral-200/70 dark:border-neutral-800/30 shadow-sm'>
+													<h3 className='text-lg font-medium mb-3'>Review History</h3>
+													<div className='grid gap-2 text-sm'>
+														<div>
+															<span className='text-muted-foreground font-medium'>Reviewed by:</span>{' '}
+															<span>{opportunity.reviewed_by}</span>
+														</div>
+														<div>
+															<span className='text-muted-foreground font-medium'>Reviewed at:</span>{' '}
+															<span>{opportunity.reviewed_at ? formatDate(opportunity.reviewed_at) : '—'}</span>
+														</div>
+														{opportunity.review_notes && (
+															<div>
+																<span className='text-muted-foreground font-medium'>Notes:</span>
+																<div className='mt-1 p-2 bg-neutral-50 dark:bg-neutral-800 rounded text-sm'>
+																	{opportunity.review_notes}
+																</div>
+															</div>
+														)}
+													</div>
+												</div>
+											)}
+
+											{/* Action Buttons */}
+											<div className='bg-white dark:bg-neutral-900/30 p-5 rounded-lg border border-neutral-200/70 dark:border-neutral-800/30 shadow-sm'>
+												<h3 className='text-lg font-medium mb-3'>Admin Actions</h3>
+												<div className='flex flex-wrap gap-3'>
+													{opportunity.promotion_status === 'pending_review' && (
+														<>
+															<Button
+																className='bg-green-600 hover:bg-green-700 text-white'
+																onClick={handleAdminApprove}
+																disabled={adminActionLoading}
+															>
+																Approve
+															</Button>
+															<Button
+																variant='destructive'
+																onClick={() => setRejectDialogOpen(true)}
+																disabled={adminActionLoading}
+															>
+																Reject
+															</Button>
+														</>
+													)}
+													{(opportunity.promotion_status === 'promoted' || opportunity.promotion_status === null) && (
+														<Button
+															variant='destructive'
+															onClick={() => setDowngradeDialogOpen(true)}
+															disabled={adminActionLoading}
+														>
+															Downgrade to Rejected
+														</Button>
+													)}
+													{opportunity.promotion_status === 'rejected' && (
+														<Button
+															className='bg-green-600 hover:bg-green-700 text-white'
+															onClick={handleAdminApprove}
+															disabled={adminActionLoading}
+														>
+															Re-approve
+														</Button>
+													)}
+												</div>
+											</div>
 										</div>
 									</TabsContent>
 								</Tabs>
@@ -1260,6 +1441,58 @@ export default function OpportunityDetailPage() {
 					</div>
 				</div>
 			</div>
+
+			{/* Reject Dialog */}
+			<Dialog open={rejectDialogOpen} onOpenChange={setRejectDialogOpen}>
+				<DialogContent>
+					<DialogHeader>
+						<DialogTitle>Reject Record</DialogTitle>
+						<DialogDescription>
+							This record will be hidden from end users. Add an optional note.
+						</DialogDescription>
+					</DialogHeader>
+					<Textarea
+						placeholder="Rejection reason (optional)..."
+						value={reviewNotes}
+						onChange={(e) => setReviewNotes(e.target.value)}
+						rows={3}
+					/>
+					<DialogFooter>
+						<Button variant='outline' onClick={() => { setRejectDialogOpen(false); setReviewNotes(''); }}>
+							Cancel
+						</Button>
+						<Button variant='destructive' onClick={handleAdminReject} disabled={adminActionLoading}>
+							Reject
+						</Button>
+					</DialogFooter>
+				</DialogContent>
+			</Dialog>
+
+			{/* Downgrade Dialog */}
+			<Dialog open={downgradeDialogOpen} onOpenChange={setDowngradeDialogOpen}>
+				<DialogContent>
+					<DialogHeader>
+						<DialogTitle>Downgrade Record</DialogTitle>
+						<DialogDescription>
+							This will change the record's status to rejected, hiding it from end users.
+						</DialogDescription>
+					</DialogHeader>
+					<Textarea
+						placeholder="Reason for downgrade (optional)..."
+						value={reviewNotes}
+						onChange={(e) => setReviewNotes(e.target.value)}
+						rows={3}
+					/>
+					<DialogFooter>
+						<Button variant='outline' onClick={() => { setDowngradeDialogOpen(false); setReviewNotes(''); }}>
+							Cancel
+						</Button>
+						<Button variant='destructive' onClick={handleAdminDowngrade} disabled={adminActionLoading}>
+							Downgrade
+						</Button>
+					</DialogFooter>
+				</DialogContent>
+			</Dialog>
 		</MainLayout>
 	);
 }

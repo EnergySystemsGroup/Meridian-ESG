@@ -219,6 +219,139 @@ describe('View: funding_opportunities_with_geography', () => {
     });
   });
 
+  describe('Promotion Status in View', () => {
+    test('view includes promotion_status column (passthrough)', () => {
+      const opp = { id: 'test', title: 'Test', is_national: false, promotion_status: 'pending_review' };
+      const result = buildViewResult(opp, [], coverageAreas);
+
+      expect(result.promotion_status).toBe('pending_review');
+    });
+
+    test('view includes records with any promotion_status', () => {
+      const statuses = [null, 'pending_review', 'promoted', 'rejected'];
+      const opps = statuses.map((ps, i) => ({
+        id: `ps-${i}`, title: `Test ${ps}`, is_national: false, promotion_status: ps,
+      }));
+
+      const results = opps.map(opp => buildViewResult(opp, [], coverageAreas));
+
+      // View should include all records (no filtering by promotion_status)
+      expect(results).toHaveLength(4);
+      expect(results.map(r => r.promotion_status)).toEqual(statuses);
+    });
+
+    test('consumer-side filter replicates old WHERE clause', () => {
+      const allOpps = [
+        { id: 'a', promotion_status: null },
+        { id: 'b', promotion_status: 'promoted' },
+        { id: 'c', promotion_status: 'pending_review' },
+        { id: 'd', promotion_status: 'rejected' },
+      ];
+
+      // Consumer applies: WHERE promotion_status IS NULL OR promotion_status = 'promoted'
+      const visible = allOpps.filter(o =>
+        o.promotion_status === null || o.promotion_status === 'promoted'
+      );
+
+      expect(visible).toHaveLength(2);
+      expect(visible.map(o => o.id)).toEqual(['a', 'b']);
+    });
+
+    test('view includes review metadata columns', () => {
+      const opp = {
+        id: 'rev-1', title: 'Reviewed', is_national: false,
+        promotion_status: 'promoted',
+        reviewed_by: 'admin',
+        reviewed_at: '2026-02-18T00:00:00Z',
+        review_notes: 'Approved after verification',
+      };
+      const result = buildViewResult(opp, [], coverageAreas);
+
+      expect(result.reviewed_by).toBe('admin');
+      expect(result.reviewed_at).toBe('2026-02-18T00:00:00Z');
+      expect(result.review_notes).toBe('Approved after verification');
+    });
+  });
+
+  describe('View Schema Contract', () => {
+    // This is the authoritative list of columns the view MUST expose.
+    // Consumer code (API routes, services) depends on these columns.
+    // If a column is missing from the view SQL, this test MUST fail.
+    //
+    // To keep this test useful without a live DB connection:
+    // - The list is maintained manually, mirroring the SQL view definition.
+    // - When adding a column to the view migration, add it here too.
+    // - When an API route starts using a new column, add it here FIRST.
+    const VIEW_COLUMNS = [
+      // Base table passthrough columns
+      'id', 'title', 'minimum_award', 'maximum_award', 'total_funding_available',
+      'cost_share_required', 'cost_share_percentage', 'posted_date', 'open_date',
+      'close_date', 'description', 'funding_source_id', 'raw_response_id',
+      'is_national', 'agency_name', 'funding_type', 'actionable_summary',
+      'tags', 'url', 'eligible_applicants', 'eligible_project_types',
+      'eligible_locations', 'categories', 'created_at', 'updated_at',
+      'relevance_score', 'relevance_reasoning', 'notes', 'disbursement_type',
+      'award_process', 'eligible_activities', 'enhanced_description', 'scoring',
+      'api_updated_at', 'api_opportunity_id', 'api_source_id',
+      'program_overview', 'program_use_cases', 'application_summary', 'program_insights',
+      'program_id',
+      // Computed status (CASE expression, not a passthrough)
+      'status',
+      // Computed source columns (from JOIN to funding_sources)
+      'source_display_name', 'source_type_display',
+      // Legacy geographic columns (deprecated)
+      'eligible_states', 'eligible_counties_states', 'eligible_counties',
+      // Coverage area columns (current system)
+      'coverage_area_names', 'coverage_area_codes', 'coverage_area_types',
+      'coverage_state_codes',
+      // Promotion/review columns
+      'promotion_status', 'reviewed_by', 'reviewed_at', 'review_notes',
+    ];
+
+    // Columns that specific consumers depend on.
+    // If ANY of these are missing from VIEW_COLUMNS, something is wrong.
+    const ADMIN_REVIEW_COLUMNS = [
+      'id', 'title', 'agency_name', 'funding_type', 'minimum_award', 'maximum_award',
+      'open_date', 'close_date', 'status', 'relevance_score', 'promotion_status',
+      'categories', 'eligible_project_types', 'is_national', 'program_id',
+      'created_at', 'reviewed_by', 'reviewed_at', 'review_notes', 'url',
+      'funding_source_id', 'source_display_name', 'source_type_display',
+      'coverage_state_codes',
+    ];
+
+    const DETAIL_PAGE_COLUMNS = [
+      'id', 'title', 'description', 'agency_name', 'funding_type', 'status',
+      'minimum_award', 'maximum_award', 'open_date', 'close_date', 'url',
+      'categories', 'eligible_project_types', 'is_national', 'program_id',
+      'coverage_area_names', 'coverage_state_codes', 'promotion_status',
+    ];
+
+    const MAP_QUERY_COLUMNS = [
+      'id', 'title', 'status', 'is_national', 'coverage_state_codes',
+      'minimum_award', 'maximum_award', 'promotion_status',
+    ];
+
+    test('VIEW_COLUMNS includes all admin review dependencies', () => {
+      const missing = ADMIN_REVIEW_COLUMNS.filter(col => !VIEW_COLUMNS.includes(col));
+      expect(missing).toEqual([]);
+    });
+
+    test('VIEW_COLUMNS includes all detail page dependencies', () => {
+      const missing = DETAIL_PAGE_COLUMNS.filter(col => !VIEW_COLUMNS.includes(col));
+      expect(missing).toEqual([]);
+    });
+
+    test('VIEW_COLUMNS includes all map query dependencies', () => {
+      const missing = MAP_QUERY_COLUMNS.filter(col => !VIEW_COLUMNS.includes(col));
+      expect(missing).toEqual([]);
+    });
+
+    test('no duplicate columns in VIEW_COLUMNS', () => {
+      const dupes = VIEW_COLUMNS.filter((col, i) => VIEW_COLUMNS.indexOf(col) !== i);
+      expect(dupes).toEqual([]);
+    });
+  });
+
   describe('Edge Cases', () => {
     test('coverage area with null state_code excluded', () => {
       const oppWithNationalArea = [

@@ -69,7 +69,8 @@ export async function GET(request) {
 		// Build the query using the view
 		let query = supabase
 			.from('funding_opportunities_with_geography')
-			.select('*', { count: 'exact' });
+			.select('*', { count: 'exact' })
+			.or('promotion_status.is.null,promotion_status.eq.promoted');
 
 		// Apply status filter
 		if (statuses.length > 0 && !statuses.includes('all')) {

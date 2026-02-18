@@ -43,6 +43,7 @@ export async function GET() {
 		const { data: opportunities, error } = await supabase
 			.from('funding_opportunities_with_geography')
 			.select('maximum_award, minimum_award')
+			.or('promotion_status.is.null,promotion_status.eq.promoted')
 			.in('status', ['Open', 'Upcoming']);
 
 		if (error) {
