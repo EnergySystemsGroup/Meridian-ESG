@@ -4765,10 +4765,11 @@
         "description": "All 7 test files in tests/database/ (views, RPCs, constraints) use inline JS functions that simulate expected behavior against fixture data. None connect to a real database. This means: (1) Schema drift is invisible — if a SQL view is missing a column that an API route depends on, no test fails. The JS simulation just spreads the input object. This caused a production bug where program_id was added to funding_opportunities but not to the view, breaking the admin review page at runtime. (2) SQL logic is untested — the CASE expression for status, ARRAY_AGG for coverage_state_codes, GROUP BY behavior, NULL handling in aggregates are all reimplemented in JS rather than tested against real SQL. (3) Migration correctness is assumed — after running supabase migration up, there is no automated verification that the resulting schema matches what application code expects. A stopgap schema contract test was added to fundingOpportunitiesWithGeography.test.js (manually maintained column list), but the real fix is a set of tests that connect to the local Supabase instance (supabase start) and run real queries. Scope: create a new test tier or sub-tier that requires Docker/Supabase running, with tests that query actual views (assert column sets), call actual RPCs (assert return shapes), and verify migration output matches consumer expectations. See tests/README.md Known Gaps section for full problem statement.",
         "details": "",
         "testStrategy": "",
-        "status": "pending",
+        "status": "done",
         "dependencies": [],
         "priority": "high",
-        "subtasks": []
+        "subtasks": [],
+        "updatedAt": "2026-02-20T07:25:23.576Z"
       },
       {
         "id": "29",
@@ -4922,17 +4923,18 @@
         "description": "These internal/admin processing endpoints technically require tests per the decision gate but are lower risk since they are not directly user-facing. Cover response shapes and error handling only. Routes: /api/cron/process-jobs (test auth check, response shape), /api/funding/process-source-v2 (test response shape), /api/admin/funding-sources/[id]/process routeV1/V2/V3 (test response shapes). Test file: tests/api/processing.api.test.js. Pattern: API contract tests only (response shapes, not business logic). Priority: LOW.",
         "details": "",
         "testStrategy": "",
-        "status": "pending",
+        "status": "done",
         "dependencies": [],
         "priority": "low",
-        "subtasks": []
+        "subtasks": [],
+        "updatedAt": "2026-02-20T07:19:31.756Z"
       }
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-02-20T06:58:01.980Z",
+      "lastModified": "2026-02-20T07:25:23.577Z",
       "taskCount": 38,
-      "completedCount": 19,
+      "completedCount": 21,
       "tags": [
         "v2"
       ]

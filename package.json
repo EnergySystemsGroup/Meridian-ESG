@@ -23,7 +23,7 @@
     "test:e2e": "npm run test:e2e:api && npm run test:e2e:browser",
     "test:e2e:api": "vitest run --config tests/e2e/vitest.e2e.config.js",
     "test:e2e:browser": "npx playwright test --config tests/e2e/playwright.config.js",
-    "test:db:integration": "echo 'DB integration tests require supabase start (Task 28). Run: supabase start && vitest run --config tests/vitest.config.js tests/database/integration'",
+    "test:db:integration": "vitest run --config tests/vitest.config.js tests/database/integration",
     "add-grants-gov-source": "node scripts/addGrantsGovSource.js",
     "test-config": "node scripts/testConfig.js",
     "test-location-matcher": "node scripts/location/test-location-matcher.js",
