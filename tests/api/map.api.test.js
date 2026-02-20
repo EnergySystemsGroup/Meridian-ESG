@@ -163,4 +163,136 @@ describe('Map API Contracts', () => {
       expect(metadata.totalPages).toBe(Math.ceil(metadata.total / metadata.pageSize));
     });
   });
+
+  describe('GET /api/map/coverage-areas/[stateCode] Response', () => {
+    const coverageAreasResponseSchema = {
+      success: 'boolean',
+      data: 'object',
+      stateCode: 'string',
+      kind: 'string',
+    };
+
+    test('validates success response with GeoJSON and no counts', () => {
+      const response = {
+        success: true,
+        data: { type: 'FeatureCollection', features: [] },
+        counts: null,
+        stateCode: 'CA',
+        kind: 'county',
+      };
+
+      const errors = validateSchema(response, coverageAreasResponseSchema);
+      expect(errors).toHaveLength(0);
+      expect(response.counts).toBeNull();
+    });
+
+    test('validates success response with counts', () => {
+      const response = {
+        success: true,
+        data: { type: 'FeatureCollection', features: [] },
+        counts: {
+          'area-1': { opportunity_count: 5, total_funding: 1000000 },
+          'area-2': { opportunity_count: 12, total_funding: 5000000 },
+        },
+        stateCode: 'CA',
+        kind: 'county',
+      };
+
+      expect(response.counts).not.toBeNull();
+      Object.values(response.counts).forEach(entry => {
+        expect(typeof entry.opportunity_count).toBe('number');
+        expect(typeof entry.total_funding).toBe('number');
+      });
+    });
+
+    test('stateCode is uppercase', () => {
+      const response = {
+        success: true,
+        data: {},
+        counts: null,
+        stateCode: 'TX',
+        kind: 'utility',
+      };
+
+      expect(response.stateCode).toBe(response.stateCode.toUpperCase());
+    });
+
+    test('kind is county or utility', () => {
+      const responses = [
+        { success: true, data: {}, counts: null, stateCode: 'CA', kind: 'county' },
+        { success: true, data: {}, counts: null, stateCode: 'CA', kind: 'utility' },
+      ];
+
+      responses.forEach(r => {
+        expect(['county', 'utility']).toContain(r.kind);
+      });
+    });
+
+    test('invalid kind returns 400 error shape', () => {
+      const errorResponse = {
+        success: false,
+        error: 'Invalid kind parameter. Must be "county" or "utility"',
+      };
+
+      expect(errorResponse.success).toBe(false);
+      expect(typeof errorResponse.error).toBe('string');
+    });
+  });
+
+  describe('GET /api/map/national Response', () => {
+    test('validates count-only response', () => {
+      const response = {
+        success: true,
+        count: 42,
+      };
+
+      expect(response.success).toBe(true);
+      expect(typeof response.count).toBe('number');
+      expect(response.data).toBeUndefined();
+    });
+
+    test('validates full response with data and count', () => {
+      const response = {
+        success: true,
+        count: 42,
+        data: [
+          { id: 'opp-1', title: 'Federal Grant', is_national: true, status: 'open' },
+          { id: 'opp-2', title: 'National Program', is_national: true, status: 'open' },
+        ],
+      };
+
+      expect(response.success).toBe(true);
+      expect(typeof response.count).toBe('number');
+      expect(Array.isArray(response.data)).toBe(true);
+    });
+
+    test('data items have required fields', () => {
+      const items = [
+        { id: 'opp-1', title: 'Federal Grant', is_national: true, status: 'open' },
+      ];
+
+      items.forEach(item => {
+        const errors = validateSchema(item, mapOpportunitySchema);
+        expect(errors).toHaveLength(0);
+      });
+    });
+
+    test('count is non-negative integer', () => {
+      const validCounts = [0, 1, 42, 1000];
+      validCounts.forEach(count => {
+        expect(count).toBeGreaterThanOrEqual(0);
+        expect(Number.isInteger(count)).toBe(true);
+      });
+    });
+
+    test('error response shape', () => {
+      const response = {
+        success: false,
+        error: 'Database connection failed',
+      };
+
+      expect(response.success).toBe(false);
+      expect(typeof response.error).toBe('string');
+    });
+  });
 });

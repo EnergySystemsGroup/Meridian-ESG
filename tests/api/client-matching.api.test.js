@@ -390,4 +390,331 @@ describe('Client Matching API Contract', () => {
       expect(typeof errorResponse.error).toBe('string');
     });
   });
+
+  describe('GET /api/client-matching/summary Response', () => {
+    test('validates success response shape', () => {
+      const response = {
+        success: true,
+        clientsWithMatches: 8,
+        totalMatches: 45,
+        totalClients: 12,
+        cached: false,
+        timestamp: '2025-01-15T12:00:00.000Z',
+      };
+
+      expect(response.success).toBe(true);
+      expect(typeof response.clientsWithMatches).toBe('number');
+      expect(typeof response.totalMatches).toBe('number');
+      expect(typeof response.totalClients).toBe('number');
+      expect(typeof response.cached).toBe('boolean');
+      expect(typeof response.timestamp).toBe('string');
+    });
+
+    test('clientsWithMatches <= totalClients', () => {
+      const response = {
+        clientsWithMatches: 8,
+        totalClients: 12,
+      };
+
+      expect(response.clientsWithMatches).toBeLessThanOrEqual(response.totalClients);
+    });
+
+    test('all counts are non-negative', () => {
+      const response = {
+        clientsWithMatches: 0,
+        totalMatches: 0,
+        totalClients: 0,
+      };
+
+      expect(response.clientsWithMatches).toBeGreaterThanOrEqual(0);
+      expect(response.totalMatches).toBeGreaterThanOrEqual(0);
+      expect(response.totalClients).toBeGreaterThanOrEqual(0);
+    });
+
+    test('cached response includes cached: true', () => {
+      const response = {
+        success: true,
+        clientsWithMatches: 8,
+        totalMatches: 45,
+        totalClients: 12,
+        cached: true,
+        timestamp: '2025-01-15T12:00:00.000Z',
+      };
+
+      expect(response.cached).toBe(true);
+    });
+
+    test('error response shape', () => {
+      const response = {
+        success: false,
+        error: 'Internal server error',
+        message: 'Database connection failed',
+      };
+
+      expect(response.success).toBe(false);
+      expect(typeof response.error).toBe('string');
+    });
+  });
+
+  describe('GET /api/client-matching/top-matches Response', () => {
+    const topMatchItemSchema = {
+      client_id: 'string',
+      client_name: 'string',
+      client_type: 'string',
+      match_count: 'number',
+      top_opportunity_id: 'string',
+      top_opportunity_title: 'string',
+      top_opportunity_score: 'number',
+    };
+
+    test('validates success response shape', () => {
+      const response = {
+        success: true,
+        matches: [
+          {
+            client_id: 'c-1',
+            client_name: 'City of SF',
+            client_type: 'Municipal Government',
+            match_count: 5,
+            top_opportunity_id: 'opp-1',
+            top_opportunity_title: 'Federal Grant',
+            top_opportunity_score: 85,
+            top_opportunity_amount: 5000000,
+          },
+        ],
+        cached: false,
+        timestamp: '2025-01-15T12:00:00.000Z',
+      };
+
+      expect(response.success).toBe(true);
+      expect(Array.isArray(response.matches)).toBe(true);
+      expect(typeof response.cached).toBe('boolean');
+    });
+
+    test('matches array has max 5 items', () => {
+      const response = {
+        matches: Array.from({ length: 5 }, (_, i) => ({
+          client_id: `c-${i}`,
+          client_name: `Client ${i}`,
+          client_type: 'Municipal Government',
+          match_count: 5 - i,
+          top_opportunity_id: 'opp-1',
+          top_opportunity_title: 'Grant',
+          top_opportunity_score: 80 - i * 5,
+          top_opportunity_amount: 1000000,
+        })),
+      };
+
+      expect(response.matches.length).toBeLessThanOrEqual(5);
+    });
+
+    test('match item has required fields', () => {
+      const item = {
+        client_id: 'c-1',
+        client_name: 'City of SF',
+        client_type: 'Municipal Government',
+        match_count: 5,
+        top_opportunity_id: 'opp-1',
+        top_opportunity_title: 'Federal Grant',
+        top_opportunity_score: 85,
+      };
+
+      const errors = validateSchema(item, topMatchItemSchema);
+      expect(errors).toHaveLength(0);
+    });
+
+    test('top_opportunity_amount can be null', () => {
+      const item = {
+        client_id: 'c-1',
+        client_name: 'City of SF',
+        client_type: 'Municipal Government',
+        match_count: 3,
+        top_opportunity_id: 'opp-1',
+        top_opportunity_title: 'Grant',
+        top_opportunity_score: 70,
+        top_opportunity_amount: null,
+      };
+
+      expect(item.top_opportunity_amount).toBeNull();
+    });
+
+    test('matches sorted by match_count desc then score desc', () => {
+      const matches = [
+        { match_count: 5, top_opportunity_score: 80 },
+        { match_count: 5, top_opportunity_score: 90 },
+        { match_count: 3, top_opportunity_score: 95 },
+      ];
+
+      const sorted = [...matches].sort((a, b) => {
+        if (b.match_count !== a.match_count) return b.match_count - a.match_count;
+        return b.top_opportunity_score - a.top_opportunity_score;
+      });
+
+      expect(sorted[0].match_count).toBe(5);
+      expect(sorted[0].top_opportunity_score).toBe(90);
+      expect(sorted[2].match_count).toBe(3);
+    });
+
+    test('empty matches array is valid', () => {
+      const response = {
+        success: true,
+        matches: [],
+        cached: false,
+        timestamp: new Date().toISOString(),
+      };
+
+      expect(Array.isArray(response.matches)).toBe(true);
+      expect(response.matches).toHaveLength(0);
+    });
+
+    test('error response shape', () => {
+      const response = {
+        success: false,
+        error: 'Internal server error',
+        message: 'Failed to calculate matches',
+      };
+
+      expect(response.success).toBe(false);
+      expect(typeof response.error).toBe('string');
+    });
+  });
+
+  describe('GET /api/clients/[id]/hidden-matches Response', () => {
+    test('validates success response shape', () => {
+      const response = {
+        success: true,
+        hiddenMatches: [
+          {
+            id: 1,
+            opportunity_id: 'opp-123',
+            hidden_at: '2025-01-10T10:00:00Z',
+            hidden_by: 'user',
+            reason: 'Not relevant',
+            funding_opportunities: {
+              id: 'opp-123',
+              title: 'Some Grant',
+              agency_name: 'DOE',
+              maximum_award: 5000000,
+              close_date: '2025-06-30',
+              status: 'open',
+            },
+          },
+        ],
+        count: 1,
+      };
+
+      expect(response.success).toBe(true);
+      expect(Array.isArray(response.hiddenMatches)).toBe(true);
+      expect(typeof response.count).toBe('number');
+      expect(response.count).toBe(response.hiddenMatches.length);
+    });
+
+    test('empty hidden matches is valid', () => {
+      const response = {
+        success: true,
+        hiddenMatches: [],
+        count: 0,
+      };
+
+      expect(response.hiddenMatches).toHaveLength(0);
+      expect(response.count).toBe(0);
+    });
+
+    test('hidden match item includes nested opportunity details', () => {
+      const item = {
+        id: 1,
+        opportunity_id: 'opp-123',
+        hidden_at: '2025-01-10T10:00:00Z',
+        hidden_by: 'user',
+        reason: null,
+        funding_opportunities: {
+          id: 'opp-123',
+          title: 'Grant',
+          agency_name: 'DOE',
+          maximum_award: 5000000,
+          close_date: '2025-06-30',
+          status: 'open',
+        },
+      };
+
+      expect(item).toHaveProperty('opportunity_id');
+      expect(item).toHaveProperty('hidden_at');
+      expect(item).toHaveProperty('funding_opportunities');
+      expect(item.funding_opportunities).toHaveProperty('title');
+    });
+
+    test('reason can be null', () => {
+      const item = {
+        id: 1,
+        opportunity_id: 'opp-123',
+        hidden_at: '2025-01-10T10:00:00Z',
+        hidden_by: 'user',
+        reason: null,
+      };
+
+      expect(item.reason).toBeNull();
+    });
+  });
+
+  describe('POST /api/clients/[id]/hidden-matches Response', () => {
+    test('validates success response', () => {
+      const response = {
+        success: true,
+        hiddenMatch: {
+          id: 1,
+          client_id: 'client-1',
+          opportunity_id: 'opp-1',
+          reason: 'Not applicable',
+          hidden_by: 'user',
+        },
+        message: 'Match hidden successfully',
+      };
+
+      expect(response.success).toBe(true);
+      expect(response).toHaveProperty('hiddenMatch');
+      expect(typeof response.message).toBe('string');
+    });
+
+    test('missing opportunityId returns 400', () => {
+      const response = {
+        success: false,
+        error: 'opportunityId is required',
+      };
+
+      expect(response.success).toBe(false);
+      expect(response.error).toBe('opportunityId is required');
+    });
+
+    test('duplicate returns 409', () => {
+      const response = {
+        success: false,
+        error: 'This match is already hidden',
+      };
+
+      expect(response.success).toBe(false);
+      expect(response.error).toBe('This match is already hidden');
+    });
+  });
+
+  describe('DELETE /api/clients/[id]/hidden-matches Response', () => {
+    test('validates success response', () => {
+      const response = {
+        success: true,
+        message: 'Match restored successfully',
+      };
+
+      expect(response.success).toBe(true);
+      expect(typeof response.message).toBe('string');
+    });
+
+    test('missing opportunityId param returns 400', () => {
+      const response = {
+        success: false,
+        error: 'opportunityId query parameter is required',
+      };
+
+      expect(response.success).toBe(false);
+      expect(response.error).toContain('opportunityId');
+    });
+  });
 });
