@@ -10,7 +10,10 @@ export default defineConfig({
     globals: true,
     environment: 'node',
     include: ['tests/**/*.test.js'],
-    exclude: ['node_modules', 'dist', '.next', '__tests__', 'lib/**/*.test.js'],
+    exclude: [
+      'node_modules', 'dist', '.next', '__tests__', 'lib/**/*.test.js',
+      'tests/e2e/**',  // E2E tests require running dev server; use test:e2e scripts
+    ],
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'html'],

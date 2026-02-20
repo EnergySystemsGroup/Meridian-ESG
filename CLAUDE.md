@@ -147,6 +147,9 @@ npm run test:critical     # Tier 1: user-facing logic (every commit)
 npm run test:api          # Tier 2: API contracts (every commit)
 npm run test:database     # Tier 3: DB behavior (PR/deploy)
 npm run test:pipeline     # Tier 4: AI pipeline (nightly)
+npm run test:e2e          # Tier 5+6: All E2E (requires dev server running)
+npm run test:e2e:api      # Tier 5: API E2E (Vitest + fetch against localhost)
+npm run test:e2e:browser  # Tier 6: Browser E2E (Playwright)
 ```
 
 **When to write tests**: Every new feature or bug fix that touches business logic, API routes, or database queries must include tests. Use this decision tree for placement:
@@ -157,6 +160,8 @@ npm run test:pipeline     # Tier 4: AI pipeline (nightly)
 | Is this about API response shape? (field types, error format) | API | `tests/api/` |
 | Is this a database query or RPC? | Database | `tests/database/` |
 | Is this AI pipeline processing? | Pipeline | `tests/pipeline/` |
+| Full HTTP round-trip against running server? | API E2E | `tests/e2e/api/` |
+| User workflow in a real browser? | Browser E2E | `tests/e2e/browser/` |
 
 **Conventions**:
 - Import test data from `tests/fixtures/` — never hardcode data inline
@@ -168,24 +173,32 @@ npm run test:pipeline     # Tier 4: AI pipeline (nightly)
 
 **STOP and check this gate before reporting any task as complete.** For every file you modified, ask:
 
-| Change Type | Tests Required? | Tier |
-|-------------|:-:|------|
-| New/modified API route (`app/api/`) | **YES** | Critical + API |
-| New/modified lib function (`lib/`) | **YES** | Pipeline or Critical |
-| Bug fix in business logic | **YES** (regression test) | Matches affected tier |
-| Skill file (`.claude/skills/`) | NO | — |
-| Agent file (`.claude/agents/`) | NO | — |
-| Database migration (`.sql`) | NO | Verify via `supabase migration up` |
-| Documentation / config | NO | — |
-| UI components only | NO | — |
+| Change Type | Tests Required? | Tier(s) | Run Command |
+|-------------|:-:|------|------|
+| New API route (`app/api/`) | **YES** | Critical + API + **API E2E** | `test:critical && test:api` + `test:e2e:api` |
+| Modified API route (response shape changed) | **YES** | Critical + API + **API E2E** | `test:critical && test:api` + `test:e2e:api` |
+| Modified API route (internal logic only) | **YES** | Critical + API | `test:critical && test:api` |
+| New page/route | **YES** | **Browser E2E** (smoke) | `test:e2e:browser` |
+| New/modified lib function (`lib/`) | **YES** | Pipeline or Critical | `test:critical` or `test:pipeline` |
+| Bug fix in business logic | **YES** (regression) | Matches affected tier | Matches affected tier |
+| Cross-cutting change (multiple routes/pages) | **YES** | Unit tiers + **E2E** (both) | `test:critical && test:api && test:e2e` |
+| Skill file (`.claude/skills/`) | NO | — | — |
+| Agent file (`.claude/agents/`) | NO | — | — |
+| Database migration — new table/column/view/RPC | **YES** | **DB Integration** (3b) + update Tier 3 simulated | `test:database` + `test:db:integration` (when infra ready) |
+| Database migration — index/constraint only | NO | Verify via `supabase migration up` | — |
+| Modified SQL view or RPC function | **YES** | **DB Integration** (3b) + update Tier 3 simulated | `test:database` + `test:db:integration` (when infra ready) |
+| Documentation / config | NO | — | — |
+| UI components only | NO | — | — |
 
 **Workflow** (test-after — write tests once implementation is stable):
 1. Implement the change
 2. **Check the decision gate above** for every file you touched
-3. If tests required: write them using the **inline-function pattern** (see below)
-4. Run the relevant tier: `npm run test:critical` or `npm run test:pipeline`
-5. Fix any failures before reporting the task as complete
-6. **Always run `npm run test:critical && npm run test:api` before requesting a commit**
+3. If tests required: write them using the **inline-function pattern** (Tiers 1-4) or e2e patterns (Tiers 5-6)
+4. **Update tracking**: If you created a NEW API endpoint, add a row to `tests/E2E-MATRIX.md` (Tier 5 table). If you created a NEW page/route, add a row to the Tier 6 table. If you wrote an e2e test, update its Status to `covered`.
+5. Run the commands from the **Run Command** column in the decision gate
+6. Fix any failures before proceeding
+7. **Run `/testing-check`** — this is **MANDATORY before every commit**. It verifies test coverage, runs suites, and checks the E2E matrix. See `.claude/skills/testing/SKILL.md` for the full playbook.
+8. Report task as complete only after `/testing-check` passes
 
 **Inline-function pattern** — This project's test architecture requires it:
 
@@ -210,6 +223,10 @@ import { isPromotionVisible } from '@/app/api/counts/route';  // WILL FAIL
 **Inline function drift**: When you modify logic in an API route or lib function, you MUST also update the corresponding inline function in the test file. The test function must mirror the production logic — if they drift apart, the tests become meaningless.
 
 **"But my change is just one line"**: One-line changes to query filters, scoring logic, or matching criteria are business logic changes. They determine what users see. If the decision gate says YES, write the test. No exceptions for "trivial" changes.
+
+### E2E Testing
+
+E2E tests live in `tests/e2e/` and require `npm run dev` running on localhost:3000. Auth is automatically bypassed in dev mode (`middleware.js` line 6). API E2E uses Vitest + native `fetch()` (`*.e2e.test.js`); Browser E2E uses Playwright + headless Chromium (`*.spec.js`). See [`tests/README.md`](tests/README.md) and [`tests/E2E-MATRIX.md`](tests/E2E-MATRIX.md) for full details and coverage tracking.
 
 ### Agent Development
 When working with agents:

@@ -3,11 +3,14 @@
 ## Quick Reference
 
 ```bash
-npm run test              # All tests
+npm run test              # All unit/integration tests (Tiers 1-4)
 npm run test:critical     # Tier 1: user-facing logic
 npm run test:api          # Tier 2: API response contracts
 npm run test:database     # Tier 3: database behavior
 npm run test:pipeline     # Tier 4: AI pipeline
+npm run test:e2e          # Tier 5+6: All E2E (requires dev server running)
+npm run test:e2e:api      # Tier 5: API E2E (Vitest + fetch against localhost)
+npm run test:e2e:browser  # Tier 6: Browser E2E (Playwright)
 npm run test:coverage     # Coverage report
 npm run test:ci           # CI mode (verbose)
 ```
@@ -25,6 +28,7 @@ If you are an AI agent building features in this codebase:
 4. **Run before commit** — at minimum `npm run test:critical && npm run test:api`
 5. **Pipeline changes** — if you modified scoring, sanitization, or extraction logic, also run `npm run test:pipeline`
 6. **Update inline functions** — if you changed logic in production code that has a corresponding test, update the test's inline function to match
+7. **Run `/testing-check`** — mandatory before every commit. This verifies test coverage, runs suites, and checks E2E matrix. See `.claude/skills/testing/SKILL.md` for the full playbook.
 
 ---
 
@@ -44,10 +48,23 @@ Does a sales person or client see the result of this code?
   +-- NO, it's internal infrastructure
         |
         +-- Database query or RPC function?
-        |     -> tests/database/
+        |     |
+        |     +-- Testing query logic (sort, filter, NULL)?
+        |     |     -> tests/database/              (Tier 3: simulated)
+        |     |
+        |     +-- Verifying schema/view/RPC matches app code?
+        |           -> tests/database/integration/  (Tier 3b: live DB)
         |
         +-- AI pipeline processing?
               -> tests/pipeline/
+
+Does it test a full HTTP round-trip against a running server?
+  |
+  +-- YES, API endpoint (request -> route -> DB -> response)
+  |     -> tests/e2e/api/
+  |
+  +-- YES, user workflow in a real browser (navigation, clicks, forms)
+        -> tests/e2e/browser/
 ```
 
 ### Tier Details
@@ -57,7 +74,10 @@ Does a sales person or client see the result of this code?
 | **1: Critical** | `tests/critical/` | Business logic — matching algorithm, scoring, filtering, pagination, aggregations, deadline calculations | None. Pure functions fed fixture data. | Every commit |
 | **2: API** | `tests/api/` | Response shapes — required fields present, correct types, error format, pagination metadata | None. Schema validation on test objects. | Every commit |
 | **3: Database** | `tests/database/` | RPC functions, views, constraints — sort behavior, NULL handling, filter combinations | Simulated RPC logic (goal: real local Supabase) | PR / deploy |
+| **3b: DB Integration** | `tests/database/integration/` | Schema contracts — view columns match app expectations, RPC return shapes, migration correctness | None. Real queries against local Supabase (`supabase start`) | PR / deploy (when infra ready) |
 | **4: Pipeline** | `tests/pipeline/` | Scoring algorithms, data sanitization, duplicate detection, LLM schema compliance | Anthropic SDK mock + Supabase in-memory mock | Nightly / on-demand |
+| **5: API E2E** | `tests/e2e/api/` | Full HTTP round-trips — request to running server, real DB, real response | None. Real `fetch()` against `localhost:3000` | Pre-deploy / manual |
+| **6: Browser E2E** | `tests/e2e/browser/` | User workflows — page loads, navigation, form interactions, visual assertions | None. Real Playwright browser against `localhost:3000` | Pre-deploy / manual |
 
 ---
 
@@ -82,7 +102,8 @@ tests/
 ├── database/                    # TIER 3: Database behavior
 │   ├── rpc/                     # RPC function tests
 │   ├── views/                   # View calculation tests
-│   └── constraints/             # Duplicate prevention, cascade deletes
+│   ├── constraints/             # Duplicate prevention, cascade deletes
+│   └── integration/             # TIER 3b: Live DB tests (pending Task 28)
 │
 ├── pipeline/                    # TIER 4: AI pipeline processing
 │   ├── analysis/                # Scoring, score invariants
@@ -98,11 +119,23 @@ tests/
 │   ├── deadlines.js
 │   └── index.js                 # Central export with helper functions
 │
+├── e2e/                         # TIER 5+6: End-to-end tests
+│   ├── api/                     # TIER 5: API E2E (Vitest + fetch)
+│   │   └── *.e2e.test.js
+│   ├── browser/                 # TIER 6: Browser E2E (Playwright)
+│   │   └── *.spec.js
+│   ├── helpers/
+│   │   ├── server.js            # Base URL config, apiUrl() helper
+│   │   └── auth.js              # Auth bypass documentation
+│   ├── vitest.e2e.config.js     # Vitest config for API E2E tests
+│   └── playwright.config.js     # Playwright config (browser/ subdir only)
+│
 ├── helpers/                     # Test utilities
 │   ├── setup.js                 # Global setup (env vars, time utils, cleanup)
 │   └── supabaseMock.js          # In-memory Supabase with CRUD support
 │
-└── vitest.config.js             # Single Vitest configuration
+├── E2E-MATRIX.md                # Living E2E coverage tracking document
+└── vitest.config.js             # Vitest configuration (excludes e2e/)
 ```
 
 ---
@@ -174,9 +207,82 @@ test('NULL deadlines go to end regardless of sort direction', () => {
 ```
 
 **Rules:**
-- Currently uses simulated RPC logic in JavaScript
+- Currently uses simulated RPC logic in JavaScript (**not real DB** — see Known Gaps below, tracked as Task 28)
 - Test sort directions, NULL placement, filter combinations, pagination math
 - Goal: migrate to real local Supabase via `supabase start`
+
+### Database Integration Tests (Tier 3b)
+
+Database integration tests verify that the **real database schema matches what application code expects**. Unlike Tier 3 (which simulates queries in JS), these connect to a real local Supabase instance and run real SQL.
+
+**Infrastructure status**: **Pending** — tracked as Task 28 in the `v2` taskmaster tag. The methodology is documented here; the `supabase start` infrastructure is not yet set up.
+
+**Prerequisites:**
+- Docker running
+- `supabase start` (spins up local Postgres)
+- All migrations applied (`supabase migration up`)
+
+**What they test:**
+1. **View columns** — does the view expose all columns that API routes depend on?
+2. **RPC return shapes** — does the RPC return the structure that app code expects?
+3. **Migration correctness** — after applying migrations, does the schema match expectations?
+
+```javascript
+// tests/database/integration/views.integration.test.js
+// REQUIRES: supabase start (local Postgres in Docker)
+import { createClient } from '@supabase/supabase-js';
+
+const supabase = createClient(
+  process.env.SUPABASE_URL || 'http://127.0.0.1:54321',
+  process.env.SUPABASE_ANON_KEY || 'your-local-anon-key'
+);
+
+describe('funding_opportunities_with_geography view', () => {
+  test('exposes all columns that API routes depend on', async () => {
+    const { data, error } = await supabase
+      .from('funding_opportunities_with_geography')
+      .select('*')
+      .limit(1);
+
+    expect(error).toBeNull();
+    const columns = Object.keys(data[0]);
+
+    // These columns are used by app/api/funding/route.js
+    expect(columns).toContain('id');
+    expect(columns).toContain('title');
+    expect(columns).toContain('status');
+    expect(columns).toContain('program_id');
+    expect(columns).toContain('coverage_state_codes');
+    expect(columns).toContain('promotion_status');
+  });
+});
+```
+
+```javascript
+// tests/database/integration/rpc.integration.test.js
+describe('get_funding_dynamic_sort RPC', () => {
+  test('returns expected shape', async () => {
+    const { data, error } = await supabase.rpc('get_funding_dynamic_sort', {
+      sort_by: 'title',
+      sort_dir: 'asc',
+      page_size: 1,
+      page_offset: 0,
+    });
+
+    expect(error).toBeNull();
+    expect(data).toHaveProperty('data');
+    expect(data).toHaveProperty('total_count');
+    expect(Array.isArray(data.data)).toBe(true);
+  });
+});
+```
+
+**Rules:**
+- Assert on column names and types, not data values
+- One test file per view or RPC
+- Use `LIMIT 1` queries for speed — these tests verify schema, not data
+- File naming: `*.integration.test.js`
+- **Fallback (while Task 28 is pending)**: Update the schema contract in the corresponding Tier 3 simulated test (e.g., the column list in `fundingOpportunitiesWithGeography.test.js`) as a manual stopgap
 
 ### Pipeline Tests (Tier 4)
 
@@ -202,6 +308,77 @@ test('extraction output has required fields', () => {
 - Use `supabaseMock.js` for storage/upsert tests
 - Scoring functions: test every input bracket with exact expected values
 - LLM output: test schema compliance and invariants (0-10 range), never exact content
+
+### E2E Tests (Tier 5 + Tier 6)
+
+E2E tests validate the **full running application** — no mocks, no simulations.
+
+**Prerequisites:**
+- Dev server must be running: `npm run dev`
+- Auth is automatically bypassed in development mode (`middleware.js` line 6)
+- First-time setup: `npx playwright install chromium` (browser e2e only)
+
+#### API E2E Tests (Tier 5)
+
+Use Vitest with native `fetch()` against `http://localhost:3000`. Files named `*.e2e.test.js`.
+
+```javascript
+// tests/e2e/api/funding.e2e.test.js
+import { apiUrl } from '../helpers/server.js';
+
+describe('GET /api/funding', () => {
+  test('returns paginated results with correct shape', async () => {
+    const res = await fetch(apiUrl('/api/funding'));
+    expect(res.status).toBe(200);
+
+    const body = await res.json();
+    expect(body).toHaveProperty('data');
+    expect(Array.isArray(body.data)).toBe(true);
+  });
+
+  test('status filter narrows results', async () => {
+    const res = await fetch(apiUrl('/api/funding?status=Open'));
+    const body = await res.json();
+    body.data.forEach(opp => {
+      expect(opp.status).toBe('Open');
+    });
+  });
+});
+```
+
+**Rules:**
+- Use `apiUrl()` from `tests/e2e/helpers/server.js` for all URLs
+- Assert HTTP status codes and response shape, not exact data values
+- Each test file covers one resource or flow (e.g., `clients.e2e.test.js`, `admin-review.e2e.test.js`)
+
+#### Browser E2E Tests (Tier 6)
+
+Use Playwright with headless Chromium. Files named `*.spec.js`.
+
+```javascript
+// tests/e2e/browser/dashboard.spec.js
+import { test, expect } from '@playwright/test';
+
+test('dashboard loads and shows summary cards', async ({ page }) => {
+  await page.goto('/');
+  await expect(page.getByText('Open Opportunities')).toBeVisible();
+  await expect(page.getByText('Upcoming Deadlines')).toBeVisible();
+});
+```
+
+**Rules:**
+- Use Playwright's `test` and `expect` imports (NOT Vitest's)
+- Keep tests focused on user-visible outcomes, not implementation details
+- Use `page.goto('/')` with relative paths — `baseURL` is configured in `playwright.config.js`
+
+#### When to Write E2E Tests
+
+- Cross-cutting changes affecting multiple API routes or user flows
+- Regression tests for bugs that unit tests could not catch
+- Smoke tests for critical paths before deploy
+- New API endpoints or pages
+
+For the prioritized list of endpoints and flows to cover, see [`E2E-MATRIX.md`](./E2E-MATRIX.md).
 
 ---
 
@@ -267,7 +444,10 @@ const supabase = createSupabaseMock({
 ## Naming Conventions
 
 - Test files: `descriptiveName.test.js` (camelCase)
-- API test files: `resourceName.api.test.js`
+- API contract test files: `resourceName.api.test.js`
+- API E2E test files: `resourceName.e2e.test.js`
+- DB integration test files: `name.integration.test.js`
+- Browser E2E test files: `flowName.spec.js`
 - Describe blocks: feature area, then specific behavior
 - Test names: plain English describing expected outcome
 
@@ -288,8 +468,9 @@ describe('Client-Opportunity Matching: Match Criteria', () => {
 |-----|----------|-------|
 | UI component tests | Low | Backend correctness matters more; UI bugs are visually obvious |
 | Full integration tests (API -> DB -> response) | Medium | Would catch column renames breaking RPCs |
-| Real Supabase for Tier 3 | Medium | Currently simulated; needs `supabase start` in Docker |
+| Real Supabase for Tier 3b | Medium | Methodology documented (see Tier 3b section above). Infrastructure pending: needs `supabase start` in Docker. Tracked as **Task 28** in the `v2` taskmaster tag |
 | Stage-to-stage pipeline handoff | Low | Tested in isolation; pipeline failures visible in staging table |
+| E2E test coverage | Medium | Infrastructure ready; test cases tracked in [`E2E-MATRIX.md`](./E2E-MATRIX.md). Tasks in `e2e` taskmaster tag |
 
 ### TODO: Tier 3 Database Tests Do Not Test the Database
 
@@ -309,6 +490,6 @@ describe('Client-Opportunity Matching: Match Criteria', () => {
 
 ---
 
-## Full Strategy Document
+## Historical Reference
 
-For the complete rationale, migration plan, and architectural decisions behind this testing approach, see [`docs/testing-strategy.md`](../docs/testing-strategy.md).
+The original testing strategy documents that led to this system are archived in `docs/_archived/testing/` for historical reference. This README is the single source of truth for all testing guidance.
