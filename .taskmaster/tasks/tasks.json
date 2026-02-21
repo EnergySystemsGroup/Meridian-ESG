@@ -6093,120 +6093,134 @@
   "e2e": {
     "tasks": [
       {
-        "id": 1,
+        "id": "1",
         "title": "Write smoke API e2e tests for core endpoints",
         "description": "Create tests/e2e/api/core.e2e.test.js. Test GET /api/funding (200, paginated array), GET /api/counts (200, integers), GET /api/deadlines (200, sorted), GET /api/categories (200, string array), GET /api/project-types (200, objects array). Use apiUrl() helper from tests/e2e/helpers/server.js. Assert HTTP status and response shape only.",
         "details": "",
         "testStrategy": "",
-        "status": "pending",
+        "status": "done",
         "dependencies": [],
         "priority": "medium",
-        "subtasks": []
+        "subtasks": [],
+        "updatedAt": "2026-02-20T07:53:06.285Z"
       },
       {
-        "id": 2,
+        "id": "2",
         "title": "Write API e2e tests for client-matching endpoints",
         "description": "Create tests/e2e/api/client-matching.e2e.test.js. Test GET /api/client-matching (200, match objects with score), GET /api/client-matching/summary (200, summary shape with counts), GET /api/client-matching/top-matches (200, ranked matches array). Use apiUrl() helper. Assert status and response shape.",
         "details": "",
         "testStrategy": "",
-        "status": "pending",
+        "status": "done",
         "dependencies": [],
         "priority": "medium",
-        "subtasks": []
+        "subtasks": [],
+        "updatedAt": "2026-02-20T07:53:41.355Z"
       },
       {
-        "id": 3,
+        "id": "3",
         "title": "Write API e2e tests for clients CRUD",
         "description": "Create tests/e2e/api/clients.e2e.test.js. Test GET /api/clients (200, paginated array), POST /api/clients (201, created with id), GET /api/clients/[id] (200, single object), PUT /api/clients/[id] (200, updated fields), DELETE /api/clients/[id] (200/204, removed). Also test error cases: GET nonexistent id (404), POST with missing fields (400). Use apiUrl() helper.",
         "details": "",
         "testStrategy": "",
-        "status": "pending",
+        "status": "done",
         "dependencies": [],
         "priority": "medium",
-        "subtasks": []
+        "subtasks": [],
+        "updatedAt": "2026-02-20T07:54:14.064Z"
       },
       {
-        "id": 4,
+        "id": "4",
         "title": "Write API e2e tests for map endpoints",
         "description": "Create tests/e2e/api/map.e2e.test.js. Test GET /api/map/funding-by-state (200, state aggregation), GET /api/map/scope-breakdown/[stateCode] (200, scope counts), GET /api/map/opportunities/[stateCode] (200, filtered array), GET /api/map/opportunities (200, all), GET /api/map/national (200), GET /api/map/coverage-areas/[stateCode] (200). Use a real state code from the DB (e.g. FL or OR). Use apiUrl() helper.",
         "details": "",
         "testStrategy": "",
-        "status": "pending",
+        "status": "done",
         "dependencies": [],
         "priority": "medium",
-        "subtasks": []
+        "subtasks": [],
+        "updatedAt": "2026-02-20T07:54:52.838Z"
       },
       {
-        "id": 5,
+        "id": "5",
         "title": "Write API e2e tests for admin review flow",
         "description": "Create tests/e2e/api/admin-review.e2e.test.js. Test GET /api/admin/review (200, pending_review records array), POST /api/admin/review/approve (200, status updated), POST /api/admin/review/reject (200, status updated), POST /api/admin/review/demote (200, status downgraded). Test the full flow: list pending -> approve one -> verify it's gone from pending list. Use apiUrl() helper.",
         "details": "",
         "testStrategy": "",
-        "status": "pending",
+        "status": "done",
         "dependencies": [],
         "priority": "medium",
-        "subtasks": []
+        "subtasks": [],
+        "updatedAt": "2026-02-20T07:55:29.548Z"
       },
       {
-        "id": 6,
+        "id": "6",
         "title": "Write browser e2e smoke tests (P0 pages)",
         "description": "Create tests/e2e/browser/smoke.spec.js. Test that these pages load without JS errors and show expected content: / (dashboard - summary cards visible), /funding/opportunities (explorer - opportunity cards rendered), /map (map SVG rendered), /clients (client cards or empty state). Use Playwright test/expect imports, page.goto() with relative paths. These are P0 priority.",
         "details": "",
         "testStrategy": "",
-        "status": "pending",
+        "status": "done",
         "dependencies": [],
         "priority": "medium",
-        "subtasks": []
+        "subtasks": [],
+        "updatedAt": "2026-02-20T07:56:09.025Z"
       },
       {
-        "id": 7,
+        "id": "7",
         "title": "Write browser e2e test for explorer filter+paginate flow",
         "description": "Create tests/e2e/browser/explorer.spec.js. Test: navigate to /funding/opportunities, verify list loads, apply a status filter (e.g. Open), verify results narrow, apply a state filter, verify count updates. If pagination exists, click next page and verify new results load. Use Playwright getByText/getByRole selectors.",
         "details": "",
         "testStrategy": "",
-        "status": "pending",
+        "status": "done",
         "dependencies": [],
         "priority": "medium",
-        "subtasks": []
+        "subtasks": [],
+        "updatedAt": "2026-02-20T07:56:45.403Z"
       },
       {
-        "id": 8,
+        "id": "8",
         "title": "Write browser e2e test for client matching flow",
         "description": "Create tests/e2e/browser/client-matching.spec.js. Test: navigate to /clients, verify client list loads, click on a client, verify match scores are displayed. If the detail page has tabs, verify tab switching works. Use Playwright getByText/getByRole selectors.",
         "details": "",
         "testStrategy": "",
-        "status": "pending",
+        "status": "done",
         "dependencies": [],
         "priority": "medium",
-        "subtasks": []
+        "subtasks": [],
+        "updatedAt": "2026-02-20T07:57:19.480Z"
       },
       {
-        "id": 9,
+        "id": "9",
         "title": "Update E2E-MATRIX.md status as tests are written",
         "description": "Living maintenance task. As each e2e test file is created (tasks 1-8), update the corresponding rows in tests/E2E-MATRIX.md: change Status from needs-test to covered, fill in the Test File column with the actual filename. This should be done incrementally after each test task completes.",
         "details": "",
         "testStrategy": "",
-        "status": "pending",
+        "status": "done",
         "dependencies": [],
         "priority": "medium",
-        "subtasks": []
+        "subtasks": [],
+        "updatedAt": "2026-02-20T07:58:05.229Z"
       },
       {
-        "id": 10,
+        "id": "10",
         "title": "Set up Playwright in CI (GitHub Actions)",
         "description": "Deferred until local e2e tests are stable. Create .github/workflows/e2e.yml or add an e2e job to the existing CI workflow. Install Chromium in CI, start dev server, run test:e2e:api and test:e2e:browser. Consider caching Playwright browsers. Uncomment the webServer block in tests/e2e/playwright.config.js for CI use.",
         "details": "",
         "testStrategy": "",
-        "status": "pending",
+        "status": "done",
         "dependencies": [],
         "priority": "medium",
-        "subtasks": []
+        "subtasks": [],
+        "updatedAt": "2026-02-20T07:58:48.197Z"
       }
     ],
     "metadata": {
-      "created": "2026-02-20T05:40:28.617Z",
-      "updated": "2026-02-20T05:42:07.738Z",
-      "description": "Tag created on 2/19/2026"
+      "version": "1.0.0",
+      "lastModified": "2026-02-20T07:58:48.198Z",
+      "taskCount": 10,
+      "completedCount": 10,
+      "tags": [
+        "e2e"
+      ]
     }
   }
 }
