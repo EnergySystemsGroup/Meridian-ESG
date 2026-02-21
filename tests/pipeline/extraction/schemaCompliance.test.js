@@ -444,31 +444,8 @@ describe('Pipeline: Extraction Schema Compliance', () => {
   });
 
   describe('Schema Invariants', () => {
-    test('maximum_award should be >= minimum_award when both present', () => {
-      const opp = {
-        title: 'Test Grant',
-        minimum_award: 10000,
-        maximum_award: 5000, // Less than minimum
-      };
+    test.todo('max_award >= min_award - validator does not check this yet');
 
-      const result = validateOpportunitySchema(opp);
-
-      // Schema validation passes (type checks), but this could be a data issue
-      // Semantic validation would catch this
-      expect(result.valid).toBe(true);
-    });
-
-    test('close_date should be after open_date when both present', () => {
-      const opp = {
-        title: 'Test Grant',
-        open_date: '2025-06-01',
-        close_date: '2025-01-01', // Before open
-      };
-
-      const result = validateOpportunitySchema(opp);
-
-      // Schema validation passes, semantic validation would catch this
-      expect(result.valid).toBe(true);
-    });
+    test.todo('close_date after open_date - validator does not check this yet');
   });
 });

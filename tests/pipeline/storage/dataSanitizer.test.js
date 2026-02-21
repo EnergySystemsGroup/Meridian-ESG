@@ -256,7 +256,7 @@ describe('Pipeline: Data Sanitizer', () => {
 
     test('converts other date formats', () => {
       const result = sanitizeDate('03/15/2025');
-      expect(result).toBeTruthy();
+      expect(result).toMatch(/^2025-03-15/);
     });
 
     test('returns null for invalid date', () => {

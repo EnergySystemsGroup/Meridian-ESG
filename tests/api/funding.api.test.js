@@ -253,20 +253,12 @@ describe('Funding API Contract', () => {
   });
 
   describe('Error Response Shape', () => {
-    const errorResponseSchema = {
-      error: 'string',
-      code: 'string|number|undefined',
-      details: 'object|array|string|undefined',
-    };
-
     test('validates error response with message only', () => {
       const response = {
         error: 'Invalid request',
       };
 
-      // Flexible validation - just needs error field
-      expect(typeof response.error).toBe('string');
-      expect(response.error.length).toBeGreaterThan(0);
+      expect(response.error).toBe('Invalid request');
     });
 
     test('validates error response with code', () => {
@@ -275,8 +267,8 @@ describe('Funding API Contract', () => {
         code: 'NOT_FOUND',
       };
 
-      expect(typeof response.error).toBe('string');
-      expect(response.code).toBeDefined();
+      expect(response.error).toBe('Not found');
+      expect(response.code).toBe('NOT_FOUND');
     });
 
     test('validates error response with details', () => {
@@ -288,95 +280,58 @@ describe('Funding API Contract', () => {
         },
       };
 
-      expect(typeof response.error).toBe('string');
-      expect(response.details).toBeDefined();
+      expect(response.error).toBe('Validation failed');
+      expect(response.details.field).toBe('status');
+      expect(response.details.message).toBe('Invalid status value');
     });
   });
 
   describe('Query Parameter Validation', () => {
     /**
-     * Valid query parameters for /api/funding
+     * Inline validation functions replicating query param checks
      */
-    const validQueryParams = {
-      page: [1, 2, 10, 100],
-      limit: [9, 10, 25, 50],
-      status: ['open', 'closed', 'upcoming', 'all'],
-      sortBy: ['relevance', 'deadline', 'amount', 'recent'],
-      sortDir: ['asc', 'desc'],
-      state: ['CA', 'TX', 'NY'],
-      search: ['clean energy', 'solar', ''],
-      projectTypes: ['Solar', 'Wind', 'HVAC'],
-      coverageType: ['national', 'state', 'local', 'all'],
-    };
+    function isValidPage(v) {
+      return Number.isInteger(v) && v > 0;
+    }
+
+    function isValidStatus(s) {
+      return ['open', 'closed', 'upcoming', 'all'].includes(s);
+    }
+
+    function isValidSortBy(s) {
+      return ['relevance', 'deadline', 'amount', 'recent'].includes(s);
+    }
 
     test('page must be positive integer', () => {
-      const valid = [1, 2, 100];
-      const invalid = [0, -1, 1.5, 'abc'];
-
-      valid.forEach(v => {
-        expect(Number.isInteger(v) && v > 0).toBe(true);
-      });
-
-      invalid.forEach(v => {
-        expect(Number.isInteger(v) && v > 0).toBe(false);
-      });
+      expect(isValidPage(1)).toBe(true);
+      expect(isValidPage(2)).toBe(true);
+      expect(isValidPage(100)).toBe(true);
+      expect(isValidPage(0)).toBe(false);
+      expect(isValidPage(-1)).toBe(false);
+      expect(isValidPage(1.5)).toBe(false);
     });
 
     test('status has valid enum values', () => {
-      const validStatuses = ['open', 'closed', 'upcoming', 'all'];
-      const invalidStatuses = ['active', 'pending', 'expired'];
-
-      validStatuses.forEach(s => {
-        expect(validQueryParams.status.includes(s)).toBe(true);
-      });
-
-      invalidStatuses.forEach(s => {
-        expect(validQueryParams.status.includes(s)).toBe(false);
-      });
+      expect(isValidStatus('open')).toBe(true);
+      expect(isValidStatus('closed')).toBe(true);
+      expect(isValidStatus('upcoming')).toBe(true);
+      expect(isValidStatus('all')).toBe(true);
+      expect(isValidStatus('active')).toBe(false);
+      expect(isValidStatus('pending')).toBe(false);
+      expect(isValidStatus('expired')).toBe(false);
     });
 
     test('sortBy has valid enum values', () => {
-      const validSorts = ['relevance', 'deadline', 'amount', 'recent'];
-      const invalidSorts = ['name', 'date', 'score'];
-
-      validSorts.forEach(s => {
-        expect(validQueryParams.sortBy.includes(s)).toBe(true);
-      });
-
-      invalidSorts.forEach(s => {
-        expect(validQueryParams.sortBy.includes(s)).toBe(false);
-      });
-    });
-
-    test('sortDir has valid enum values', () => {
-      expect(validQueryParams.sortDir).toEqual(['asc', 'desc']);
+      expect(isValidSortBy('relevance')).toBe(true);
+      expect(isValidSortBy('deadline')).toBe(true);
+      expect(isValidSortBy('amount')).toBe(true);
+      expect(isValidSortBy('recent')).toBe(true);
+      expect(isValidSortBy('name')).toBe(false);
+      expect(isValidSortBy('date')).toBe(false);
     });
   });
 
   describe('Response Consistency', () => {
-    test('opportunities array never undefined', () => {
-      const responses = [
-        { opportunities: [], pagination: {} },
-        { opportunities: [{}], pagination: {} },
-      ];
-
-      responses.forEach(r => {
-        expect(Array.isArray(r.opportunities)).toBe(true);
-      });
-    });
-
-    test('pagination always present', () => {
-      const responses = [
-        { opportunities: [], pagination: { currentPage: 1, totalPages: 0, totalItems: 0, pageSize: 9, hasMore: false } },
-        { opportunities: [{}], pagination: { currentPage: 1, totalPages: 1, totalItems: 1, pageSize: 9, hasMore: false } },
-      ];
-
-      responses.forEach(r => {
-        expect(r.pagination).toBeDefined();
-        expect(typeof r.pagination).toBe('object');
-      });
-    });
-
     test('opportunity IDs are unique within response', () => {
       const response = {
         opportunities: [

@@ -224,6 +224,22 @@ import { isPromotionVisible } from '@/app/api/counts/route';  // WILL FAIL
 
 **"But my change is just one line"**: One-line changes to query filters, scoring logic, or matching criteria are business logic changes. They determine what users see. If the decision gate says YES, write the test. No exceptions for "trivial" changes.
 
+### Test Integrity: Never Paper Over Bugs
+
+**When a test fails, the first question is always: "Is the test wrong, or is the code wrong?"**
+
+- If the CODE is wrong: **fix the code**, then confirm the test passes.
+- If the TEST is wrong (wrong assertion, wrong selector, wrong assumption): fix the test.
+- **NEVER** make a test tolerate a known failure. If a route returns 500, don't write `if (res.status === 200)` to skip the check — fix the route.
+
+**Banned patterns:**
+- `if (res.status === 200) { /* only then check headers */ }` — asserts nothing on failure
+- `expect(res.ok).toBe(true)` when a specific status code is expected — too loose
+- Comments like "known issue", "server bug" followed by weakened assertions
+- Filtering out real errors (e.g., hydration) instead of tracking/fixing them
+
+**If a bug can't be fixed immediately:** mark the test as `test.skip()` or `test.todo()` with a comment linking to the issue. A skipped test is honest; a passing test that ignores failures is dangerous.
+
 ### E2E Testing
 
 E2E tests live in `tests/e2e/` and require `npm run dev` running on localhost:3000. Auth is automatically bypassed in dev mode (`middleware.js` line 6). API E2E uses Vitest + native `fetch()` (`*.e2e.test.js`); Browser E2E uses Playwright + headless Chromium (`*.spec.js`). See [`tests/README.md`](tests/README.md) and [`tests/E2E-MATRIX.md`](tests/E2E-MATRIX.md) for full details and coverage tracking.

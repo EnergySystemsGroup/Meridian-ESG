@@ -166,9 +166,8 @@ describe('Hidden Matches Functionality', () => {
         .select('opportunity_id')
         .eq('client_id', 'client-pge-bay-area');
 
-      // Mock doesn't enforce unique constraint, but in production this should be handled
-      // This test documents the expected behavior
-      expect(hidden.length).toBeGreaterThanOrEqual(1);
+      // Mock doesn't enforce unique constraint, so both copies are stored
+      expect(hidden).toHaveLength(2);
     });
   });
 

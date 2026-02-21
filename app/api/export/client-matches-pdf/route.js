@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import ReactPDF from '@react-pdf/renderer';
+import { renderToBuffer } from '@react-pdf/renderer';
 import { createClient } from '@supabase/supabase-js';
 import React from 'react';
 
@@ -83,7 +83,7 @@ export async function POST(request) {
       options,
     });
 
-    const pdfBuffer = await ReactPDF.renderToBuffer(pdfDoc);
+    const pdfBuffer = await renderToBuffer(pdfDoc);
 
     // Generate filename
     const clientName = client.name

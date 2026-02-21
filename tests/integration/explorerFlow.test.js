@@ -141,10 +141,10 @@ describe('Explorer Flow (Integration)', () => {
       const result = queryExplorer({}, allOpps);
 
       for (let i = 1; i < result.data.length; i++) {
-        if (result.data[i].created_at && result.data[i - 1].created_at) {
-          expect(new Date(result.data[i].created_at).getTime())
-            .toBeLessThanOrEqual(new Date(result.data[i - 1].created_at).getTime());
-        }
+        expect(result.data[i].created_at).not.toBeNull();
+        expect(result.data[i - 1].created_at).not.toBeNull();
+        expect(new Date(result.data[i].created_at).getTime())
+          .toBeLessThanOrEqual(new Date(result.data[i - 1].created_at).getTime());
       }
     });
 
@@ -152,9 +152,9 @@ describe('Explorer Flow (Integration)', () => {
       const result = queryExplorer({ sortBy: 'title', sortOrder: 'asc' }, allOpps);
 
       for (let i = 1; i < result.data.length; i++) {
-        if (result.data[i].title && result.data[i - 1].title) {
-          expect(result.data[i].title >= result.data[i - 1].title).toBe(true);
-        }
+        expect(result.data[i].title).not.toBeNull();
+        expect(result.data[i - 1].title).not.toBeNull();
+        expect(result.data[i].title >= result.data[i - 1].title).toBe(true);
       }
     });
   });
@@ -178,11 +178,10 @@ describe('Explorer Flow (Integration)', () => {
     });
 
     test('hasMore is true when more pages exist', () => {
+      expect(allOpps.length).toBeGreaterThan(1);
       const result = queryExplorer({ page: 1, pageSize: 1 }, allOpps);
 
-      if (allOpps.length > 1) {
-        expect(result.pagination.hasMore).toBe(true);
-      }
+      expect(result.pagination.hasMore).toBe(true);
     });
 
     test('last page has hasMore false', () => {

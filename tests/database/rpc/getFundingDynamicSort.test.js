@@ -197,10 +197,9 @@ describe('RPC: get_funding_dynamic_sort', () => {
 
       // First item should have earliest deadline (null goes to end)
       const nonNullDeadlines = result.data.filter(o => o.close_date);
-      if (nonNullDeadlines.length > 1) {
-        expect(new Date(nonNullDeadlines[0].close_date).getTime())
-          .toBeLessThanOrEqual(new Date(nonNullDeadlines[1].close_date).getTime());
-      }
+      expect(nonNullDeadlines.length).toBeGreaterThan(1);
+      expect(new Date(nonNullDeadlines[0].close_date).getTime())
+        .toBeLessThanOrEqual(new Date(nonNullDeadlines[1].close_date).getTime());
     });
 
     test('NULL deadlines go to end regardless of direction', () => {
@@ -210,10 +209,9 @@ describe('RPC: get_funding_dynamic_sort', () => {
       });
 
       const nullDeadlineIdx = result.data.findIndex(o => o.close_date === null);
-      if (nullDeadlineIdx !== -1) {
-        // NULL should be near the end
-        expect(nullDeadlineIdx).toBeGreaterThan(0);
-      }
+      expect(nullDeadlineIdx).not.toBe(-1);
+      // NULL should be near the end
+      expect(nullDeadlineIdx).toBeGreaterThan(0);
     });
   });
 
@@ -239,9 +237,8 @@ describe('RPC: get_funding_dynamic_sort', () => {
 
       // Items with null maximum_award should be toward the end
       const nullAmountIdx = result.data.findIndex(o => o.maximum_award === null);
-      if (nullAmountIdx !== -1) {
-        expect(nullAmountIdx).toBeGreaterThan(0);
-      }
+      expect(nullAmountIdx).not.toBe(-1);
+      expect(nullAmountIdx).toBeGreaterThan(0);
     });
   });
 

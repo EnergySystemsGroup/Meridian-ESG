@@ -142,8 +142,8 @@ describe('Related Opportunities', () => {
         coverage_area_ids: [1],
       };
       const score = calculateSimilarity(maxOpp, maxOpp);
-      expect(score).toBeLessThanOrEqual(100);
-      expect(score).toBeGreaterThanOrEqual(0);
+      // Self-similarity: type 1/1*40=40 + applicant 1/1*30=30 + area 1/1*30=30 = 100
+      expect(score).toBe(100);
     });
   });
 

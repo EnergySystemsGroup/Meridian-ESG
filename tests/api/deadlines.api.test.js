@@ -76,8 +76,6 @@ describe('Deadlines API Contracts', () => {
   });
 
   describe('Deadline with Days Left', () => {
-    const validUrgencies = ['critical', 'warning', 'upcoming', 'normal', 'none'];
-
     test('validates deadline with days_left', () => {
       const item = {
         id: 'opp-001',
@@ -100,27 +98,6 @@ describe('Deadlines API Contracts', () => {
       };
       const errors = validateSchema(item, deadlineWithDaysSchema);
       expect(errors).toHaveLength(0);
-    });
-
-    test('urgency is always a string', () => {
-      const items = [
-        { urgency: 'critical', days_left: 2 },
-        { urgency: 'warning', days_left: 5 },
-        { urgency: 'upcoming', days_left: 10 },
-        { urgency: 'normal', days_left: 30 },
-        { urgency: 'none', days_left: null },
-      ];
-
-      items.forEach(item => {
-        expect(typeof item.urgency).toBe('string');
-      });
-    });
-
-    test('days_left is integer or null', () => {
-      const testValues = [0, 1, 5, 14, 30, 365, null];
-      testValues.forEach(val => {
-        expect(val === null || Number.isInteger(val)).toBe(true);
-      });
     });
   });
 
@@ -184,21 +161,5 @@ describe('Deadlines API Contracts', () => {
       });
     });
 
-    test('deadlines sorted by close_date ascending (nulls last)', () => {
-      const sorted = [
-        { close_date: '2025-03-01' },
-        { close_date: '2025-04-01' },
-        { close_date: '2025-06-01' },
-        { close_date: null },
-      ];
-
-      for (let i = 0; i < sorted.length - 1; i++) {
-        if (sorted[i].close_date && sorted[i + 1].close_date) {
-          expect(sorted[i].close_date <= sorted[i + 1].close_date).toBe(true);
-        }
-      }
-      // Last item should have null if nulls go last
-      expect(sorted[sorted.length - 1].close_date).toBeNull();
-    });
   });
 });

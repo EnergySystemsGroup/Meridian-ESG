@@ -152,24 +152,28 @@ describe('Analysis → Storage Handoff', () => {
       expect(result.valid).toBe(true);
     });
 
-    test('v2_score is within valid range', () => {
+    test('v2_score matches fixture value', () => {
       const record = createAnalysisOutput();
-      expect(record.analysis_data.v2_score).toBeGreaterThanOrEqual(0);
-      expect(record.analysis_data.v2_score).toBeLessThanOrEqual(10);
+      expect(record.analysis_data.v2_score).toBe(7.2);
     });
 
     test('all score detail fields present', () => {
       const record = createAnalysisOutput();
-      for (const field of SCORE_FIELDS) {
-        expect(record.analysis_data.v2_score_details).toHaveProperty(field);
-      }
+      expect(record.analysis_data.v2_score_details).toHaveProperty('funding_clarity');
+      expect(record.analysis_data.v2_score_details).toHaveProperty('eligibility_specificity');
+      expect(record.analysis_data.v2_score_details).toHaveProperty('program_maturity');
+      expect(record.analysis_data.v2_score_details).toHaveProperty('application_accessibility');
+      expect(record.analysis_data.v2_score_details).toHaveProperty('strategic_alignment');
     });
 
-    test('enhanced fields are present', () => {
+    test('enhanced fields match fixture values', () => {
       const record = createAnalysisOutput();
-      for (const field of ENHANCED_FIELDS) {
-        expect(record.analysis_data[field]).toBeTruthy();
-      }
+      expect(record.analysis_data.program_overview).toBe('Overview of the test program.');
+      expect(record.analysis_data.program_insights).toBe('Key insight about the program.');
+      expect(record.analysis_data.eligibility_criteria).toBe('Must be a commercial entity.');
+      expect(record.analysis_data.application_process).toBe('Apply online at website.');
+      expect(record.analysis_data.key_dates).toBe('Applications due December 31, 2025.');
+      expect(record.analysis_data.contact_information).toBe('contact@example.com');
     });
   });
 
@@ -224,9 +228,12 @@ describe('Analysis → Storage Handoff', () => {
       const record = createAnalysisOutput();
       const storageRecord = buildStorageRecord(record);
 
-      for (const field of ENHANCED_FIELDS) {
-        expect(storageRecord[field]).toBeTruthy();
-      }
+      expect(storageRecord.program_overview).toBe('Overview of the test program.');
+      expect(storageRecord.program_insights).toBe('Key insight about the program.');
+      expect(storageRecord.eligibility_criteria).toBe('Must be a commercial entity.');
+      expect(storageRecord.application_process).toBe('Apply online at website.');
+      expect(storageRecord.key_dates).toBe('Applications due December 31, 2025.');
+      expect(storageRecord.contact_information).toBe('contact@example.com');
     });
 
     test('extraction data flows through to storage', () => {

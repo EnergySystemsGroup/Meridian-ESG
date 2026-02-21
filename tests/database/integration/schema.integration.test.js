@@ -45,8 +45,7 @@ describe('Table: funding_opportunities', () => {
 
     const result = await getColumnNames('funding_opportunities');
     expect(result.error).toBeNull();
-
-    if (result.empty) return;
+    expect(result.empty).toBeFalsy();
 
     const EXPECTED_COLUMNS = [
       'id', 'title', 'minimum_award', 'maximum_award',
@@ -92,11 +91,10 @@ describe('Table: funding_opportunities', () => {
       .limit(1);
 
     expect(error).toBeNull();
-    if (data.length > 0) {
-      expect(data[0].id).toMatch(
-        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
-      );
-    }
+    expect(data.length).toBeGreaterThan(0);
+    expect(data[0].id).toMatch(
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
+    );
   });
 
   test('unique constraint on title + api_source_id (non-null)', async (ctx) => {
@@ -106,12 +104,13 @@ describe('Table: funding_opportunities', () => {
     // The unique index is on (title, api_source_id). PostgreSQL treats NULLs
     // as distinct, so only non-null api_source_id values trigger uniqueness.
     // We need a real api_sources row to satisfy the FK constraint.
-    const { data: sources } = await db.supabase
+    const { data: sources, error: srcError } = await db.supabase
       .from('api_sources')
       .select('id')
       .limit(1);
 
-    if (!sources || sources.length === 0) return; // No api_sources — skip
+    expect(srcError).toBeNull();
+    expect(sources.length).toBeGreaterThan(0);
 
     const apiSourceId = sources[0].id;
     const testTitle = `__integration_test_dup_${Date.now()}`;
@@ -121,7 +120,7 @@ describe('Table: funding_opportunities', () => {
       .insert({ title: testTitle, api_source_id: apiSourceId })
       .select('id');
 
-    if (err1) return; // Skip if insert fails due to other constraints
+    expect(err1).toBeNull();
 
     const { error: err2 } = await db.supabase
       .from('funding_opportunities')
@@ -148,8 +147,7 @@ describe('Table: coverage_areas', () => {
 
     const result = await getColumnNames('coverage_areas');
     expect(result.error).toBeNull();
-
-    if (result.empty) return;
+    expect(result.empty).toBeFalsy();
 
     const EXPECTED_COLUMNS = [
       'id', 'name', 'kind', 'code', 'state_code',
@@ -211,7 +209,7 @@ describe('Table: coverage_areas', () => {
       .insert({ name: 'Test Area 1', kind: 'state', code: testCode })
       .select('id');
 
-    if (err1) return;
+    expect(err1).toBeNull();
 
     const { error: err2 } = await db.supabase
       .from('coverage_areas')
@@ -237,8 +235,7 @@ describe('Table: opportunity_coverage_areas', () => {
 
     const result = await getColumnNames('opportunity_coverage_areas');
     expect(result.error).toBeNull();
-
-    if (result.empty) return;
+    expect(result.empty).toBeFalsy();
 
     const EXPECTED_COLUMNS = ['id', 'opportunity_id', 'coverage_area_id'];
 
@@ -250,12 +247,13 @@ describe('Table: opportunity_coverage_areas', () => {
     const reason = db.requireSupabase();
     if (reason) return ctx.skip(reason);
 
-    const { data: existing } = await db.supabase
+    const { data: existing, error: fetchError } = await db.supabase
       .from('opportunity_coverage_areas')
       .select('opportunity_id, coverage_area_id')
       .limit(1);
 
-    if (!existing || existing.length === 0) return;
+    expect(fetchError).toBeNull();
+    expect(existing.length).toBeGreaterThan(0);
 
     const { error } = await db.supabase
       .from('opportunity_coverage_areas')
@@ -279,8 +277,7 @@ describe('Table: funding_sources', () => {
 
     const result = await getColumnNames('funding_sources');
     expect(result.error).toBeNull();
-
-    if (result.empty) return;
+    expect(result.empty).toBeFalsy();
 
     const EXPECTED_COLUMNS = [
       'id', 'name', 'type', 'description', 'website',
@@ -297,12 +294,13 @@ describe('Table: funding_sources', () => {
     const reason = db.requireSupabase();
     if (reason) return ctx.skip(reason);
 
-    const { data: existing } = await db.supabase
+    const { data: existing, error: fetchError } = await db.supabase
       .from('funding_sources')
       .select('name')
       .limit(1);
 
-    if (!existing || existing.length === 0) return;
+    expect(fetchError).toBeNull();
+    expect(existing.length).toBeGreaterThan(0);
 
     const { error } = await db.supabase
       .from('funding_sources')
@@ -323,8 +321,7 @@ describe('Table: funding_programs', () => {
 
     const result = await getColumnNames('funding_programs');
     expect(result.error).toBeNull();
-
-    if (result.empty) return;
+    expect(result.empty).toBeFalsy();
 
     const EXPECTED_COLUMNS = [
       'id', 'source_id', 'name', 'description',
@@ -350,8 +347,7 @@ describe('Table: manual_funding_opportunities_staging', () => {
 
     const result = await getColumnNames('manual_funding_opportunities_staging');
     expect(result.error).toBeNull();
-
-    if (result.empty) return;
+    expect(result.empty).toBeFalsy();
 
     const EXPECTED_COLUMNS = [
       'id', 'source_id', 'title', 'url', 'content_type',
@@ -438,8 +434,7 @@ describe('Table: clients', () => {
 
     const result = await getColumnNames('clients');
     expect(result.error).toBeNull();
-
-    if (result.empty) return;
+    expect(result.empty).toBeFalsy();
 
     const EXPECTED_COLUMNS = ['id', 'name', 'created_at'];
 

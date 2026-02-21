@@ -38,22 +38,6 @@ describe('Funding Stats API Contracts', () => {
       expect(errors).toHaveLength(0);
     });
 
-    test('counts values are numbers', () => {
-      const response = {
-        success: true,
-        counts: {
-          national: 15,
-          statewide: 23,
-          county: 8,
-          utility: 12,
-        },
-      };
-
-      Object.values(response.counts).forEach(val => {
-        expect(typeof val).toBe('number');
-      });
-    });
-
     test('empty counts object is valid', () => {
       const response = {
         success: true,
@@ -96,43 +80,6 @@ describe('Funding Stats API Contracts', () => {
       });
     });
 
-    test('response array has max 10 items', () => {
-      const response = Array.from({ length: 10 }, (_, i) => ({
-        category: `Type ${i}`,
-        total_funding: (10 - i) * 1000000,
-        opportunity_count: 10 - i,
-      }));
-
-      expect(response.length).toBeLessThanOrEqual(10);
-    });
-
-    test('empty array is valid response', () => {
-      const response = [];
-      expect(Array.isArray(response)).toBe(true);
-      expect(response).toHaveLength(0);
-    });
-
-    test('total_funding is non-negative', () => {
-      const response = [
-        { category: 'Solar', total_funding: 0, opportunity_count: 0 },
-        { category: 'Wind', total_funding: 5000000, opportunity_count: 3 },
-      ];
-
-      response.forEach(item => {
-        expect(item.total_funding).toBeGreaterThanOrEqual(0);
-      });
-    });
-
-    test('opportunity_count is non-negative integer', () => {
-      const response = [
-        { category: 'Solar', total_funding: 5000000, opportunity_count: 12 },
-      ];
-
-      response.forEach(item => {
-        expect(Number.isInteger(item.opportunity_count)).toBe(true);
-        expect(item.opportunity_count).toBeGreaterThanOrEqual(0);
-      });
-    });
 
     test('error response has error field', () => {
       const errorResponse = {
@@ -140,7 +87,8 @@ describe('Funding Stats API Contracts', () => {
         details: 'Database function not found',
       };
 
-      expect(typeof errorResponse.error).toBe('string');
+      expect(errorResponse.error).toBe('Failed to fetch funding data by project type');
+      expect(errorResponse.details).toBe('Database function not found');
     });
   });
 
@@ -185,17 +133,6 @@ describe('Funding Stats API Contracts', () => {
       expect(errors).toHaveLength(0);
     });
 
-    test('total is non-negative', () => {
-      const response = {
-        success: true,
-        total: 0,
-        cached: false,
-        timestamp: new Date().toISOString(),
-      };
-
-      expect(response.total).toBeGreaterThanOrEqual(0);
-    });
-
     test('timestamp is valid ISO 8601', () => {
       const response = {
         success: true,
@@ -215,17 +152,7 @@ describe('Funding Stats API Contracts', () => {
       };
 
       expect(response.success).toBe(false);
-      expect(typeof response.error).toBe('string');
-    });
-
-    test('internal error includes message field', () => {
-      const response = {
-        success: false,
-        error: 'Internal server error',
-        message: 'Connection refused',
-      };
-
-      expect(typeof response.message).toBe('string');
+      expect(response.error).toBe('Failed to fetch funding data');
     });
   });
 });

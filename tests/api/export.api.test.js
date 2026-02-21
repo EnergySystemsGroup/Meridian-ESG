@@ -62,14 +62,6 @@ describe('Export API Contracts', () => {
       const errors = validateSchema(request, exportRequestSchema);
       expect(errors.length).toBeGreaterThan(0);
     });
-
-    test('valid format values', () => {
-      const validFormats = ['pdf', 'csv'];
-      validFormats.forEach(format => {
-        expect(typeof format).toBe('string');
-        expect(format.length).toBeGreaterThan(0);
-      });
-    });
   });
 
   describe('Export Response Metadata', () => {
@@ -89,40 +81,14 @@ describe('Export API Contracts', () => {
       expect(validMetadata.filename).toMatch(/\.(pdf|csv)$/);
     });
 
-    test('contentType matches format', () => {
-      const typeMap = {
-        pdf: 'application/pdf',
-        csv: 'text/csv',
-      };
-
-      expect(typeMap.pdf).toBe('application/pdf');
-      expect(typeMap.csv).toBe('text/csv');
-    });
-
     test('generatedAt is valid ISO date', () => {
       const date = new Date(validMetadata.generatedAt);
-      expect(date.toISOString()).toBeTruthy();
       expect(isNaN(date.getTime())).toBe(false);
     });
 
-    test('matchCount is non-negative', () => {
-      expect(validMetadata.matchCount).toBeGreaterThanOrEqual(0);
-    });
   });
 
   describe('Export Content Shape', () => {
-    test('PDF export has header and body sections', () => {
-      const pdfContent = {
-        header: { clientName: 'City of SF', exportDate: '2025-01-15' },
-        body: { matches: [] },
-      };
-
-      expect(pdfContent).toHaveProperty('header');
-      expect(pdfContent).toHaveProperty('body');
-      expect(pdfContent.header).toHaveProperty('clientName');
-      expect(pdfContent.body).toHaveProperty('matches');
-    });
-
     test('CSV export rows have consistent column count', () => {
       const csvRows = [
         ['Title', 'Agency', 'Funding', 'Deadline', 'Score'],

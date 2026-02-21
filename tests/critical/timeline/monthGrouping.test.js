@@ -75,11 +75,9 @@ describe('Timeline Month Grouping', () => {
 
       const groups = groupByMonth(opps);
 
-      // Note: toLocaleString uses local timezone, which may affect month boundaries
-      // This test verifies the grouping logic works, though exact month names may vary
       const totalGrouped = Object.values(groups).flat().length;
       expect(totalGrouped).toBe(6);
-      expect(Object.keys(groups).length).toBeGreaterThanOrEqual(2);
+      expect(Object.keys(groups).length).toBe(3);
     });
 
     test('handles year transitions', () => {

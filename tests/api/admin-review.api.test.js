@@ -117,20 +117,6 @@ describe('Admin Review API Contracts', () => {
       expect(errors).toHaveLength(0);
     });
 
-    test('includes review metadata fields', () => {
-      const approved = {
-        ...reviewOpportunities.approvedRecord,
-        source_display_name: 'DOE',
-        source_type_display: 'Federal',
-        coverage_state_codes: [],
-      };
-      expect(approved).toHaveProperty('reviewed_by');
-      expect(approved).toHaveProperty('reviewed_at');
-      expect(approved).toHaveProperty('review_notes');
-      expect(typeof approved.reviewed_by).toBe('string');
-      expect(typeof approved.reviewed_at).toBe('string');
-    });
-
     test('validates list response wrapper', () => {
       const response = {
         success: true,
@@ -138,12 +124,12 @@ describe('Admin Review API Contracts', () => {
         total_count: 0,
         pagination: { page: 1, page_size: 50, total: 0 },
       };
-      expect(typeof response.success).toBe('boolean');
+      expect(response.success).toBe(true);
       expect(Array.isArray(response.data)).toBe(true);
-      expect(typeof response.total_count).toBe('number');
-      expect(typeof response.pagination.page).toBe('number');
-      expect(typeof response.pagination.page_size).toBe('number');
-      expect(typeof response.pagination.total).toBe('number');
+      expect(response.total_count).toBe(0);
+      expect(response.pagination.page).toBe(1);
+      expect(response.pagination.page_size).toBe(50);
+      expect(response.pagination.total).toBe(0);
     });
   });
 
@@ -302,46 +288,4 @@ describe('Admin Review API Contracts', () => {
     });
   });
 
-  describe('Bulk Operations', () => {
-    test('approve request body requires ids array', () => {
-      const validBody = { ids: ['uuid-1', 'uuid-2'], reviewed_by: 'admin' };
-      expect(Array.isArray(validBody.ids)).toBe(true);
-      expect(validBody.ids.length).toBeGreaterThan(0);
-    });
-
-    test('approve request body requires reviewed_by', () => {
-      const validBody = { ids: ['uuid-1'], reviewed_by: 'admin' };
-      expect(typeof validBody.reviewed_by).toBe('string');
-      expect(validBody.reviewed_by.length).toBeGreaterThan(0);
-    });
-
-    test('reject request body accepts optional review_notes', () => {
-      const withNotes = { ids: ['uuid-1'], reviewed_by: 'admin', review_notes: 'Not relevant' };
-      const withoutNotes = { ids: ['uuid-1'], reviewed_by: 'admin' };
-      expect(typeof withNotes.review_notes).toBe('string');
-      expect(withoutNotes.review_notes).toBeUndefined();
-    });
-
-    test('empty ids array is invalid', () => {
-      const body = { ids: [], reviewed_by: 'admin' };
-      expect(body.ids.length).toBe(0);
-    });
-
-    test('approve response includes updated_count', () => {
-      const response = { success: true, updated_count: 3, ids: ['uuid-1', 'uuid-2', 'uuid-3'] };
-      expect(typeof response.updated_count).toBe('number');
-      expect(response.updated_count).toBe(response.ids.length);
-    });
-
-    test('demote response includes previous and new status', () => {
-      const response = {
-        success: true,
-        id: 'uuid-1',
-        previous_status: 'promoted',
-        new_status: 'rejected',
-      };
-      expect(typeof response.previous_status).toBe('string');
-      expect(response.new_status).toBe('rejected');
-    });
-  });
 });

@@ -38,31 +38,24 @@ function validateSchema(obj, schema) {
 describe('Counts API Contracts', () => {
 
   describe('Dashboard Summary Counts', () => {
-    const validCounts = {
-      openOpportunities: 45,
-      upcomingDeadlines: 12,
-      totalClients: 20,
-      clientsWithMatches: 15,
-    };
-
     test('validates complete counts', () => {
+      const validCounts = {
+        openOpportunities: 45,
+        upcomingDeadlines: 12,
+        totalClients: 20,
+        clientsWithMatches: 15,
+      };
+
       const errors = validateSchema(validCounts, dashboardCountsSchema);
       expect(errors).toHaveLength(0);
     });
 
-    test('all counts are non-negative integers', () => {
-      for (const value of Object.values(validCounts)) {
-        expect(value).toBeGreaterThanOrEqual(0);
-        expect(Number.isInteger(value)).toBe(true);
-      }
-    });
-
-    test('clientsWithMatches <= totalClients', () => {
-      expect(validCounts.clientsWithMatches).toBeLessThanOrEqual(validCounts.totalClients);
-    });
-
     test('rejects missing openOpportunities', () => {
-      const { openOpportunities, ...incomplete } = validCounts;
+      const incomplete = {
+        upcomingDeadlines: 12,
+        totalClients: 20,
+        clientsWithMatches: 15,
+      };
       const errors = validateSchema(incomplete, dashboardCountsSchema);
       expect(errors.length).toBeGreaterThan(0);
     });
@@ -80,33 +73,17 @@ describe('Counts API Contracts', () => {
   });
 
   describe('Filter Result Counts', () => {
-    const validFilterCounts = {
-      total: 100,
-      filtered: 25,
-      byStatus: { open: 20, upcoming: 3, closed: 2 },
-    };
-
     test('validates filter counts', () => {
+      const validFilterCounts = {
+        total: 100,
+        filtered: 25,
+        byStatus: { open: 20, upcoming: 3, closed: 2 },
+      };
+
       const errors = validateSchema(validFilterCounts, filterCountsSchema);
       expect(errors).toHaveLength(0);
     });
 
-    test('filtered <= total', () => {
-      expect(validFilterCounts.filtered).toBeLessThanOrEqual(validFilterCounts.total);
-    });
-
-    test('byStatus values sum to filtered', () => {
-      const sum = Object.values(validFilterCounts.byStatus)
-        .reduce((acc, val) => acc + val, 0);
-      expect(sum).toBe(validFilterCounts.filtered);
-    });
-
-    test('byStatus is an object with number values', () => {
-      for (const value of Object.values(validFilterCounts.byStatus)) {
-        expect(typeof value).toBe('number');
-        expect(value).toBeGreaterThanOrEqual(0);
-      }
-    });
   });
 
   describe('Promotion Status Filter (open_opportunities count)', () => {
@@ -150,33 +127,6 @@ describe('Counts API Contracts', () => {
 
     test('counts correctly across mixed fixture set (2 of 6 visible)', () => {
       expect(countOpenVisible(fixtures)).toBe(2);
-    });
-  });
-
-  describe('Client Match Count Response', () => {
-    test('validates client match count structure', () => {
-      const matchCount = {
-        clientId: 'client-001',
-        matchCount: 5,
-        topScore: 92,
-      };
-
-      expect(typeof matchCount.clientId).toBe('string');
-      expect(typeof matchCount.matchCount).toBe('number');
-      expect(typeof matchCount.topScore).toBe('number');
-    });
-
-    test('match count is non-negative', () => {
-      [0, 1, 5, 50].forEach(count => {
-        expect(count).toBeGreaterThanOrEqual(0);
-      });
-    });
-
-    test('top score is 0-100', () => {
-      [0, 50, 75, 100].forEach(score => {
-        expect(score).toBeGreaterThanOrEqual(0);
-        expect(score).toBeLessThanOrEqual(100);
-      });
     });
   });
 });

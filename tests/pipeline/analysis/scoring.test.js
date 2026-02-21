@@ -379,7 +379,8 @@ describe('Pipeline: Analysis Scoring', () => {
 
       const score = calculateRelevanceScore(opp);
 
-      expect(score).toBeLessThanOrEqual(10);
+      // (10 * 0.4) + (10 * 0.3) + (10 * 0.3) = 10
+      expect(score).toBe(10);
     });
 
     test('minimum score is 0', () => {
@@ -387,7 +388,7 @@ describe('Pipeline: Analysis Scoring', () => {
 
       const score = calculateRelevanceScore(opp);
 
-      expect(score).toBeGreaterThanOrEqual(0);
+      expect(score).toBe(0);
     });
   });
 
@@ -401,8 +402,9 @@ describe('Pipeline: Analysis Scoring', () => {
 
       const score = calculateRelevanceScore(opp);
 
-      // High tier (10), high funding (9), hot activities (10)
-      expect(score).toBeGreaterThan(9);
+      // tier: 10, funding: 9 ($10M), activity: 10 (Solar)
+      // (10 * 0.4) + (9 * 0.3) + (10 * 0.3) = 4 + 2.7 + 3 = 9.7
+      expect(score).toBe(9.7);
     });
 
     test('small utility rebate program', () => {
@@ -414,8 +416,9 @@ describe('Pipeline: Analysis Scoring', () => {
 
       const score = calculateRelevanceScore(opp);
 
-      // Lower tier (4), low funding (3), hot activity (10)
-      expect(score).toBeLessThan(7);
+      // tier: 4, funding: 3 ($25k), activity: 10 (LED=hot)
+      // (4 * 0.4) + (3 * 0.3) + (10 * 0.3) = 1.6 + 0.9 + 3 = 5.5
+      expect(score).toBe(5.5);
     });
 
     test('planning-only grant', () => {
@@ -441,9 +444,9 @@ describe('Pipeline: Analysis Scoring', () => {
 
       const score = calculateRelevanceScore(opp);
 
-      // Medium tier (7), medium funding (6), moderate activity (6)
-      expect(score).toBeGreaterThan(5);
-      expect(score).toBeLessThan(8);
+      // tier: 7 (Community College), funding: 6 ($500k), activity: 6 (moderate)
+      // (7 * 0.4) + (6 * 0.3) + (6 * 0.3) = 2.8 + 1.8 + 1.8 = 6.4
+      expect(score).toBe(6.4);
     });
   });
 

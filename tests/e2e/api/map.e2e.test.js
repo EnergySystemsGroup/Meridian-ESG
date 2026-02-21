@@ -18,11 +18,8 @@ describe('GET /api/map/funding-by-state', () => {
     expect(body.success).toBe(true);
     expect(Array.isArray(body.data)).toBe(true);
 
-    // Verify state data shape if present
-    if (body.data.length > 0) {
-      const first = body.data[0];
-      expect(first).toHaveProperty('state_code');
-    }
+    expect(body.data.length).toBeGreaterThan(0);
+    expect(typeof body.data[0].state_code).toBe('string');
 
     // Should include metric totals
     expect(typeof body.totalOpportunities).toBe('number');
@@ -38,7 +35,8 @@ describe('GET /api/map/scope-breakdown/[stateCode]', () => {
     const body = await res.json();
     expect(body.success).toBe(true);
     expect(body.stateCode).toBe('OR');
-    expect(body.data).toBeDefined();
+    expect(typeof body.data).toBe('object');
+    expect(body.data).not.toBeNull();
   });
 });
 
@@ -49,7 +47,8 @@ describe('GET /api/map/opportunities/[stateCode]', () => {
 
     const body = await res.json();
     expect(body.success).toBe(true);
-    expect(body.data).toBeDefined();
+    expect(typeof body.data).toBe('object');
+    expect(body.data).not.toBeNull();
     expect(Array.isArray(body.data.opportunities)).toBe(true);
     expect(typeof body.data.total).toBe('number');
     expect(typeof body.data.page).toBe('number');
@@ -71,7 +70,8 @@ describe('GET /api/map/opportunities', () => {
 
     const body = await res.json();
     expect(body.success).toBe(true);
-    expect(body.data).toBeDefined();
+    expect(typeof body.data).toBe('object');
+    expect(body.data).not.toBeNull();
     expect(Array.isArray(body.data.opportunities)).toBe(true);
     expect(typeof body.data.total).toBe('number');
   });
@@ -86,7 +86,8 @@ describe('GET /api/map/national', () => {
     expect(body.success).toBe(true);
     expect(typeof body.count).toBe('number');
     // Default includes data object with opportunities array
-    expect(body.data).toBeDefined();
+    expect(typeof body.data).toBe('object');
+    expect(body.data).not.toBeNull();
     expect(Array.isArray(body.data.opportunities)).toBe(true);
   });
 
@@ -111,7 +112,8 @@ describe('GET /api/map/coverage-areas/[stateCode]', () => {
     expect(body.success).toBe(true);
     expect(body.stateCode).toBe('OR');
     expect(body.kind).toBe('county');
-    expect(body.data).toBeDefined();
+    expect(typeof body.data).toBe('object');
+    expect(body.data).not.toBeNull();
   });
 
   it('returns 400 for invalid kind parameter', async () => {

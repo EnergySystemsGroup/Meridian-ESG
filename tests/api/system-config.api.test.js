@@ -13,16 +13,6 @@ import { validateSchema } from '../helpers/validateSchema.js';
 describe('System Config API Contract', () => {
 
   describe('GET /api/admin/system-config/[key]', () => {
-    test('validates success response (value + description)', () => {
-      const response = {
-        value: '"some_config_value"',
-        description: 'Configuration for feature X',
-      };
-
-      expect(typeof response.value).toBe('string');
-      expect(typeof response.description).toBe('string');
-    });
-
     test('value can be any JSON-stringified type', () => {
       const responses = [
         { value: '"string_value"', description: 'A string config' },
@@ -33,8 +23,6 @@ describe('System Config API Contract', () => {
       ];
 
       responses.forEach(response => {
-        expect(typeof response.value).toBe('string');
-        // Should be parseable as JSON
         expect(() => JSON.parse(response.value)).not.toThrow();
       });
     });
@@ -44,16 +32,7 @@ describe('System Config API Contract', () => {
         error: 'Configuration key not found',
       };
 
-      expect(typeof response.error).toBe('string');
       expect(response.error).toBe('Configuration key not found');
-    });
-
-    test('500 response for server error', () => {
-      const response = {
-        error: 'Failed to fetch system configuration',
-      };
-
-      expect(typeof response.error).toBe('string');
     });
   });
 
@@ -79,47 +58,12 @@ describe('System Config API Contract', () => {
       expect(errors).toHaveLength(0);
     });
 
-    test('data includes key and value', () => {
-      const response = {
-        success: true,
-        data: {
-          key: 'my_config',
-          value: '"new_value"',
-          updated_at: new Date().toISOString(),
-        },
-      };
-
-      expect(response.data).toHaveProperty('key');
-      expect(response.data).toHaveProperty('value');
-    });
-
-    test('request body requires value field', () => {
-      const validBody = { value: 'some_value' };
-      const withDescription = { value: 'some_value', description: 'A description' };
-
-      expect(validBody).toHaveProperty('value');
-      expect(withDescription).toHaveProperty('value');
-      expect(withDescription).toHaveProperty('description');
-    });
-
-    test('description is optional in request body', () => {
-      const bodyWithout = { value: 'test' };
-      const bodyWith = { value: 'test', description: 'desc' };
-
-      // Without description — valid
-      expect(bodyWithout).toHaveProperty('value');
-      expect(bodyWithout).not.toHaveProperty('description');
-
-      // With description — also valid
-      expect(bodyWith).toHaveProperty('description');
-    });
-
     test('error response structure', () => {
       const response = {
         error: 'Failed to update system configuration',
       };
 
-      expect(typeof response.error).toBe('string');
+      expect(response.error).toBe('Failed to update system configuration');
     });
   });
 
@@ -131,7 +75,7 @@ describe('System Config API Contract', () => {
       };
 
       expect(response.success).toBe(true);
-      expect(typeof response.message).toBe('string');
+      expect(response.message).toBe("Configuration key 'my_config' deleted successfully");
     });
 
     test('message includes key name', () => {
@@ -149,7 +93,7 @@ describe('System Config API Contract', () => {
         error: 'Failed to delete system configuration',
       };
 
-      expect(typeof response.error).toBe('string');
+      expect(response.error).toBe('Failed to delete system configuration');
     });
   });
 
@@ -158,14 +102,14 @@ describe('System Config API Contract', () => {
      * Tests the Supabase PostgREST error code handling.
      * Mirrors: app/api/admin/system-config/[key]/route.js lines 19-22
      */
-    test('PGRST116 maps to 404', () => {
-      function handleGetError(error) {
-        if (error.code === 'PGRST116') {
-          return { status: 404, body: { error: 'Configuration key not found' } };
-        }
-        return { status: 500, body: { error: 'Failed to fetch system configuration' } };
+    function handleGetError(error) {
+      if (error.code === 'PGRST116') {
+        return { status: 404, body: { error: 'Configuration key not found' } };
       }
+      return { status: 500, body: { error: 'Failed to fetch system configuration' } };
+    }
 
+    test('PGRST116 maps to 404', () => {
       const notFoundError = { code: 'PGRST116', message: 'Not found' };
       const result = handleGetError(notFoundError);
 
@@ -174,13 +118,6 @@ describe('System Config API Contract', () => {
     });
 
     test('other errors map to 500', () => {
-      function handleGetError(error) {
-        if (error.code === 'PGRST116') {
-          return { status: 404, body: { error: 'Configuration key not found' } };
-        }
-        return { status: 500, body: { error: 'Failed to fetch system configuration' } };
-      }
-
       const serverError = { code: 'PGRST500', message: 'Internal error' };
       const result = handleGetError(serverError);
 
@@ -193,34 +130,17 @@ describe('System Config API Contract', () => {
      * Tests the update-or-insert logic for PUT.
      * Mirrors: app/api/admin/system-config/[key]/route.js lines 54-84
      */
+    function determineAction(existing) {
+      return existing ? 'update' : 'insert';
+    }
+
     test('existing config triggers update path', () => {
-      const existing = { id: 1 };
-
-      function determineAction(existing) {
-        return existing ? 'update' : 'insert';
-      }
-
-      expect(determineAction(existing)).toBe('update');
+      expect(determineAction({ id: 1 })).toBe('update');
     });
 
     test('missing config triggers insert path', () => {
-      function determineAction(existing) {
-        return existing ? 'update' : 'insert';
-      }
-
       expect(determineAction(null)).toBe('insert');
       expect(determineAction(undefined)).toBe('insert');
-    });
-
-    test('update includes updated_at timestamp', () => {
-      const updateData = {
-        value: JSON.stringify('new_value'),
-        updated_at: new Date().toISOString(),
-      };
-
-      expect(updateData).toHaveProperty('updated_at');
-      const parsed = new Date(updateData.updated_at);
-      expect(isNaN(parsed.getTime())).toBe(false);
     });
 
     test('description only added to update when provided', () => {
@@ -238,8 +158,8 @@ describe('System Config API Contract', () => {
       const withDesc = buildUpdateData('val', 'A description');
       const withoutDesc = buildUpdateData('val', undefined);
 
-      expect(withDesc).toHaveProperty('description');
-      expect(withoutDesc).not.toHaveProperty('description');
+      expect(withDesc.description).toBe('A description');
+      expect('description' in withoutDesc).toBe(false);
     });
   });
 });

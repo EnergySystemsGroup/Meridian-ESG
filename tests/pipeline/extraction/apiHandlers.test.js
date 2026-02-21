@@ -109,7 +109,7 @@ describe('API Handlers', () => {
     test('handles null response', () => {
       const result = parseSingleStepResponse(null);
       expect(result.opportunities).toHaveLength(0);
-      expect(result.error).toBeTruthy();
+      expect(result.error).toBe('No data in response');
     });
 
     test('handles empty data', () => {

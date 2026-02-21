@@ -349,18 +349,18 @@ describe('Opportunity Detail Tab Content', () => {
       const contact = extractContactContent(opp);
 
       // Overview has required content
-      expect(overview.title).toBeTruthy();
-      expect(overview.fundingRange).toBeTruthy();
+      expect(overview.title).toBe('Complete Grant');
+      expect(overview.fundingRange).toBe('$10,000 - $100,000');
 
       // Eligibility has lists
-      expect(eligibility.eligibleApplicants.length).toBeGreaterThan(0);
-      expect(eligibility.geographicScope).toBeTruthy();
+      expect(eligibility.eligibleApplicants).toEqual(['All']);
+      expect(eligibility.geographicScope).toBe('National (all states)');
 
       // Details has at least some content
-      expect(details.applicationProcess).toBeTruthy();
+      expect(details.applicationProcess).toBe('Apply online');
 
       // Contact has at least email
-      expect(contact.contactEmail).toBeTruthy();
+      expect(contact.contactEmail).toBe('test@test.gov');
     });
   });
 });

@@ -50,20 +50,19 @@ describe('RPC: get_funding_opportunities_dynamic_sort', () => {
     });
 
     expect(error).toBeNull();
+    expect(data.length).toBeGreaterThan(0);
 
-    if (data.length > 0) {
-      const columns = Object.keys(data[0]);
+    const columns = Object.keys(data[0]);
 
-      // The RPC returns SETOF funding_opportunities_with_geography,
-      // so every row should have the same columns as the view
-      expect(columns).toContain('id');
-      expect(columns).toContain('title');
-      expect(columns).toContain('status');
-      expect(columns).toContain('relevance_score');
-      expect(columns).toContain('coverage_state_codes');
-      expect(columns).toContain('promotion_status');
-      expect(columns).toContain('program_id');
-    }
+    // The RPC returns SETOF funding_opportunities_with_geography,
+    // so every row should have the same columns as the view
+    expect(columns).toContain('id');
+    expect(columns).toContain('title');
+    expect(columns).toContain('status');
+    expect(columns).toContain('relevance_score');
+    expect(columns).toContain('coverage_state_codes');
+    expect(columns).toContain('promotion_status');
+    expect(columns).toContain('program_id');
   });
 
   test('accepts status array filter', async (ctx) => {
@@ -79,6 +78,7 @@ describe('RPC: get_funding_opportunities_dynamic_sort', () => {
     });
 
     expect(error).toBeNull();
+    expect(data).toBeDefined();
     expect(Array.isArray(data)).toBe(true);
   });
 
@@ -95,6 +95,7 @@ describe('RPC: get_funding_opportunities_dynamic_sort', () => {
     });
 
     expect(error).toBeNull();
+    expect(data).toBeDefined();
     expect(Array.isArray(data)).toBe(true);
   });
 
@@ -111,6 +112,7 @@ describe('RPC: get_funding_opportunities_dynamic_sort', () => {
     });
 
     expect(error).toBeNull();
+    expect(data).toBeDefined();
     expect(Array.isArray(data)).toBe(true);
   });
 
@@ -214,24 +216,26 @@ describe('RPC: get_state_scope_breakdown', () => {
     const reason = db.requireSupabase();
     if (reason) return ctx.skip(reason);
 
-    const { error } = await db.supabase.rpc('get_state_scope_breakdown', {
+    const { data, error } = await db.supabase.rpc('get_state_scope_breakdown', {
       p_state_code: 'CA',
       p_status: ['Open'],
     });
 
     expect(error).toBeNull();
+    expect(data).toBeDefined();
   });
 
   test('accepts optional project_types filter', async (ctx) => {
     const reason = db.requireSupabase();
     if (reason) return ctx.skip(reason);
 
-    const { error } = await db.supabase.rpc('get_state_scope_breakdown', {
+    const { data, error } = await db.supabase.rpc('get_state_scope_breakdown', {
       p_state_code: 'CA',
       p_project_types: ['Solar'],
     });
 
     expect(error).toBeNull();
+    expect(data).toBeDefined();
   });
 });
 
@@ -256,35 +260,38 @@ describe('RPC: get_funding_by_state_v3', () => {
     const { data, error } = await db.supabase.rpc('get_funding_by_state_v3');
 
     expect(error).toBeNull();
-    if (data.length > 0) {
-      const columns = Object.keys(data[0]);
-      expect(columns).toContain('state_code');
-      expect(columns).toContain('state');
-      expect(columns).toContain('value');
-      expect(columns).toContain('opportunities');
-    }
+    expect(data.length).toBeGreaterThan(0);
+    const columns = Object.keys(data[0]);
+    expect(columns).toContain('state_code');
+    expect(columns).toContain('state');
+    expect(columns).toContain('value');
+    expect(columns).toContain('opportunities');
   });
 
   test('accepts status filter', async (ctx) => {
     const reason = db.requireSupabase();
     if (reason) return ctx.skip(reason);
 
-    const { error } = await db.supabase.rpc('get_funding_by_state_v3', {
+    const { data, error } = await db.supabase.rpc('get_funding_by_state_v3', {
       p_status: 'Open',
     });
 
     expect(error).toBeNull();
+    expect(data).toBeDefined();
+    expect(Array.isArray(data)).toBe(true);
   });
 
   test('accepts categories filter', async (ctx) => {
     const reason = db.requireSupabase();
     if (reason) return ctx.skip(reason);
 
-    const { error } = await db.supabase.rpc('get_funding_by_state_v3', {
+    const { data, error } = await db.supabase.rpc('get_funding_by_state_v3', {
       p_categories: ['Energy'],
     });
 
     expect(error).toBeNull();
+    expect(data).toBeDefined();
+    expect(Array.isArray(data)).toBe(true);
   });
 });
 
@@ -309,12 +316,11 @@ describe('RPC: get_funding_by_project_type', () => {
     const { data, error } = await db.supabase.rpc('get_funding_by_project_type');
 
     expect(error).toBeNull();
-    if (data.length > 0) {
-      const columns = Object.keys(data[0]);
-      expect(columns).toContain('project_type');
-      expect(columns).toContain('total_funding');
-      expect(columns).toContain('opportunity_count');
-    }
+    expect(data.length).toBeGreaterThan(0);
+    const columns = Object.keys(data[0]);
+    expect(columns).toContain('project_type');
+    expect(columns).toContain('total_funding');
+    expect(columns).toContain('opportunity_count');
   });
 });
 
@@ -351,11 +357,10 @@ describe('RPC: get_coverage_filter_counts', () => {
     const { data, error } = await db.supabase.rpc('get_coverage_filter_counts');
 
     expect(error).toBeNull();
-    if (data.length > 0) {
-      const columns = Object.keys(data[0]);
-      expect(columns).toContain('coverage_type');
-      expect(columns).toContain('opportunity_count');
-    }
+    expect(data.length).toBeGreaterThan(0);
+    const columns = Object.keys(data[0]);
+    expect(columns).toContain('coverage_type');
+    expect(columns).toContain('opportunity_count');
   });
 });
 
@@ -386,21 +391,20 @@ describe('RPC: get_opportunity_counts_by_coverage_area', () => {
     });
 
     expect(error).toBeNull();
-    if (data.length > 0) {
-      const columns = Object.keys(data[0]);
-      expect(columns).toContain('area_id');
-      expect(columns).toContain('area_name');
-      expect(columns).toContain('area_code');
-      expect(columns).toContain('opportunity_count');
-      expect(columns).toContain('total_funding');
-    }
+    expect(data.length).toBeGreaterThan(0);
+    const columns = Object.keys(data[0]);
+    expect(columns).toContain('area_id');
+    expect(columns).toContain('area_name');
+    expect(columns).toContain('area_code');
+    expect(columns).toContain('opportunity_count');
+    expect(columns).toContain('total_funding');
   });
 
   test('accepts optional status and project_types', async (ctx) => {
     const reason = db.requireSupabase();
     if (reason) return ctx.skip(reason);
 
-    const { error } = await db.supabase.rpc('get_opportunity_counts_by_coverage_area', {
+    const { data, error } = await db.supabase.rpc('get_opportunity_counts_by_coverage_area', {
       p_state_code: 'CA',
       p_kind: 'utility',
       p_status: ['Open'],
@@ -408,6 +412,8 @@ describe('RPC: get_opportunity_counts_by_coverage_area', () => {
     });
 
     expect(error).toBeNull();
+    expect(data).toBeDefined();
+    expect(Array.isArray(data)).toBe(true);
   });
 });
 
@@ -457,11 +463,12 @@ describe('RPC: get_total_funding_available', () => {
     const reason = db.requireSupabase();
     if (reason) return ctx.skip(reason);
 
-    const { error } = await db.supabase.rpc('get_total_funding_available', {
+    const { data, error } = await db.supabase.rpc('get_total_funding_available', {
       p_status: 'Open',
     });
 
     expect(error).toBeNull();
+    expect(data === null || typeof data === 'number').toBe(true);
   });
 });
 

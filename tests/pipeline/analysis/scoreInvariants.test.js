@@ -294,8 +294,8 @@ describe('Pipeline: Score Invariants', () => {
 
       const score = calculateTierScore(nullArray);
 
-      expect(typeof score).toBe('number');
-      expect(score).toBeGreaterThanOrEqual(0);
+      // null/undefined -> tierScores[undefined] || 3 = 3
+      expect(score).toBe(3);
     });
 
     test('handles very large funding amounts', () => {
@@ -325,7 +325,9 @@ describe('Pipeline: Score Invariants', () => {
         eligible_project_types: ['Solar Installation', 'Battery Storage'],
       };
 
-      expect(calculateRelevanceScore(federalGrant)).toBeGreaterThan(8);
+      // tier: 10 (Municipal), funding: 9 ($10M), activity: 10 (Solar)
+      // (10 * 0.4) + (9 * 0.3) + (10 * 0.3) = 9.7
+      expect(calculateRelevanceScore(federalGrant)).toBe(9.7);
     });
 
     test('typical utility rebate scores medium', () => {
@@ -335,9 +337,9 @@ describe('Pipeline: Score Invariants', () => {
         eligible_project_types: ['HVAC Upgrades'],
       };
 
-      const score = calculateRelevanceScore(utilityRebate);
-      expect(score).toBeGreaterThan(4);
-      expect(score).toBeLessThan(8);
+      // tier: 4 (Commercial), funding: 3 ($25k), activity: 10 (HVAC=hot)
+      // (4 * 0.4) + (3 * 0.3) + (10 * 0.3) = 5.5
+      expect(calculateRelevanceScore(utilityRebate)).toBe(5.5);
     });
 
     test('minimal opportunity scores low', () => {
@@ -347,7 +349,9 @@ describe('Pipeline: Score Invariants', () => {
         eligible_project_types: ['Other'],
       };
 
-      expect(calculateRelevanceScore(minimal)).toBeLessThan(5);
+      // tier: 3 (default), funding: 2 ($1k), activity: 4 (unknown non-empty)
+      // (3 * 0.4) + (2 * 0.3) + (4 * 0.3) = 3
+      expect(calculateRelevanceScore(minimal)).toBe(3);
     });
   });
 });

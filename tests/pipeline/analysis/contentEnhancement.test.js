@@ -147,9 +147,6 @@ describe('Content Enhancement', () => {
       expect(errors[0]).toContain('program_overview');
     });
 
-    test('all 6 required fields present', () => {
-      expect(ENHANCED_FIELDS).toHaveLength(6);
-    });
   });
 
   describe('Enhancement Coverage', () => {

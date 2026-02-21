@@ -283,8 +283,8 @@ describe('Dashboard Summary Cards', () => {
       // Total clients
       expect(stats.totalClients).toBe(allClients.length);
 
-      // Max funding should be the largest max_award or total_funding_available
-      expect(stats.maxFunding).toBeGreaterThan(0);
+      // Max funding = nationalGrant.maximum_award = 5,000,000
+      expect(stats.maxFunding).toBe(5000000);
     });
   });
 });

@@ -253,12 +253,15 @@ function sortClientResults(results) {
 describe('Client Match Evaluation (Summary Route Logic)', () => {
 
 	describe('Location Match', () => {
-		test('national opportunity matches any client', () => {
+		test('national opportunity passes location check for any client', () => {
 			const client = { ...clients.texasCommercialClient };
 			const opp = { ...opportunities.nationalGrant };
 
-			// Only testing location — mock other criteria to pass
 			expect(opp.is_national).toBe(true);
+			// Full 4-criteria evaluateMatch fails because applicant type doesn't match
+			// (Commercial Entity not in nationalGrant.eligible_applicants)
+			const result = evaluateMatch(client, opp);
+			expect(result).toBe(false);
 		});
 
 		test('non-national with shared coverage area matches', () => {
@@ -323,7 +326,8 @@ describe('Client Match Evaluation (Summary Route Logic)', () => {
 			for (const opp of allOpps) {
 				if (evaluateMatch(clients.pgeBayAreaClient, opp)) count++;
 			}
-			expect(count).toBeGreaterThan(0);
+			// Matches: nationalGrant, pgeUtilityGrant, closedOpportunity, upcomingOpportunity
+			expect(count).toBe(4);
 		});
 
 		test('client with empty needs gets zero matches', () => {
@@ -343,11 +347,9 @@ describe('Client Match Evaluation with Scoring (Top-Matches Route Logic)', () =>
 		test('score is percentage of matched project needs', () => {
 			const result = evaluateMatchWithScore(clients.pgeBayAreaClient, opportunities.nationalGrant);
 
-			if (result.isMatch) {
-				// Client has 3 project_needs; score = (matched / total) * 100
-				expect(result.score).toBeGreaterThanOrEqual(0);
-				expect(result.score).toBeLessThanOrEqual(100);
-			}
+			expect(result.isMatch).toBe(true);
+			// Client has 3 project_needs; 'Energy Efficiency' and 'Solar' match = 2/3 = 67%
+			expect(result.score).toBe(67);
 		});
 
 		test('100% score when all project needs match', () => {
@@ -410,10 +412,11 @@ describe('Client Match Evaluation with Scoring (Top-Matches Route Logic)', () =>
 		test('matchedProjectNeeds lists which needs matched', () => {
 			const result = evaluateMatchWithScore(clients.pgeBayAreaClient, opportunities.nationalGrant);
 
-			if (result.isMatch) {
-				expect(Array.isArray(result.details.matchedProjectNeeds)).toBe(true);
-				expect(result.details.matchedProjectNeeds.length).toBeGreaterThan(0);
-			}
+			expect(result.isMatch).toBe(true);
+			expect(Array.isArray(result.details.matchedProjectNeeds)).toBe(true);
+			expect(result.details.matchedProjectNeeds).toHaveLength(2);
+			expect(result.details.matchedProjectNeeds).toContain('Energy Efficiency');
+			expect(result.details.matchedProjectNeeds).toContain('Solar');
 		});
 	});
 

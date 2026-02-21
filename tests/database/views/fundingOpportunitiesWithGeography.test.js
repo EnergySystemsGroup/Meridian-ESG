@@ -165,7 +165,7 @@ describe('View: funding_opportunities_with_geography', () => {
       );
 
       // Should include: National (is_national=true) + California + Multi-State + Utility (PG&E)
-      expect(caOpportunities.length).toBeGreaterThanOrEqual(3);
+      expect(caOpportunities.length).toBe(4);
     });
 
     test('national opportunities match all state queries', () => {
@@ -196,7 +196,7 @@ describe('View: funding_opportunities_with_geography', () => {
         ))
       );
 
-      expect(caOrTxOpportunities.length).toBeGreaterThanOrEqual(3);
+      expect(caOrTxOpportunities.length).toBe(4);
     });
   });
 

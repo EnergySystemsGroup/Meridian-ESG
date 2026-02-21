@@ -330,8 +330,8 @@ describe('RPC: get_funding_by_state', () => {
       const minCount = Math.min(...counts);
       const maxCount = Math.max(...counts);
 
-      expect(minCount).toBeGreaterThanOrEqual(0);
-      expect(maxCount).toBeGreaterThan(0);
+      expect(minCount).toBe(2);
+      expect(maxCount).toBe(4);
     });
 
     test('provides data for color by funding', () => {
@@ -342,8 +342,8 @@ describe('RPC: get_funding_by_state', () => {
       const minFunding = Math.min(...funding);
       const maxFunding = Math.max(...funding);
 
-      expect(minFunding).toBeGreaterThanOrEqual(0);
-      expect(maxFunding).toBeGreaterThan(0);
+      expect(minFunding).toBe(30000000);
+      expect(maxFunding).toBe(43000000);
     });
 
     test('state data can be converted to lookup object', () => {

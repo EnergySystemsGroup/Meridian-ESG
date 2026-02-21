@@ -7,7 +7,7 @@
  */
 
 import { describe, test, expect } from 'vitest';
-import { TAXONOMIES, getExpandedClientTypes } from '@/lib/constants/taxonomies.js';
+import { TAXONOMIES, getExpandedClientTypes } from '../../fixtures/taxonomies.js';
 
 describe('Client Type Synonym Expansion', () => {
 
@@ -199,20 +199,25 @@ describe('Client Type Synonym Expansion', () => {
   });
 
   describe('Standalone Types (No Expansion)', () => {
-    test('standalone types only include self', () => {
-      const standaloneTypes = TAXONOMIES.STANDALONE_CLIENT_TYPES;
+    test('standalone types (non-K-12) only include self and any parent', () => {
+      // Non-K-12 standalone types should always contain themselves.
+      // Some (e.g. Tribal Governments, Federal Agencies) have a parent in the
+      // hierarchy — but they should NOT pick up unrelated synonyms.
+      const nonK12Standalones = TAXONOMIES.STANDALONE_CLIENT_TYPES.filter(
+        t => !t.includes('K-12')
+      );
 
-      standaloneTypes.forEach(type => {
+      nonK12Standalones.forEach(type => {
         const expanded = getExpandedClientTypes(type);
 
-        // Should contain at least self
+        // Must always contain itself
         expect(expanded).toContain(type);
 
-        // Standalone types shouldn't have parents (except K-12 which has synonyms)
-        if (!type.includes('K-12')) {
-          // Most standalone types should have minimal expansion
-          // (They may still have synonyms in some cases)
-        }
+        // Must NOT contain types from unrelated synonym groups
+        // (City Government synonyms, college synonyms, healthcare synonyms)
+        expect(expanded).not.toContain('City Government');
+        expect(expanded).not.toContain('Colleges');
+        expect(expanded).not.toContain('Hospitals');
       });
     });
 
@@ -240,17 +245,22 @@ describe('Client Type Synonym Expansion', () => {
   });
 
   describe('Case Insensitivity', () => {
-    test('expansion is case insensitive', () => {
+    test('expansion is case insensitive — all variants produce equivalent synonym content', () => {
       const lower = getExpandedClientTypes('city government');
       const upper = getExpandedClientTypes('CITY GOVERNMENT');
       const mixed = getExpandedClientTypes('City Government');
 
-      // All should have similar expansion (normalized)
-      // Note: Actual implementation may or may not be case insensitive
-      // This test documents expected behavior
-      expect(lower.length).toBeGreaterThan(0);
-      expect(upper.length).toBeGreaterThan(0);
-      expect(mixed.length).toBeGreaterThan(0);
+      // All three variants should trigger synonym + hierarchy expansion
+      // regardless of the input's case. The exact set may differ by the
+      // literal input string added (e.g. 'city government' vs 'City Government'),
+      // but all must include the canonical synonyms and the parent.
+      const mustContain = ['Municipal Government', 'Township Government', 'Local Governments', 'Public Agencies'];
+
+      mustContain.forEach(type => {
+        expect(lower).toContain(type);
+        expect(upper).toContain(type);
+        expect(mixed).toContain(type);
+      });
     });
   });
 

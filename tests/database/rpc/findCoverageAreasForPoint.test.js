@@ -146,14 +146,12 @@ describe('RPC: find_coverage_areas_for_point', () => {
       const result = findCoverageAreasForPoint(34.0522, -118.2437, coverageAreas);
 
       const utilities = result.data.filter(a => a.kind === 'utility');
-      // May or may not have utility coverage depending on bounds precision
-      // Test that if found, it's SCE not PG&E
+      expect(utilities.length).toBeGreaterThan(0);
+      // SCE covers Southern California, PG&E does not
       const sceFound = utilities.some(u => u.name.includes('Southern California'));
       const pgeFound = utilities.some(u => u.name.includes('Pacific Gas'));
 
-      if (utilities.length > 0) {
-        expect(sceFound || !pgeFound).toBe(true);
-      }
+      expect(sceFound || !pgeFound).toBe(true);
     });
   });
 

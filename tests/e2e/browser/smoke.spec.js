@@ -12,67 +12,60 @@ test.describe('P0 Smoke Tests', () => {
     await page.goto('/');
     await page.waitForLoadState('networkidle');
 
-    // Page should have loaded without crashing
+    // Page should have the correct title
     await expect(page).toHaveTitle(/Policy & Funding Intelligence|Meridian/i);
-
-    // Summary cards or dashboard content should be visible
-    // Look for common dashboard elements
-    const body = page.locator('body');
-    await expect(body).toBeVisible();
 
     // Should not show an error page
     await expect(page.locator('text=Internal Server Error')).not.toBeVisible();
+
+    // Dashboard should show a heading
+    const heading = page.locator('h1, h2');
+    await expect(heading.first()).toBeVisible();
   });
 
   test('Explorer (/funding/opportunities) loads with content', async ({ page }) => {
     await page.goto('/funding/opportunities');
     await page.waitForLoadState('networkidle');
 
-    // Page should load without crashing
-    const body = page.locator('body');
-    await expect(body).toBeVisible();
-
     // Should not show an error page
     await expect(page.locator('text=Internal Server Error')).not.toBeVisible();
+
+    // Explorer should show a heading or content area
+    const heading = page.locator('h1, h2');
+    await expect(heading.first()).toBeVisible();
   });
 
   test('Map (/map) loads with map content', async ({ page }) => {
     await page.goto('/map');
     await page.waitForLoadState('networkidle');
 
-    // Page should load without crashing
-    const body = page.locator('body');
-    await expect(body).toBeVisible();
-
     // Look for SVG map element or map container
     const mapElement = page.locator('svg, [class*="map"], [data-testid*="map"]');
-    // At least one map-related element should exist
-    const count = await mapElement.count();
-    expect(count).toBeGreaterThan(0);
+    expect(await mapElement.count()).toBeGreaterThan(0);
   });
 
   test('Clients (/clients) loads', async ({ page }) => {
     await page.goto('/clients');
     await page.waitForLoadState('networkidle');
 
-    // Page should load without crashing
-    const body = page.locator('body');
-    await expect(body).toBeVisible();
-
     // Should not show an error page
     await expect(page.locator('text=Internal Server Error')).not.toBeVisible();
+
+    // Should show a heading
+    const heading = page.locator('h1, h2');
+    await expect(heading.first()).toBeVisible();
   });
 
   test('Admin Review (/admin/review) loads', async ({ page }) => {
     await page.goto('/admin/review');
     await page.waitForLoadState('networkidle');
 
-    // Page should load without crashing
-    const body = page.locator('body');
-    await expect(body).toBeVisible();
-
     // Should not show an error page
     await expect(page.locator('text=Internal Server Error')).not.toBeVisible();
+
+    // Should show a heading
+    const heading = page.locator('h1, h2, text=/Review|Opportunity/i');
+    await expect(heading.first()).toBeVisible();
   });
 });
 
@@ -92,13 +85,24 @@ test.describe('No JS Console Errors', () => {
       await page.goto(path);
       await page.waitForLoadState('networkidle');
 
-      // Filter out known non-critical errors (hydration warnings, etc.)
+      // Separate hydration/React warnings from critical errors.
+      // Hydration warnings are tracked tech debt — count must not increase.
+      const hydrationWarnings = errors.filter(
+        (msg) =>
+          msg.includes('Hydration') ||
+          msg.includes('hydration') ||
+          msg.includes('Warning:')
+      );
       const criticalErrors = errors.filter(
         (msg) =>
           !msg.includes('Hydration') &&
           !msg.includes('hydration') &&
           !msg.includes('Warning:')
       );
+
+      // TODO: Fix hydration warnings. Current known ceiling: 5 per page.
+      // If this fails, a NEW hydration issue was introduced — investigate before bumping.
+      expect(hydrationWarnings.length).toBeLessThanOrEqual(5);
 
       expect(criticalErrors).toEqual([]);
     });

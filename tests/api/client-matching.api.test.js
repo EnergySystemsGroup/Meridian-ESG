@@ -189,8 +189,8 @@ describe('Client Matching API Contract', () => {
       };
 
       expect(Array.isArray(response.matches)).toBe(true);
-      expect(typeof response.total_matches).toBe('number');
-      expect(typeof response.client_id).toBe('string');
+      expect(response.total_matches).toBe(1);
+      expect(response.client_id).toBe('client-123');
     });
 
     test('empty matches array is valid', () => {
@@ -201,33 +201,23 @@ describe('Client Matching API Contract', () => {
         total_matches: 0,
       };
 
-      expect(Array.isArray(response.matches)).toBe(true);
       expect(response.matches).toHaveLength(0);
       expect(response.total_matches).toBe(0);
     });
   });
 
   describe('Score Constraints', () => {
+    function isValidScore(score) {
+      return typeof score === 'number' && score >= 0 && score <= 100;
+    }
+
     test('score should be 0-100', () => {
-      const validScores = [0, 25, 50, 75, 100];
-      const invalidScores = [-1, 101, 150];
-
-      validScores.forEach(score => {
-        expect(score >= 0 && score <= 100).toBe(true);
-      });
-
-      invalidScores.forEach(score => {
-        expect(score >= 0 && score <= 100).toBe(false);
-      });
-    });
-
-    test('score precision (whole numbers or 1 decimal)', () => {
-      const validPrecision = [85, 85.5, 90.0, 75.5];
-
-      validPrecision.forEach(score => {
-        const decimals = (score.toString().split('.')[1] || '').length;
-        expect(decimals <= 1).toBe(true);
-      });
+      expect(isValidScore(0)).toBe(true);
+      expect(isValidScore(50)).toBe(true);
+      expect(isValidScore(100)).toBe(true);
+      expect(isValidScore(-1)).toBe(false);
+      expect(isValidScore(101)).toBe(false);
+      expect(isValidScore(150)).toBe(false);
     });
   });
 
@@ -244,65 +234,6 @@ describe('Client Matching API Contract', () => {
       for (let i = 1; i < response.matches.length; i++) {
         expect(response.matches[i - 1].score).toBeGreaterThanOrEqual(response.matches[i].score);
       }
-    });
-  });
-
-  describe('Query Parameters', () => {
-    const validParams = {
-      clientId: ['client-123', 'uuid-format-id'],
-      includeHidden: [true, false],
-      minScore: [0, 25, 50, 75],
-      limit: [10, 25, 50, 100],
-    };
-
-    test('clientId is required string', () => {
-      validParams.clientId.forEach(id => {
-        expect(typeof id).toBe('string');
-        expect(id.length).toBeGreaterThan(0);
-      });
-    });
-
-    test('includeHidden is boolean', () => {
-      validParams.includeHidden.forEach(val => {
-        expect(typeof val).toBe('boolean');
-      });
-    });
-
-    test('minScore is positive number', () => {
-      validParams.minScore.forEach(score => {
-        expect(typeof score).toBe('number');
-        expect(score).toBeGreaterThanOrEqual(0);
-      });
-    });
-  });
-
-  describe('Hidden Matches Response', () => {
-    test('includes hidden_matches field when requested', () => {
-      const response = {
-        client_id: 'client-123',
-        matches: [],
-        hidden_matches: [
-          {
-            opportunity_id: 'opp-hidden-1',
-            hidden_at: '2024-01-15T10:00:00Z',
-            hidden_reason: 'Not relevant',
-          },
-        ],
-      };
-
-      expect(Array.isArray(response.hidden_matches)).toBe(true);
-      expect(response.hidden_matches[0]).toHaveProperty('opportunity_id');
-      expect(response.hidden_matches[0]).toHaveProperty('hidden_at');
-    });
-
-    test('hidden_matches can be empty', () => {
-      const response = {
-        client_id: 'client-123',
-        matches: [],
-        hidden_matches: [],
-      };
-
-      expect(response.hidden_matches).toHaveLength(0);
     });
   });
 
@@ -377,8 +308,8 @@ describe('Client Matching API Contract', () => {
         code: 'CLIENT_NOT_FOUND',
       };
 
-      expect(typeof errorResponse.error).toBe('string');
-      expect(errorResponse.code).toBeDefined();
+      expect(errorResponse.error).toBe('Client not found');
+      expect(errorResponse.code).toBe('CLIENT_NOT_FOUND');
     });
 
     test('invalid client id error structure', () => {
@@ -387,7 +318,8 @@ describe('Client Matching API Contract', () => {
         code: 'INVALID_CLIENT_ID',
       };
 
-      expect(typeof errorResponse.error).toBe('string');
+      expect(errorResponse.error).toBe('Invalid client ID format');
+      expect(errorResponse.code).toBe('INVALID_CLIENT_ID');
     });
   });
 
@@ -403,45 +335,10 @@ describe('Client Matching API Contract', () => {
       };
 
       expect(response.success).toBe(true);
-      expect(typeof response.clientsWithMatches).toBe('number');
-      expect(typeof response.totalMatches).toBe('number');
-      expect(typeof response.totalClients).toBe('number');
-      expect(typeof response.cached).toBe('boolean');
-      expect(typeof response.timestamp).toBe('string');
-    });
-
-    test('clientsWithMatches <= totalClients', () => {
-      const response = {
-        clientsWithMatches: 8,
-        totalClients: 12,
-      };
-
-      expect(response.clientsWithMatches).toBeLessThanOrEqual(response.totalClients);
-    });
-
-    test('all counts are non-negative', () => {
-      const response = {
-        clientsWithMatches: 0,
-        totalMatches: 0,
-        totalClients: 0,
-      };
-
-      expect(response.clientsWithMatches).toBeGreaterThanOrEqual(0);
-      expect(response.totalMatches).toBeGreaterThanOrEqual(0);
-      expect(response.totalClients).toBeGreaterThanOrEqual(0);
-    });
-
-    test('cached response includes cached: true', () => {
-      const response = {
-        success: true,
-        clientsWithMatches: 8,
-        totalMatches: 45,
-        totalClients: 12,
-        cached: true,
-        timestamp: '2025-01-15T12:00:00.000Z',
-      };
-
-      expect(response.cached).toBe(true);
+      expect(response.clientsWithMatches).toBe(8);
+      expect(response.totalMatches).toBe(45);
+      expect(response.totalClients).toBe(12);
+      expect(response.cached).toBe(false);
     });
 
     test('error response shape', () => {
@@ -452,7 +349,8 @@ describe('Client Matching API Contract', () => {
       };
 
       expect(response.success).toBe(false);
-      expect(typeof response.error).toBe('string');
+      expect(response.error).toBe('Internal server error');
+      expect(response.message).toBe('Database connection failed');
     });
   });
 
@@ -488,24 +386,7 @@ describe('Client Matching API Contract', () => {
 
       expect(response.success).toBe(true);
       expect(Array.isArray(response.matches)).toBe(true);
-      expect(typeof response.cached).toBe('boolean');
-    });
-
-    test('matches array has max 5 items', () => {
-      const response = {
-        matches: Array.from({ length: 5 }, (_, i) => ({
-          client_id: `c-${i}`,
-          client_name: `Client ${i}`,
-          client_type: 'Municipal Government',
-          match_count: 5 - i,
-          top_opportunity_id: 'opp-1',
-          top_opportunity_title: 'Grant',
-          top_opportunity_score: 80 - i * 5,
-          top_opportunity_amount: 1000000,
-        })),
-      };
-
-      expect(response.matches.length).toBeLessThanOrEqual(5);
+      expect(response.cached).toBe(false);
     });
 
     test('match item has required fields', () => {
@@ -563,7 +444,6 @@ describe('Client Matching API Contract', () => {
         timestamp: new Date().toISOString(),
       };
 
-      expect(Array.isArray(response.matches)).toBe(true);
       expect(response.matches).toHaveLength(0);
     });
 
@@ -575,7 +455,7 @@ describe('Client Matching API Contract', () => {
       };
 
       expect(response.success).toBe(false);
-      expect(typeof response.error).toBe('string');
+      expect(response.error).toBe('Internal server error');
     });
   });
 
@@ -605,7 +485,6 @@ describe('Client Matching API Contract', () => {
 
       expect(response.success).toBe(true);
       expect(Array.isArray(response.hiddenMatches)).toBe(true);
-      expect(typeof response.count).toBe('number');
       expect(response.count).toBe(response.hiddenMatches.length);
     });
 
@@ -618,29 +497,6 @@ describe('Client Matching API Contract', () => {
 
       expect(response.hiddenMatches).toHaveLength(0);
       expect(response.count).toBe(0);
-    });
-
-    test('hidden match item includes nested opportunity details', () => {
-      const item = {
-        id: 1,
-        opportunity_id: 'opp-123',
-        hidden_at: '2025-01-10T10:00:00Z',
-        hidden_by: 'user',
-        reason: null,
-        funding_opportunities: {
-          id: 'opp-123',
-          title: 'Grant',
-          agency_name: 'DOE',
-          maximum_award: 5000000,
-          close_date: '2025-06-30',
-          status: 'open',
-        },
-      };
-
-      expect(item).toHaveProperty('opportunity_id');
-      expect(item).toHaveProperty('hidden_at');
-      expect(item).toHaveProperty('funding_opportunities');
-      expect(item.funding_opportunities).toHaveProperty('title');
     });
 
     test('reason can be null', () => {
@@ -671,8 +527,8 @@ describe('Client Matching API Contract', () => {
       };
 
       expect(response.success).toBe(true);
-      expect(response).toHaveProperty('hiddenMatch');
-      expect(typeof response.message).toBe('string');
+      expect(response.hiddenMatch.opportunity_id).toBe('opp-1');
+      expect(response.message).toBe('Match hidden successfully');
     });
 
     test('missing opportunityId returns 400', () => {
@@ -704,7 +560,7 @@ describe('Client Matching API Contract', () => {
       };
 
       expect(response.success).toBe(true);
-      expect(typeof response.message).toBe('string');
+      expect(response.message).toBe('Match restored successfully');
     });
 
     test('missing opportunityId param returns 400', () => {

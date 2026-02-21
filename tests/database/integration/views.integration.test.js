@@ -46,33 +46,29 @@ describe('View: funding_opportunities_with_geography', () => {
       .limit(1);
 
     expect(error).toBeNull();
+    expect(data.length).toBeGreaterThan(0);
 
-    // Even if the table is empty, the query itself succeeds — which proves
-    // the view definition is valid SQL. If the view has a broken join or
-    // missing column reference, the query would fail.
-    if (data.length > 0) {
-      const columns = Object.keys(data[0]);
+    const columns = Object.keys(data[0]);
 
-      const BASE_COLUMNS = [
-        'id', 'title', 'minimum_award', 'maximum_award',
-        'total_funding_available', 'cost_share_required', 'cost_share_percentage',
-        'posted_date', 'open_date', 'close_date', 'description',
-        'funding_source_id', 'raw_response_id', 'is_national',
-        'agency_name', 'funding_type', 'actionable_summary',
-        'tags', 'url', 'eligible_applicants', 'eligible_project_types',
-        'eligible_locations', 'categories', 'created_at', 'updated_at',
-        'relevance_score', 'relevance_reasoning', 'notes',
-        'disbursement_type', 'award_process', 'eligible_activities',
-        'enhanced_description', 'scoring', 'api_updated_at',
-        'api_opportunity_id', 'api_source_id',
-        'program_overview', 'program_use_cases',
-        'application_summary', 'program_insights',
-        'program_id',
-      ];
+    const BASE_COLUMNS = [
+      'id', 'title', 'minimum_award', 'maximum_award',
+      'total_funding_available', 'cost_share_required', 'cost_share_percentage',
+      'posted_date', 'open_date', 'close_date', 'description',
+      'funding_source_id', 'raw_response_id', 'is_national',
+      'agency_name', 'funding_type', 'actionable_summary',
+      'tags', 'url', 'eligible_applicants', 'eligible_project_types',
+      'eligible_locations', 'categories', 'created_at', 'updated_at',
+      'relevance_score', 'relevance_reasoning', 'notes',
+      'disbursement_type', 'award_process', 'eligible_activities',
+      'enhanced_description', 'scoring', 'api_updated_at',
+      'api_opportunity_id', 'api_source_id',
+      'program_overview', 'program_use_cases',
+      'application_summary', 'program_insights',
+      'program_id',
+    ];
 
-      const missing = BASE_COLUMNS.filter(col => !columns.includes(col));
-      expect(missing).toEqual([]);
-    }
+    const missing = BASE_COLUMNS.filter(col => !columns.includes(col));
+    expect(missing).toEqual([]);
   });
 
   test('exposes computed status column', async (ctx) => {
@@ -85,9 +81,8 @@ describe('View: funding_opportunities_with_geography', () => {
       .limit(1);
 
     expect(error).toBeNull();
-    if (data.length > 0) {
-      expect(Object.keys(data[0])).toContain('status');
-    }
+    expect(data.length).toBeGreaterThan(0);
+    expect(Object.keys(data[0])).toContain('status');
   });
 
   test('exposes source join columns', async (ctx) => {
@@ -100,11 +95,10 @@ describe('View: funding_opportunities_with_geography', () => {
       .limit(1);
 
     expect(error).toBeNull();
-    if (data.length > 0) {
-      const columns = Object.keys(data[0]);
-      expect(columns).toContain('source_display_name');
-      expect(columns).toContain('source_type_display');
-    }
+    expect(data.length).toBeGreaterThan(0);
+    const columns = Object.keys(data[0]);
+    expect(columns).toContain('source_display_name');
+    expect(columns).toContain('source_type_display');
   });
 
   test('exposes coverage area columns', async (ctx) => {
@@ -117,13 +111,12 @@ describe('View: funding_opportunities_with_geography', () => {
       .limit(1);
 
     expect(error).toBeNull();
-    if (data.length > 0) {
-      const columns = Object.keys(data[0]);
-      expect(columns).toContain('coverage_area_names');
-      expect(columns).toContain('coverage_area_codes');
-      expect(columns).toContain('coverage_area_types');
-      expect(columns).toContain('coverage_state_codes');
-    }
+    expect(data.length).toBeGreaterThan(0);
+    const columns = Object.keys(data[0]);
+    expect(columns).toContain('coverage_area_names');
+    expect(columns).toContain('coverage_area_codes');
+    expect(columns).toContain('coverage_area_types');
+    expect(columns).toContain('coverage_state_codes');
   });
 
   test('exposes promotion/review columns', async (ctx) => {
@@ -136,13 +129,12 @@ describe('View: funding_opportunities_with_geography', () => {
       .limit(1);
 
     expect(error).toBeNull();
-    if (data.length > 0) {
-      const columns = Object.keys(data[0]);
-      expect(columns).toContain('promotion_status');
-      expect(columns).toContain('reviewed_by');
-      expect(columns).toContain('reviewed_at');
-      expect(columns).toContain('review_notes');
-    }
+    expect(data.length).toBeGreaterThan(0);
+    const columns = Object.keys(data[0]);
+    expect(columns).toContain('promotion_status');
+    expect(columns).toContain('reviewed_by');
+    expect(columns).toContain('reviewed_at');
+    expect(columns).toContain('review_notes');
   });
 
   test('exposes legacy geographic columns', async (ctx) => {
@@ -155,12 +147,11 @@ describe('View: funding_opportunities_with_geography', () => {
       .limit(1);
 
     expect(error).toBeNull();
-    if (data.length > 0) {
-      const columns = Object.keys(data[0]);
-      expect(columns).toContain('eligible_states');
-      expect(columns).toContain('eligible_counties_states');
-      expect(columns).toContain('eligible_counties');
-    }
+    expect(data.length).toBeGreaterThan(0);
+    const columns = Object.keys(data[0]);
+    expect(columns).toContain('eligible_states');
+    expect(columns).toContain('eligible_counties_states');
+    expect(columns).toContain('eligible_counties');
   });
 
   test('admin review page columns all present', async (ctx) => {
@@ -184,11 +175,10 @@ describe('View: funding_opportunities_with_geography', () => {
       .limit(1);
 
     expect(error).toBeNull();
-    if (data.length > 0) {
-      const columns = Object.keys(data[0]);
-      const missing = ADMIN_REVIEW_COLUMNS.filter(col => !columns.includes(col));
-      expect(missing).toEqual([]);
-    }
+    expect(data.length).toBeGreaterThan(0);
+    const columns = Object.keys(data[0]);
+    const missing = ADMIN_REVIEW_COLUMNS.filter(col => !columns.includes(col));
+    expect(missing).toEqual([]);
   });
 
   test('map query columns all present', async (ctx) => {
@@ -207,37 +197,40 @@ describe('View: funding_opportunities_with_geography', () => {
       .limit(1);
 
     expect(error).toBeNull();
-    if (data.length > 0) {
-      const columns = Object.keys(data[0]);
-      const missing = MAP_COLUMNS.filter(col => !columns.includes(col));
-      expect(missing).toEqual([]);
-    }
+    expect(data.length).toBeGreaterThan(0);
+    const columns = Object.keys(data[0]);
+    const missing = MAP_COLUMNS.filter(col => !columns.includes(col));
+    expect(missing).toEqual([]);
   });
 
   test('promotion_status filter works via PostgREST', async (ctx) => {
     const reason = db.requireSupabase();
     if (reason) return ctx.skip(reason);
 
-    const { error } = await db.supabase
+    const { data, error } = await db.supabase
       .from('funding_opportunities_with_geography')
       .select('id, promotion_status')
       .or('promotion_status.is.null,promotion_status.eq.promoted')
       .limit(1);
 
     expect(error).toBeNull();
+    expect(data).toBeDefined();
+    expect(Array.isArray(data)).toBe(true);
   });
 
   test('state filter via coverage_state_codes works via PostgREST', async (ctx) => {
     const reason = db.requireSupabase();
     if (reason) return ctx.skip(reason);
 
-    const { error } = await db.supabase
+    const { data, error } = await db.supabase
       .from('funding_opportunities_with_geography')
       .select('id, is_national, coverage_state_codes')
       .or('is_national.eq.true,coverage_state_codes.cs.{"CA"}')
       .limit(1);
 
     expect(error).toBeNull();
+    expect(data).toBeDefined();
+    expect(Array.isArray(data)).toBe(true);
   });
 });
 

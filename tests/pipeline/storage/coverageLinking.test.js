@@ -102,11 +102,8 @@ describe('Coverage Area Linking', () => {
       const areaIds = determineCoverageAreas(opp, allAreas);
 
       expect(areaIds.length).toBeGreaterThan(0);
-      // Should include CA state area
-      const caState = allAreas.find(a => a.kind === 'state' && a.state_code === 'CA');
-      if (caState) {
-        expect(areaIds).toContain(caState.id);
-      }
+      // CA state area has id 6 in fixture
+      expect(areaIds).toContain(6);
     });
 
     test('matches by area name', () => {
@@ -117,10 +114,8 @@ describe('Coverage Area Linking', () => {
       };
       const areaIds = determineCoverageAreas(opp, allAreas);
 
-      const pge = allAreas.find(a => a.name === 'Pacific Gas & Electric');
-      if (pge) {
-        expect(areaIds).toContain(pge.id);
-      }
+      // PG&E has id 1 in fixture
+      expect(areaIds).toContain(1);
     });
 
     test('case-insensitive name matching', () => {
@@ -131,10 +126,8 @@ describe('Coverage Area Linking', () => {
       };
       const areaIds = determineCoverageAreas(opp, allAreas);
 
-      const pge = allAreas.find(a => a.name === 'Pacific Gas & Electric');
-      if (pge) {
-        expect(areaIds).toContain(pge.id);
-      }
+      // PG&E has id 1 in fixture
+      expect(areaIds).toContain(1);
     });
 
     test('no duplicate IDs when matched by both state and name', () => {

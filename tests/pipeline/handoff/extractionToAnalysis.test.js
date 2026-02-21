@@ -198,8 +198,7 @@ describe('Extraction → Analysis Handoff', () => {
 
     test('raw_content is preserved for analysis reference', () => {
       const record = createExtractionOutput();
-      expect(record.raw_content).toBeTruthy();
-      expect(typeof record.raw_content).toBe('string');
+      expect(record.raw_content).toBe('<html><body>Program details here</body></html>');
     });
   });
 });

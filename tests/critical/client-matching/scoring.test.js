@@ -286,10 +286,8 @@ describe('Project Needs Matching', () => {
         ['Solar Panels']
       );
 
-      // Depends on implementation - may or may not match
-      // Current implementation doesn't trim, so ' Solar ' won't match 'Solar Panels'
-      // This documents actual behavior
-      expect(matched.length).toBeGreaterThanOrEqual(0);
+      // Current implementation doesn't trim, so '  Solar  ' won't match 'Solar Panels'
+      expect(matched).toHaveLength(0);
     });
 
     test('special characters', () => {

@@ -40,17 +40,15 @@ function filterByProjectTypes(opps, selectedTypes) {
 /**
  * Filter opportunities by state coverage
  */
-function filterByState(opps, stateCode, coverageMap = {}) {
+function filterByState(opps, stateCode, stateAreas = []) {
   if (!stateCode) return opps;
 
   return opps.filter(opp => {
     if (opp.is_national) return true;
 
-    // Check if opportunity covers this state
+    // Check if opportunity's coverage areas intersect with the state's areas
     const oppAreas = opp.coverage_area_ids || [];
-    // In real implementation, would check if any area is in the state
-    // For testing, we'll use a simplified approach
-    return oppAreas.length > 0;
+    return oppAreas.some(id => stateAreas.includes(id));
   });
 }
 

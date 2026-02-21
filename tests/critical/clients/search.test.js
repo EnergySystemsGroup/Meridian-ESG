@@ -149,11 +149,9 @@ describe('Clients Search', () => {
     test('finds clients by state code', () => {
       const result = searchClients(testClients, 'CA');
 
-      // Matches: SF (state=CA), Oakland (state=CA), PG&E (state=CA + "California" in description)
-      // Also Houston has "CA" in description? No. Check actual.
-      // Actually 4 matches because "CA" appears in state field for 3 clients
-      // and "California" in PG&E description contains "CA" substring
-      expect(result.length).toBeGreaterThanOrEqual(3);
+      // Matches: SF (state=CA), Oakland (state=CA), PG&E (state=CA + "California" in desc),
+      // Navajo ('Electrification' in project_needs contains 'ca')
+      expect(result).toHaveLength(4);
       expect(result.some(c => c.state === 'CA')).toBe(true);
     });
 

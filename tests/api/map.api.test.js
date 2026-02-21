@@ -205,18 +205,6 @@ describe('Map API Contracts', () => {
       });
     });
 
-    test('stateCode is uppercase', () => {
-      const response = {
-        success: true,
-        data: {},
-        counts: null,
-        stateCode: 'TX',
-        kind: 'utility',
-      };
-
-      expect(response.stateCode).toBe(response.stateCode.toUpperCase());
-    });
-
     test('kind is county or utility', () => {
       const responses = [
         { success: true, data: {}, counts: null, stateCode: 'CA', kind: 'county' },
@@ -274,14 +262,6 @@ describe('Map API Contracts', () => {
       items.forEach(item => {
         const errors = validateSchema(item, mapOpportunitySchema);
         expect(errors).toHaveLength(0);
-      });
-    });
-
-    test('count is non-negative integer', () => {
-      const validCounts = [0, 1, 42, 1000];
-      validCounts.forEach(count => {
-        expect(count).toBeGreaterThanOrEqual(0);
-        expect(Number.isInteger(count)).toBe(true);
       });
     });
 

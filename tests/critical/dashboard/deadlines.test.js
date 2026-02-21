@@ -103,11 +103,11 @@ describe('Days Left Calculation', () => {
       expect(calculateDaysLeft(undefined, baseDate)).toBeNull();
     });
 
-    test('empty string deadline returns null', () => {
-      // Empty string becomes invalid date
+    test('empty string deadline returns null (falsy early-return)', () => {
+      // Empty string is falsy — the function hits `if (!deadline) return null`
+      // before reaching date arithmetic. This documents the actual behavior.
       const result = calculateDaysLeft('', baseDate);
-      // NaN from invalid date calculation
-      expect(result === null || Number.isNaN(result)).toBe(true);
+      expect(result).toBeNull();
     });
 
     test('invalid date string handled', () => {
@@ -140,7 +140,8 @@ describe('Days Left Calculation', () => {
 
     test('1 second after now = positive', () => {
       const daysLeft = calculateDaysLeft('2025-01-15T12:00:01Z', baseDate);
-      expect(daysLeft).toBeGreaterThanOrEqual(0);
+      // Math.ceil(1000ms / 86400000ms) = 1
+      expect(daysLeft).toBe(1);
     });
   });
 });

@@ -16,7 +16,8 @@ describe('GET /api/funding', () => {
     const body = await res.json();
     expect(body.success).toBe(true);
     expect(Array.isArray(body.data)).toBe(true);
-    expect(body.pagination).toBeDefined();
+    expect(typeof body.pagination).toBe('object');
+    expect(body.pagination).not.toBeNull();
     expect(typeof body.pagination.page).toBe('number');
     expect(typeof body.pagination.pageSize).toBe('number');
     expect(typeof body.pagination.total).toBe('number');
@@ -38,6 +39,12 @@ describe('GET /api/funding', () => {
     const body = await res.json();
     expect(body.success).toBe(true);
     expect(Array.isArray(body.data)).toBe(true);
+    expect(body.data.length).toBeGreaterThan(0);
+
+    // Every returned item must match the requested status
+    body.data.forEach((item) => {
+      expect(item.status).toBe('Open');
+    });
   });
 
   it('supports state filter', async () => {
@@ -47,6 +54,16 @@ describe('GET /api/funding', () => {
     const body = await res.json();
     expect(body.success).toBe(true);
     expect(Array.isArray(body.data)).toBe(true);
+    expect(body.data.length).toBeGreaterThan(0);
+
+    // Every returned item must cover FL (state-specific or national)
+    body.data.forEach((item) => {
+      const coversFL =
+        item.is_national === true ||
+        (Array.isArray(item.coverage_state_codes) &&
+          item.coverage_state_codes.includes('FL'));
+      expect(coversFL).toBe(true);
+    });
   });
 });
 
@@ -78,22 +95,19 @@ describe('GET /api/deadlines', () => {
     expect(body.success).toBe(true);
     expect(Array.isArray(body.data)).toBe(true);
 
-    // If there are deadlines, verify shape
-    if (body.data.length > 0) {
-      const first = body.data[0];
-      expect(first).toHaveProperty('close_date');
-      expect(first).toHaveProperty('daysLeft');
-      expect(typeof first.daysLeft).toBe('number');
-      expect(first).toHaveProperty('urgency');
-    }
+    expect(body.data.length).toBeGreaterThan(0);
+
+    const first = body.data[0];
+    expect(typeof first.close_date).toBe('string');
+    expect(typeof first.daysLeft).toBe('number');
+    expect(typeof first.urgency).toBe('string');
 
     // Verify sorted by date ascending (earliest deadlines first)
-    if (body.data.length > 1) {
-      for (let i = 1; i < body.data.length; i++) {
-        const prev = new Date(body.data[i - 1].close_date);
-        const curr = new Date(body.data[i].close_date);
-        expect(prev.getTime()).toBeLessThanOrEqual(curr.getTime());
-      }
+    expect(body.data.length).toBeGreaterThan(1);
+    for (let i = 1; i < body.data.length; i++) {
+      const prev = new Date(body.data[i - 1].close_date);
+      const curr = new Date(body.data[i].close_date);
+      expect(prev.getTime()).toBeLessThanOrEqual(curr.getTime());
     }
   });
 
@@ -117,14 +131,11 @@ describe('GET /api/categories', () => {
     expect(body.success).toBe(true);
     expect(Array.isArray(body.categories)).toBe(true);
 
-    // Each category should be a string
-    if (body.categories.length > 0) {
-      expect(typeof body.categories[0]).toBe('string');
-    }
+    expect(body.categories.length).toBeGreaterThan(0);
+    expect(typeof body.categories[0]).toBe('string');
 
-    // Should also include categoryGroups
-    expect(body.categoryGroups).toBeDefined();
     expect(typeof body.categoryGroups).toBe('object');
+    expect(body.categoryGroups).not.toBeNull();
   });
 });
 
@@ -137,13 +148,55 @@ describe('GET /api/project-types', () => {
     expect(body.success).toBe(true);
     expect(Array.isArray(body.projectTypes)).toBe(true);
 
-    // Each project type should be a string
-    if (body.projectTypes.length > 0) {
-      expect(typeof body.projectTypes[0]).toBe('string');
-    }
+    expect(body.projectTypes.length).toBeGreaterThan(0);
+    expect(typeof body.projectTypes[0]).toBe('string');
 
-    // Should include projectTypeGroups with counts
-    expect(body.projectTypeGroups).toBeDefined();
     expect(typeof body.projectTypeGroups).toBe('object');
+    expect(body.projectTypeGroups).not.toBeNull();
+  });
+});
+
+describe('GET /api/funding/coverage-counts', () => {
+  it('returns 200 with counts object (no state filter)', async () => {
+    const res = await fetch(apiUrl('/api/funding/coverage-counts'));
+    expect(res.status).toBe(200);
+
+    const body = await res.json();
+    expect(body.success).toBe(true);
+    expect(typeof body.counts).toBe('object');
+
+    // Counts object must have entries and each value must be a number
+    const values = Object.values(body.counts);
+    expect(values.length).toBeGreaterThan(0);
+    values.forEach((v) => expect(typeof v).toBe('number'));
+  });
+
+  it('returns 200 with state-filtered counts', async () => {
+    const res = await fetch(apiUrl('/api/funding/coverage-counts?state=OR'));
+    expect(res.status).toBe(200);
+
+    const body = await res.json();
+    expect(body.success).toBe(true);
+    expect(typeof body.counts).toBe('object');
+  });
+});
+
+describe('GET /api/funding/total-available', () => {
+  it('returns 200 with total funding amount', async () => {
+    const res = await fetch(apiUrl('/api/funding/total-available'));
+    expect(res.status).toBe(200);
+
+    const body = await res.json();
+    expect(body.success).toBe(true);
+    expect(typeof body.total).toBe('number');
+    expect(typeof body.timestamp).toBe('string');
+    expect(typeof body.cached).toBe('boolean');
+  });
+});
+
+describe('Error handling', () => {
+  it('returns 404 for nonexistent API endpoint', async () => {
+    const res = await fetch(apiUrl('/api/this-endpoint-does-not-exist'));
+    expect(res.status).toBe(404);
   });
 });

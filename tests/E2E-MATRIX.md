@@ -23,13 +23,13 @@ Status values: `needs-test` | `in-progress` | `covered` | `deferred`
 | `/api/clients` | GET | 200, paginated client array | `clients.e2e.test.js` | covered |
 | `/api/clients` | POST | 201, created client returned with id | `clients.e2e.test.js` | covered |
 | `/api/clients/[id]` | GET | 200, single client object | `clients.e2e.test.js` | covered |
-| `/api/clients/[id]` | PUT | 200, updated fields reflected | | needs-test |
-| `/api/clients/[id]` | DELETE | 200/204, client removed | | needs-test |
+| `/api/clients/[id]` | PUT | 200, updated fields reflected | `clients.e2e.test.js` | covered |
+| `/api/clients/[id]` | DELETE | 200/204, client removed | `clients.e2e.test.js` | covered |
 | `/api/categories` | GET | 200, string array | `core.e2e.test.js` | covered |
 | `/api/project-types` | GET | 200, type objects array | `core.e2e.test.js` | covered |
-| `/api/funding/coverage-counts` | GET | 200, state count data | | needs-test |
-| `/api/funding/total-available` | GET | 200, numeric total | | needs-test |
-| `/api/export/client-matches-pdf` | GET | 200, application/pdf content-type | | needs-test |
+| `/api/funding/coverage-counts` | GET | 200, state count data | `core.e2e.test.js` | covered |
+| `/api/funding/total-available` | GET | 200, numeric total | `core.e2e.test.js` | covered |
+| `/api/export/client-matches-pdf` | POST | 400/404 validation, PDF content-type | `export.e2e.test.js` | covered |
 
 ### Map Endpoints
 
@@ -55,7 +55,7 @@ Status values: `needs-test` | `in-progress` | `covered` | `deferred`
 
 | Scenario | Assertions | Test File | Status |
 |----------|------------|-----------|--------|
-| GET invalid endpoint | 404 response | | needs-test |
+| GET invalid endpoint | 404 response | `core.e2e.test.js` | covered |
 | GET /api/clients/nonexistent-id | 404 or empty result | `clients.e2e.test.js` | covered |
 | POST /api/clients with missing fields | 400 with error message | `clients.e2e.test.js` | covered |
 
@@ -72,13 +72,13 @@ Status values: `needs-test` | `in-progress` | `covered` | `deferred`
 | Explorer filter | Apply status filter, apply state filter | Results narrow, count updates | `explorer.spec.js` | covered | P0 |
 | Explorer paginate | Click next page | New results loaded, page indicator updates | `explorer.spec.js` | covered | P1 |
 | Explorer search | Type in search box | Filtered results appear | `explorer.spec.js` | covered | P1 |
-| Opportunity detail | Click opportunity from explorer | Detail page loads, tabs work | | needs-test | P1 |
+| Opportunity detail | Click opportunity from explorer | Detail page loads, tabs work | `opportunity-detail.spec.js` | covered | P1 |
 | Map view | Navigate to `/map` | Map renders, states visible | `smoke.spec.js` | covered | P1 |
-| Map drill-down | Click a state on map | Side panel shows state opportunities | | needs-test | P1 |
+| Map drill-down | Click a state on map | Side panel shows state opportunities | `map-drilldown.spec.js` | covered | P1 |
 | Client list | Navigate to `/clients` | Client cards appear with match counts | `client-matching.spec.js` | covered | P1 |
 | Admin review | Navigate to `/admin/review` | Pending items listed | `smoke.spec.js` | covered | P1 |
-| Admin approve | Click approve on pending item | Item removed from queue | | needs-test | P2 |
-| Timeline view | Navigate to `/timeline` | Timeline events grouped by month | | needs-test | P2 |
+| Admin approve | Click approve on pending item | Item removed from queue | `admin-review.spec.js` | covered | P2 |
+| Timeline view | Navigate to `/timeline` | Timeline events grouped by month | `timeline.spec.js` | covered | P2 |
 
 ### Smoke Tests (Highest Priority)
 

@@ -246,9 +246,10 @@ describe('Pipeline: Extraction Error Recovery', () => {
       const delay1 = calculateBackoff(1, ERROR_TYPES.NETWORK, { baseDelay: 1000 });
       const delay2 = calculateBackoff(2, ERROR_TYPES.NETWORK, { baseDelay: 1000 });
 
-      // Remove jitter for comparison (delays should trend upward)
-      expect(delay1).toBeGreaterThan(delay0 * 0.7);
-      expect(delay2).toBeGreaterThan(delay1 * 0.7);
+      // Exponential backoff: each step doubles base. Even with jitter (up to 30%),
+      // delay1 (base 2000) should be >= 1.5x delay0 (base 1000 + up to 30% jitter)
+      expect(delay1).toBeGreaterThanOrEqual(delay0 * 1.5);
+      expect(delay2).toBeGreaterThanOrEqual(delay1 * 1.5);
     });
 
     test('respects max delay', () => {

@@ -114,9 +114,10 @@ describe('Map Color Toggle', () => {
     test('national opps count toward all states', () => {
       const data = calculateStateData(testOpps, coverageByState);
 
-      expect(data.CA.count).toBeGreaterThanOrEqual(1);
-      expect(data.TX.count).toBeGreaterThanOrEqual(1);
-      expect(data.NY.count).toBeGreaterThanOrEqual(1);
+      // National opp counts toward all 3 states; CA also has opp-2, TX also has opp-3
+      expect(data.CA.count).toBe(2);
+      expect(data.TX.count).toBe(2);
+      expect(data.NY.count).toBe(1);
     });
 
     test('state-specific opps only count toward their states', () => {
