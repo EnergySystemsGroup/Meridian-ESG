@@ -3538,7 +3538,7 @@
   "test": {
     "tasks": [
       {
-        "id": 1,
+        "id": "1",
         "title": "Fix debug API route Vitest import issue causing runtime errors",
         "description": "Resolve the runtime error in /app/api/debug/anthropic-client/route.js caused by importing Vitest test files that are not available in production environment.",
         "details": "The debug API route is currently importing Vitest test utilities or test files directly, which causes runtime errors when the application runs outside of the test environment. Three potential solutions: 1) Extract shared utility functions from test files into separate modules that can be safely imported in both test and runtime contexts, 2) Add conditional imports with proper error handling to gracefully handle missing test dependencies, or 3) Remove the debug route entirely if it's not essential for production debugging. Recommended approach is to create utility modules in lib/utils/ that contain the needed functionality without test-specific dependencies, then update both the debug route and test files to use these utilities. If conditional imports are chosen, wrap the imports in try-catch blocks and provide fallback functionality when test utilities are unavailable.",
@@ -3550,7 +3550,7 @@
         "updatedAt": "2026-02-05T17:16:41.521Z"
       },
       {
-        "id": 2,
+        "id": "2",
         "title": "Verify and commit existing test suite",
         "description": "Run all 38 existing Vitest tests across all 4 tiers (critical, api, database, pipeline), verify they pass, then commit the working test suite along with updated documentation files (CLAUDE.md, tests/README.md, docs/testing-strategy.md).",
         "details": "This task verifies and commits the complete Vitest-based testing infrastructure that was built according to the tier-based testing strategy documented in docs/testing-strategy.md.\n\n## Test Suite Overview\n\nThe codebase contains 38 test files organized into 4 tiers with 1,023 individual test cases:\n\n**Tier 1: Critical (20 files, user-facing business logic)**\n- Client matching (5 files): matchCriteria, synonymExpansion, coverageIntersection, scoring, hiddenMatches\n- Explorer (3 files): filters, sorting, pagination\n- Map (2 files): scopeBreakdown, fundingByState\n- Dashboard (3 files): summaryCards, deadlines, topMatches\n- Timeline (3 files): monthGrouping, daysLeftColors, eventCards\n- Clients (2 files): search, filters\n- Opportunity Detail (2 files): tabContent, daysLeft\n\n**Tier 2: API (3 files, response contracts)**\n- funding.api.test.js\n- client-matching.api.test.js\n- clients.api.test.js\n\n**Tier 3: Database (10 files, database behavior)**\n- RPC functions (4 files): getFundingDynamicSort, findCoverageAreasForPoint, getScopeBreakdown, getFundingByState\n- Views (1 file): fundingOpportunitiesWithGeography\n- Constraints (2 files): duplicatePrevention, cascadeDeletes\n\n**Tier 4: Pipeline (8 files, AI processing)**\n- Extraction (2 files): schemaCompliance, errorRecovery\n- Analysis (2 files): scoring, scoreInvariants\n- Storage (3 files): dataSanitizer, upsertLogic, duplicateDetection\n- Orchestration (1 file): runManager\n\n## Verification Steps\n\n1. **Run full test suite**: Execute `npm run test` to run all 1,023 tests\n2. **Verify tier-specific runs**: Confirm each tier can run independently:\n   - `npm run test:critical` (Tier 1)\n   - `npm run test:api` (Tier 2)\n   - `npm run test:database` (Tier 3)\n   - `npm run test:pipeline` (Tier 4)\n3. **Check test output**: Ensure all 38 test files pass with no failures\n4. **Verify configuration**: Confirm tests/vitest.config.js is properly configured with:\n   - Correct path aliases (@, @/lib, @/app, @/components)\n   - Setup file (tests/helpers/setup.js) loaded\n   - Fixtures and helpers excluded from coverage\n   - Single fork pool for consistent test isolation\n\n## Files to Commit\n\n### Test Infrastructure (new files)\n```\ntests/\n├── critical/              (20 test files)\n├── api/                   (3 test files)\n├── database/              (10 test files)\n├── pipeline/              (8 test files)\n├── fixtures/              (5 fixture files + index.js)\n├── helpers/               (2 helper files: setup.js, supabaseMock.js)\n├── vitest.config.js\n└── README.md\n```\n\n### Documentation Updates (modified files)\n- **CLAUDE.md**: Updated testing section with tier-based approach, commands, and conventions\n- **docs/testing-strategy.md**: Complete testing strategy document explaining the rationale, tier organization, and implementation guidelines\n- **package.json**: Updated test scripts to use Vitest commands instead of Jest\n\n### Modified Package Configuration\n- Test scripts replaced: old Jest-based commands replaced with new Vitest tier-based commands\n- Legacy scripts preserved: `test:legacy:unit`, `test:legacy:integration`, `test:legacy:run` kept for backward compatibility during migration\n\n## Commit Message Template\n\n```\nfeat: add comprehensive Vitest test suite with tier-based organization\n\nImplement 38 test files with 1,023 test cases organized into 4 tiers:\n- Tier 1: Critical user-facing logic (client matching, filtering, map, dashboard)\n- Tier 2: API response contracts (field types, error format)\n- Tier 3: Database behavior (RPC functions, views, constraints)\n- Tier 4: AI pipeline processing (extraction, analysis, storage)\n\nAll tests passing (1.44s execution time).\n\nTest Infrastructure:\n- Vitest configuration with path aliases and setup files\n- Shared fixtures (clients, opportunities, coverage areas, match scenarios)\n- Test helpers (Supabase mock, time freezing utilities)\n\nDocumentation Updates:\n- CLAUDE.md: Testing section with tier-based commands\n- tests/README.md: Complete testing guide with examples\n- docs/testing-strategy.md: Detailed strategy and rationale\n\nPackage Updates:\n- Replace Jest scripts with Vitest tier-based commands\n- Preserve legacy scripts for backward compatibility\n\nCo-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>\n```\n\n## Important Notes\n\n1. **DO NOT commit unrelated files**: The git status shows several untracked files in `docs/prd/opp_staging/` that are unrelated to testing. These should NOT be included in this commit.\n\n2. **Handle modified task files carefully**: `.taskmaster/state.json` and `.taskmaster/tasks/tasks.json` are shown as modified but may contain unrelated task management state. Review these carefully and consider excluding them from this commit if changes are unrelated.\n\n3. **Verify test execution before committing**: The task MUST verify that all tests pass before creating the commit. If any test fails, the commit should be aborted and failures investigated.\n\n4. **Follow git commit policy**: According to CLAUDE.md, NEVER commit without explicit user permission. This task should prepare the commit but ask for confirmation before executing `git commit`.\n\n5. **Test execution confirmed**: According to the verification run, all 38 test files with 1,023 tests are passing (Duration: 1.44s).",
@@ -3562,7 +3562,7 @@
         "updatedAt": "2026-02-05T17:25:32.964Z"
       },
       {
-        "id": 3,
+        "id": "3",
         "title": "Write remaining Critical tier tests (10 files)",
         "description": "Create the 10 missing test files in tests/critical/ covering explorer URL state and tracked opportunities, map interactions (state selection, color toggle, tooltips), dashboard recent opportunities, client CRUD/geocoding/PDF export, and opportunity detail related opportunities. Each test must follow the zero-mock pure-function pattern with shared fixtures.",
         "details": "This task completes the Tier 1 Critical test suite by adding 10 missing test files, bringing the total from 20 to 30 files. All tests must follow the established patterns from existing critical tests: import from shared fixtures, test pure business logic functions without mocks, and cover comprehensive edge cases.\n\n## Files to Create\n\n### Explorer Module (2 files)\n\n**1. tests/critical/explorer/urlState.test.js**\n- Test URL parameter serialization/deserialization for filters\n- Validate shareable filter URLs reconstruct correct state\n- Cover all filter types: search, status, projectTypes, state, coverageType, trackedOnly\n- Test pagination params (page, limit) in URL\n- Test sort params (sortBy, sortDir) in URL\n- Edge cases: malformed params, missing params, invalid values\n- Reference implementation: App router search params handling\n\n**2. tests/critical/explorer/trackedOpportunities.test.js**\n- Test \"My Opportunities\" filter logic (trackedOnly=true)\n- Validate filtering returns only opportunities in tracked_opportunities table\n- Test combining tracked filter with other filters (status, state, etc.)\n- Test empty tracked list (no results)\n- Test tracked status persistence across filter changes\n- Reference fixture: `opportunities.trackedOpportunity` and tracked_opportunities join logic\n\n### Map Module (3 files)\n\n**3. tests/critical/map/stateSelection.test.js**\n- Test state click → drill-down to county/utility view\n- Test state click again → return to national view\n- Test state deselection behavior\n- Validate selected state highlighting/active state\n- Test navigation between different states\n- Test initial load state (no selection)\n- Edge cases: clicking same state twice, rapid clicks\n- Reference: Map component state management\n\n**4. tests/critical/map/colorToggle.test.js**\n- Test \"Color by Amount\" vs \"Color by Count\" toggle\n- Validate correct color scale calculation for funding amounts\n- Validate correct color scale calculation for opportunity counts\n- Test color ranges and thresholds (e.g., 0-10M, 10-50M, 50M+)\n- Test states with zero funding/opportunities (gray/no-data color)\n- Test national vs state-drill-down color scales differ\n- Reference: Map legend component, color scale utilities\n\n**5. tests/critical/map/tooltips.test.js**\n- Test tooltip content on state hover (name, count, total funding)\n- Test tooltip content on county/utility hover in drill-down view\n- Validate funding amount formatting (e.g., $1.2M, $500K)\n- Test tooltip positioning (not provided, but data accuracy focus)\n- Test tooltip data matches underlying opportunity aggregation\n- Test tooltip for states with no opportunities (shows \"No opportunities\")\n- Reference: Tooltip data preparation functions\n\n### Dashboard Module (1 file)\n\n**6. tests/critical/dashboard/recentOpps.test.js**\n- Test \"Recent Opportunities\" card displays latest 5 opportunities\n- Validate sorting by created_at/updated_at descending\n- Test date formatting for \"Added X days ago\" display\n- Test empty state (no opportunities)\n- Test fewer than 5 opportunities available\n- Test opportunities from different sources mixed correctly\n- Test link generation to opportunity detail page\n- Reference: Dashboard API route, recent opportunities query\n\n### Clients Module (3 files)\n\n**7. tests/critical/clients/crud.test.js**\n- Test client creation validation (required fields: name, type, location)\n- Test client update logic (partial updates, immutable fields)\n- Test client deletion (soft delete vs hard delete behavior)\n- Test form field validation rules (email format, budget range, etc.)\n- Test duplicate client detection (same name + location)\n- Test empty/null field handling\n- Reference: Client API routes (POST, PATCH, DELETE)\n\n**8. tests/critical/clients/geocoding.test.js**\n- Test address → coverage_area_ids detection logic\n- Validate geocoding service response parsing (Mapbox format)\n- Test coverage area matching: point-in-polygon detection for utilities, counties, states\n- Test address not found (graceful failure, manual selection fallback)\n- Test ambiguous address (multiple results, user picks one)\n- Test coverage area priority: utility > county > state\n- Test multi-coverage scenario (client in multiple utility territories)\n- Reference: `scripts/clients/test-geocoding.js`, geocoding utilities\n\n**9. tests/critical/clients/pdfExport.test.js**\n- Test PDF export generates correct structure (client info, match list, opportunity details)\n- Validate all required sections present: client header, match breakdown, opportunities table\n- Test data formatting: funding amounts, deadlines, match scores\n- Test handling of clients with no matches (shows empty state message)\n- Test handling of hidden matches (excluded from export)\n- Test long opportunity lists (pagination or truncation)\n- Test special characters in client/opportunity names (escaping)\n- Reference: PDF generation utility, `@react-pdf/renderer` usage\n\n### Opportunity Detail Module (1 file)\n\n**10. tests/critical/opportunityDetail/relatedOpps.test.js**\n- Test related opportunities recommendation algorithm\n- Validate recommendations based on similarity: same project types, same coverage areas, same funding source\n- Test scoring/ranking of related opportunities (most similar first)\n- Test limiting to top 5 related opportunities\n- Test excluding current opportunity from results\n- Test no related opportunities available (empty state)\n- Test related opportunities respect status filter (only show open/upcoming)\n- Reference: Related opportunities API logic, similarity scoring\n\n## Implementation Guidelines\n\n### Pattern to Follow (from existing tests)\n\n```javascript\n// Import fixtures\nimport { opportunities } from '../../fixtures/opportunities.js';\nimport { clients } from '../../fixtures/clients.js';\nimport { coverageAreas } from '../../fixtures/coverageAreas.js';\n\n// Import business logic functions to test\nimport { functionToTest } from '@/app/api/route-name/utils.js';\n\n// Pure function tests - no mocks\ndescribe('Feature Name: Specific Behavior', () => {\n  test('describes expected behavior', () => {\n    const result = functionToTest(fixtures.input);\n    expect(result).toBe(expected);\n  });\n  \n  describe('Edge Cases', () => {\n    test('handles null input gracefully', () => {\n      expect(() => functionToTest(null)).not.toThrow();\n    });\n  });\n});\n```\n\n### Key Requirements\n\n1. **Zero mocks**: Test pure functions directly with fixture data\n2. **Shared fixtures**: Import from `tests/fixtures/`, never hardcode data inline\n3. **Comprehensive coverage**: Test happy path + edge cases + error conditions\n4. **Clear describe blocks**: Group by feature area, then specific behavior\n5. **Descriptive test names**: Plain English describing expected outcome\n6. **Extract logic**: If route handlers have inline logic, extract to utils for testability\n\n### Where Logic May Need Extraction\n\nSome of the target behaviors may currently be in React components or API route handlers. For pure testing:\n- Extract business logic to `utils.js` files in the relevant API route directory\n- Test the extracted pure functions\n- Leave React components/route handlers as thin wrappers\n\nExample:\n```javascript\n// app/api/clients/geocoding/utils.js (create if needed)\nexport function detectCoverageAreas(geocodingResult, allCoverageAreas) {\n  // Pure function logic here\n}\n\n// tests/critical/clients/geocoding.test.js\nimport { detectCoverageAreas } from '@/app/api/clients/geocoding/utils.js';\ntest('detects coverage areas from geocoding result', () => {\n  const result = detectCoverageAreas(fixtures.geocodingResponse, coverageAreas);\n  expect(result).toEqual([1, 2, 3]);\n});\n```\n\n## Test Count Estimate\n\nEach file should contain 15-25 individual test cases covering:\n- Happy path (3-5 tests)\n- Edge cases (5-10 tests)\n- Error conditions (3-5 tests)\n- Integration scenarios combining multiple conditions (3-5 tests)\n\n**Total**: ~10 files × 20 tests/file = ~200 new test cases\n\n## Success Criteria\n\n1. All 10 test files created in correct `tests/critical/` subdirectories\n2. All tests pass when run with `npm run test:critical`\n3. Zero mocks used (pure function pattern followed)\n4. All tests import from shared `tests/fixtures/`\n5. Edge cases comprehensively covered (nulls, empty arrays, boundary values)\n6. Test names clearly describe expected behavior\n7. Code coverage for tested functions approaches 100%",
@@ -3576,7 +3576,7 @@
         "updatedAt": "2026-02-05T17:40:40.267Z"
       },
       {
-        "id": 4,
+        "id": "4",
         "title": "Write remaining API contract tests (4 files)",
         "description": "Create 4 missing API test files in tests/api/: map.api.test.js, deadlines.api.test.js, counts.api.test.js, export.api.test.js. Each validates response schemas (required fields, types, pagination metadata) without testing data correctness.",
         "details": "This task completes the Tier 2 API test suite by adding 4 missing test files, bringing the total from 3 to 7 files. All tests must follow the established schema validation pattern used in existing API tests (funding.api.test.js, clients.api.test.js, client-matching.api.test.js).\n\n## Pattern to Follow\n\nAll API tests use shared helper functions for schema validation:\n\n```javascript\n// Import Vitest\nimport { describe, test, expect } from 'vitest';\n\n// Define schemas as objects mapping field names to type strings\nconst exampleSchema = {\n  id: 'string',\n  count: 'number',\n  optional_field: 'string|null',\n  array_field: 'array',\n};\n\n// Use validateFieldType and validateSchema helpers (copy from existing tests)\nfunction validateFieldType(value, expectedType) { /* ... */ }\nfunction validateSchema(obj, schema) { /* ... */ }\n```\n\n## Files to Create\n\n### 1. tests/api/map.api.test.js\n\nTests for `/api/map/opportunities` endpoint (app/api/map/opportunities/route.js:1-167).\n\n**Schemas to define:**\n- `mapOpportunitySchema`: Complete opportunity object returned in map API (similar to funding.api.test.js but includes coverage_area_types array)\n- `mapResponseSchema`: Response wrapper with opportunities array, total, page, pageSize, totalPages\n- `errorResponseSchema`: Error response shape { success: false, error: string }\n\n**Test cases:**\n1. Validate complete map opportunity object with all required fields\n2. Validate map response wrapper structure\n3. Validate pagination metadata (currentPage, totalPages, totalItems, hasMore if present)\n4. Validate error response format\n5. Validate optional query parameter handling (state, status, scope, projectTypes, sort_by, sort_direction)\n\n**Key fields in map opportunity:**\n- id, title, status, close_date, is_national, maximum_award, total_funding_available\n- coverage_state_codes (array|null)\n- coverage_area_types (array) - unique to map API\n- categories, eligible_project_types, eligible_applicants (all arrays)\n\n---\n\n### 2. tests/api/deadlines.api.test.js\n\nTests for `/api/deadlines` endpoint (app/api/deadlines/route.js:1-93).\n\n**Schemas to define:**\n- `deadlineOpportunitySchema`: Opportunity with deadline metadata (base opportunity + daysLeft, urgency, formattedDate, source_name, source_type)\n- `deadlinesResponseSchema`: Response wrapper { success: true, data: array }\n- `thirtyDayCountResponseSchema`: Response for type=thirty_day_count { success: true, count: number }\n\n**Test cases:**\n1. Validate deadline opportunity object with enhancement fields (daysLeft, urgency, formattedDate)\n2. Validate source information fields (source_name, source_type)\n3. Validate deadlines response array wrapper\n4. Validate thirty-day count response format\n5. Validate urgency categorization ('high' | 'medium' | 'low')\n6. Validate error response format\n\n**Key enhancement fields:**\n- daysLeft (number)\n- urgency ('high' | 'medium' | 'low')\n- formattedDate (string)\n- source_name (string)\n- source_type (string|null)\n\n---\n\n### 3. tests/api/counts.api.test.js\n\nTests for `/api/counts` endpoint (app/api/counts/route.js:1-43).\n\n**Schemas to define:**\n- `countResponseSchema`: { success: true, count: number }\n- `errorResponseSchema`: { success: false, error: string }\n\n**Test cases:**\n1. Validate open_opportunities count response structure\n2. Validate count field is a number\n3. Validate error response for invalid type parameter\n4. Validate success boolean field presence and type\n\n**Query parameters:**\n- type: 'open_opportunities' (only valid value currently)\n\n---\n\n### 4. tests/api/export.api.test.js\n\nTests for `/api/export/client-matches-pdf` endpoint (app/api/export/client-matches-pdf/route.js:1-112).\n\n**Schemas to define:**\n- `pdfRequestSchema`: POST body { clientId: string, options: object }\n- `pdfOptionsSchema`: Options object { viewMode: string, includeCover: boolean, sortBy: string }\n- `errorResponseSchema`: Error response { error: string }\n\n**Test cases:**\n1. Validate PDF request body schema\n2. Validate options object structure (viewMode, includeCover, sortBy)\n3. Validate error response for missing clientId\n4. Validate error response for client not found\n5. Validate error response for failed match fetch\n6. **Note**: Cannot validate actual PDF binary response in contract test - only error responses\n\n**Valid option values:**\n- viewMode: 'summary' | 'detailed'\n- includeCover: boolean\n- sortBy: 'deadline' | 'score' | 'amount'\n\n---\n\n## Implementation Guidelines\n\n1. **Copy validation helpers**: Each test file should include the `validateFieldType` and `validateSchema` helper functions from existing API tests (or extract to shared helper in tests/helpers/schemaValidation.js if preferred)\n\n2. **Schema-only validation**: These are contract tests - do NOT make actual API calls, do NOT test data correctness, do NOT mock Supabase. Only validate that test objects matching expected API responses conform to defined schemas.\n\n3. **Test object creation**: Create mock objects that represent valid API responses and validate them:\n   ```javascript\n   test('validates complete map opportunity object', () => {\n     const opportunity = {\n       id: 'opp-123',\n       title: 'Clean Energy Grant',\n       // ... all required fields\n     };\n     const errors = validateSchema(opportunity, mapOpportunitySchema);\n     expect(errors).toHaveLength(0);\n   });\n   ```\n\n4. **Edge cases to test**:\n   - All required fields present\n   - Optional fields with null values\n   - Array fields (empty arrays, arrays with values)\n   - Nested objects (like pagination metadata)\n   - Error response formats\n\n5. **File structure**: Follow the pattern from funding.api.test.js:\n   - File header comment explaining what endpoints are tested\n   - Schema definitions at top\n   - Helper functions (validateFieldType, validateSchema)\n   - Describe blocks grouping related tests\n   - Clear test names describing what's validated\n\n6. **Response wrapper patterns**:\n   - Success responses: `{ success: true, data: ... }` or `{ success: true, count: ... }`\n   - Error responses: `{ success: false, error: string }`\n   - Map responses include pagination: `{ success: true, data: { opportunities: [], total: 0, page: 1, pageSize: 10, totalPages: 0 } }`\n\n---\n\n## Reference Files\n\n- **Existing API tests**: tests/api/funding.api.test.js, tests/api/clients.api.test.js, tests/api/client-matching.api.test.js\n- **API routes to understand response structure**:\n  - app/api/map/opportunities/route.js\n  - app/api/deadlines/route.js\n  - app/api/counts/route.js\n  - app/api/export/client-matches-pdf/route.js\n- **Testing guide**: tests/README.md (Tier 2 section, lines 126-146)",
@@ -3590,7 +3590,7 @@
         "updatedAt": "2026-02-05T17:40:44.082Z"
       },
       {
-        "id": 5,
+        "id": "5",
         "title": "Write remaining Pipeline tests (7 files)",
         "description": "Create 7 missing test files: pipeline/analysis/contentEnhancement.test.js, pipeline/analysis/batchProcessing.test.js, pipeline/extraction/apiHandlers.test.js, pipeline/extraction/pagination.test.js, pipeline/orchestration/sourceOrchestrator.test.js, pipeline/orchestration/performanceMetrics.test.js, pipeline/storage/coverageLinking.test.js. Mock Anthropic SDK + use supabaseMock. Test deterministic parts with exact assertions, LLM parts with schema compliance.",
         "details": "",
@@ -3604,7 +3604,7 @@
         "updatedAt": "2026-02-05T17:40:47.530Z"
       },
       {
-        "id": 6,
+        "id": "6",
         "title": "Write test infrastructure helpers (3 files)",
         "description": "Create 3 missing helper files: helpers/apiTestClient.js (HTTP testing helper for integration tests), helpers/factories.js (data generation for dynamic test scenarios), helpers/dateHelpers.js (time freeze/restore utilities beyond what setup.js provides). These support Phases 3-4 tests.",
         "details": "",
@@ -3618,7 +3618,7 @@
         "updatedAt": "2026-02-05T17:40:51.090Z"
       },
       {
-        "id": 7,
+        "id": "7",
         "title": "Write integration tests (3 files)",
         "description": "Create tests/integration/ folder with 3 flow tests: clientMatchingFlow.test.js (API route -> matching logic -> mock DB -> response), explorerFlow.test.js (API route -> filtering/sorting -> mock DB -> pagination), dashboardFlow.test.js (API route -> stats -> mock DB -> summary cards). These wire together all layers using supabaseMock, NOT real DB.",
         "details": "",
@@ -3632,7 +3632,7 @@
         "updatedAt": "2026-02-05T17:45:15.078Z"
       },
       {
-        "id": 8,
+        "id": "8",
         "title": "Write pipeline handoff tests (2 files)",
         "description": "Create tests/pipeline/handoff/ folder with 2 tests: extractionToAnalysis.test.js (validates Stage 1 output schema is valid Stage 2 input), analysisToStorage.test.js (validates Stage 2 output schema is valid Stage 3 input). These catch schema contract violations between pipeline stages.",
         "details": "",
@@ -3646,7 +3646,7 @@
         "updatedAt": "2026-02-05T17:45:18.200Z"
       },
       {
-        "id": 9,
+        "id": "9",
         "title": "Write error boundary tests (2 files)",
         "description": "Create 2 error-focused test files: api/errorResponses.api.test.js (validates error response format - status codes, error shapes, consistent error structure) and pipeline/extraction/supabaseDown.test.js (tests graceful degradation when Supabase is unreachable).",
         "details": "",
@@ -3660,7 +3660,7 @@
         "updatedAt": "2026-02-05T17:45:21.280Z"
       },
       {
-        "id": 10,
+        "id": "10",
         "title": "Write staging pipeline tests (2 files)",
         "description": "Create tests/pipeline/staging/ folder with 2 tests: stagingStateMachine.test.js (tests pending->complete->failed status transitions for extraction/analysis/storage phases in manual_funding_opportunities_staging) and stagingImport.test.js (tests discovery file -> staging table insertion logic).",
         "details": "",
@@ -3674,7 +3674,7 @@
         "updatedAt": "2026-02-05T17:45:24.386Z"
       },
       {
-        "id": 11,
+        "id": "11",
         "title": "Archive old test infrastructure",
         "description": "After ALL new tests pass: 1) Delete __tests__/ (57 files), __mocks__/ (27 files), and 6 jest config files. 2) Remove legacy npm scripts (test:legacy:*) from package.json. 3) Remove Jest from devDependencies. 4) Document deletion in commit message with git hash reference. ONLY execute after full test suite passes.",
         "details": "",
@@ -3694,25 +3694,94 @@
         "priority": "low",
         "subtasks": [],
         "updatedAt": "2026-02-05T18:04:11.604Z"
+      },
+      {
+        "id": "12",
+        "title": "Fix browser E2E conditional guards that skip all assertions",
+        "description": "HIGH severity. Files: explorer.spec.js (lines 38-47, 59-66, 78-88), client-matching.spec.js (lines 33-46, 57-87), smoke.spec.js (lines 88-105 hydration filter, lines 20-75 body.isVisible only), timeline.spec.js (lines 37-45), admin-review.spec.js (lines 25-30, 39-56), map-drilldown.spec.js (lines 38-49). Pattern: tests use 'if (count > 0)' guards that skip assertions when elements don't exist, and only assert body.isVisible() which proves nothing. Fix: Replace conditional guards with unconditional expect() assertions. If an element should exist, assert it exists then interact. Replace body.isVisible() with content-specific assertions. For smoke.spec.js hydration filter: stop filtering hydration errors — either fix them or use test.todo() to track.",
+        "details": "",
+        "testStrategy": "",
+        "status": "done",
+        "dependencies": [],
+        "priority": "medium",
+        "subtasks": [],
+        "updatedAt": "2026-02-21T02:00:34.868Z"
+      },
+      {
+        "id": "13",
+        "title": "Fix DB integration tests that skip assertions on empty data",
+        "description": "HIGH severity. Files: tests/database/integration/views.integration.test.js (lines 53-228), rpcs.integration.test.js (lines 54-453), schema.integration.test.js (lines 49-371). Pattern: Every column assertion is gated behind 'if (data.length > 0)' or 'if (result.empty) return'. On empty DB, these tests verify nothing. Also: schema.integration.test.js has 'if (err1) return' guards on constraint tests (lines 124, 213-214, 257-258, 299-300). Fix: Replace 'if (data.length > 0)' guards with 'expect(data.length).toBeGreaterThan(0)' so test FAILS if no data exists. For constraint tests, remove early returns and assert the error is null before proceeding.",
+        "details": "",
+        "testStrategy": "",
+        "status": "done",
+        "dependencies": [],
+        "priority": "medium",
+        "subtasks": [],
+        "updatedAt": "2026-02-21T02:00:40.624Z"
+      },
+      {
+        "id": "14",
+        "title": "Remove or replace tautological API tests that test fixtures not behavior",
+        "description": "HIGH severity. 14+ tests across API tier assert properties of hardcoded fixture objects they just created. Files and lines: clients.api.test.js (136-138, 209-212, 292-310, 335, 361-364), export.api.test.js (66-72, 97-100, 104, 109), funding.api.test.js (316-348, 357-366), client-matching.api.test.js (215-267, 381-382), counts.api.test.js (169-179), deadlines.api.test.js (106-124), admin-review.api.test.js (308-315), funding-stats.api.test.js (99-106, 115-124), system-config.api.test.js (96-114). Pattern: Tests loop over hardcoded arrays asserting typeof or bounds. e.g. expect([0,25,50,75,100].every(s => s>=0 && s<=100)).toBe(true). Fix: Either delete the tautological assertion blocks entirely (preferred if no inline function is exercised), or rewrite to actually call the inline function with edge-case inputs. Replace .toBeDefined() with specific value assertions where fixture values are known.",
+        "details": "",
+        "testStrategy": "",
+        "status": "done",
+        "dependencies": [],
+        "priority": "medium",
+        "subtasks": [],
+        "updatedAt": "2026-02-21T02:00:45.581Z"
+      },
+      {
+        "id": "15",
+        "title": "Fix E2E API early returns and loose assertions",
+        "description": "HIGH+MEDIUM severity. Files: export.e2e.test.js line 44 — 'if (listBody.clients.length === 0) return' silently skips PDF generation test. clients.e2e.test.js lines 61 and 147-149 — same early return pattern in PUT and GET tests. core.e2e.test.js lines 34-50 — filter tests check Array.isArray but never verify items match the filter (status=Open, state=FL). core.e2e.test.js lines 82-164 — conditional shape/sort assertions. client-matching.e2e.test.js lines 57-75 — conditional shape and sort checks. map.e2e.test.js lines 22-90 — conditional shape checks and .toBeDefined() matchers. Fix: Replace 'if (length === 0) return' with 'expect(length).toBeGreaterThan(0)'. For filter tests, add assertions that verify returned items match the filter criteria. Replace .toBeDefined() with specific shape assertions.",
+        "details": "",
+        "testStrategy": "",
+        "status": "done",
+        "dependencies": [],
+        "priority": "medium",
+        "subtasks": [],
+        "updatedAt": "2026-02-21T02:00:50.440Z"
+      },
+      {
+        "id": "16",
+        "title": "Fix pipeline test paper-over patterns",
+        "description": "HIGH+MEDIUM severity. Files and issues: schemaCompliance.test.js lines 447-472 — tests titled 'max_award >= min_award' and 'close_date after open_date' pass because validator doesn't check these; rewrite to test what validator actually does or mark as test.todo(). contentEnhancement.test.js line 150-152 — tests constant against itself; delete or rewrite. coverageLinking.test.js lines 100-138 — 'if (caState)' guards skip linking assertions; make unconditional. analysisToStorage.test.js lines 155-159, 169-173 — tautological score check on hardcoded 7.2 and toBeTruthy() on known values. scoring.test.js lines 382-447 — range assertions (>9, between 5-8) on deterministic calculations; use toBe() with exact values. scoreInvariants.test.js lines 109-119, 292-299 — typeof on literals and >=0 instead of exact values. errorRecovery.test.js lines 244-252 — backoff tolerance so loose (30%) it would pass on decreasing delays. extractionToAnalysis.test.js lines 199-203 — toBeTruthy() on fixture values.",
+        "details": "",
+        "testStrategy": "",
+        "status": "done",
+        "dependencies": [],
+        "priority": "medium",
+        "subtasks": [],
+        "updatedAt": "2026-02-21T02:00:55.261Z"
+      },
+      {
+        "id": "17",
+        "title": "Fix critical tier paper-over patterns",
+        "description": "HIGH+MEDIUM severity. Files and issues: matchCriteria.test.js lines 344-350, 411-415 — 'if (result.isMatch)' guards hide assertion failures; assert isMatch first then check score. matchEvaluation.test.js lines 261-263 — test 'national opp matches any client' never calls evaluateMatch; add the call. matchEvaluation.test.js lines 345-349 — conditional guard. scoring.test.js line 292 — 'toBeGreaterThanOrEqual(0)' should be toBe(0). explorer/filters.test.js lines 43-55 — WRONG INLINE LOGIC: filterByState checks areas.length>0 instead of intersection with state; fix to match production logic. synonymExpansion.test.js lines 209-215, 251-253 — empty if-block and undefined behavior assertion. hiddenMatches.test.js line 171 — >=1 should be exact count. MEDIUM: tabContent.test.js lines 352-363 toBeTruthy on known values. summaryCards.test.js line 287 loose bound. monthGrouping.test.js line 83 >=2 should be 3. search.test.js lines 155-158 >=3 should be exact. colorToggle.test.js lines 117-119 >=1 should be exact. matchEvaluation.test.js lines 324-326 >0 should be exact. LOW: daysLeft, recentOpps, geocoding, relatedOpps, stateSelection, deadlines — all >=0 or >0 on known deterministic values.",
+        "details": "",
+        "testStrategy": "",
+        "status": "done",
+        "dependencies": [],
+        "priority": "medium",
+        "subtasks": [],
+        "updatedAt": "2026-02-21T02:01:00.386Z"
       }
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-02-05T18:04:11.604Z",
-      "taskCount": 11,
-      "completedCount": 10,
+      "lastModified": "2026-02-21T02:01:00.387Z",
+      "taskCount": 17,
+      "completedCount": 16,
       "tags": [
         "test"
-      ],
-      "created": "2026-02-06T19:14:54.450Z",
-      "description": "Tasks for test context",
-      "updated": "2026-02-06T19:14:54.450Z"
+      ]
     }
   },
   "v2": {
     "tasks": [
       {
-        "id": "1",
+        "id": 1,
         "title": "Review API Processing Pipeline",
         "description": "Validate that API processing captures full data breadth from Grants.gov and other sources. Check duplicate detection works correctly, verify data quality standards are met, and ensure all source configurations are optimal.",
         "details": "",
@@ -3724,7 +3793,7 @@
         "updatedAt": "2025-12-16T19:49:34.991Z"
       },
       {
-        "id": "2",
+        "id": 2,
         "title": "Implement Users + Microsoft SSO + Favoriting",
         "description": "Add Microsoft SSO authentication (get config from IT department). Implement user profile management, opportunity favoriting tied to users, and client assignment to users for better match visibility.",
         "details": "",
@@ -3847,7 +3916,7 @@
         "updatedAt": "2025-12-22T19:21:24.112Z"
       },
       {
-        "id": "3",
+        "id": 3,
         "title": "Clean Up Funding Opportunity Module",
         "description": "Make sure filtering and sorting works correctly. Add toggle to hide closed opportunities by default. Ensure filter options are updated (eligible projects, categories, etc.). Add export functionality.",
         "details": "",
@@ -3873,7 +3942,7 @@
         "updatedAt": "2025-12-11T04:09:03.632Z"
       },
       {
-        "id": "4",
+        "id": 4,
         "title": "Enhance Client Matching Feature",
         "description": "Add filter and sorting options (client type, location, funding size, etc.). Brainstorm what users might need before implementing. Improve UX for viewing and managing client matches.",
         "details": "",
@@ -3954,7 +4023,7 @@
         "updatedAt": "2025-12-09T05:09:07.307Z"
       },
       {
-        "id": "5",
+        "id": 5,
         "title": "Review and Optimize Dashboard",
         "description": "Make sure top 10 funding categories algorithm is correct. Review if recent activities section is needed or should be commented out for later. Optimize data presentation and performance.",
         "details": "",
@@ -3970,7 +4039,7 @@
         "updatedAt": "2025-12-31T22:51:14.129Z"
       },
       {
-        "id": "6",
+        "id": 6,
         "title": "Enhance Timeline Feature",
         "description": "Add filters by state. Consider what happens if legislative events are added. Review timeline display and improve UX. Consider adding export functionality.",
         "details": "",
@@ -3982,7 +4051,7 @@
         "updatedAt": "2025-12-31T22:51:19.374Z"
       },
       {
-        "id": "7",
+        "id": 7,
         "title": "Clean Up Menu and Navigation",
         "description": "Hide unnecessary menu options. Remove or implement Coming Soon placeholders. Ensure Settings and Help functionality are ready or hidden if not needed for launch.",
         "details": "",
@@ -3994,7 +4063,7 @@
         "updatedAt": "2025-12-31T22:51:23.825Z"
       },
       {
-        "id": "8",
+        "id": 8,
         "title": "Polish Dark Mode",
         "description": "Test dark mode across all pages. Ensure consistency and fix any contrast or styling issues. Dark mode toggle already exists, just needs refinement.",
         "details": "",
@@ -4006,7 +4075,7 @@
         "updatedAt": "2025-12-22T17:44:13.237Z"
       },
       {
-        "id": "9",
+        "id": 9,
         "title": "Implement Comprehensive Test Suite",
         "description": "Write comprehensive tests for the Meridian ESG application following the testing strategy defined in docs/testing-strategy.md. This task covers all user-facing modules (client matching, explorer, map, dashboard, timeline, clients) and the AI pipeline. Tests will be organized by tier: Critical (Tier 1), API Contracts (Tier 2), Database Integration (Tier 3), and Pipeline (Tier 4).",
         "status": "done",
@@ -4018,7 +4087,7 @@
         "updatedAt": "2026-01-09T05:27:36.391Z"
       },
       {
-        "id": "10",
+        "id": 10,
         "title": "Research Utility Funding Integration",
         "description": "Brainstorm ways to add utility funding/incentive information to opportunity database. Test if Claude Code SDK can pull utility incentive data effectively. Compare results to IncentiveFind. If data matches, consider automatic periodic pulls.",
         "details": "",
@@ -4030,7 +4099,7 @@
         "updatedAt": "2025-11-20T00:00:55.888Z"
       },
       {
-        "id": "11",
+        "id": 11,
         "title": "Research Semi-Manual Opportunity Import",
         "description": "Design a way to add opportunities semi-manually from PDFs or links. Ideally give the system a PDF/URL and it imports relevant opportunity information with analysis similar to current pipeline. Consider using Claude Code SDK.",
         "details": "",
@@ -4042,7 +4111,7 @@
         "updatedAt": "2025-11-19T21:34:49.750Z"
       },
       {
-        "id": "12",
+        "id": 12,
         "title": "Research Claude SDK for Legislation Data",
         "description": "Analyze whether Claude Code SDK can pull legislation information effectively. Need to determine if information is complete enough to avoid subscribing to third-party database. Compare data quality and coverage.",
         "details": "",
@@ -4054,7 +4123,7 @@
         "updatedAt": "2025-11-19T20:44:35.211Z"
       },
       {
-        "id": "13",
+        "id": 13,
         "title": "Enhance Map Feature (Advanced)",
         "description": "Transform the funding map into a comprehensive geographic explorer with 4 view modes (National, US States, State Detail, County/Utility), scope filtering (National/State-wide/County/Utility), project types filtering aligned with opportunity explorer, and drill-down navigation using PostGIS coverage_areas data. Replace current state-only view with multi-level geographic exploration, align filters with opportunity explorer patterns, and integrate coverage_areas.geom for county and utility boundary visualization.",
         "status": "done",
@@ -4368,7 +4437,7 @@
         "updatedAt": "2025-12-29T22:49:36.250Z"
       },
       {
-        "id": "14",
+        "id": 14,
         "title": "Fix duplicates in funding_sources table",
         "description": "Identify and resolve duplicate entries in the funding_sources table. This includes finding duplicate records by name/type combinations, consolidating references from funding_opportunities, and removing redundant entries while maintaining data integrity.",
         "details": "",
@@ -4382,7 +4451,7 @@
         "updatedAt": "2026-01-09T05:28:35.470Z"
       },
       {
-        "id": "15",
+        "id": 15,
         "title": "Audit and standardize funding_sources.type field",
         "description": "Audit the funding_sources table to identify all existing type values. Evaluate whether converting the type field to an ENUM is appropriate based on the variety of values. If converting to ENUM: 1) Document all valid type values needed, 2) Check all insertion points in the codebase (V2 pipeline storageAgent, manual insertion scripts, API endpoints) to ensure they use valid enum values, 3) Create migration that safely converts TEXT to ENUM. Consider: current values in production, future extensibility needs, and error handling for invalid types.",
         "details": "",
@@ -4394,7 +4463,7 @@
         "updatedAt": "2026-02-18T03:57:42.038Z"
       },
       {
-        "id": "16",
+        "id": 16,
         "title": "Implement Non-API Opportunity Staging Pipeline",
         "description": "Build the 3-stage processing pipeline (extraction, analysis, storage) for the manual_funding_sources staging table. Migration and initial data import already complete (190 utility programs). Remaining: extraction agent to fetch URLs, analysis agent for content enhancement, storage agent for database insertion.",
         "details": "",
@@ -4406,7 +4475,7 @@
         "updatedAt": "2025-12-10T19:53:35.816Z"
       },
       {
-        "id": "17",
+        "id": 17,
         "title": "Clean up v2 storage agent - remove legacy state eligibility processing",
         "description": "Remove redundant stateEligibilityProcessor from v2 storageAgent. The coverage_areas system (linkOpportunityToCoverageAreas) already handles all location types including states, making the old state eligibility code redundant.",
         "details": "## Background\n\nThe v2 storageAgent currently runs TWO location systems in parallel:\n- OLD: stateEligibilityProcessor → opportunity_state_eligibility (states table only)\n- NEW: linkOpportunityToCoverageAreas → opportunity_coverage_areas (utilities, counties, states, national)\n\nThe coverage_areas table has kind='state' entries, so states are already covered by the new system.\n\n## Pre-requisite\nTest the coverage area linking (linkOpportunityToCoverageAreas) to ensure it works smoothly before removing the old code.\n\n## Changes Required\n\n### 1. Modify lib/agents-v2/core/storageAgent/index.js\n\n**Remove import (line 12):**\n```javascript\n// DELETE: import { stateEligibilityProcessor } from './stateEligibilityProcessor.js';\n```\n\n**Remove Step 3 (lines 214-216):**\n```javascript\n// DELETE: const eligibilityPromise = stateEligibilityProcessor.processEligibility(...)\n```\n\n**Remove eligibility promise resolution (lines 235-236):**\n```javascript\n// DELETE: eligibilityPromise.then(() => {});\n```\n\n**Update file header comment** to remove reference to \"state eligibility processing\"\n\n### 2. Files to potentially deprecate/remove (future cleanup)\n- lib/agents-v2/core/storageAgent/stateEligibilityProcessor.js\n- lib/agents-v2/core/storageAgent/utils/locationParsing.js\n- lib/agents-v2/tests/core/stateEligibilityProcessor.test.js\n- __tests__/unit/agents/storageAgent/stateEligibilityProcessor.test.js\n\n## Impact\n- opportunity_state_eligibility table will no longer receive new records\n- opportunity_coverage_areas continues to receive records (no change)\n- Map functions using opportunity_state_eligibility may need separate update\n\n## Verification\n- Run storage agent on test opportunity\n- Verify coverage areas are linked correctly\n- Verify no errors from removed state eligibility code",
@@ -4417,7 +4486,7 @@
         "subtasks": []
       },
       {
-        "id": "18",
+        "id": 18,
         "title": "Enhance Discovery Agent with Catalog Lookup Integration",
         "description": "Supplement the current web search discovery strategy with catalog lookup to achieve near-100% program coverage.\n\n## Problem Statement\nCurrent discovery relies entirely on web searches (6-10 per utility), which misses programs documented in centralized rebate catalog PDFs. Analysis comparing our database against IncentifFind revealed:\n- We have 21 PG&E/EBMUD programs vs IncentifFind's 78 utility programs\n- IncentifFind parses catalog PDFs into equipment-level entries\n- Some of our programs (financing, third-party implementers, RCx) aren't in IncentifFind\n- Some IncentifFind programs (equipment rebates) aren't in our DB\n\n## Solution Overview\nAdd catalog lookup as a standard step in the discovery workflow:\n1. Catalog lookup runs FIRST (before web searches)\n2. Three-tier discovery: Registry file → DB cache → Dynamic search\n3. Value-based splitting: $500+ rebate categories become separate programs\n4. Both sources feed same staging pipeline with URL deduplication\n\n## Key Design Decisions\n- **Universal**: Applies to any utility, not just pre-configured ones\n- **Additive**: Supplements web search, doesn't replace it\n- **Value-based granularity**: Split by significant savings ($500+), group trivial items\n- **Same pipeline**: Catalog programs flow through extraction→analysis→storage\n\n## Files to Modify\n- `.claude/agents/discovery-agent.md` - Add Section 2.5 (Catalog Lookup)\n- `.claude/agents/extraction-agent.md` - Add Section 2.6 (Catalog Splitting)\n- `lib/data/utility-catalog-registry.json` - CREATE (known catalog URLs)\n- `CLAUDE.md` - Add discovery_method values reference\n\n## Discovery Method Values\n- `web_search` - Standard web search discovery\n- `catalog_lookup` - Catalog PDF found (pending split)\n- `catalog_program` - Individual program extracted from catalog\n\n## Acceptance Criteria\n- [ ] Discovery agent checks for catalog before running web searches\n- [ ] Catalog PDFs are split into value-based program entries\n- [ ] Both web and catalog programs deduplicate correctly\n- [ ] Test against PG&E shows improved coverage vs current data\n- [ ] Documentation updated with new discovery_method values",
         "details": "",
@@ -4490,7 +4559,7 @@
         "updatedAt": "2026-02-18T17:49:50.716Z"
       },
       {
-        "id": "19",
+        "id": 19,
         "title": "Enhance Client Module: Private Sector Support, External IDs, and Bulk Import",
         "description": "Extend the client module to support private sector clients, add external ID fields for CRM integration (e.g., Salesforce), and implement bulk client import via spreadsheet upload.",
         "details": "## Current State Analysis\n\nThe client module currently:\n- Uses ELIGIBLE_APPLICANTS taxonomy from `lib/constants/taxonomies.js`\n- Has \"For-Profit Businesses\" and \"Small Businesses\" in the \"weak\" tier (excluded from ClientForm)\n- Database schema in `supabase/migrations/20251105000001_enable_postgis_coverage_areas.sql`\n- No external ID fields exist for CRM integration\n- Clients added one at a time via form\n\n## Requirements\n\n### 1. Private Sector Client Types\n- Review current taxonomy tiers in `lib/constants/taxonomies.js` (lines 338-406)\n- Add dedicated \"Private Sector\" category with appropriate types:\n  - Private Corporations\n  - Small/Medium Businesses (SMB)\n  - Large Enterprises\n  - Commercial Property Owners\n  - Industrial Facilities\n  - Commercial Real Estate\n- Update ClientForm.jsx (line 20-24) to include private sector tier\n- Consider if private clients need different matching logic\n\n### 2. External ID Fields for CRM Integration\n- Add database migration for new fields:\n  - `external_id` (TEXT) - Generic external system ID\n  - `external_source` (TEXT) - Source system name (e.g., 'salesforce', 'hubspot')\n  - Consider: `salesforce_id`, `salesforce_account_id` as dedicated fields\n- Update API routes (`app/api/clients/route.js`, `app/api/clients/[id]/route.js`)\n- Update ClientForm.jsx to optionally capture external IDs\n- Add unique constraint on external_id + external_source combination\n\n### 3. Bulk Import via Spreadsheet\n- Create new API route: `app/api/clients/bulk-import/route.js`\n- Accept CSV/Excel file upload with columns:\n  - name (required)\n  - type (required, must match taxonomy)\n  - address (required)\n  - project_needs (comma-separated)\n  - budget, contact, description, dac\n  - external_id, external_source (optional)\n- Implement batch geocoding with rate limiting\n- Create UI component for file upload with:\n  - Template download\n  - Preview/validation before import\n  - Progress indicator\n  - Error reporting per row\n- Handle duplicate detection (by name + address or external_id)\n\n## Files to Modify\n- `lib/constants/taxonomies.js` - Add private sector types\n- `supabase/migrations/` - New migration for external_id fields\n- `components/clients/ClientForm.jsx` - Add external ID inputs, include private tier\n- `app/api/clients/route.js` - Handle new fields\n- `app/api/clients/[id]/route.js` - Handle new fields in updates\n- New: `app/api/clients/bulk-import/route.js`\n- New: `components/clients/BulkImportModal.jsx`\n- `app/clients/page.jsx` - Add bulk import button\n\n## Technical Considerations\n- Mapbox geocoding rate limits for bulk import\n- Transaction handling for bulk operations\n- CSV parsing library (papaparse or similar)\n- Excel parsing if needed (xlsx library)",
@@ -4536,7 +4605,7 @@
         "updatedAt": "2025-12-08T18:40:43.634Z"
       },
       {
-        "id": "20",
+        "id": 20,
         "title": "Import Salesforce California Clients via API",
         "description": "Import California client accounts from Salesforce export into production database using Claude Code and the /api/clients endpoint. Steps: 1) Export California accounts from Salesforce as CSV/Excel, 2) Claude Code validates data, checks for duplicates against existing clients, 3) Call POST /api/clients for each valid record (includes geocoding and coverage area detection), 4) Report results and handle any errors interactively. Use salesforce_id field to link records back to Salesforce.",
         "details": "",
@@ -4547,7 +4616,7 @@
         "subtasks": []
       },
       {
-        "id": "21",
+        "id": 21,
         "title": "Rerun API opportunities to fix funding source linkages",
         "description": "82 opportunities are currently linked to the \"Unknown\" funding source (with null type) instead of their proper funding sources. Many of these have valid agency_name values that match existing funding sources. Need to reprocess opportunities from APIs to ensure source_id is correctly assigned based on the API source configuration.",
         "details": "Background:\n- The client-matching API shows \"OTHER\" source type for opportunities that should have proper types (Federal, State, Utility, etc.)\n- Root cause: 82 opportunities have source_id pointing to the \"Unknown\" funding source (id: 73bdda2f-0a12-4c1f-8a7b-a66b7e540814)\n- The \"Unknown\" funding source has type = null, causing the fallback to \"OTHER\"\n- Many affected opportunities have valid agency_name values that match real funding sources\n\nAffected opportunities include:\n- Wildlife Corridors and Fish Passage Program (agency: California Wildlife Conservation Board)\n- Various DOE programs (agency: Department of Energy)\n- Various federal programs\n\nTasks:\n1. Identify all opportunities linked to \"Unknown\" funding source\n2. Match these opportunities to their correct funding sources based on agency_name\n3. Update source_id for affected opportunities\n4. Consider adding validation to prevent this in future API processing\n5. Verify source_type displays correctly after fix",
@@ -4559,7 +4628,7 @@
         "updatedAt": "2025-12-16T19:52:30.135Z"
       },
       {
-        "id": "22",
+        "id": 22,
         "title": "Improve structure of program_insights and program_use_case content",
         "description": "The program_insights and program_use_case fields in funding_opportunities currently contain unstructured text that can be difficult to read. Update the analysis agent to generate properly structured content with punctuation and sentence separation.",
         "details": "Current Issue:\n- program_insights often contains comma-separated items without proper sentence structure\n- Example: \"Principal investigators are limited to submitting a maximum of two proposals per year,Projects addressing multiple sustainability pillars receive higher evaluation scores,Conflict of interest rules are strictly enforced\"\n\nExpected Output:\n- Each insight should be a complete, punctuated sentence\n- Insights should be separated by periods or presented as bullet points\n- Example: \"• Principal investigators are limited to submitting a maximum of two proposals per year. • Projects addressing multiple sustainability pillars receive higher evaluation scores. • Conflict of interest rules are strictly enforced for Pest Management Advisory Committee members.\"\n\nImplementation:\n1. Update the analysis agent prompt to instruct it to format program_insights as properly punctuated sentences or bullet points\n2. Apply the same formatting requirements to program_use_case field\n3. Consider adding a migration or update script to reformat existing data in the database",
@@ -4571,7 +4640,7 @@
         "updatedAt": "2025-12-16T19:55:35.884Z"
       },
       {
-        "id": "23",
+        "id": 23,
         "title": "Data Cleanup and Quality Improvements",
         "description": "Implement multiple data quality fixes covering California location parsing, coverage area assignment hierarchy, report formatting, utility pipeline analysis, project type matching, federal applicant type correction, and report hiding functionality.",
         "details": "## Background\n\nThis task addresses seven distinct data quality and user experience issues identified during production use:\n\n1. **California Location Parsing**: Opportunities with partial California coverage (e.g., \"Northern California counties\") are currently assigned to the entire state rather than specific counties.\n\n2. **Coverage Area Assignment Hierarchy**: Some opportunities are incorrectly assigned to both state-level and county-level coverage areas when only the most specific (county) should be assigned.\n\n3. **Report Formatting Issues**: PDF reports generated via `@react-pdf/renderer` have logo alignment and text formatting problems in `lib/pdf/` components.\n\n4. **Sparse Utility Opportunities**: The manual pipeline (see `docs/prd/opp_staging/manual-funding-opportunities-pipeline.md`) is returning fewer utility opportunities than expected during discovery and extraction phases.\n\n5. **Project Type Matching Logic**: The Victorville city example revealed matching discrepancies in `app/api/client-matching/route.js` where project types don't align correctly with client needs.\n\n6. **Federal Applicant Type Correction**: A recent change incorrectly modified applicant types for federal opportunities, needs to be reversed in the database.\n\n7. **Report Match Hiding**: Users need the ability to hide specific matches from client reports, requiring a new field in the database and UI controls.\n\n## Implementation Plan\n\n### 1. California Location Parsing Enhancement\n\n**Files to modify:**\n- `lib/services/locationMatcher.js` (lines 82-111: `detectLocationType` function)\n- `lib/agents-v2/core/dataExtractionAgent/extraction/index.js` (location extraction logic)\n\n**Approach:**\n- Add pattern detection for partial California coverage (e.g., \"Northern California\", \"Southern California counties\", \"Bay Area counties\")\n- Query `coverage_areas` table WHERE `kind='county'` AND `state_code='CA'` to get county lists\n- For \"Northern California\" patterns, match to counties in regions: Del Norte, Siskiyou, Modoc, Humboldt, Trinity, Shasta, Lassen, Tehama, Plumas, Mendocino, Glenn, Butte, Sierra, Lake, Colusa, Sutter, Yuba, Nevada, Placer, El Dorado, Yolo, Napa, Sonoma, Marin, Sacramento, Solano, Contra Costa, San Francisco, Alameda, San Mateo, Santa Clara\n- For \"Southern California\" patterns, match to counties south of Kern/San Luis Obispo\n- Update `fuzzyMatchLocation` to return multiple county IDs instead of state ID when partial coverage detected\n\n### 2. Highest-Available Coverage Area Assignment\n\n**Files to modify:**\n- `lib/services/locationMatcher.js` (lines 291-345: `linkOpportunityToCoverageAreas` function)\n- `scripts/location/backfill-opportunity-coverage-areas.js` (lines 21-94: `processOpportunity` function)\n\n**Approach:**\n- After collecting all matched coverage areas, implement hierarchy filter:\n  ```javascript\n  function filterToHighestSpecificity(coverageAreas) {\n    const kinds = ['county', 'city', 'utility', 'state', 'national'];\n    // Find the most specific kind present\n    for (const kind of kinds) {\n      const matches = coverageAreas.filter(ca => ca.kind === kind);\n      if (matches.length > 0) return matches;\n    }\n    return coverageAreas;\n  }\n  ```\n- Apply this filter before inserting into `opportunity_coverage_areas` junction table\n- Add migration to clean up existing opportunities with redundant assignments:\n  ```sql\n  DELETE FROM opportunity_coverage_areas oca1\n  WHERE EXISTS (\n    SELECT 1 FROM opportunity_coverage_areas oca2\n    JOIN coverage_areas ca1 ON oca1.coverage_area_id = ca1.id\n    JOIN coverage_areas ca2 ON oca2.coverage_area_id = ca2.id\n    WHERE oca1.opportunity_id = oca2.opportunity_id\n    AND ca1.kind = 'state' \n    AND ca2.kind IN ('county', 'city', 'utility')\n  );\n  ```\n\n### 3. Report Formatting Improvements\n\n**Files to modify:**\n- `lib/pdf/styles/pdfStyles.js` (styling definitions)\n- `lib/pdf/components/CoverPage.js` (logo alignment)\n- `lib/pdf/components/PageHeader.js` (text alignment issues)\n\n**Approach:**\n- Review logo rendering in CoverPage component, ensure proper `Image` component usage with absolute positioning or flexbox centering\n- Check for text alignment issues in PageHeader - likely need to update `styles.header` to use `alignItems: 'center'`\n- Test with `npm run test-client-matching` and review generated PDF output\n- Common fixes in @react-pdf/renderer:\n  - Use `View` with `flexDirection: 'row'` and `justifyContent: 'center'` for centering\n  - Ensure `Image` has explicit `width` and `height` properties\n  - Check for overlapping absolute positioning\n\n### 4. Utility Pipeline Analysis Investigation\n\n**Files to investigate:**\n- Discovery agent spawned via Task tool with `subagent_type=\"discovery-agent\"`\n- `scripts/test-extraction.mjs` (if exists, for testing)\n- Manual staging table: `manual_funding_opportunities_staging`\n\n**Approach:**\n- Run query to check staging pipeline status:\n  ```sql\n  SELECT \n    extraction_status,\n    COUNT(*) as count,\n    COUNT(DISTINCT source_id) as unique_sources\n  FROM manual_funding_opportunities_staging\n  GROUP BY extraction_status;\n  ```\n- Review recent discovery runs to identify if:\n  - Web search is filtering too aggressively\n  - Extraction is failing to parse utility program pages\n  - URL patterns have changed for utility websites\n- Check `temp/utility-discovery/` directory for recent discovery output files\n- Compare against IncentiveFind or other utility databases to identify missing programs\n- Consider adjusting discovery agent search terms or filtering logic\n\n### 5. Project Type Matching Logic Review\n\n**Files to modify:**\n- `app/api/client-matching/route.js` (lines 199-220: project needs matching logic)\n- `lib/constants/taxonomies.js` (CLIENT_TYPE_EXPANSIONS and project type definitions)\n\n**Test case:** Victorville city example\n- Review current matching logic in `evaluateMatch` function\n- Check if taxonomy expansions properly map project types to eligible_project_types\n- Add logging to identify where matches fail:\n  ```javascript\n  console.log('[DEBUG] Project type matching:', {\n    clientNeeds: client.project_needs,\n    oppEligible: opportunity.eligible_project_types,\n    matchedNeeds: details.matchedProjectNeeds\n  });\n  ```\n- Consider adding fuzzy matching for project types if exact matches are too restrictive\n- Update taxonomy if new project type mappings are needed\n\n### 6. Federal Applicant Type Correction\n\n**Files to check:**\n- Recent database migrations that modified `eligible_applicants` field\n- Git history: `git log --all --full-history -- \"*eligible_applicants*\"`\n\n**Approach:**\n- Identify the incorrect change via git history\n- Query to find affected opportunities:\n  ```sql\n  SELECT id, title, agency_name, eligible_applicants, source_id\n  FROM funding_opportunities fo\n  JOIN funding_sources fs ON fo.source_id = fs.id\n  WHERE fs.type = 'Federal'\n  AND [condition identifying incorrect change];\n  ```\n- Create migration to restore correct values:\n  - Either revert to previous values from backups\n  - Or reprocess affected opportunities using the analysis agent\n- Consider using `api_response_data` field if original data is preserved\n\n### 7. Report Match Hiding Feature\n\n**Files to create/modify:**\n- `supabase/migrations/YYYYMMDD_add_hidden_matches.sql` (new migration)\n- Schema: Add junction table `client_hidden_matches(client_id UUID, opportunity_id UUID, hidden_at TIMESTAMPTZ, hidden_by TEXT)`\n- `app/api/client-matching/route.js` (filter out hidden matches)\n- Client report UI components to add \"Hide from report\" button\n- `lib/pdf/ClientMatchesPDF.js` (respect hidden matches when generating PDF)\n\n**Database schema:**\n```sql\nCREATE TABLE client_hidden_matches (\n  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),\n  client_id UUID REFERENCES clients(id) ON DELETE CASCADE NOT NULL,\n  opportunity_id UUID REFERENCES funding_opportunities(id) ON DELETE CASCADE NOT NULL,\n  hidden_at TIMESTAMPTZ DEFAULT NOW(),\n  hidden_by TEXT,\n  notes TEXT,\n  UNIQUE(client_id, opportunity_id)\n);\n\nCREATE INDEX idx_client_hidden_matches_client ON client_hidden_matches(client_id);\n```\n\n**API modifications:**\n- Update `GET /api/client-matching` to filter: `WHERE NOT EXISTS (SELECT 1 FROM client_hidden_matches WHERE client_id = $1 AND opportunity_id = fo.id)`\n- Add `POST /api/client-matching/hide` endpoint to add hidden matches\n- Add `DELETE /api/client-matching/hide` endpoint to unhide matches\n\n## Dependencies\n\n- Task 1 (API Processing Pipeline Review): Needed for understanding current data extraction patterns and quality standards\n- Task 3 (Funding Opportunity Module Cleanup): Provides filtering infrastructure that can be extended for hidden matches\n- Task 22 (Improve program_insights structure): Related data quality work that may share code paths\n\n## Files and Components\n\n**Core files:**\n- `lib/services/locationMatcher.js` - Geographic matching logic\n- `lib/agents-v2/core/storageAgent/dataSanitizer.js` - Data cleaning utilities\n- `app/api/client-matching/route.js` - Matching algorithm\n- `lib/pdf/` directory - Report generation\n- `supabase/migrations/` - Database schema changes\n\n**Testing:**\n- Use `npm run test-location-matcher` for location parsing tests\n- Use `npm run test-client-matching` for matching logic validation\n- Use `npm run backfill-coverage-areas` to reprocess coverage area assignments\n- Check staging pipeline with `psql` queries against `manual_funding_opportunities_staging`",
@@ -4708,7 +4777,7 @@
         "updatedAt": "2025-12-19T02:38:57.395Z"
       },
       {
-        "id": "24",
+        "id": 24,
         "title": "Fix Missing Await on filterOpportunities Call",
         "description": "Add missing await keyword to the filterOpportunities function call in processCoordinatorV2.js line 622, which causes the filter to be bypassed and allows opportunities with relevance_score < 2 to slip through the deterministic filter.",
         "details": "## Problem Analysis\n\nThe code at `lib/services/processCoordinatorV2.js:622` calls `filterOpportunities()` without the `await` keyword:\n\n```javascript\nfilterResult = filterOpportunities(analysisResult.opportunities)  // Missing await!\n```\n\nSince `filterOpportunities` is declared as `async` in `lib/agents-v2/core/filterFunction.js:39` and uses `await` internally when calling `evaluateOpportunity` (line 67), the missing `await` causes `filterResult` to be a Promise object instead of the actual filter results.\n\n## Why It Appears to Work\n\nThe code on line 628 accesses `filterResult.includedOpportunities.length`, which should crash if `filterResult` is a Promise. However, JavaScript's dynamic nature means the Promise object is being used instead, potentially causing the filter logic to be bypassed.\n\n## Evidence of the Bug\n\n- **Bad record in database**: Opportunity `f0c703f8-85d3-4702-a274-96d278475606` (\"Cost Share for Federal Clean Energy Funding Opportunities-EPIC Program\") with `relevance_score = 1.3` was stored despite the filter threshold requiring `finalScore >= 2` (see `lib/agents-v2/core/filterFunction.js:173`)\n- **Expected behavior**: All opportunities with score < 2 should be excluded\n- **Observed behavior**: 1 out of 154 California Grants Portal opportunities bypassed the filter\n\n## Implementation Steps\n\n1. **Add await keyword** at `lib/services/processCoordinatorV2.js:622`:\n   ```javascript\n   // BEFORE\n   filterResult = filterOpportunities(analysisResult.opportunities)\n   \n   // AFTER\n   filterResult = await filterOpportunities(analysisResult.opportunities)\n   ```\n\n2. **No other changes needed** - the function is already called within an async context (the entire process is wrapped in try-catch within an async function)\n\n## Files to Modify\n\n- `lib/services/processCoordinatorV2.js` - Add `await` at line 622\n\n## Related Files (Read-only reference)\n\n- `lib/agents-v2/core/filterFunction.js` - Filter implementation with threshold logic\n- `lib/agents-v2/tests/filterFunction.test.js` - Existing unit tests\n- `__tests__/unit/agents/filterFunction.test.js` - Additional test coverage",
@@ -4721,7 +4790,7 @@
         "subtasks": []
       },
       {
-        "id": "25",
+        "id": 25,
         "title": "Create persistent client_matches table with automated refresh triggers",
         "description": "Implement a persistent database table to store pre-calculated client-opportunity matches with automatic refresh triggers. This eliminates the need for real-time API calculations and enables efficient SQL-based queries for dashboards and analytics.",
         "details": "## Overview\n\nCurrently, client-opportunity matching is performed on-demand via the `/api/client-matching` endpoint, which calculates matches in real-time using JavaScript logic (`app/api/client-matching/route.js`). This task creates a persistent `client_matches` table that stores pre-calculated matches and automatically refreshes when relevant data changes.\n\n## Database Schema Design\n\n### 1. Create `client_matches` Table\n\n```sql\nCREATE TABLE IF NOT EXISTS client_matches (\n  -- Composite primary key\n  client_id UUID NOT NULL REFERENCES clients(id) ON DELETE CASCADE,\n  opportunity_id UUID NOT NULL REFERENCES funding_opportunities(id) ON DELETE CASCADE,\n  \n  -- Match data\n  score INTEGER NOT NULL CHECK (score >= 0 AND score <= 100),\n  match_details JSONB NOT NULL DEFAULT '{}'::jsonb,\n  \n  -- Timestamps\n  matched_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),\n  last_refreshed_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),\n  \n  -- Composite primary key constraint\n  PRIMARY KEY (client_id, opportunity_id)\n);\n\n-- Create indexes for fast lookups\nCREATE INDEX idx_client_matches_client_id ON client_matches(client_id);\nCREATE INDEX idx_client_matches_opportunity_id ON client_matches(opportunity_id);\nCREATE INDEX idx_client_matches_score ON client_matches(score DESC);\nCREATE INDEX idx_client_matches_refreshed ON client_matches(last_refreshed_at);\n\n-- GIN index for querying match_details JSONB\nCREATE INDEX idx_client_matches_details ON client_matches USING GIN (match_details);\n\n-- Add comment for documentation\nCOMMENT ON TABLE client_matches IS 'Pre-calculated matches between clients and funding opportunities with automatic refresh triggers';\nCOMMENT ON COLUMN client_matches.match_details IS 'JSONB containing locationMatch, applicantTypeMatch, projectNeedsMatch, activitiesMatch, and matchedProjectNeeds array';\n```\n\n### 2. Match Details JSONB Structure\n\nThe `match_details` column should store the same structure currently returned by `evaluateMatch()`:\n\n```javascript\n{\n  \"locationMatch\": true,\n  \"applicantTypeMatch\": true,\n  \"projectNeedsMatch\": true,\n  \"activitiesMatch\": true,\n  \"matchedProjectNeeds\": [\"Solar/Renewable Energy\", \"HVAC Systems\"]\n}\n```\n\n## Database Functions for Match Calculation\n\n### 3. Create Match Calculation Function (PL/pgSQL)\n\nReplicate the JavaScript matching logic in `app/api/client-matching/route.js:183-285` as a PostgreSQL function:\n\n```sql\nCREATE OR REPLACE FUNCTION calculate_client_match(\n  p_client_id UUID,\n  p_opportunity_id UUID\n) RETURNS TABLE (\n  score INTEGER,\n  match_details JSONB\n) AS $$\nDECLARE\n  v_client RECORD;\n  v_opportunity RECORD;\n  v_location_match BOOLEAN := false;\n  v_applicant_type_match BOOLEAN := false;\n  v_project_needs_match BOOLEAN := false;\n  v_activities_match BOOLEAN := false;\n  v_matched_needs TEXT[] := ARRAY[]::TEXT[];\n  v_score INTEGER := 0;\nBEGIN\n  -- Fetch client\n  SELECT * INTO v_client FROM clients WHERE id = p_client_id;\n  IF NOT FOUND THEN RETURN; END IF;\n  \n  -- Fetch opportunity with coverage areas\n  SELECT \n    fo.*,\n    ARRAY_AGG(DISTINCT oca.coverage_area_id) FILTER (WHERE oca.coverage_area_id IS NOT NULL) AS coverage_area_ids\n  INTO v_opportunity\n  FROM funding_opportunities fo\n  LEFT JOIN opportunity_coverage_areas oca ON fo.id = oca.opportunity_id\n  WHERE fo.id = p_opportunity_id\n  GROUP BY fo.id;\n  \n  IF NOT FOUND THEN RETURN; END IF;\n  \n  -- 1. Location Match (using coverage_area_ids)\n  IF v_opportunity.is_national THEN\n    v_location_match := true;\n  ELSIF v_client.coverage_area_ids && v_opportunity.coverage_area_ids THEN\n    -- Arrays overlap (intersection check)\n    v_location_match := true;\n  END IF;\n  \n  -- 2. Applicant Type Match\n  -- Note: Implement type expansion logic from taxonomies.js getExpandedClientTypes()\n  -- For now, simple case-insensitive matching\n  IF v_opportunity.eligible_applicants IS NOT NULL THEN\n    SELECT EXISTS (\n      SELECT 1 \n      FROM unnest(v_opportunity.eligible_applicants) AS opp_type\n      WHERE LOWER(opp_type) LIKE '%' || LOWER(v_client.type) || '%'\n         OR LOWER(v_client.type) LIKE '%' || LOWER(opp_type) || '%'\n    ) INTO v_applicant_type_match;\n  END IF;\n  \n  -- 3. Project Needs Match\n  IF v_opportunity.eligible_project_types IS NOT NULL \n     AND v_client.project_needs IS NOT NULL THEN\n    SELECT ARRAY_AGG(need)\n    INTO v_matched_needs\n    FROM unnest(v_client.project_needs) AS need\n    WHERE EXISTS (\n      SELECT 1 FROM unnest(v_opportunity.eligible_project_types) AS proj_type\n      WHERE LOWER(proj_type) LIKE '%' || LOWER(need) || '%'\n         OR LOWER(need) LIKE '%' || LOWER(proj_type) || '%'\n    );\n    \n    v_project_needs_match := COALESCE(array_length(v_matched_needs, 1), 0) > 0;\n  END IF;\n  \n  -- 4. Activities Match (check for \"hot\" activities)\n  -- Simplified: check if eligible_activities contains construction/implementation terms\n  IF v_opportunity.eligible_activities IS NOT NULL THEN\n    SELECT EXISTS (\n      SELECT 1 FROM unnest(v_opportunity.eligible_activities) AS activity\n      WHERE LOWER(activity) LIKE ANY (ARRAY['%construction%', '%implementation%', '%installation%', '%retrofit%'])\n    ) INTO v_activities_match;\n  END IF;\n  \n  -- Calculate score if all criteria met\n  IF v_location_match AND v_applicant_type_match AND v_project_needs_match AND v_activities_match THEN\n    -- Score = % of client project needs matched\n    v_score := ROUND(\n      (COALESCE(array_length(v_matched_needs, 1), 0)::DECIMAL / \n       NULLIF(array_length(v_client.project_needs, 1), 0)) * 100\n    )::INTEGER;\n  END IF;\n  \n  RETURN QUERY SELECT \n    v_score,\n    jsonb_build_object(\n      'locationMatch', v_location_match,\n      'applicantTypeMatch', v_applicant_type_match,\n      'projectNeedsMatch', v_project_needs_match,\n      'activitiesMatch', v_activities_match,\n      'matchedProjectNeeds', v_matched_needs\n    );\nEND;\n$$ LANGUAGE plpgsql STABLE;\n```\n\n### 4. Refresh Functions\n\n```sql\n-- Refresh matches for a single client\nCREATE OR REPLACE FUNCTION refresh_client_matches(p_client_id UUID)\nRETURNS INTEGER AS $$\nDECLARE\n  v_matches_updated INTEGER := 0;\n  v_match RECORD;\nBEGIN\n  -- Delete existing matches for this client\n  DELETE FROM client_matches WHERE client_id = p_client_id;\n  \n  -- Calculate and insert new matches for all non-closed opportunities\n  FOR v_match IN\n    SELECT \n      p_client_id AS client_id,\n      fo.id AS opportunity_id,\n      calc.score,\n      calc.match_details\n    FROM funding_opportunities fo\n    CROSS JOIN LATERAL calculate_client_match(p_client_id, fo.id) calc\n    WHERE fo.status != 'closed'\n      AND calc.score > 0\n  LOOP\n    INSERT INTO client_matches (client_id, opportunity_id, score, match_details)\n    VALUES (v_match.client_id, v_match.opportunity_id, v_match.score, v_match.match_details)\n    ON CONFLICT (client_id, opportunity_id) DO UPDATE\n    SET score = EXCLUDED.score,\n        match_details = EXCLUDED.match_details,\n        last_refreshed_at = NOW();\n    \n    v_matches_updated := v_matches_updated + 1;\n  END LOOP;\n  \n  RETURN v_matches_updated;\nEND;\n$$ LANGUAGE plpgsql;\n\n-- Refresh matches for a single opportunity\nCREATE OR REPLACE FUNCTION refresh_opportunity_matches(p_opportunity_id UUID)\nRETURNS INTEGER AS $$\nDECLARE\n  v_matches_updated INTEGER := 0;\n  v_match RECORD;\nBEGIN\n  -- Delete existing matches for this opportunity\n  DELETE FROM client_matches WHERE opportunity_id = p_opportunity_id;\n  \n  -- Calculate and insert new matches for all clients\n  FOR v_match IN\n    SELECT \n      c.id AS client_id,\n      p_opportunity_id AS opportunity_id,\n      calc.score,\n      calc.match_details\n    FROM clients c\n    CROSS JOIN LATERAL calculate_client_match(c.id, p_opportunity_id) calc\n    WHERE calc.score > 0\n  LOOP\n    INSERT INTO client_matches (client_id, opportunity_id, score, match_details)\n    VALUES (v_match.client_id, v_match.opportunity_id, v_match.score, v_match.match_details)\n    ON CONFLICT (client_id, opportunity_id) DO UPDATE\n    SET score = EXCLUDED.score,\n        match_details = EXCLUDED.match_details,\n        last_refreshed_at = NOW();\n    \n    v_matches_updated := v_matches_updated + 1;\n  END LOOP;\n  \n  RETURN v_matches_updated;\nEND;\n$$ LANGUAGE plpgsql;\n```\n\n## Automatic Refresh Triggers\n\n### 5. Client Changes Trigger\n\n```sql\nCREATE OR REPLACE FUNCTION trigger_refresh_client_matches()\nRETURNS TRIGGER AS $$\nBEGIN\n  -- Only refresh if relevant fields changed\n  IF TG_OP = 'INSERT' \n     OR (TG_OP = 'UPDATE' AND (\n       NEW.type IS DISTINCT FROM OLD.type\n       OR NEW.project_needs IS DISTINCT FROM OLD.project_needs\n       OR NEW.coverage_area_ids IS DISTINCT FROM OLD.coverage_area_ids\n     )) THEN\n    PERFORM refresh_client_matches(NEW.id);\n  END IF;\n  \n  RETURN NEW;\nEND;\n$$ LANGUAGE plpgsql;\n\nCREATE TRIGGER client_update_refresh_matches\n  AFTER INSERT OR UPDATE ON clients\n  FOR EACH ROW\n  EXECUTE FUNCTION trigger_refresh_client_matches();\n```\n\n### 6. Opportunity Changes Trigger\n\n```sql\nCREATE OR REPLACE FUNCTION trigger_refresh_opportunity_matches()\nRETURNS TRIGGER AS $$\nBEGIN\n  IF TG_OP = 'INSERT'\n     OR (TG_OP = 'UPDATE' AND (\n       NEW.eligible_applicants IS DISTINCT FROM OLD.eligible_applicants\n       OR NEW.eligible_project_types IS DISTINCT FROM OLD.eligible_project_types\n       OR NEW.eligible_activities IS DISTINCT FROM OLD.eligible_activities\n       OR NEW.status IS DISTINCT FROM OLD.status\n     )) THEN\n    PERFORM refresh_opportunity_matches(NEW.id);\n  END IF;\n  \n  RETURN NEW;\nEND;\n$$ LANGUAGE plpgsql;\n\nCREATE TRIGGER opportunity_update_refresh_matches\n  AFTER INSERT OR UPDATE ON funding_opportunities\n  FOR EACH ROW\n  EXECUTE FUNCTION trigger_refresh_opportunity_matches();\n```\n\n### 7. Coverage Areas Junction Table Trigger\n\n```sql\nCREATE OR REPLACE FUNCTION trigger_refresh_coverage_area_matches()\nRETURNS TRIGGER AS $$\nBEGIN\n  -- Refresh matches for the affected opportunity\n  IF TG_OP = 'INSERT' OR TG_OP = 'UPDATE' THEN\n    PERFORM refresh_opportunity_matches(NEW.opportunity_id);\n  ELSIF TG_OP = 'DELETE' THEN\n    PERFORM refresh_opportunity_matches(OLD.opportunity_id);\n  END IF;\n  \n  RETURN NULL;\nEND;\n$$ LANGUAGE plpgsql;\n\nCREATE TRIGGER coverage_area_change_refresh_matches\n  AFTER INSERT OR UPDATE OR DELETE ON opportunity_coverage_areas\n  FOR EACH ROW\n  EXECUTE FUNCTION trigger_refresh_coverage_area_matches();\n```\n\n## API Integration\n\n### 8. Update Client API Routes\n\nModify `app/api/clients/route.js` (POST) and `app/api/clients/[id]/route.js` (PUT):\n\n```javascript\n// After successful client insert/update, trigger match refresh\n// The database trigger will handle this automatically now!\n// No additional code needed - triggers fire on INSERT/UPDATE\n```\n\n### 9. Update Opportunity Processing\n\nModify `lib/agents-v2/core/storageAgent/index.js` to ensure triggers fire after opportunity storage:\n\n```javascript\n// The database triggers will fire automatically on INSERT/UPDATE\n// to funding_opportunities and opportunity_coverage_areas tables\n// No additional code changes needed in storageAgent\n```\n\n### 10. Create Query Helper Functions\n\nAdd new API endpoint `/api/client-matching/from-table/route.js` to query the persistent table:\n\n```javascript\nexport async function GET(request) {\n  const { searchParams } = new URL(request.url);\n  const clientId = searchParams.get('clientId');\n  \n  const { data, error } = await supabase\n    .from('client_matches')\n    .select(`\n      *,\n      funding_opportunities(id, title, agency_name, status, close_date),\n      clients(id, name, type)\n    `)\n    .eq('client_id', clientId)\n    .order('score', { ascending: false });\n  \n  return Response.json({ matches: data });\n}\n```\n\n## Migration and Initial Population\n\n### 11. Backfill Script\n\nCreate `scripts/clients/backfill-client-matches.js`:\n\n```javascript\n// Populate client_matches table for all existing clients and opportunities\nconst { createClient } = require('@supabase/supabase-js');\n\nconst supabase = createClient(\n  process.env.NEXT_PUBLIC_SUPABASE_URL,\n  process.env.SUPABASE_SERVICE_ROLE_KEY\n);\n\nasync function backfillClientMatches() {\n  console.log('Starting client matches backfill...');\n  \n  // Get all clients\n  const { data: clients, error: clientError } = await supabase\n    .from('clients')\n    .select('id, name');\n  \n  if (clientError) throw clientError;\n  \n  console.log(`Processing ${clients.length} clients...`);\n  \n  for (const client of clients) {\n    const { data, error } = await supabase\n      .rpc('refresh_client_matches', { p_client_id: client.id });\n    \n    if (error) {\n      console.error(`Error refreshing matches for ${client.name}:`, error);\n    } else {\n      console.log(`✓ Refreshed ${data} matches for ${client.name}`);\n    }\n  }\n  \n  console.log('Backfill complete!');\n}\n\nbackfillClientMatches().catch(console.error);\n```\n\nAdd to package.json:\n```json\n\"backfill-client-matches\": \"node scripts/clients/backfill-client-matches.js\"\n```\n\n## Performance Considerations\n\n- **Batch Refresh**: For bulk operations (e.g., updating 100 opportunities via pipeline), consider temporarily disabling triggers and running a single batch refresh\n- **Index Strategy**: The composite primary key + additional indexes ensure fast lookups by client_id, opportunity_id, and score\n- **Stale Data Detection**: The `last_refreshed_at` column allows querying for matches that haven't been refreshed recently\n- **Connection Pooling**: Database functions execute server-side, reducing API roundtrips\n\n## Migration File Location\n\nCreate migration: `supabase/migrations/YYYYMMDD_create_client_matches_table.sql`\n\nFollow existing migration patterns in `supabase/migrations/20251105000001_enable_postgis_coverage_areas.sql`",
@@ -4735,7 +4804,7 @@
         "subtasks": []
       },
       {
-        "id": "26",
+        "id": 26,
         "title": "Add taxonomy validation agent to pipeline before storage",
         "description": "Create a new agent that validates and normalizes taxonomy fields (eligible_applicants, eligible_project_types, eligible_activities, categories, funding_type) before storage. Integrate between Analysis Agent and Storage Agent to ensure data compliance with fixed taxonomies defined in lib/constants/taxonomies.js.",
         "details": "## Background\n\nThe current V2 pipeline processes funding opportunities through these stages:\n1. DataExtractionAgent → extracts raw data from APIs\n2. AnalysisAgent (contentEnhancer.js) → enhances content using LLM\n3. FilterFunction → filters by relevance score\n4. StorageAgent (dataSanitizer.js) → sanitizes and stores to database\n\nCurrently, taxonomy fields are populated by the LLM in the content enhancement stage, but there's no validation to ensure values match our fixed taxonomies in `lib/constants/taxonomies.js`. This can lead to:\n- Inconsistent values (\"Public Agency\" vs \"Public Agencies\")\n- Unknown values that don't match our taxonomy\n- Difficulty filtering and matching due to data inconsistency\n\n## Implementation Strategy\n\n### Location: Create new agent module\n\n**File**: `lib/agents-v2/core/taxonomyValidationAgent/index.js`\n\nThis agent should be inserted in the pipeline flow in `lib/services/processCoordinatorV2.js` between the Filter stage (line 619-650) and Storage stage (line 666-715).\n\n### Core Validation Logic\n\nThe agent should implement a **hybrid approach** (Option C from requirements):\n\n**Phase 1: Rule-based normalization (fast, deterministic)**\n- Create normalization maps for known variants:\n  ```javascript\n  const NORMALIZATION_MAPS = {\n    ELIGIBLE_APPLICANTS: {\n      'Public Agency': 'Public Agencies',\n      'Native American tribal organizations': 'Tribal Governments',\n      'K-12 School District': 'K-12 School Districts',\n      'University': 'Universities',\n      // ... more mappings\n    },\n    ELIGIBLE_PROJECT_TYPES: {\n      'Solar Panel': 'Solar Panels',\n      'Wind Turbine': 'Wind Turbines',\n      // ... more mappings\n    },\n    // ... other fields\n  };\n  ```\n- Use case-insensitive exact matching first\n- Check against singular/plural variants automatically\n- Apply normalization map for known alternatives\n\n**Phase 2: Fuzzy matching for unknown values**\n- Use string similarity (Levenshtein distance or similar)\n- Calculate similarity score against all taxonomy values\n- If match score > threshold (e.g., 0.85), normalize to closest match\n- Log fuzzy matches for review/improvement of normalization maps\n\n**Phase 3: LLM fallback for truly ambiguous cases (optional)**\n- For values that fail both rule-based and fuzzy matching\n- Use small prompt to ask Claude to map to closest taxonomy value\n- Cache results to build normalization maps over time\n\n### Integration Points\n\n**In `lib/services/processCoordinatorV2.js`:**\n\nInsert new stage after Filter (around line 650):\n```javascript\n// Step 7B: TaxonomyValidationAgent - Normalize taxonomy fields\nconsole.log(`[ProcessCoordinatorV2] ✅ Stage 5B: TaxonomyValidationAgent`)\nawait runManager.updateV2TaxonomyValidation('processing', null, null, 0, 0)\n\ntry {\n  const validationResult = await validateTaxonomies(\n    filterResult.includedOpportunities,\n    taxonomyConfig\n  )\n  \n  // Track validation metrics\n  metrics.stageMetrics.taxonomyValidation = {\n    executionTime: validationResult.executionTime,\n    opportunitiesProcessed: filterResult.includedOpportunities.length,\n    fieldsNormalized: validationResult.metrics.totalNormalizations,\n    fuzzyMatchesUsed: validationResult.metrics.fuzzyMatches,\n    unknownValuesRemoved: validationResult.metrics.unknownValues\n  }\n  \n  await runManager.updateV2TaxonomyValidation(\n    'completed',\n    validationResult,\n    validationResult.metrics,\n    filterResult.includedOpportunities.length,\n    validationResult.opportunities.length\n  )\n  \n  // Pass validated opportunities to storage\n  const storageOpportunities = validationResult.opportunities\n} catch (error) {\n  console.error(`[ProcessCoordinatorV2] ❌ TaxonomyValidationAgent failed:`, error)\n  await runManager.updateV2TaxonomyValidation('failed', null, null, 0, 0)\n  throw error\n}\n```\n\n**Add RunManager method in `lib/services/runManagerV2.js`:**\n```javascript\nasync updateV2TaxonomyValidation(status, stageResults, performanceMetrics, inputCount, outputCount) {\n  return this.updateV2Stage('taxonomy_validation', status, stageResults, performanceMetrics, 0, 0, inputCount, outputCount);\n}\n```\n\n### Fields to Validate\n\nTarget the 5 taxonomy fields from requirements:\n1. `eligible_applicants` → `TAXONOMIES.ELIGIBLE_APPLICANTS` (tiered: hot/strong/mild/weak)\n2. `eligible_project_types` → `TAXONOMIES.ELIGIBLE_PROJECT_TYPES` (tiered: hot/strong/mild/weak)\n3. `eligible_activities` → `TAXONOMIES.ELIGIBLE_ACTIVITIES` (tiered: hot/strong/mild/weak)\n4. `categories` → `TAXONOMIES.CATEGORIES` (tiered: hot/strong/mild/weak)\n5. `funding_type` → `TAXONOMIES.FUNDING_TYPES` (tiered: hot/strong/mild/weak)\n\nNote: These are ARRAY fields containing multiple taxonomy values per opportunity.\n\n### Agent Module Structure\n\n```javascript\n// lib/agents-v2/core/taxonomyValidationAgent/index.js\n\nimport { TAXONOMIES } from '../../../constants/taxonomies.js';\nimport { normalizationMaps } from './normalizationMaps.js';\nimport { fuzzyMatcher } from './fuzzyMatcher.js';\n\n/**\n * Validates and normalizes taxonomy fields before storage\n * @param {Array} opportunities - Filtered opportunities\n * @param {Object} config - Validation configuration\n * @returns {Promise<Object>} - Validated opportunities with metrics\n */\nexport async function validateTaxonomies(opportunities, config = {}) {\n  const startTime = Date.now();\n  const metrics = {\n    totalProcessed: 0,\n    totalNormalizations: 0,\n    ruleBasedMatches: 0,\n    fuzzyMatches: 0,\n    unknownValues: 0,\n    fieldBreakdown: {}\n  };\n  \n  const validatedOpportunities = opportunities.map(opp => {\n    const validated = { ...opp };\n    \n    // Validate each taxonomy field\n    validated.eligible_applicants = validateField(\n      opp.eligible_applicants,\n      'ELIGIBLE_APPLICANTS',\n      metrics\n    );\n    validated.eligible_project_types = validateField(\n      opp.eligible_project_types,\n      'ELIGIBLE_PROJECT_TYPES',\n      metrics\n    );\n    validated.eligible_activities = validateField(\n      opp.eligible_activities,\n      'ELIGIBLE_ACTIVITIES',\n      metrics\n    );\n    validated.categories = validateField(\n      opp.categories,\n      'CATEGORIES',\n      metrics\n    );\n    \n    // funding_type is singular, not array\n    if (opp.funding_type) {\n      validated.funding_type = validateSingleValue(\n        opp.funding_type,\n        'FUNDING_TYPES',\n        metrics\n      );\n    }\n    \n    metrics.totalProcessed++;\n    return validated;\n  });\n  \n  return {\n    opportunities: validatedOpportunities,\n    metrics,\n    executionTime: Date.now() - startTime\n  };\n}\n\n/**\n * Validates array field values against taxonomy\n */\nfunction validateField(values, taxonomyKey, metrics) {\n  if (!values || !Array.isArray(values)) return values;\n  \n  const taxonomy = flattenTaxonomy(TAXONOMIES[taxonomyKey]);\n  const validated = [];\n  \n  for (const value of values) {\n    // Phase 1: Exact match (case-insensitive)\n    let normalized = findExactMatch(value, taxonomy);\n    \n    // Phase 2: Rule-based normalization\n    if (!normalized && normalizationMaps[taxonomyKey]) {\n      normalized = normalizationMaps[taxonomyKey][value];\n      if (normalized) {\n        metrics.ruleBasedMatches++;\n        metrics.totalNormalizations++;\n      }\n    }\n    \n    // Phase 3: Fuzzy matching\n    if (!normalized) {\n      const fuzzyResult = fuzzyMatcher.findBestMatch(value, taxonomy);\n      if (fuzzyResult.score > 0.85) {\n        normalized = fuzzyResult.match;\n        metrics.fuzzyMatches++;\n        metrics.totalNormalizations++;\n      }\n    }\n    \n    // Add to result or discard\n    if (normalized) {\n      validated.push(normalized);\n    } else {\n      console.warn(`[TaxonomyValidation] Unknown value: \"${value}\" for ${taxonomyKey}`);\n      metrics.unknownValues++;\n    }\n  }\n  \n  return validated;\n}\n```\n\n### Supporting Modules\n\n**normalizationMaps.js**: Hard-coded mappings for known variants\n**fuzzyMatcher.js**: String similarity algorithm for fuzzy matching\n**taxonomyUtils.js**: Helper functions to flatten tiered taxonomies\n\n### Configuration Options\n\nAllow configuration for:\n- Fuzzy match threshold (default: 0.85)\n- Whether to remove unknown values or keep them (default: remove)\n- Whether to use LLM fallback (default: false)\n- Logging level for unknowns\n\n### Metrics to Track\n\n- Total opportunities processed\n- Total field normalizations performed\n- Breakdown by normalization method (exact/rule-based/fuzzy/unknown)\n- Per-field statistics\n- Execution time\n\n### Database Schema\n\nAdd new stage to `pipeline_stages` table (already supports taxonomy_validation via stage_name enum).\n\n### Testing Strategy\n\nCreate comprehensive tests in `lib/agents-v2/tests/core/taxonomyValidationAgent.test.js`:\n- Test exact matches (case-insensitive)\n- Test rule-based normalization\n- Test fuzzy matching\n- Test unknown value handling\n- Test array fields\n- Test singular fields (funding_type)\n- Test performance with large batches",
@@ -4749,7 +4818,7 @@
         "subtasks": []
       },
       {
-        "id": "27",
+        "id": 27,
         "title": "Consolidate duplicate fundingApi definitions",
         "description": "lib/supabase.js and lib/services/fundingApi.js both export a fundingApi object with overlapping methods (getOpportunities, getOpportunityById, getRecentOpportunities, getUpcomingDeadlines, getFundingSources, getClientApplications). The lib/services/ version takes supabase as a parameter (dependency injection), while the lib/supabase.js version uses a module-level proxy. Both have mock data fallbacks that are identical. This duplication risks silent divergence — e.g., a fix applied to one file but not the other. Consolidate into a single canonical fundingApi in lib/services/fundingApi.js (the DI version), update all consumers to use it, and remove the duplicate from lib/supabase.js. Also remove the shared mock data functions (getMockDeadlines, getMockFundingSources, getMockClientApplications) that are duplicated across both files.",
         "details": "",
@@ -4760,7 +4829,7 @@
         "subtasks": []
       },
       {
-        "id": "28",
+        "id": 28,
         "title": "Add live-DB integration tests for Tier 3 database tests",
         "description": "All 7 test files in tests/database/ (views, RPCs, constraints) use inline JS functions that simulate expected behavior against fixture data. None connect to a real database. This means: (1) Schema drift is invisible — if a SQL view is missing a column that an API route depends on, no test fails. The JS simulation just spreads the input object. This caused a production bug where program_id was added to funding_opportunities but not to the view, breaking the admin review page at runtime. (2) SQL logic is untested — the CASE expression for status, ARRAY_AGG for coverage_state_codes, GROUP BY behavior, NULL handling in aggregates are all reimplemented in JS rather than tested against real SQL. (3) Migration correctness is assumed — after running supabase migration up, there is no automated verification that the resulting schema matches what application code expects. A stopgap schema contract test was added to fundingOpportunitiesWithGeography.test.js (manually maintained column list), but the real fix is a set of tests that connect to the local Supabase instance (supabase start) and run real queries. Scope: create a new test tier or sub-tier that requires Docker/Supabase running, with tests that query actual views (assert column sets), call actual RPCs (assert return shapes), and verify migration output matches consumer expectations. See tests/README.md Known Gaps section for full problem statement.",
         "details": "",
@@ -4772,7 +4841,7 @@
         "updatedAt": "2026-02-20T07:25:23.576Z"
       },
       {
-        "id": "29",
+        "id": 29,
         "title": "Standardize funding_sources fields across both pipelines",
         "description": "Unify how the API pipeline and manual pipeline write to funding_sources. Currently there are duplicate/competing columns and missing data:\n\n**Problem:**\n1. Two competing type columns: `type` (agency_type ENUM, used by API pipeline + views + UI) and `funder_type` (TEXT, used by manual pipeline skills). Both do the same job.\n2. API-created sources have NULL `state_code` — even obvious state agencies like 'California Energy Commission' have no state_code, making them invisible to manual pipeline orchestrator queries (e.g., WHERE state_code = 'CA').\n3. No convention for federal/national sources — NULL is ambiguous (federal vs unfilled).\n\n**Solution:**\n1. Drop `funder_type` TEXT column (only exists in dev DB, never deployed to production).\n2. Use the existing `type` ENUM column everywhere. Add 'Tribal' value to the ENUM.\n3. Update all manual pipeline skill files to reference `type` instead of `funder_type`.\n4. Adopt `'US'` as the state_code for federal/national sources (fits CHAR(2), not a real state code). No more NULLs.\n5. Update manual pipeline skills and docs to document the `'US'` convention.\n6. Update `fundingSourceManager.js` (API pipeline) to populate `state_code` (infer from source name or LLM extraction) and set 'US' for Federal type sources.\n7. Update views if any reference `funder_type`.\n\n**Files to change:**\n- Migration: drop `funder_type`, add 'Tribal' to ENUM\n- `lib/agents-v2/core/storageAgent/fundingSourceManager.js` — write `state_code`, use ENUM `type`\n- `.claude/skills/source-registry/SKILL.md` — `funder_type` → `type`, document 'US' convention\n- `.claude/skills/pipeline-orchestrator/SKILL.md` — update all `funder_type` references\n- `.claude/skills/opportunity-discovery/SKILL.md` — update JOIN references\n- `.claude/skills/extraction/SKILL.md` — update JOIN references\n- `.claude/skills/analysis/SKILL.md` — update JOIN references\n- `.claude/skills/storage/SKILL.md` — update references\n- `docs/prd/opp_staging/manual-claude-code-pipeline-architecture-proposal.md` — update field references\n\n**Priority:** medium\n**Depends on:** nothing",
         "details": "",
@@ -4824,7 +4893,7 @@
         ]
       },
       {
-        "id": "30",
+        "id": 30,
         "title": "Backfill production funding_sources with state_code values",
         "description": "After task 29 changes are deployed to production, backfill existing funding_sources records with proper state_code values.\n\n**Scope:**\n1. Federal sources (type='Federal', ~51 records): SET state_code='US'\n2. State sources (type='State', ~57 records): Infer state_code from name (e.g., 'California Energy Commission' → 'CA', 'Board of Forestry' → may need manual review). Many are California agencies from the Salesforce import.\n3. Utility sources (type='Utility', ~83 records): Infer state_code from name or leave for manual review.\n4. 1 source with NULL type: investigate and fix.\n\n**Approach:**\n- Write a SQL script that handles the easy cases (Federal → 'US', obvious state names → state codes).\n- Generate a report of ambiguous sources that need manual state_code assignment.\n- Run via psql against production after deploying task 29 migration.\n\n**Priority:** low — blocked until task 29 is deployed to production.\n**Depends on:** task 29",
         "details": "",
@@ -4837,7 +4906,7 @@
         "subtasks": []
       },
       {
-        "id": "31",
+        "id": 31,
         "title": "Clean up opportunity fetching patterns",
         "description": "Consolidate and fix the 25+ API routes that fetch funding opportunities. Key work items: (1) Fix deprecated eligible_states usage in /api/map/opportunities/[stateCode] — 5 locations need coverage_state_codes. (2) Delete dead fundingApi object in lib/supabase.js (keep calculateDaysLeft/determineStatus/createSupabaseClient). (3) Delete 4 dead methods in lib/services/fundingApi.js. (4) Fix inconsistent status filtering — routes querying base table status instead of view's date-computed status (/api/counts, /api/client-matching, /api/deadlines). (5) Standardize Supabase client creation — eliminate direct createClient patterns in favor of SSR utility from utils/supabase/api.js. (6) Fix double-RPC count in fundingApi.getOpportunities — use { count: exact, head: true } instead. (7) Fix /api/funding/verify/grants-gov wrong column name source_id (should be api_source_id or funding_source_id).",
         "details": "",
@@ -4848,7 +4917,7 @@
         "subtasks": []
       },
       {
-        "id": "32",
+        "id": 32,
         "title": "Implement admin role layer and route protection",
         "description": "Add role-based access control to protect admin features. Key work items: (1) Create a profiles table or user_roles table in public schema with user_id (FK to auth.users) and role (admin/user). (2) Wire up existing requireRole() in utils/supabase/api.js to admin API routes (/api/admin/review, /api/admin/review/approve, /api/admin/review/reject, /api/admin/review/demote). (3) Wire up enforceRBAC() in utils/supabase/middleware.js to protect /admin/* routes. (4) Add conditional rendering in UI to hide admin tab on opportunity detail page and /admin routes from non-admin users. (5) Add user role seeding — mark gborh@energysystemsgroup.com as admin. (6) Consider RLS policies that check user role for write operations.",
         "details": "",
@@ -4859,7 +4928,7 @@
         "subtasks": []
       },
       {
-        "id": "33",
+        "id": 33,
         "title": "Add client-user ownership and filtering",
         "description": "Add multi-tenancy to the clients table so users only see their own clients. Key work items: (1) Add user_id UUID column to clients table (FK to auth.users, nullable for migration). (2) Backfill existing clients with the single current user. (3) Add RLS policy: SELECT/UPDATE/DELETE restricted to rows where user_id = auth.uid(). (4) Update /api/clients route to filter by authenticated user. (5) Update client creation flow to automatically set user_id from session. (6) Consider admin override — admins can see all clients. Depends on task for admin role layer being completed first.",
         "details": "",
@@ -4872,7 +4941,7 @@
         "subtasks": []
       },
       {
-        "id": "34",
+        "id": 34,
         "title": "Fix admin tab blank after promotion (verify migration deployment)",
         "description": "The admin tab on the opportunity detail page (/funding/opportunities/[id]) goes blank after an opportunity is promoted. Root cause: migration 20260218000001 (update_view_add_promotion_status) adds promotion_status, reviewed_by, reviewed_at, review_notes to the view SELECT list and removes the WHERE clause. Without this migration, select('*') returns undefined for these fields, and the strict equality checks in the admin tab (=== 'pending_review', === 'promoted', === null) all fail, rendering nothing. Fix: (1) Verify migration 20260218000001 is deployed to staging/production. (2) Add defensive coding in the admin tab — handle undefined promotion_status gracefully (e.g., treat undefined same as null). (3) Add a check in handleAdminApprove to verify updated_count > 0 from the approve API response.",
         "details": "",
@@ -4883,7 +4952,7 @@
         "subtasks": []
       },
       {
-        "id": "35",
+        "id": 35,
         "title": "Implement caching and performance optimization",
         "description": "The app has virtually no caching — every page visit re-fetches all data from scratch. Key work: (1) Wire up @tanstack/react-query v5 (already installed) as the client-side cache layer — add QueryClientProvider to layout.js, convert useState+useEffect fetch patterns to useQuery hooks across all pages (dashboard, map, opportunities, clients, timeline, detail). (2) Add HTTP Cache-Control headers to stable API routes: /api/categories (s-maxage=3600), /api/funding/project-type-summary (s-maxage=300), /api/counts (s-maxage=60), /api/map/funding-by-state (s-maxage=120). (3) Consolidate client-matching routes — 3 routes do identical ALL-records fetch + O(n*m) matching. Create a shared cached computation layer. (4) Parallelize map funding-by-state 4 sequential RPCs with Promise.all. (5) Remove cache-busting timestamp from map page. (6) Add React.memo to heavy list-item components (OpportunityCard, ClientCard). (7) Remove unused @tanstack/react-query import placeholder and langchain if unused in client bundle. Priority order: react-query wiring (biggest bang), HTTP cache headers, client-matching consolidation, memo.",
         "details": "",
@@ -4894,7 +4963,7 @@
         "subtasks": []
       },
       {
-        "id": "36",
+        "id": 36,
         "title": "Write Critical + API tests for 10 untested user-facing API routes",
         "description": "Per the testing framework decision gate, these new API routes require Critical (business logic) + API (contract) tests. All were added on feature/testing with 0 test coverage. Routes: /api/funding/coverage-counts, /api/funding/project-type-summary, /api/funding/total-available, /api/map/coverage-areas/[stateCode], /api/map/national, /api/project-types, /api/clients/[id]/hidden-matches, /api/client-matching/summary, /api/client-matching/top-matches, /api/admin/system-config/[key]. Group into files: (1) tests/critical/funding/coverageCounts.test.js + tests/api/funding-stats.api.test.js for funding stats routes, (2) extend tests/critical/map/ and tests/api/map.api.test.js for map coverage-areas and national, (3) tests/critical/client-matching/hiddenMatches.test.js + extend tests/api/client-matching.api.test.js for hidden-matches/summary/top-matches, (4) tests/api/project-types.api.test.js, (5) tests/api/system-config.api.test.js. Pattern: inline pure functions + fixture data, NO imports from app code. Priority: HIGH.",
         "details": "",
@@ -4906,7 +4975,7 @@
         "updatedAt": "2026-02-20T06:57:57.652Z"
       },
       {
-        "id": "37",
+        "id": 37,
         "title": "Write Critical tier tests for clientMatching utility functions",
         "description": "The file lib/utils/clientMatching.js contains 5 pure display functions used across client matching pages. All have 0 test coverage. Test file: tests/critical/client-matching/clientMatchingUtils.test.js. Functions to test: formatMatchScore(score) with boundary values (0, 0.5, 1, null, undefined), getMatchScoreColor(score) with thresholds at 80%/60%/40%, getMatchScoreBgColor(score) with color values at each threshold, formatProjectNeeds(needs) with array passthrough/empty/null, generateClientTags(client, matches, limit) with deduplication/sorting/limiting. Pattern: inline pure functions copied from production code, NO imports from app code. Priority: HIGH.",
         "details": "",
@@ -4918,7 +4987,7 @@
         "updatedAt": "2026-02-20T06:58:01.979Z"
       },
       {
-        "id": "38",
+        "id": 38,
         "title": "Write API contract tests for internal processing endpoints",
         "description": "These internal/admin processing endpoints technically require tests per the decision gate but are lower risk since they are not directly user-facing. Cover response shapes and error handling only. Routes: /api/cron/process-jobs (test auth check, response shape), /api/funding/process-source-v2 (test response shape), /api/admin/funding-sources/[id]/process routeV1/V2/V3 (test response shapes). Test file: tests/api/processing.api.test.js. Pattern: API contract tests only (response shapes, not business logic). Priority: LOW.",
         "details": "",
@@ -4937,7 +5006,9 @@
       "completedCount": 21,
       "tags": [
         "v2"
-      ]
+      ],
+      "created": "2026-02-21T01:10:05.170Z",
+      "description": "Tasks for v2 context"
     }
   },
   "pipeline": {
@@ -6093,7 +6164,7 @@
   "e2e": {
     "tasks": [
       {
-        "id": "1",
+        "id": 1,
         "title": "Write smoke API e2e tests for core endpoints",
         "description": "Create tests/e2e/api/core.e2e.test.js. Test GET /api/funding (200, paginated array), GET /api/counts (200, integers), GET /api/deadlines (200, sorted), GET /api/categories (200, string array), GET /api/project-types (200, objects array). Use apiUrl() helper from tests/e2e/helpers/server.js. Assert HTTP status and response shape only.",
         "details": "",
@@ -6105,7 +6176,7 @@
         "updatedAt": "2026-02-20T07:53:06.285Z"
       },
       {
-        "id": "2",
+        "id": 2,
         "title": "Write API e2e tests for client-matching endpoints",
         "description": "Create tests/e2e/api/client-matching.e2e.test.js. Test GET /api/client-matching (200, match objects with score), GET /api/client-matching/summary (200, summary shape with counts), GET /api/client-matching/top-matches (200, ranked matches array). Use apiUrl() helper. Assert status and response shape.",
         "details": "",
@@ -6117,7 +6188,7 @@
         "updatedAt": "2026-02-20T07:53:41.355Z"
       },
       {
-        "id": "3",
+        "id": 3,
         "title": "Write API e2e tests for clients CRUD",
         "description": "Create tests/e2e/api/clients.e2e.test.js. Test GET /api/clients (200, paginated array), POST /api/clients (201, created with id), GET /api/clients/[id] (200, single object), PUT /api/clients/[id] (200, updated fields), DELETE /api/clients/[id] (200/204, removed). Also test error cases: GET nonexistent id (404), POST with missing fields (400). Use apiUrl() helper.",
         "details": "",
@@ -6129,7 +6200,7 @@
         "updatedAt": "2026-02-20T07:54:14.064Z"
       },
       {
-        "id": "4",
+        "id": 4,
         "title": "Write API e2e tests for map endpoints",
         "description": "Create tests/e2e/api/map.e2e.test.js. Test GET /api/map/funding-by-state (200, state aggregation), GET /api/map/scope-breakdown/[stateCode] (200, scope counts), GET /api/map/opportunities/[stateCode] (200, filtered array), GET /api/map/opportunities (200, all), GET /api/map/national (200), GET /api/map/coverage-areas/[stateCode] (200). Use a real state code from the DB (e.g. FL or OR). Use apiUrl() helper.",
         "details": "",
@@ -6141,7 +6212,7 @@
         "updatedAt": "2026-02-20T07:54:52.838Z"
       },
       {
-        "id": "5",
+        "id": 5,
         "title": "Write API e2e tests for admin review flow",
         "description": "Create tests/e2e/api/admin-review.e2e.test.js. Test GET /api/admin/review (200, pending_review records array), POST /api/admin/review/approve (200, status updated), POST /api/admin/review/reject (200, status updated), POST /api/admin/review/demote (200, status downgraded). Test the full flow: list pending -> approve one -> verify it's gone from pending list. Use apiUrl() helper.",
         "details": "",
@@ -6153,7 +6224,7 @@
         "updatedAt": "2026-02-20T07:55:29.548Z"
       },
       {
-        "id": "6",
+        "id": 6,
         "title": "Write browser e2e smoke tests (P0 pages)",
         "description": "Create tests/e2e/browser/smoke.spec.js. Test that these pages load without JS errors and show expected content: / (dashboard - summary cards visible), /funding/opportunities (explorer - opportunity cards rendered), /map (map SVG rendered), /clients (client cards or empty state). Use Playwright test/expect imports, page.goto() with relative paths. These are P0 priority.",
         "details": "",
@@ -6165,7 +6236,7 @@
         "updatedAt": "2026-02-20T07:56:09.025Z"
       },
       {
-        "id": "7",
+        "id": 7,
         "title": "Write browser e2e test for explorer filter+paginate flow",
         "description": "Create tests/e2e/browser/explorer.spec.js. Test: navigate to /funding/opportunities, verify list loads, apply a status filter (e.g. Open), verify results narrow, apply a state filter, verify count updates. If pagination exists, click next page and verify new results load. Use Playwright getByText/getByRole selectors.",
         "details": "",
@@ -6177,7 +6248,7 @@
         "updatedAt": "2026-02-20T07:56:45.403Z"
       },
       {
-        "id": "8",
+        "id": 8,
         "title": "Write browser e2e test for client matching flow",
         "description": "Create tests/e2e/browser/client-matching.spec.js. Test: navigate to /clients, verify client list loads, click on a client, verify match scores are displayed. If the detail page has tabs, verify tab switching works. Use Playwright getByText/getByRole selectors.",
         "details": "",
@@ -6189,7 +6260,7 @@
         "updatedAt": "2026-02-20T07:57:19.480Z"
       },
       {
-        "id": "9",
+        "id": 9,
         "title": "Update E2E-MATRIX.md status as tests are written",
         "description": "Living maintenance task. As each e2e test file is created (tasks 1-8), update the corresponding rows in tests/E2E-MATRIX.md: change Status from needs-test to covered, fill in the Test File column with the actual filename. This should be done incrementally after each test task completes.",
         "details": "",
@@ -6201,7 +6272,7 @@
         "updatedAt": "2026-02-20T07:58:05.229Z"
       },
       {
-        "id": "10",
+        "id": 10,
         "title": "Set up Playwright in CI (GitHub Actions)",
         "description": "Deferred until local e2e tests are stable. Create .github/workflows/e2e.yml or add an e2e job to the existing CI workflow. Install Chromium in CI, start dev server, run test:e2e:api and test:e2e:browser. Consider caching Playwright browsers. Uncomment the webServer block in tests/e2e/playwright.config.js for CI use.",
         "details": "",
@@ -6211,16 +6282,150 @@
         "priority": "medium",
         "subtasks": [],
         "updatedAt": "2026-02-20T07:58:48.197Z"
+      },
+      {
+        "id": 11,
+        "title": "Add E2E test for PUT /api/clients/[id]",
+        "description": "Add tests to clients.e2e.test.js: (1) Update existing client name, verify response shape (success, client, addressChanged), restore original. (2) PUT to nil UUID returns 404. Update E2E-MATRIX.md.",
+        "details": "",
+        "testStrategy": "",
+        "status": "done",
+        "dependencies": [],
+        "priority": "medium",
+        "subtasks": [],
+        "updatedAt": "2026-02-21T01:18:04.132Z"
+      },
+      {
+        "id": 12,
+        "title": "Add E2E test for DELETE /api/clients/[id]",
+        "description": "Add lifecycle test to clients.e2e.test.js: POST temp client, DELETE it, verify 200 response, GET to confirm 404. Self-cleaning pattern. Update E2E-MATRIX.md.",
+        "details": "",
+        "testStrategy": "",
+        "status": "done",
+        "dependencies": [],
+        "priority": "medium",
+        "subtasks": [],
+        "updatedAt": "2026-02-21T01:18:08.965Z"
+      },
+      {
+        "id": 13,
+        "title": "Add E2E test for GET /api/funding/coverage-counts",
+        "description": "Add tests to core.e2e.test.js: (1) No params - verify 200, counts object with numeric values. (2) With ?state=OR - verify same shape. Update E2E-MATRIX.md.",
+        "details": "",
+        "testStrategy": "",
+        "status": "done",
+        "dependencies": [],
+        "priority": "medium",
+        "subtasks": [],
+        "updatedAt": "2026-02-21T01:18:13.879Z"
+      },
+      {
+        "id": 14,
+        "title": "Add E2E test for GET /api/funding/total-available",
+        "description": "Add test to core.e2e.test.js: verify 200, total (number), timestamp (string), cached (boolean). Update E2E-MATRIX.md.",
+        "details": "",
+        "testStrategy": "",
+        "status": "done",
+        "dependencies": [],
+        "priority": "medium",
+        "subtasks": [],
+        "updatedAt": "2026-02-21T01:18:19.626Z"
+      },
+      {
+        "id": 15,
+        "title": "Add E2E test for POST /api/export/client-matches-pdf",
+        "description": "Create new export.e2e.test.js: (1) Empty body returns 400. (2) Nil UUID returns 404. (3) Real client ID returns 200 with content-type application/pdf. Update E2E-MATRIX.md.",
+        "details": "",
+        "testStrategy": "",
+        "status": "done",
+        "dependencies": [],
+        "priority": "medium",
+        "subtasks": [],
+        "updatedAt": "2026-02-21T01:18:26.479Z"
+      },
+      {
+        "id": 16,
+        "title": "Add E2E test for 404 on invalid API endpoint",
+        "description": "Add test to core.e2e.test.js: GET /api/this-endpoint-does-not-exist returns 404. Update E2E-MATRIX.md.",
+        "details": "",
+        "testStrategy": "",
+        "status": "done",
+        "dependencies": [],
+        "priority": "medium",
+        "subtasks": [],
+        "updatedAt": "2026-02-21T01:18:31.522Z"
+      },
+      {
+        "id": 17,
+        "title": "Add browser E2E test for opportunity detail page",
+        "description": "Create opportunity-detail.spec.js: Fetch real ID via API, navigate to /funding/opportunities/{id}, verify title + status badge + 4 tabs, click through tabs. Update E2E-MATRIX.md.",
+        "details": "",
+        "testStrategy": "",
+        "status": "done",
+        "dependencies": [],
+        "priority": "medium",
+        "subtasks": [],
+        "updatedAt": "2026-02-21T01:18:36.499Z"
+      },
+      {
+        "id": 18,
+        "title": "Add browser E2E test for map drill-down",
+        "description": "Create map-drilldown.spec.js: Navigate to /map?view=state&state=OR (bypass SVG click), verify state heading + opportunity list, back-to-US button. Update E2E-MATRIX.md.",
+        "details": "",
+        "testStrategy": "",
+        "status": "done",
+        "dependencies": [],
+        "priority": "medium",
+        "subtasks": [],
+        "updatedAt": "2026-02-21T01:18:41.644Z"
+      },
+      {
+        "id": 19,
+        "title": "Add browser E2E test for admin review UI",
+        "description": "Create admin-review.spec.js: Verify heading, filter controls (search, status select), table or empty state. If pending rows exist verify Approve/Reject buttons visible but DO NOT click. Update E2E-MATRIX.md.",
+        "details": "",
+        "testStrategy": "",
+        "status": "done",
+        "dependencies": [],
+        "priority": "medium",
+        "subtasks": [],
+        "updatedAt": "2026-02-21T01:18:46.342Z"
+      },
+      {
+        "id": 20,
+        "title": "Add browser E2E test for timeline view",
+        "description": "Create timeline.spec.js: Navigate to /timeline, verify heading, no errors. If events exist verify month headers, Funding Deadline badges, View Details links. Update E2E-MATRIX.md.",
+        "details": "",
+        "testStrategy": "",
+        "status": "done",
+        "dependencies": [],
+        "priority": "medium",
+        "subtasks": [],
+        "updatedAt": "2026-02-21T01:18:51.419Z"
+      },
+      {
+        "id": 21,
+        "title": "Update E2E-MATRIX.md to mark all 10 gaps as covered",
+        "description": "Update tests/E2E-MATRIX.md: change all 10 remaining needs-test rows to covered with test file names. Verify zero needs-test entries remain. Depends on tasks 11-20.",
+        "details": "",
+        "testStrategy": "",
+        "status": "done",
+        "dependencies": [],
+        "priority": "medium",
+        "subtasks": [],
+        "updatedAt": "2026-02-21T01:18:56.305Z"
       }
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-02-20T07:58:48.198Z",
-      "taskCount": 10,
-      "completedCount": 10,
+      "lastModified": "2026-02-21T01:18:56.305Z",
+      "taskCount": 21,
+      "completedCount": 21,
       "tags": [
         "e2e"
-      ]
+      ],
+      "created": "2026-02-21T01:52:29.214Z",
+      "description": "Tasks for e2e context"
     }
   }
 }
