@@ -1,0 +1,65 @@
+name: Test Execution
+description: Batch test run or test infrastructure work
+labels: ["test"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Define what's being tested. Link to the test matrix and related feature issues.
+  - type: textarea
+    id: test-scope
+    attributes:
+      label: Test Scope
+      description: What spec or feature area is being tested? Reference the test matrix.
+      placeholder: |
+        Funding opportunities CRUD — covers REQ-214 through REQ-225.
+        Test matrix: tests/E2E-MATRIX.md (Tier 5, rows TX-014 to TX-025)
+    validations:
+      required: true
+  - type: textarea
+    id: assertions
+    attributes:
+      label: Assertions
+      description: Pass/fail checkboxes per test case or requirement group.
+      placeholder: |
+        - [ ] TX-014: Task CRUD (REQ-214-225) — PASS
+        - [ ] TX-015: Funding list filtering (REQ-301-310) — PASS
+      value: |
+        - [ ]
+    validations:
+      required: true
+  - type: dropdown
+    id: test-type
+    attributes:
+      label: Test Type
+      description: What kind of tests are being executed?
+      options:
+        - E2E (Playwright)
+        - Component (Vitest/RTL)
+        - Integration
+        - Performance
+    validations:
+      required: true
+  - type: dropdown
+    id: module
+    attributes:
+      label: Module
+      description: Which area of the application?
+      options:
+        - Dashboard
+        - Map
+        - Funding
+        - Pipeline
+        - Admin
+        - Clients
+        - Auth
+    validations:
+      required: true
+  - type: textarea
+    id: context
+    attributes:
+      label: Context
+      description: Links to test matrix doc, related feature issues, or specs.
+      placeholder: "Related to #42, #43. Test matrix: tests/E2E-MATRIX.md"
+    validations:
+      required: false

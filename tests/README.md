@@ -207,7 +207,7 @@ test('NULL deadlines go to end regardless of sort direction', () => {
 ```
 
 **Rules:**
-- Currently uses simulated RPC logic in JavaScript (**not real DB** — see Known Gaps below, tracked as Task 28)
+- Currently uses simulated RPC logic in JavaScript (**not real DB** — see Known Gaps below)
 - Test sort directions, NULL placement, filter combinations, pagination math
 - Goal: migrate to real local Supabase via `supabase start`
 
@@ -215,7 +215,7 @@ test('NULL deadlines go to end regardless of sort direction', () => {
 
 Database integration tests verify that the **real database schema matches what application code expects**. Unlike Tier 3 (which simulates queries in JS), these connect to a real local Supabase instance and run real SQL.
 
-**Infrastructure status**: **Pending** — tracked as Task 28 in the `v2` taskmaster tag. The methodology is documented here; the `supabase start` infrastructure is not yet set up.
+**Infrastructure status**: **Pending** — the methodology is documented here; the `supabase start` infrastructure is not yet set up.
 
 **Prerequisites:**
 - Docker running
@@ -468,9 +468,9 @@ describe('Client-Opportunity Matching: Match Criteria', () => {
 |-----|----------|-------|
 | UI component tests | Low | Backend correctness matters more; UI bugs are visually obvious |
 | Full integration tests (API -> DB -> response) | Medium | Would catch column renames breaking RPCs |
-| Real Supabase for Tier 3b | Medium | Methodology documented (see Tier 3b section above). Infrastructure pending: needs `supabase start` in Docker. Tracked as **Task 28** in the `v2` taskmaster tag |
+| Real Supabase for Tier 3b | Medium | Methodology documented (see Tier 3b section above). Infrastructure pending: needs `supabase start` in Docker |
 | Stage-to-stage pipeline handoff | Low | Tested in isolation; pipeline failures visible in staging table |
-| E2E test coverage | Medium | Infrastructure ready; test cases tracked in [`E2E-MATRIX.md`](./E2E-MATRIX.md). Tasks in `e2e` taskmaster tag |
+| E2E test coverage | Medium | Infrastructure ready; test cases tracked in [`E2E-MATRIX.md`](./E2E-MATRIX.md) |
 
 ### TODO: Tier 3 Database Tests Do Not Test the Database
 

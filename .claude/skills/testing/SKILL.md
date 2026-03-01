@@ -14,7 +14,7 @@ Read these before proceeding — they define the testing architecture:
 
 | File | What it provides |
 |------|-----------------|
-| `CLAUDE.md` (AI Agent Testing Workflow) | Decision gate: which tiers are required for each change type |
+| `.claude/rules/testing-standards.md` (Decision Gate) | Decision gate: which tiers are required for each change type |
 | `tests/README.md` | Full testing guide: tier details, writing patterns, directory structure |
 | `tests/E2E-MATRIX.md` | Living coverage tracker for API E2E and Browser E2E tests |
 | `tests/vitest.config.js` | Vitest config (excludes e2e from main `npm run test`) |
@@ -42,7 +42,7 @@ git status --porcelain | grep '^?' | awk '{print $2}'
 
 ### 1.2 Categorize by Decision Gate
 
-For each changed file, apply the CLAUDE.md decision gate:
+For each changed file, apply the decision gate in `.claude/rules/testing-standards.md`:
 
 | File Pattern | Tests Required | Tier(s) |
 |-------------|:-:|------|

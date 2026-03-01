@@ -100,4 +100,4 @@ These are the minimum browser tests that should pass before any deploy:
 - **Auth**: Automatically bypassed in development mode (middleware.js line 6)
 - **API E2E tests** use Vitest + native `fetch` — files named `*.e2e.test.js`
 - **Browser E2E tests** use Playwright (Chromium headless) — files named `*.spec.js`
-- **Taskmaster**: Test writing tasks tracked under the `e2e` tag
+- **Tracking**: E2E coverage gaps tracked via GitHub Issues

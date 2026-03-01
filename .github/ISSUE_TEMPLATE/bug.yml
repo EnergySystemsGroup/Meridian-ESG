@@ -1,0 +1,66 @@
+name: Bug Report
+description: Report something that isn't working correctly
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Report what's broken. Describe WHAT and WHY — not HOW to fix it.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What is broken? 1-3 sentences.
+      placeholder: "The funding map shows incorrect counts for states with utility-level coverage areas..."
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance-criteria
+    attributes:
+      label: Acceptance Criteria
+      description: Outcome-based checkboxes. What would a human verify in the browser?
+      placeholder: |
+        - [ ] Map counts match database query results for all 50 states
+        - [ ] Utility-level opportunities appear under their parent state
+      value: |
+        - [ ]
+    validations:
+      required: true
+  - type: dropdown
+    id: testing-tier
+    attributes:
+      label: Testing Tier
+      description: What level of testing does this fix require?
+      options:
+        - Critical (user-facing logic)
+        - API (response contracts)
+        - Database (queries/RPCs)
+        - Pipeline (AI processing)
+        - API E2E (full HTTP round-trip)
+        - Browser E2E (user workflow)
+        - None (config/docs only)
+    validations:
+      required: true
+  - type: dropdown
+    id: module
+    attributes:
+      label: Module
+      description: Which area of the application?
+      options:
+        - Dashboard
+        - Map
+        - Funding
+        - Pipeline
+        - Admin
+        - Clients
+        - Auth
+    validations:
+      required: true
+  - type: textarea
+    id: context
+    attributes:
+      label: Context
+      description: Screenshots, error messages, links, or related issues.
+      placeholder: "Screenshot of the incorrect map state..."
+    validations:
+      required: false

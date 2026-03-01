@@ -9,7 +9,7 @@ Read and follow the testing skill at `.claude/skills/testing/SKILL.md` — it ha
 ## Steps
 
 1. **Identify changes**: Run `git diff --cached --name-only` and `git diff --name-only` to get all modified files
-2. **Apply decision gate**: For each changed file, determine required test tiers per the gate in CLAUDE.md (AI Agent Testing Workflow section)
+2. **Apply decision gate**: For each changed file, determine required test tiers per the gate in `.claude/rules/testing-standards.md` (Decision Gate section)
 3. **Check test coverage**: Verify tests exist for each requirement. Check inline functions match production logic (drift check).
 4. **Check E2E matrix**: If new endpoints or pages were added, verify rows exist in `tests/E2E-MATRIX.md`
 5. **Run tests**: Execute the appropriate `npm run test:*` commands based on the decision gate
