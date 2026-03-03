@@ -3538,7 +3538,7 @@
   "test": {
     "tasks": [
       {
-        "id": "1",
+        "id": 1,
         "title": "Fix debug API route Vitest import issue causing runtime errors",
         "description": "Resolve the runtime error in /app/api/debug/anthropic-client/route.js caused by importing Vitest test files that are not available in production environment.",
         "details": "The debug API route is currently importing Vitest test utilities or test files directly, which causes runtime errors when the application runs outside of the test environment. Three potential solutions: 1) Extract shared utility functions from test files into separate modules that can be safely imported in both test and runtime contexts, 2) Add conditional imports with proper error handling to gracefully handle missing test dependencies, or 3) Remove the debug route entirely if it's not essential for production debugging. Recommended approach is to create utility modules in lib/utils/ that contain the needed functionality without test-specific dependencies, then update both the debug route and test files to use these utilities. If conditional imports are chosen, wrap the imports in try-catch blocks and provide fallback functionality when test utilities are unavailable.",
@@ -3550,7 +3550,7 @@
         "updatedAt": "2026-02-05T17:16:41.521Z"
       },
       {
-        "id": "2",
+        "id": 2,
         "title": "Verify and commit existing test suite",
         "description": "Run all 38 existing Vitest tests across all 4 tiers (critical, api, database, pipeline), verify they pass, then commit the working test suite along with updated documentation files (CLAUDE.md, tests/README.md, docs/testing-strategy.md).",
         "details": "This task verifies and commits the complete Vitest-based testing infrastructure that was built according to the tier-based testing strategy documented in docs/testing-strategy.md.\n\n## Test Suite Overview\n\nThe codebase contains 38 test files organized into 4 tiers with 1,023 individual test cases:\n\n**Tier 1: Critical (20 files, user-facing business logic)**\n- Client matching (5 files): matchCriteria, synonymExpansion, coverageIntersection, scoring, hiddenMatches\n- Explorer (3 files): filters, sorting, pagination\n- Map (2 files): scopeBreakdown, fundingByState\n- Dashboard (3 files): summaryCards, deadlines, topMatches\n- Timeline (3 files): monthGrouping, daysLeftColors, eventCards\n- Clients (2 files): search, filters\n- Opportunity Detail (2 files): tabContent, daysLeft\n\n**Tier 2: API (3 files, response contracts)**\n- funding.api.test.js\n- client-matching.api.test.js\n- clients.api.test.js\n\n**Tier 3: Database (10 files, database behavior)**\n- RPC functions (4 files): getFundingDynamicSort, findCoverageAreasForPoint, getScopeBreakdown, getFundingByState\n- Views (1 file): fundingOpportunitiesWithGeography\n- Constraints (2 files): duplicatePrevention, cascadeDeletes\n\n**Tier 4: Pipeline (8 files, AI processing)**\n- Extraction (2 files): schemaCompliance, errorRecovery\n- Analysis (2 files): scoring, scoreInvariants\n- Storage (3 files): dataSanitizer, upsertLogic, duplicateDetection\n- Orchestration (1 file): runManager\n\n## Verification Steps\n\n1. **Run full test suite**: Execute `npm run test` to run all 1,023 tests\n2. **Verify tier-specific runs**: Confirm each tier can run independently:\n   - `npm run test:critical` (Tier 1)\n   - `npm run test:api` (Tier 2)\n   - `npm run test:database` (Tier 3)\n   - `npm run test:pipeline` (Tier 4)\n3. **Check test output**: Ensure all 38 test files pass with no failures\n4. **Verify configuration**: Confirm tests/vitest.config.js is properly configured with:\n   - Correct path aliases (@, @/lib, @/app, @/components)\n   - Setup file (tests/helpers/setup.js) loaded\n   - Fixtures and helpers excluded from coverage\n   - Single fork pool for consistent test isolation\n\n## Files to Commit\n\n### Test Infrastructure (new files)\n```\ntests/\n├── critical/              (20 test files)\n├── api/                   (3 test files)\n├── database/              (10 test files)\n├── pipeline/              (8 test files)\n├── fixtures/              (5 fixture files + index.js)\n├── helpers/               (2 helper files: setup.js, supabaseMock.js)\n├── vitest.config.js\n└── README.md\n```\n\n### Documentation Updates (modified files)\n- **CLAUDE.md**: Updated testing section with tier-based approach, commands, and conventions\n- **docs/testing-strategy.md**: Complete testing strategy document explaining the rationale, tier organization, and implementation guidelines\n- **package.json**: Updated test scripts to use Vitest commands instead of Jest\n\n### Modified Package Configuration\n- Test scripts replaced: old Jest-based commands replaced with new Vitest tier-based commands\n- Legacy scripts preserved: `test:legacy:unit`, `test:legacy:integration`, `test:legacy:run` kept for backward compatibility during migration\n\n## Commit Message Template\n\n```\nfeat: add comprehensive Vitest test suite with tier-based organization\n\nImplement 38 test files with 1,023 test cases organized into 4 tiers:\n- Tier 1: Critical user-facing logic (client matching, filtering, map, dashboard)\n- Tier 2: API response contracts (field types, error format)\n- Tier 3: Database behavior (RPC functions, views, constraints)\n- Tier 4: AI pipeline processing (extraction, analysis, storage)\n\nAll tests passing (1.44s execution time).\n\nTest Infrastructure:\n- Vitest configuration with path aliases and setup files\n- Shared fixtures (clients, opportunities, coverage areas, match scenarios)\n- Test helpers (Supabase mock, time freezing utilities)\n\nDocumentation Updates:\n- CLAUDE.md: Testing section with tier-based commands\n- tests/README.md: Complete testing guide with examples\n- docs/testing-strategy.md: Detailed strategy and rationale\n\nPackage Updates:\n- Replace Jest scripts with Vitest tier-based commands\n- Preserve legacy scripts for backward compatibility\n\nCo-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>\n```\n\n## Important Notes\n\n1. **DO NOT commit unrelated files**: The git status shows several untracked files in `docs/prd/opp_staging/` that are unrelated to testing. These should NOT be included in this commit.\n\n2. **Handle modified task files carefully**: `.taskmaster/state.json` and `.taskmaster/tasks/tasks.json` are shown as modified but may contain unrelated task management state. Review these carefully and consider excluding them from this commit if changes are unrelated.\n\n3. **Verify test execution before committing**: The task MUST verify that all tests pass before creating the commit. If any test fails, the commit should be aborted and failures investigated.\n\n4. **Follow git commit policy**: According to CLAUDE.md, NEVER commit without explicit user permission. This task should prepare the commit but ask for confirmation before executing `git commit`.\n\n5. **Test execution confirmed**: According to the verification run, all 38 test files with 1,023 tests are passing (Duration: 1.44s).",
@@ -3562,7 +3562,7 @@
         "updatedAt": "2026-02-05T17:25:32.964Z"
       },
       {
-        "id": "3",
+        "id": 3,
         "title": "Write remaining Critical tier tests (10 files)",
         "description": "Create the 10 missing test files in tests/critical/ covering explorer URL state and tracked opportunities, map interactions (state selection, color toggle, tooltips), dashboard recent opportunities, client CRUD/geocoding/PDF export, and opportunity detail related opportunities. Each test must follow the zero-mock pure-function pattern with shared fixtures.",
         "details": "This task completes the Tier 1 Critical test suite by adding 10 missing test files, bringing the total from 20 to 30 files. All tests must follow the established patterns from existing critical tests: import from shared fixtures, test pure business logic functions without mocks, and cover comprehensive edge cases.\n\n## Files to Create\n\n### Explorer Module (2 files)\n\n**1. tests/critical/explorer/urlState.test.js**\n- Test URL parameter serialization/deserialization for filters\n- Validate shareable filter URLs reconstruct correct state\n- Cover all filter types: search, status, projectTypes, state, coverageType, trackedOnly\n- Test pagination params (page, limit) in URL\n- Test sort params (sortBy, sortDir) in URL\n- Edge cases: malformed params, missing params, invalid values\n- Reference implementation: App router search params handling\n\n**2. tests/critical/explorer/trackedOpportunities.test.js**\n- Test \"My Opportunities\" filter logic (trackedOnly=true)\n- Validate filtering returns only opportunities in tracked_opportunities table\n- Test combining tracked filter with other filters (status, state, etc.)\n- Test empty tracked list (no results)\n- Test tracked status persistence across filter changes\n- Reference fixture: `opportunities.trackedOpportunity` and tracked_opportunities join logic\n\n### Map Module (3 files)\n\n**3. tests/critical/map/stateSelection.test.js**\n- Test state click → drill-down to county/utility view\n- Test state click again → return to national view\n- Test state deselection behavior\n- Validate selected state highlighting/active state\n- Test navigation between different states\n- Test initial load state (no selection)\n- Edge cases: clicking same state twice, rapid clicks\n- Reference: Map component state management\n\n**4. tests/critical/map/colorToggle.test.js**\n- Test \"Color by Amount\" vs \"Color by Count\" toggle\n- Validate correct color scale calculation for funding amounts\n- Validate correct color scale calculation for opportunity counts\n- Test color ranges and thresholds (e.g., 0-10M, 10-50M, 50M+)\n- Test states with zero funding/opportunities (gray/no-data color)\n- Test national vs state-drill-down color scales differ\n- Reference: Map legend component, color scale utilities\n\n**5. tests/critical/map/tooltips.test.js**\n- Test tooltip content on state hover (name, count, total funding)\n- Test tooltip content on county/utility hover in drill-down view\n- Validate funding amount formatting (e.g., $1.2M, $500K)\n- Test tooltip positioning (not provided, but data accuracy focus)\n- Test tooltip data matches underlying opportunity aggregation\n- Test tooltip for states with no opportunities (shows \"No opportunities\")\n- Reference: Tooltip data preparation functions\n\n### Dashboard Module (1 file)\n\n**6. tests/critical/dashboard/recentOpps.test.js**\n- Test \"Recent Opportunities\" card displays latest 5 opportunities\n- Validate sorting by created_at/updated_at descending\n- Test date formatting for \"Added X days ago\" display\n- Test empty state (no opportunities)\n- Test fewer than 5 opportunities available\n- Test opportunities from different sources mixed correctly\n- Test link generation to opportunity detail page\n- Reference: Dashboard API route, recent opportunities query\n\n### Clients Module (3 files)\n\n**7. tests/critical/clients/crud.test.js**\n- Test client creation validation (required fields: name, type, location)\n- Test client update logic (partial updates, immutable fields)\n- Test client deletion (soft delete vs hard delete behavior)\n- Test form field validation rules (email format, budget range, etc.)\n- Test duplicate client detection (same name + location)\n- Test empty/null field handling\n- Reference: Client API routes (POST, PATCH, DELETE)\n\n**8. tests/critical/clients/geocoding.test.js**\n- Test address → coverage_area_ids detection logic\n- Validate geocoding service response parsing (Mapbox format)\n- Test coverage area matching: point-in-polygon detection for utilities, counties, states\n- Test address not found (graceful failure, manual selection fallback)\n- Test ambiguous address (multiple results, user picks one)\n- Test coverage area priority: utility > county > state\n- Test multi-coverage scenario (client in multiple utility territories)\n- Reference: `scripts/clients/test-geocoding.js`, geocoding utilities\n\n**9. tests/critical/clients/pdfExport.test.js**\n- Test PDF export generates correct structure (client info, match list, opportunity details)\n- Validate all required sections present: client header, match breakdown, opportunities table\n- Test data formatting: funding amounts, deadlines, match scores\n- Test handling of clients with no matches (shows empty state message)\n- Test handling of hidden matches (excluded from export)\n- Test long opportunity lists (pagination or truncation)\n- Test special characters in client/opportunity names (escaping)\n- Reference: PDF generation utility, `@react-pdf/renderer` usage\n\n### Opportunity Detail Module (1 file)\n\n**10. tests/critical/opportunityDetail/relatedOpps.test.js**\n- Test related opportunities recommendation algorithm\n- Validate recommendations based on similarity: same project types, same coverage areas, same funding source\n- Test scoring/ranking of related opportunities (most similar first)\n- Test limiting to top 5 related opportunities\n- Test excluding current opportunity from results\n- Test no related opportunities available (empty state)\n- Test related opportunities respect status filter (only show open/upcoming)\n- Reference: Related opportunities API logic, similarity scoring\n\n## Implementation Guidelines\n\n### Pattern to Follow (from existing tests)\n\n```javascript\n// Import fixtures\nimport { opportunities } from '../../fixtures/opportunities.js';\nimport { clients } from '../../fixtures/clients.js';\nimport { coverageAreas } from '../../fixtures/coverageAreas.js';\n\n// Import business logic functions to test\nimport { functionToTest } from '@/app/api/route-name/utils.js';\n\n// Pure function tests - no mocks\ndescribe('Feature Name: Specific Behavior', () => {\n  test('describes expected behavior', () => {\n    const result = functionToTest(fixtures.input);\n    expect(result).toBe(expected);\n  });\n  \n  describe('Edge Cases', () => {\n    test('handles null input gracefully', () => {\n      expect(() => functionToTest(null)).not.toThrow();\n    });\n  });\n});\n```\n\n### Key Requirements\n\n1. **Zero mocks**: Test pure functions directly with fixture data\n2. **Shared fixtures**: Import from `tests/fixtures/`, never hardcode data inline\n3. **Comprehensive coverage**: Test happy path + edge cases + error conditions\n4. **Clear describe blocks**: Group by feature area, then specific behavior\n5. **Descriptive test names**: Plain English describing expected outcome\n6. **Extract logic**: If route handlers have inline logic, extract to utils for testability\n\n### Where Logic May Need Extraction\n\nSome of the target behaviors may currently be in React components or API route handlers. For pure testing:\n- Extract business logic to `utils.js` files in the relevant API route directory\n- Test the extracted pure functions\n- Leave React components/route handlers as thin wrappers\n\nExample:\n```javascript\n// app/api/clients/geocoding/utils.js (create if needed)\nexport function detectCoverageAreas(geocodingResult, allCoverageAreas) {\n  // Pure function logic here\n}\n\n// tests/critical/clients/geocoding.test.js\nimport { detectCoverageAreas } from '@/app/api/clients/geocoding/utils.js';\ntest('detects coverage areas from geocoding result', () => {\n  const result = detectCoverageAreas(fixtures.geocodingResponse, coverageAreas);\n  expect(result).toEqual([1, 2, 3]);\n});\n```\n\n## Test Count Estimate\n\nEach file should contain 15-25 individual test cases covering:\n- Happy path (3-5 tests)\n- Edge cases (5-10 tests)\n- Error conditions (3-5 tests)\n- Integration scenarios combining multiple conditions (3-5 tests)\n\n**Total**: ~10 files × 20 tests/file = ~200 new test cases\n\n## Success Criteria\n\n1. All 10 test files created in correct `tests/critical/` subdirectories\n2. All tests pass when run with `npm run test:critical`\n3. Zero mocks used (pure function pattern followed)\n4. All tests import from shared `tests/fixtures/`\n5. Edge cases comprehensively covered (nulls, empty arrays, boundary values)\n6. Test names clearly describe expected behavior\n7. Code coverage for tested functions approaches 100%",
@@ -3576,7 +3576,7 @@
         "updatedAt": "2026-02-05T17:40:40.267Z"
       },
       {
-        "id": "4",
+        "id": 4,
         "title": "Write remaining API contract tests (4 files)",
         "description": "Create 4 missing API test files in tests/api/: map.api.test.js, deadlines.api.test.js, counts.api.test.js, export.api.test.js. Each validates response schemas (required fields, types, pagination metadata) without testing data correctness.",
         "details": "This task completes the Tier 2 API test suite by adding 4 missing test files, bringing the total from 3 to 7 files. All tests must follow the established schema validation pattern used in existing API tests (funding.api.test.js, clients.api.test.js, client-matching.api.test.js).\n\n## Pattern to Follow\n\nAll API tests use shared helper functions for schema validation:\n\n```javascript\n// Import Vitest\nimport { describe, test, expect } from 'vitest';\n\n// Define schemas as objects mapping field names to type strings\nconst exampleSchema = {\n  id: 'string',\n  count: 'number',\n  optional_field: 'string|null',\n  array_field: 'array',\n};\n\n// Use validateFieldType and validateSchema helpers (copy from existing tests)\nfunction validateFieldType(value, expectedType) { /* ... */ }\nfunction validateSchema(obj, schema) { /* ... */ }\n```\n\n## Files to Create\n\n### 1. tests/api/map.api.test.js\n\nTests for `/api/map/opportunities` endpoint (app/api/map/opportunities/route.js:1-167).\n\n**Schemas to define:**\n- `mapOpportunitySchema`: Complete opportunity object returned in map API (similar to funding.api.test.js but includes coverage_area_types array)\n- `mapResponseSchema`: Response wrapper with opportunities array, total, page, pageSize, totalPages\n- `errorResponseSchema`: Error response shape { success: false, error: string }\n\n**Test cases:**\n1. Validate complete map opportunity object with all required fields\n2. Validate map response wrapper structure\n3. Validate pagination metadata (currentPage, totalPages, totalItems, hasMore if present)\n4. Validate error response format\n5. Validate optional query parameter handling (state, status, scope, projectTypes, sort_by, sort_direction)\n\n**Key fields in map opportunity:**\n- id, title, status, close_date, is_national, maximum_award, total_funding_available\n- coverage_state_codes (array|null)\n- coverage_area_types (array) - unique to map API\n- categories, eligible_project_types, eligible_applicants (all arrays)\n\n---\n\n### 2. tests/api/deadlines.api.test.js\n\nTests for `/api/deadlines` endpoint (app/api/deadlines/route.js:1-93).\n\n**Schemas to define:**\n- `deadlineOpportunitySchema`: Opportunity with deadline metadata (base opportunity + daysLeft, urgency, formattedDate, source_name, source_type)\n- `deadlinesResponseSchema`: Response wrapper { success: true, data: array }\n- `thirtyDayCountResponseSchema`: Response for type=thirty_day_count { success: true, count: number }\n\n**Test cases:**\n1. Validate deadline opportunity object with enhancement fields (daysLeft, urgency, formattedDate)\n2. Validate source information fields (source_name, source_type)\n3. Validate deadlines response array wrapper\n4. Validate thirty-day count response format\n5. Validate urgency categorization ('high' | 'medium' | 'low')\n6. Validate error response format\n\n**Key enhancement fields:**\n- daysLeft (number)\n- urgency ('high' | 'medium' | 'low')\n- formattedDate (string)\n- source_name (string)\n- source_type (string|null)\n\n---\n\n### 3. tests/api/counts.api.test.js\n\nTests for `/api/counts` endpoint (app/api/counts/route.js:1-43).\n\n**Schemas to define:**\n- `countResponseSchema`: { success: true, count: number }\n- `errorResponseSchema`: { success: false, error: string }\n\n**Test cases:**\n1. Validate open_opportunities count response structure\n2. Validate count field is a number\n3. Validate error response for invalid type parameter\n4. Validate success boolean field presence and type\n\n**Query parameters:**\n- type: 'open_opportunities' (only valid value currently)\n\n---\n\n### 4. tests/api/export.api.test.js\n\nTests for `/api/export/client-matches-pdf` endpoint (app/api/export/client-matches-pdf/route.js:1-112).\n\n**Schemas to define:**\n- `pdfRequestSchema`: POST body { clientId: string, options: object }\n- `pdfOptionsSchema`: Options object { viewMode: string, includeCover: boolean, sortBy: string }\n- `errorResponseSchema`: Error response { error: string }\n\n**Test cases:**\n1. Validate PDF request body schema\n2. Validate options object structure (viewMode, includeCover, sortBy)\n3. Validate error response for missing clientId\n4. Validate error response for client not found\n5. Validate error response for failed match fetch\n6. **Note**: Cannot validate actual PDF binary response in contract test - only error responses\n\n**Valid option values:**\n- viewMode: 'summary' | 'detailed'\n- includeCover: boolean\n- sortBy: 'deadline' | 'score' | 'amount'\n\n---\n\n## Implementation Guidelines\n\n1. **Copy validation helpers**: Each test file should include the `validateFieldType` and `validateSchema` helper functions from existing API tests (or extract to shared helper in tests/helpers/schemaValidation.js if preferred)\n\n2. **Schema-only validation**: These are contract tests - do NOT make actual API calls, do NOT test data correctness, do NOT mock Supabase. Only validate that test objects matching expected API responses conform to defined schemas.\n\n3. **Test object creation**: Create mock objects that represent valid API responses and validate them:\n   ```javascript\n   test('validates complete map opportunity object', () => {\n     const opportunity = {\n       id: 'opp-123',\n       title: 'Clean Energy Grant',\n       // ... all required fields\n     };\n     const errors = validateSchema(opportunity, mapOpportunitySchema);\n     expect(errors).toHaveLength(0);\n   });\n   ```\n\n4. **Edge cases to test**:\n   - All required fields present\n   - Optional fields with null values\n   - Array fields (empty arrays, arrays with values)\n   - Nested objects (like pagination metadata)\n   - Error response formats\n\n5. **File structure**: Follow the pattern from funding.api.test.js:\n   - File header comment explaining what endpoints are tested\n   - Schema definitions at top\n   - Helper functions (validateFieldType, validateSchema)\n   - Describe blocks grouping related tests\n   - Clear test names describing what's validated\n\n6. **Response wrapper patterns**:\n   - Success responses: `{ success: true, data: ... }` or `{ success: true, count: ... }`\n   - Error responses: `{ success: false, error: string }`\n   - Map responses include pagination: `{ success: true, data: { opportunities: [], total: 0, page: 1, pageSize: 10, totalPages: 0 } }`\n\n---\n\n## Reference Files\n\n- **Existing API tests**: tests/api/funding.api.test.js, tests/api/clients.api.test.js, tests/api/client-matching.api.test.js\n- **API routes to understand response structure**:\n  - app/api/map/opportunities/route.js\n  - app/api/deadlines/route.js\n  - app/api/counts/route.js\n  - app/api/export/client-matches-pdf/route.js\n- **Testing guide**: tests/README.md (Tier 2 section, lines 126-146)",
@@ -3590,7 +3590,7 @@
         "updatedAt": "2026-02-05T17:40:44.082Z"
       },
       {
-        "id": "5",
+        "id": 5,
         "title": "Write remaining Pipeline tests (7 files)",
         "description": "Create 7 missing test files: pipeline/analysis/contentEnhancement.test.js, pipeline/analysis/batchProcessing.test.js, pipeline/extraction/apiHandlers.test.js, pipeline/extraction/pagination.test.js, pipeline/orchestration/sourceOrchestrator.test.js, pipeline/orchestration/performanceMetrics.test.js, pipeline/storage/coverageLinking.test.js. Mock Anthropic SDK + use supabaseMock. Test deterministic parts with exact assertions, LLM parts with schema compliance.",
         "details": "",
@@ -3604,7 +3604,7 @@
         "updatedAt": "2026-02-05T17:40:47.530Z"
       },
       {
-        "id": "6",
+        "id": 6,
         "title": "Write test infrastructure helpers (3 files)",
         "description": "Create 3 missing helper files: helpers/apiTestClient.js (HTTP testing helper for integration tests), helpers/factories.js (data generation for dynamic test scenarios), helpers/dateHelpers.js (time freeze/restore utilities beyond what setup.js provides). These support Phases 3-4 tests.",
         "details": "",
@@ -3618,7 +3618,7 @@
         "updatedAt": "2026-02-05T17:40:51.090Z"
       },
       {
-        "id": "7",
+        "id": 7,
         "title": "Write integration tests (3 files)",
         "description": "Create tests/integration/ folder with 3 flow tests: clientMatchingFlow.test.js (API route -> matching logic -> mock DB -> response), explorerFlow.test.js (API route -> filtering/sorting -> mock DB -> pagination), dashboardFlow.test.js (API route -> stats -> mock DB -> summary cards). These wire together all layers using supabaseMock, NOT real DB.",
         "details": "",
@@ -3632,7 +3632,7 @@
         "updatedAt": "2026-02-05T17:45:15.078Z"
       },
       {
-        "id": "8",
+        "id": 8,
         "title": "Write pipeline handoff tests (2 files)",
         "description": "Create tests/pipeline/handoff/ folder with 2 tests: extractionToAnalysis.test.js (validates Stage 1 output schema is valid Stage 2 input), analysisToStorage.test.js (validates Stage 2 output schema is valid Stage 3 input). These catch schema contract violations between pipeline stages.",
         "details": "",
@@ -3646,7 +3646,7 @@
         "updatedAt": "2026-02-05T17:45:18.200Z"
       },
       {
-        "id": "9",
+        "id": 9,
         "title": "Write error boundary tests (2 files)",
         "description": "Create 2 error-focused test files: api/errorResponses.api.test.js (validates error response format - status codes, error shapes, consistent error structure) and pipeline/extraction/supabaseDown.test.js (tests graceful degradation when Supabase is unreachable).",
         "details": "",
@@ -3660,7 +3660,7 @@
         "updatedAt": "2026-02-05T17:45:21.280Z"
       },
       {
-        "id": "10",
+        "id": 10,
         "title": "Write staging pipeline tests (2 files)",
         "description": "Create tests/pipeline/staging/ folder with 2 tests: stagingStateMachine.test.js (tests pending->complete->failed status transitions for extraction/analysis/storage phases in manual_funding_opportunities_staging) and stagingImport.test.js (tests discovery file -> staging table insertion logic).",
         "details": "",
@@ -3674,7 +3674,7 @@
         "updatedAt": "2026-02-05T17:45:24.386Z"
       },
       {
-        "id": "11",
+        "id": 11,
         "title": "Archive old test infrastructure",
         "description": "After ALL new tests pass: 1) Delete __tests__/ (57 files), __mocks__/ (27 files), and 6 jest config files. 2) Remove legacy npm scripts (test:legacy:*) from package.json. 3) Remove Jest from devDependencies. 4) Document deletion in commit message with git hash reference. ONLY execute after full test suite passes.",
         "details": "",
@@ -3696,7 +3696,7 @@
         "updatedAt": "2026-02-05T18:04:11.604Z"
       },
       {
-        "id": "12",
+        "id": 12,
         "title": "Fix browser E2E conditional guards that skip all assertions",
         "description": "HIGH severity. Files: explorer.spec.js (lines 38-47, 59-66, 78-88), client-matching.spec.js (lines 33-46, 57-87), smoke.spec.js (lines 88-105 hydration filter, lines 20-75 body.isVisible only), timeline.spec.js (lines 37-45), admin-review.spec.js (lines 25-30, 39-56), map-drilldown.spec.js (lines 38-49). Pattern: tests use 'if (count > 0)' guards that skip assertions when elements don't exist, and only assert body.isVisible() which proves nothing. Fix: Replace conditional guards with unconditional expect() assertions. If an element should exist, assert it exists then interact. Replace body.isVisible() with content-specific assertions. For smoke.spec.js hydration filter: stop filtering hydration errors — either fix them or use test.todo() to track.",
         "details": "",
@@ -3708,7 +3708,7 @@
         "updatedAt": "2026-02-21T02:00:34.868Z"
       },
       {
-        "id": "13",
+        "id": 13,
         "title": "Fix DB integration tests that skip assertions on empty data",
         "description": "HIGH severity. Files: tests/database/integration/views.integration.test.js (lines 53-228), rpcs.integration.test.js (lines 54-453), schema.integration.test.js (lines 49-371). Pattern: Every column assertion is gated behind 'if (data.length > 0)' or 'if (result.empty) return'. On empty DB, these tests verify nothing. Also: schema.integration.test.js has 'if (err1) return' guards on constraint tests (lines 124, 213-214, 257-258, 299-300). Fix: Replace 'if (data.length > 0)' guards with 'expect(data.length).toBeGreaterThan(0)' so test FAILS if no data exists. For constraint tests, remove early returns and assert the error is null before proceeding.",
         "details": "",
@@ -3720,7 +3720,7 @@
         "updatedAt": "2026-02-21T02:00:40.624Z"
       },
       {
-        "id": "14",
+        "id": 14,
         "title": "Remove or replace tautological API tests that test fixtures not behavior",
         "description": "HIGH severity. 14+ tests across API tier assert properties of hardcoded fixture objects they just created. Files and lines: clients.api.test.js (136-138, 209-212, 292-310, 335, 361-364), export.api.test.js (66-72, 97-100, 104, 109), funding.api.test.js (316-348, 357-366), client-matching.api.test.js (215-267, 381-382), counts.api.test.js (169-179), deadlines.api.test.js (106-124), admin-review.api.test.js (308-315), funding-stats.api.test.js (99-106, 115-124), system-config.api.test.js (96-114). Pattern: Tests loop over hardcoded arrays asserting typeof or bounds. e.g. expect([0,25,50,75,100].every(s => s>=0 && s<=100)).toBe(true). Fix: Either delete the tautological assertion blocks entirely (preferred if no inline function is exercised), or rewrite to actually call the inline function with edge-case inputs. Replace .toBeDefined() with specific value assertions where fixture values are known.",
         "details": "",
@@ -3732,7 +3732,7 @@
         "updatedAt": "2026-02-21T02:00:45.581Z"
       },
       {
-        "id": "15",
+        "id": 15,
         "title": "Fix E2E API early returns and loose assertions",
         "description": "HIGH+MEDIUM severity. Files: export.e2e.test.js line 44 — 'if (listBody.clients.length === 0) return' silently skips PDF generation test. clients.e2e.test.js lines 61 and 147-149 — same early return pattern in PUT and GET tests. core.e2e.test.js lines 34-50 — filter tests check Array.isArray but never verify items match the filter (status=Open, state=FL). core.e2e.test.js lines 82-164 — conditional shape/sort assertions. client-matching.e2e.test.js lines 57-75 — conditional shape and sort checks. map.e2e.test.js lines 22-90 — conditional shape checks and .toBeDefined() matchers. Fix: Replace 'if (length === 0) return' with 'expect(length).toBeGreaterThan(0)'. For filter tests, add assertions that verify returned items match the filter criteria. Replace .toBeDefined() with specific shape assertions.",
         "details": "",
@@ -3744,7 +3744,7 @@
         "updatedAt": "2026-02-21T02:00:50.440Z"
       },
       {
-        "id": "16",
+        "id": 16,
         "title": "Fix pipeline test paper-over patterns",
         "description": "HIGH+MEDIUM severity. Files and issues: schemaCompliance.test.js lines 447-472 — tests titled 'max_award >= min_award' and 'close_date after open_date' pass because validator doesn't check these; rewrite to test what validator actually does or mark as test.todo(). contentEnhancement.test.js line 150-152 — tests constant against itself; delete or rewrite. coverageLinking.test.js lines 100-138 — 'if (caState)' guards skip linking assertions; make unconditional. analysisToStorage.test.js lines 155-159, 169-173 — tautological score check on hardcoded 7.2 and toBeTruthy() on known values. scoring.test.js lines 382-447 — range assertions (>9, between 5-8) on deterministic calculations; use toBe() with exact values. scoreInvariants.test.js lines 109-119, 292-299 — typeof on literals and >=0 instead of exact values. errorRecovery.test.js lines 244-252 — backoff tolerance so loose (30%) it would pass on decreasing delays. extractionToAnalysis.test.js lines 199-203 — toBeTruthy() on fixture values.",
         "details": "",
@@ -3756,7 +3756,7 @@
         "updatedAt": "2026-02-21T02:00:55.261Z"
       },
       {
-        "id": "17",
+        "id": 17,
         "title": "Fix critical tier paper-over patterns",
         "description": "HIGH+MEDIUM severity. Files and issues: matchCriteria.test.js lines 344-350, 411-415 — 'if (result.isMatch)' guards hide assertion failures; assert isMatch first then check score. matchEvaluation.test.js lines 261-263 — test 'national opp matches any client' never calls evaluateMatch; add the call. matchEvaluation.test.js lines 345-349 — conditional guard. scoring.test.js line 292 — 'toBeGreaterThanOrEqual(0)' should be toBe(0). explorer/filters.test.js lines 43-55 — WRONG INLINE LOGIC: filterByState checks areas.length>0 instead of intersection with state; fix to match production logic. synonymExpansion.test.js lines 209-215, 251-253 — empty if-block and undefined behavior assertion. hiddenMatches.test.js line 171 — >=1 should be exact count. MEDIUM: tabContent.test.js lines 352-363 toBeTruthy on known values. summaryCards.test.js line 287 loose bound. monthGrouping.test.js line 83 >=2 should be 3. search.test.js lines 155-158 >=3 should be exact. colorToggle.test.js lines 117-119 >=1 should be exact. matchEvaluation.test.js lines 324-326 >0 should be exact. LOW: daysLeft, recentOpps, geocoding, relatedOpps, stateSelection, deadlines — all >=0 or >0 on known deterministic values.",
         "details": "",
@@ -3775,7 +3775,10 @@
       "completedCount": 16,
       "tags": [
         "test"
-      ]
+      ],
+      "created": "2026-02-25T06:51:45.302Z",
+      "description": "Tasks for test context",
+      "updated": "2026-02-25T06:51:45.302Z"
     }
   },
   "v2": {
@@ -5008,7 +5011,8 @@
         "v2"
       ],
       "created": "2026-02-21T01:10:05.170Z",
-      "description": "Tasks for v2 context"
+      "description": "Tasks for v2 context",
+      "updated": "2026-02-21T01:10:05.170Z"
     }
   },
   "pipeline": {
@@ -6425,7 +6429,8 @@
         "e2e"
       ],
       "created": "2026-02-21T01:52:29.214Z",
-      "description": "Tasks for e2e context"
+      "description": "Tasks for e2e context",
+      "updated": "2026-02-21T01:52:29.214Z"
     }
   }
 }
