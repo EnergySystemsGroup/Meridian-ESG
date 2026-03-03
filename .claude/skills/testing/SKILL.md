@@ -1,8 +1,8 @@
 # Testing Quality Gate Skill
 
 Pre-commit quality gate for the Meridian ESG project. Verifies that all testing
-requirements are met for the current changes, runs appropriate test suites, checks
-E2E matrix tracking, and outputs a structured verdict.
+requirements are met for the current changes, runs appropriate test suites, and
+outputs a structured verdict.
 
 **Invoked by**: `/testing-check` command (mandatory before every commit)
 
@@ -16,7 +16,6 @@ Read these before proceeding — they define the testing architecture:
 |------|-----------------|
 | `.claude/rules/testing-standards.md` (Decision Gate) | Decision gate: which tiers are required for each change type |
 | `tests/README.md` | Full testing guide: tier details, writing patterns, directory structure |
-| `tests/E2E-MATRIX.md` | Living coverage tracker for API E2E and Browser E2E tests |
 | `tests/vitest.config.js` | Vitest config (excludes e2e from main `npm run test`) |
 | `tests/e2e/vitest.e2e.config.js` | Separate Vitest config for API E2E tests |
 | `tests/e2e/playwright.config.js` | Playwright config for Browser E2E tests |
@@ -46,10 +45,10 @@ For each changed file, apply the decision gate in `.claude/rules/testing-standar
 
 | File Pattern | Tests Required | Tier(s) |
 |-------------|:-:|------|
-| `app/api/**` (NEW file) | YES | Critical + API + API E2E |
-| `app/api/**` (MODIFIED, response shape changed) | YES | Critical + API + API E2E |
+| `app/api/**` (NEW file) | YES | Critical + API |
+| `app/api/**` (MODIFIED, response shape changed) | YES | Critical + API |
 | `app/api/**` (MODIFIED, internal logic only) | YES | Critical + API |
-| `app/**/page.js`, `app/**/layout.js` (NEW) | YES | Browser E2E (smoke) |
+| `app/**/page.js`, `app/**/layout.js` (NEW) | Verify in browser | — (interactive verification) |
 | `lib/**` | YES | Pipeline or Critical |
 | `components/**` (with business logic) | YES | Critical |
 | `.claude/skills/**` | NO | — |
@@ -66,7 +65,7 @@ For each changed file, apply the decision gate in `.claude/rules/testing-standar
 Output a summary:
 ```
 Files changed: N
-- app/api/widgets/route.js (NEW) -> Critical + API + API E2E
+- app/api/widgets/route.js (NEW) -> Critical + API
 - lib/utils/widgetHelper.js (MODIFIED) -> Critical
 - .claude/skills/testing/SKILL.md (MODIFIED) -> No tests required
 ```
@@ -98,15 +97,7 @@ This is critical: inline functions that don't match production code produce fals
 Flag any file that requires tests but has none:
 ```
 MISSING: tests/critical/widgets/ — no test file for app/api/widgets/route.js
-MISSING: tests/e2e/api/widgets.e2e.test.js — new endpoint needs API E2E
 ```
-
-### 2.4 Check E2E Matrix
-
-Read `tests/E2E-MATRIX.md` and verify:
-- **New API endpoints**: must have a row in the "Tier 5: API E2E Tests" section
-- **New pages/routes**: must have a row in the "Tier 6: Browser E2E Tests" section
-- **Written e2e tests**: Status column should be `covered`, not `needs-test`
 
 ---
 
@@ -164,8 +155,6 @@ Based on Section 1 findings, run the appropriate commands.
 | Any business logic (matching, filtering, scoring) | `npm run test:critical` |
 | Any API route | `npm run test:api` |
 | Pipeline processing code | `npm run test:pipeline` |
-| New or modified API endpoint | `npm run test:e2e:api` (requires `npm run dev`) |
-| New or modified page/route | `npm run test:e2e:browser` (requires `npm run dev`) |
 | Database schema change (view/RPC/table/column) | `npm run test:db:integration` (requires `supabase start`) |
 
 ### Minimum Before Any Commit
@@ -174,14 +163,6 @@ Always run at minimum:
 ```bash
 npm run test:critical && npm run test:api
 ```
-
-### E2E Test Prerequisite
-
-E2E tests (Tiers 5 and 6) require the dev server running on localhost:3000.
-
-If e2e tests are required but the dev server is not running:
-- **Warn**: "E2E tests require `npm run dev` on localhost:3000. Start the dev server and re-run `/testing-check`."
-- **Set verdict to INCOMPLETE** (not PASS)
 
 ### DB Integration Test Prerequisite
 
@@ -202,37 +183,7 @@ If any test fails:
 
 ---
 
-## Section 5: E2E Matrix Maintenance
-
-The file `tests/E2E-MATRIX.md` is a living tracking document. Check and update it.
-
-### When to Add Rows
-
-- **New API endpoint created** (`app/api/{name}/route.js`): Add a row to the Tier 5 table:
-  ```
-  | `/api/{name}` | GET/POST | Expected assertions | | needs-test |
-  ```
-
-- **New page/route created** (`app/{name}/page.js`): Add a row to the Tier 6 table:
-  ```
-  | {Page name} loads | Navigate to `/{name}` | Key elements visible | | needs-test | P1 |
-  ```
-
-### When to Update Status
-
-- E2E test file written and passing: Change Status from `needs-test` to `covered`
-- Fill in the Test File column with the actual filename
-
-### Validation
-
-Read `tests/E2E-MATRIX.md` and check:
-- All rows with Status `covered` have a Test File listed
-- No new endpoints/pages are missing from the matrix
-- No rows still say `in-progress` for tests that are actually done
-
----
-
-## Section 6: Verification Report
+## Section 5: Verification Report
 
 Output a structured report with a clear verdict.
 
@@ -247,21 +198,17 @@ Output a structured report with a clear verdict.
 ### Test Coverage
 - {status icon} {test file} ({status detail})
 
-### E2E Matrix
-- {status icon} {endpoint or page} {status}
-
 ### Test Results
 - {status icon} {suite name} ({count} passed)
 
-### Verdict: {PASS | NEEDS WORK | INCOMPLETE}
+### Verdict: {PASS | NEEDS WORK}
 {If not PASS, list specific items that need attention}
 ```
 
 ### Status Icons
 
-- PASS: All required tests exist, all tests pass, matrix is up to date
-- NEEDS WORK: Missing tests, failing tests, or matrix gaps found
-- INCOMPLETE: E2E tests required but dev server not running — re-run after starting server
+- PASS: All required tests exist, all tests pass
+- NEEDS WORK: Missing tests, failing tests, or drift detected
 
 ### Verdict Rules
 
@@ -269,15 +216,8 @@ Output a structured report with a clear verdict.
 - Every changed file that requires tests has corresponding test files
 - No inline function drift detected
 - All test suites pass
-- E2E-MATRIX.md has rows for any new endpoints/pages
-- E2E tests run (or none were required)
 
 **NEEDS WORK** if any of:
 - Missing test files for changed code
 - Inline function drift detected
 - Test failures
-- Missing E2E-MATRIX.md rows
-
-**INCOMPLETE** if:
-- E2E tests are required but dev server is not running
-- All other checks pass (or are flagged as NEEDS WORK separately)

@@ -41,13 +41,13 @@ Every new feature or bug fix that touches business logic, API routes, or databas
 
 | Change Type | Tests Required? | Tier(s) | Run Command |
 |-------------|:-:|------|------|
-| New API route (`app/api/`) | **YES** | Critical + API + **API E2E** | `test:critical && test:api` + `test:e2e:api` |
-| Modified API route (response shape changed) | **YES** | Critical + API + **API E2E** | `test:critical && test:api` + `test:e2e:api` |
+| New API route (`app/api/`) | **YES** | Critical + API | `test:critical && test:api` |
+| Modified API route (response shape changed) | **YES** | Critical + API | `test:critical && test:api` |
 | Modified API route (internal logic only) | **YES** | Critical + API | `test:critical && test:api` |
-| New page/route | **YES** | **Browser E2E** (smoke) | `test:e2e:browser` |
+| New page/route | Verify in browser | — | Interactive verification (global standard) |
 | New/modified lib function (`lib/`) | **YES** | Pipeline or Critical | `test:critical` or `test:pipeline` |
 | Bug fix in business logic | **YES** (regression) | Matches affected tier | Matches affected tier |
-| Cross-cutting change (multiple routes/pages) | **YES** | Unit tiers + **E2E** (both) | `test:critical && test:api && test:e2e` |
+| Cross-cutting change (multiple routes/pages) | **YES** | Critical + API | `test:critical && test:api` + verify in browser |
 | Skill file (`.claude/skills/`) | NO | — | — |
 | Agent file (`.claude/agents/`) | NO | — | — |
 | Database migration — new table/column/view/RPC | **YES** | **DB Integration** (3b) + update Tier 3 simulated | `test:database` + `test:db:integration` (when infra ready) |
@@ -62,12 +62,11 @@ Test-after — write tests once implementation is stable:
 
 1. Implement the change
 2. **Check the decision gate above** for every file you touched
-3. If tests required: write them using the **inline-function pattern** (Tiers 1-4) or e2e patterns (Tiers 5-6)
-4. **Update tracking**: If you created a NEW API endpoint, add a row to `tests/E2E-MATRIX.md` (Tier 5 table). If you created a NEW page/route, add a row to the Tier 6 table. If you wrote an e2e test, update its Status to `covered`.
-5. Run the commands from the **Run Command** column in the decision gate
-6. Fix any failures before proceeding
-7. **Run `/testing-check`** — this is **MANDATORY before every commit**. It verifies test coverage, runs suites, and checks the E2E matrix. See `.claude/skills/testing/SKILL.md` for the full playbook.
-8. Report task as complete only after `/testing-check` passes
+3. If tests required: write them using the **inline-function pattern**
+4. Run the commands from the **Run Command** column in the decision gate
+5. Fix any failures before proceeding
+6. **Run `/testing-check`** — this is **MANDATORY before every commit**. It verifies test coverage, runs suites, and outputs a verdict. See `.claude/skills/testing/SKILL.md` for the full playbook.
+7. Report task as complete only after `/testing-check` passes
 
 ## Inline-Function Pattern
 
@@ -113,39 +112,13 @@ import { isPromotionVisible } from '@/app/api/counts/route';  // WILL FAIL
 
 ## E2E Testing
 
-E2E tests live in `tests/e2e/` and require `npm run dev` running on localhost:3000. Auth is automatically bypassed in dev mode (`middleware.js` line 6). API E2E uses Vitest + native `fetch()` (`*.e2e.test.js`); Browser E2E uses Playwright + headless Chromium (`*.spec.js`). See [`tests/README.md`](tests/README.md) and [`tests/E2E-MATRIX.md`](tests/E2E-MATRIX.md) for full details and coverage tracking.
+E2E tests require `npm run dev` running on localhost:3000. Auth is automatically bypassed in dev mode (`middleware.js` line 6).
 
-## Batch E2E Test Runs
+**User flow verification follows the global standard**: interactive browser-based verification (Preview tools, Playwright MCP, or Claude in Chrome) rather than writing Playwright spec files. Acceptance criteria on GitHub issues are the tracking mechanism.
 
-Batch E2E test runs use `Work Type = Test` on the project board. They follow a different lifecycle than feature/bug/chore issues.
+**Existing automated E2E coverage** is maintained but not expanded as default practice:
+- API E2E: `tests/e2e/api/` — Vitest + native `fetch()` (`npm run test:e2e:api`)
+- Browser E2E: `tests/e2e/browser/` — Playwright headless Chromium (`npm run test:e2e:browser`)
+- Config: `tests/e2e/playwright.config.js` | Helpers: `tests/e2e/helpers/`
 
-### When to Create Test Issues
-
-- After a spec is written and a test matrix is produced
-- After a batch of related features lands on staging and needs verification
-- For periodic regression test runs
-
-### Workflow
-
-1. **Spec written** → test matrix produced (or updated in `tests/E2E-MATRIX.md`)
-2. **Create a Test issue** on the project board using the `test` template
-3. **Pick up the issue** — create a `test/<short-description>` branch off staging
-4. **Write the test files** (Playwright specs, Vitest tests, etc.)
-5. **Execute the tests** and record results
-6. **Check off each assertion** as PASS in the issue body
-7. **If failures** — create a Bug issue for each failure, linked back to the test issue in Context
-8. **Close the test issue** with a results summary note
-9. **Update the test matrix** document with execution results
-
-### Test Issue Structure
-
-Test issues use the `test.yml` template with fields different from feature/bug/chore:
-- **Test Scope** — what spec or feature area is being tested, with test matrix reference
-- **Assertions** — pass/fail checkboxes per test case or requirement group (e.g., `- [ ] TX-014: Task CRUD (REQ-214-225) — PASS`)
-- **Test Type** — E2E (Playwright), Component (Vitest/RTL), Integration, or Performance
-- **Context** — links to test matrix doc, related feature issues
-
-### After Running Tests
-
-- **All pass** — check off all assertions, close the issue
-- **Failures** — create a Bug issue for each failure (link to the test issue in Context), then close the test issue with a summary note
+**When to write a Playwright spec file**: Only for critical paths where automated regression protection justifies the maintenance cost. This is a last resort, not the default.
