@@ -1,9 +1,8 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo, Suspense } from 'react';
+import { Suspense } from 'react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
-import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import MainLayout from '@/components/layout/main-layout';
 import {
 	Card,
@@ -29,14 +28,6 @@ import CoverageAreaFilter from '@/components/map/CoverageAreaFilter';
 import OpportunitySortDropdown from '@/components/map/OpportunitySortDropdown';
 import StatusFilter from '@/components/map/StatusFilter';
 import ProjectTypesFilter from '@/components/map/ProjectTypesFilter';
-import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
-} from '@/components/ui/select';
-import { Slider } from '@/components/ui/slider';
 import { Badge } from '@/components/ui/badge';
 import {
 	Tooltip,
@@ -44,547 +35,142 @@ import {
 	TooltipProvider,
 	TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { format } from 'date-fns';
 import { getProjectTypeColor } from '@/lib/utils/uiHelpers';
+import { stateNameToCode } from '@/lib/utils/stateAbbreviations';
+import {
+	useFundingByState,
+	useMapOpportunities,
+	useScopeBreakdown,
+	useCategoryMapping,
+} from '@/lib/hooks/queries';
+import { useMapFilterStore } from '@/lib/stores/mapFilterStore';
+import { useMapUrlSync } from '@/hooks/useMapUrlSync';
+import { useMapApiFilters } from '@/hooks/useMapApiFilters';
 
 // Dynamically import the map component with SSR disabled
 const FundingMapClient = dynamic(
 	() => import('@/components/map/FundingMapClient'),
 	{
-		ssr: false, // Disable server-side rendering for this component
+		ssr: false,
 		loading: () => (
 			<div className='flex items-center justify-center h-[500px]'>
-				{/* Use a simple div or a manually imported spinner here */}
 				<div className='animate-spin rounded-full h-8 w-8 border-b-2 border-primary'></div>
 			</div>
 		),
 	}
 );
 
-// FilterSidebar removed - using ProjectTypesFilter instead
-
-// State abbreviations for map labels
-const stateAbbreviations = {
-	Alabama: 'AL',
-	Alaska: 'AK',
-	Arizona: 'AZ',
-	Arkansas: 'AR',
-	California: 'CA',
-	Colorado: 'CO',
-	Connecticut: 'CT',
-	Delaware: 'DE',
-	Florida: 'FL',
-	Georgia: 'GA',
-	Hawaii: 'HI',
-	Idaho: 'ID',
-	Illinois: 'IL',
-	Indiana: 'IN',
-	Iowa: 'IA',
-	Kansas: 'KS',
-	Kentucky: 'KY',
-	Louisiana: 'LA',
-	Maine: 'ME',
-	Maryland: 'MD',
-	Massachusetts: 'MA',
-	Michigan: 'MI',
-	Minnesota: 'MN',
-	Mississippi: 'MS',
-	Missouri: 'MO',
-	Montana: 'MT',
-	Nebraska: 'NE',
-	Nevada: 'NV',
-	'New Hampshire': 'NH',
-	'New Jersey': 'NJ',
-	'New Mexico': 'NM',
-	'New York': 'NY',
-	'North Carolina': 'NC',
-	'North Dakota': 'ND',
-	Ohio: 'OH',
-	Oklahoma: 'OK',
-	Oregon: 'OR',
-	Pennsylvania: 'PA',
-	'Rhode Island': 'RI',
-	'South Carolina': 'SC',
-	'South Dakota': 'SD',
-	Tennessee: 'TN',
-	Texas: 'TX',
-	Utah: 'UT',
-	Vermont: 'VT',
-	Virginia: 'VA',
-	Washington: 'WA',
-	'West Virginia': 'WV',
-	Wisconsin: 'WI',
-	Wyoming: 'WY',
-	'District of Columbia': 'DC',
-};
-
-
-// Helper function to format funding amounts appropriately
 function formatFundingAmount(value) {
 	if (!value) return '0';
-
-	// Format as billions if over 1 billion
-	if (value >= 1000000000) {
-		return `${(value / 1000000000).toFixed(2)}B`;
-	}
-
-	// Format as millions if over 1 million
-	if (value >= 1000000) {
-		return `${(value / 1000000).toFixed(1)}M`;
-	}
-
-	// Format as thousands if over 1 thousand
-	if (value >= 1000) {
-		return `${(value / 1000).toFixed(0)}K`;
-	}
-
-	// Otherwise just return the value
+	if (value >= 1000000000) return `${(value / 1000000000).toFixed(2)}B`;
+	if (value >= 1000000) return `${(value / 1000000).toFixed(1)}M`;
+	if (value >= 1000) return `${(value / 1000).toFixed(0)}K`;
 	return value.toLocaleString();
 }
 
-// Main map content component that uses useSearchParams
-function MapPageContent() {
-	// URL params handling
-	const searchParams = useSearchParams();
-	const router = useRouter();
-	const pathname = usePathname();
-
-	// Parse initial state from URL params
-	const initialFilters = useMemo(() => ({
-		minAmount: 0,
-		maxAmount: parseInt(searchParams.get('maxAmount') || '0'),
-		// Default to Open,Upcoming like opportunities page
-		status: searchParams.get('status')?.split(',').filter(Boolean) || ['Open', 'Upcoming'],
-		sourceType: 'all',
-		categories: [],
-		projectTypes: searchParams.get('projectTypes')?.split(',').filter(Boolean) || [],
-		showNational: true,
-		deadlineRange: { start: null, end: null },
-		scope: searchParams.get('scope')?.split(',').filter(Boolean) || ['national', 'state_wide', 'county', 'utility'],
-		search: searchParams.get('search') || '',
-		page: parseInt(searchParams.get('page')) || 1,
-	}), []);
-
-	// Sort state
-	const initialSortOption = searchParams.get('sort') || 'relevance';
-	const initialSortDirection = searchParams.get('sortDir') || 'desc';
-
-	const initialViewMode = searchParams.get('view') || 'us';
-	const initialStateCode = searchParams.get('state') || null;
-
-	// Convert state code back to full name for initializing selectedState
-	const getStateNameFromCode = (code) => {
-		if (!code) return null;
-		return Object.entries(stateAbbreviations).find(([name, abbr]) => abbr === code)?.[0] || null;
+function formatAmount(minimum, maximum, total) {
+	const formatWithSuffix = (num) => {
+		if (!num && num !== 0) return null;
+		if (num >= 1000000) {
+			return `$${(num / 1000000).toLocaleString(undefined, {
+				maximumFractionDigits: 1,
+				minimumFractionDigits: 0,
+			})}M`;
+		}
+		return `$${(num / 1000).toLocaleString(undefined, {
+			maximumFractionDigits: 0,
+		})}K`;
 	};
 
-	const [fundingData, setFundingData] = useState([]);
-	const [loading, setLoading] = useState(true);
-	const [error, setError] = useState(null);
-	const [selectedState, setSelectedState] = useState(() => getStateNameFromCode(initialStateCode));
-	const [selectedStateCode, setSelectedStateCode] = useState(initialStateCode);
-	const [colorBy, setColorBy] = useState('amount'); // 'amount' or 'count'
-	const [totalFundingAvailable, setTotalFundingAvailable] = useState(0);
-	const [totalOpportunities, setTotalOpportunities] = useState(0);
-	const [statesWithFunding, setStatesWithFunding] = useState(0);
-	const [categoryMapping, setCategoryMapping] = useState({});
+	if (minimum && maximum) return `${formatWithSuffix(minimum)} - ${formatWithSuffix(maximum)}`;
+	if (maximum) return `Up to ${formatWithSuffix(maximum)}`;
+	if (minimum) return `From ${formatWithSuffix(minimum)}`;
+	if (total) return `${formatWithSuffix(total)} total`;
+	return 'Amount not specified';
+}
 
-	// View mode state: 'us' or 'state' (county/utility views removed)
-	const [viewMode, setViewMode] = useState(initialViewMode === 'county' || initialViewMode === 'utility' ? 'state' : initialViewMode);
-	const [scopeBreakdown, setScopeBreakdown] = useState(null); // Scope counts from ScopeBreakdown
-	const [nationalOpportunities, setNationalOpportunities] = useState([]);
-	const [nationalOpportunitiesLoading, setNationalOpportunitiesLoading] =
-		useState(false);
-	const [nationalPage, setNationalPage] = useState(initialFilters.page);
-	const [nationalTotalCount, setNationalTotalCount] = useState(0);
+// Main map content component
+function MapPageContent() {
+	// --- URL sync (bidirectional: URL <-> store) ---
+	useMapUrlSync();
 
-	const [filters, setFilters] = useState(initialFilters);
+	// --- Zustand store: filter/sort/view state ---
+	const filters = useMapFilterStore((s) => s.filters);
+	const selectedStateCode = useMapFilterStore((s) => s.selectedStateCode);
+	const selectedStateName = useMapFilterStore((s) => s.selectedStateName);
+	const viewMode = useMapFilterStore((s) => s.viewMode);
+	const colorBy = useMapFilterStore((s) => s.colorBy);
+	const sortOption = useMapFilterStore((s) => s.sortOption);
+	const sortDirection = useMapFilterStore((s) => s.sortDirection);
 
-	// Sort state
-	const [sortOption, setSortOption] = useState(initialSortOption);
-	const [sortDirection, setSortDirection] = useState(initialSortDirection);
+	// Store actions
+	const updateFilter = useMapFilterStore((s) => s.updateFilter);
+	const resetFilters = useMapFilterStore((s) => s.resetFilters);
+	const setSelectedState = useMapFilterStore((s) => s.setSelectedState);
+	const clearSelectedState = useMapFilterStore((s) => s.clearSelectedState);
+	const setColorBy = useMapFilterStore((s) => s.setColorBy);
+	const setSortOption = useMapFilterStore((s) => s.setSortOption);
+	const setSortDirection = useMapFilterStore((s) => s.setSortDirection);
+	const setPage = useMapFilterStore((s) => s.setPage);
 
-	// Fetch the category mapping on mount
-	useEffect(() => {
-		async function fetchCategoryMapping() {
-			try {
-				const response = await fetch('/api/categories');
-				const result = await response.json();
+	// --- API filter composition ---
+	const { fundingByStateFilters, opportunitiesFilters, scopeBreakdownFilters } =
+		useMapApiFilters();
 
-				if (result.success && result.rawToNormalizedMap) {
-					setCategoryMapping(result.rawToNormalizedMap);
-					console.log(
-						'Loaded category mapping with',
-						Object.keys(result.rawToNormalizedMap).length,
-						'entries'
-					);
-				} else if (result.success) {
-					console.warn('API returned success but no category mapping data:', result);
-					setCategoryMapping({});
-				} else {
-					console.error('Error fetching categories:', result.error);
-				}
-			} catch (err) {
-				console.error('Failed to fetch categories:', err);
-			}
-		}
+	// --- TanStack Query: data fetching with caching ---
+	const { data: fundingByStateData, isLoading: loading, error: queryError } =
+		useFundingByState(fundingByStateFilters);
 
-		fetchCategoryMapping();
-	}, []);
+	const { data: oppData, isLoading: oppsLoading } =
+		useMapOpportunities(opportunitiesFilters);
 
-	useEffect(() => {
-		async function fetchFundingData() {
-			try {
-				setLoading(true);
-				// Build query parameters
-				const queryParams = new URLSearchParams();
+	const { data: scopeData } = useScopeBreakdown(
+		selectedStateCode || 'US',
+		scopeBreakdownFilters
+	);
 
-				// Handle status as array
-				const statusArray = Array.isArray(filters.status) ? filters.status : [filters.status];
-				if (statusArray.length > 0 && statusArray[0] !== 'all') {
-					queryParams.append('status', statusArray.join(','));
-				}
-				if (filters.sourceType !== 'all') {
-					queryParams.append('source_type', filters.sourceType);
-				}
+	useCategoryMapping(); // Pre-warm cache; not directly consumed on this page
 
-				// Handle category filtering with normalization
-				if (filters.categories?.length > 0) {
-					// Get all raw categories that map to our selected normalized categories
-					const rawCategories = Object.entries(categoryMapping)
-						.filter(([raw, normalized]) =>
-							filters.categories.includes(normalized)
-						)
-						.map(([raw]) => raw);
+	// --- Derived values ---
+	const fundingData = fundingByStateData?.data ?? [];
+	const totalFundingAvailable = fundingByStateData?.totalFunding ?? 0;
+	const totalOpportunities = fundingByStateData?.totalOpportunities ?? 0;
+	const statesWithFunding = fundingByStateData?.statesWithFunding ?? 0;
+	const error = queryError?.message ?? null;
 
-					// If we have a mapping, use all raw categories that map to our selections
-					// Otherwise, just use the selected categories directly
-					const categoriesToSend =
-						rawCategories.length > 0 ? rawCategories : filters.categories;
+	const nationalOpportunities = oppData?.data?.opportunities ?? [];
+	const nationalTotalCount = oppData?.data?.total ?? 0;
+	const scopeBreakdown = scopeData?.data ?? null;
 
-					queryParams.append('categories', categoriesToSend.join(','));
-				}
-
-				// Handle project types filtering
-				if (filters.projectTypes?.length > 0) {
-					queryParams.append('projectTypes', filters.projectTypes.join(','));
-				}
-
-				// AMOUNT FILTER DISABLED (Dec 2025)
-				// Reason: 65% of opportunities have NULL maximum_award, making this filter
-				// ineffective and confusing. Re-enable if data quality improves or users request it.
-				// if (filters.minAmount > 0) {
-				// 	queryParams.append('min_amount', filters.minAmount);
-				// }
-				// if (filters.maxAmount > 0) {
-				// 	queryParams.append('max_amount', filters.maxAmount);
-				// }
-				if (!filters.showNational) {
-					queryParams.append('include_national', 'false');
-				}
-				if (filters.deadlineRange.start) {
-					queryParams.append(
-						'deadline_start',
-						format(filters.deadlineRange.start, 'yyyy-MM-dd')
-					);
-				}
-				if (filters.deadlineRange.end) {
-					queryParams.append(
-						'deadline_end',
-						format(filters.deadlineRange.end, 'yyyy-MM-dd')
-					);
-				}
-
-				// Add cache-busting timestamp
-				queryParams.append('_t', Date.now());
-
-				const response = await fetch(
-					`/api/map/funding-by-state?${queryParams}`
-				);
-				const result = await response.json();
-
-				if (result.success) {
-					// Check California in the API response
-					const californiaResponse = result.data.find(
-						(d) => d.state === 'California'
-					);
-					console.log('API response California:', californiaResponse);
-
-					// Log all state names to check for weird ones
-					const stateNames = result.data.map((d) => d.state);
-					console.log('All state names:', stateNames);
-
-					setFundingData(result.data);
-					setTotalFundingAvailable(result.totalFunding || 0);
-					setTotalOpportunities(result.totalOpportunities || 0);
-					setStatesWithFunding(result.statesWithFunding || 0);
-				} else {
-					console.error('Error in API response:', result.error);
-					setError(result.error);
-				}
-			} catch (err) {
-				console.error('Error fetching funding data:', err);
-				setError(err.message);
-			} finally {
-				setLoading(false);
-			}
-		}
-
-		fetchFundingData();
-	}, [filters, categoryMapping]);
-
+	// --- Event handlers ---
 	const handleStateClick = (geo) => {
 		const stateName = geo.properties.name;
-		const stateCode = stateAbbreviations[stateName] || null;
-		if (selectedState === stateName) {
-			// Deselect state, go back to US view
-			setSelectedState(null);
-			setSelectedStateCode(null);
-			setViewMode('us');
-			updateUrlParams(filters, 'us', null);
+		const stateCode = stateNameToCode[stateName] || null;
+		if (selectedStateName === stateName) {
+			clearSelectedState();
 		} else {
-			// Select state, enter state view
-			setSelectedState(stateName);
-			setSelectedStateCode(stateCode);
-			setViewMode('state');
-			updateUrlParams(filters, 'state', stateCode);
+			setSelectedState(stateCode, stateName);
 		}
 	};
 
-
-	// Update URL params when filters/view change
-	const updateUrlParams = useCallback((newFilters, newViewMode, newState, newSortOption = sortOption, newSortDirection = sortDirection, newPage = 1) => {
-		const params = new URLSearchParams();
-
-		// Add non-default filter values to URL
-		// Status is now an array, default is ['Open', 'Upcoming']
-		const defaultStatus = ['Open', 'Upcoming'];
-		const statusArray = Array.isArray(newFilters.status) ? newFilters.status : [newFilters.status];
-		const isDefaultStatus = statusArray.length === 2 &&
-			statusArray.includes('Open') && statusArray.includes('Upcoming');
-		if (!isDefaultStatus && statusArray.length > 0 && statusArray[0] !== 'all') {
-			params.set('status', statusArray.join(','));
-		}
-		if (newFilters.projectTypes?.length > 0) {
-			params.set('projectTypes', newFilters.projectTypes.join(','));
-		}
-		if (newFilters.search) {
-			params.set('search', newFilters.search);
-		}
-		// DISABLED - see amount filter comment in fetchData
-		// if (newFilters.maxAmount > 0) {
-		// 	params.set('maxAmount', newFilters.maxAmount.toString());
-		// }
-		if (newFilters.scope?.length > 0 && newFilters.scope.length < 4) {
-			params.set('scope', newFilters.scope.join(','));
-		}
-		if (newViewMode && newViewMode !== 'us') {
-			params.set('view', newViewMode);
-		}
-		if (newState) {
-			params.set('state', newState);
-		}
-		// Add sort params if not default
-		if (newSortOption && newSortOption !== 'relevance') {
-			params.set('sort', newSortOption);
-		}
-		if (newSortDirection && newSortDirection !== 'desc') {
-			params.set('sortDir', newSortDirection);
-		}
-		// Add page param if not on first page
-		if (newPage > 1) {
-			params.set('page', newPage.toString());
-		}
-
-		const queryString = params.toString();
-		router.replace(`${pathname}${queryString ? '?' + queryString : ''}`, { scroll: false });
-	}, [pathname, router, sortOption, sortDirection]);
-
 	const handleFilterChange = (filterKey, value) => {
-		const newFilters = {
-			...filters,
-			[filterKey]: value,
-		};
-		setFilters(newFilters);
-		// Update URL
-		updateUrlParams(newFilters, viewMode, selectedStateCode);
+		updateFilter(filterKey, value);
+		if (filterKey !== 'page') {
+			setPage(1);
+		}
 	};
 
 	const handleResetFilters = () => {
-		const defaultFilters = {
-			minAmount: 0,
-			maxAmount: 0,
-			status: ['Open', 'Upcoming'], // Default to Open + Upcoming
-			sourceType: 'all',
-			categories: [],
-			projectTypes: [],
-			showNational: true,
-			deadlineRange: {
-				start: null,
-				end: null,
-			},
-			scope: ['national', 'state_wide', 'county', 'utility'],
-			search: '',
-		};
-		setFilters(defaultFilters);
-		setSortOption('relevance');
-		setSortDirection('desc');
-		// Reset pagination
-		setNationalPage(1);
-		// Update URL to clear filter params
-		updateUrlParams(defaultFilters, viewMode, selectedStateCode, 'relevance', 'desc');
+		resetFilters();
 	};
 
-	// Handle sort change
 	const handleSortChange = (newOption, newDirection) => {
 		setSortOption(newOption);
 		setSortDirection(newDirection);
-		updateUrlParams(filters, viewMode, selectedStateCode, newOption, newDirection);
 	};
 
-	// Sync pagination to URL when page changes
-	useEffect(() => {
-		// Skip initial render - only sync when user navigates pages
-		if (nationalPage !== initialFilters.page || nationalPage > 1) {
-			updateUrlParams(filters, viewMode, selectedStateCode, sortOption, sortDirection, nationalPage);
-		}
-	}, [nationalPage]); // Only trigger on page change
-
-	// View mode handlers
-	const handleBackToUS = useCallback(() => {
-		setViewMode('us');
-		setSelectedState(null);
-		setSelectedStateCode(null);
-		updateUrlParams(filters, 'us', null);
-	}, [filters, updateUrlParams]);
-
-	// Unified opportunities fetch for side panel - works for both nationwide and state views
-	useEffect(() => {
-		async function fetchMapOpportunities() {
-			try {
-				setNationalOpportunitiesLoading(true);
-				const params = new URLSearchParams();
-
-				// Add state if selected (otherwise nationwide)
-				if (selectedStateCode) {
-					params.append('state', selectedStateCode);
-				}
-
-				// Status as array
-				const statusArray = Array.isArray(filters.status) ? filters.status : [filters.status];
-				if (statusArray.length > 0 && statusArray[0] !== 'all') {
-					params.append('status', statusArray.join(','));
-				}
-
-				// Scope/coverage filter
-				if (filters.scope?.length > 0 && filters.scope.length < 4) {
-					params.append('scope', filters.scope.join(','));
-				}
-
-				// Project types
-				if (filters.projectTypes?.length > 0) {
-					params.append('projectTypes', filters.projectTypes.join(','));
-				}
-
-				// Sorting
-				if (sortOption) {
-					params.append('sort_by', sortOption);
-				}
-				if (sortDirection) {
-					params.append('sort_direction', sortDirection);
-				}
-
-				// Pagination
-				params.append('page', nationalPage.toString());
-				params.append('pageSize', '10');
-
-				// Search
-				if (filters.search) {
-					params.append('search', filters.search);
-				}
-
-				const response = await fetch(`/api/map/opportunities?${params}`);
-				const result = await response.json();
-
-				if (result.success && result.data) {
-					setNationalTotalCount(result.data.total || 0);
-					setNationalOpportunities(result.data.opportunities || []);
-				}
-			} catch (error) {
-				console.error('Error fetching map opportunities:', error);
-			} finally {
-				setNationalOpportunitiesLoading(false);
-			}
-		}
-
-		fetchMapOpportunities();
-	}, [selectedStateCode, filters.status, filters.projectTypes, filters.scope, filters.search, sortOption, sortDirection, nationalPage]);
-
-	// Fetch scope breakdown for ScopeSummary
-	useEffect(() => {
-		async function fetchScopeBreakdown() {
-			try {
-				const params = new URLSearchParams();
-
-				// Status as array
-				const statusArray = Array.isArray(filters.status) ? filters.status : [filters.status];
-				if (statusArray.length > 0 && statusArray[0] !== 'all') {
-					params.append('status', statusArray.join(','));
-				}
-
-				if (filters.projectTypes?.length > 0) {
-					params.append('projectTypes', filters.projectTypes.join(','));
-				}
-
-				// Use state code or 'US' for nationwide
-				const endpoint = selectedStateCode
-					? `/api/map/scope-breakdown/${selectedStateCode}?${params}`
-					: `/api/map/scope-breakdown/US?${params}`;
-
-				const response = await fetch(endpoint);
-				const result = await response.json();
-
-				if (result.success && result.data) {
-					setScopeBreakdown(result.data);
-				}
-			} catch (error) {
-				console.error('Error fetching scope breakdown:', error);
-			}
-		}
-
-		fetchScopeBreakdown();
-	}, [selectedStateCode, filters.status, filters.projectTypes]);
-
-	// Format amount with K/M suffix based on size
-	const formatAmount = (minimum, maximum, total) => {
-		// Helper to format a number with K/M suffix (including $ sign)
-		const formatWithSuffix = (num) => {
-			if (!num && num !== 0) return null;
-
-			if (num >= 1000000) {
-				return `$${(num / 1000000).toLocaleString(undefined, {
-					maximumFractionDigits: 1,
-					minimumFractionDigits: 0,
-				})}M`;
-			} else {
-				return `$${(num / 1000).toLocaleString(undefined, {
-					maximumFractionDigits: 0,
-				})}K`;
-			}
-		};
-
-		// Handle different cases based on available data with proper $ formatting
-		if (minimum && maximum) {
-			return `${formatWithSuffix(minimum)} - ${formatWithSuffix(maximum)}`;
-		} else if (maximum) {
-			return `Up to ${formatWithSuffix(maximum)}`;
-		} else if (minimum) {
-			return `From ${formatWithSuffix(minimum)}`;
-		} else if (total) {
-			return `${formatWithSuffix(total)} total`;
-		} else {
-			return 'Amount not specified';
-		}
+	const handleBackToUS = () => {
+		clearSelectedState();
 	};
 
 	return (
@@ -594,7 +180,6 @@ function MapPageContent() {
 					{/* Header with title and navigation */}
 					<div className='flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 sm:gap-4'>
 						<div className='flex flex-wrap items-center gap-2 sm:gap-4'>
-							{/* Back button - show when state is selected */}
 							{viewMode === 'state' && (
 								<Button
 									variant='ghost'
@@ -608,20 +193,19 @@ function MapPageContent() {
 								</Button>
 							)}
 							<h1 className='text-xl sm:text-2xl lg:text-3xl font-bold truncate'>
-								{viewMode === 'us' && !selectedState && 'Funding Map'}
-								{viewMode === 'us' && selectedState && `${selectedState} Opportunities`}
-								{viewMode === 'state' && `${selectedState} Opportunities`}
+								{viewMode === 'us' && !selectedStateName && 'Funding Map'}
+								{viewMode === 'us' && selectedStateName && `${selectedStateName} Opportunities`}
+								{viewMode === 'state' && `${selectedStateName} Opportunities`}
 							</h1>
 						</div>
 
-						{/* View mode indicator - Hidden on smallest screens */}
 						<div className='hidden sm:flex items-center gap-2 text-sm text-muted-foreground'>
-							{viewMode === 'us' && !selectedState && (
+							{viewMode === 'us' && !selectedStateName && (
 								<span className='flex items-center gap-1'>
 									<Globe className='h-4 w-4' /> Nationwide View
 								</span>
 							)}
-							{(viewMode === 'us' && selectedState) || viewMode === 'state' ? (
+							{(viewMode === 'us' && selectedStateName) || viewMode === 'state' ? (
 								<span className='flex items-center gap-1'>
 									<Building2 className='h-4 w-4' /> State View
 								</span>
@@ -629,10 +213,10 @@ function MapPageContent() {
 						</div>
 					</div>
 
-					{/* Filter Row - Above the map */}
+					{/* Filter Row */}
 					<div className='border rounded-lg shadow-sm mb-6 p-4 dark:border-neutral-700'>
 						<div className='flex flex-wrap items-center gap-3 md:gap-4'>
-							{/* Search Box - Full width on mobile */}
+							{/* Search Box */}
 							<div className='relative w-full sm:w-[200px] order-1'>
 								<Search className='absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground' />
 								<input
@@ -650,21 +234,18 @@ function MapPageContent() {
 								)}
 							</div>
 
-							{/* Filter elements container - wraps on mobile */}
+							{/* Filter elements */}
 							<div className='flex flex-wrap items-center gap-2 sm:gap-3 flex-1 order-2'>
-								{/* Status Filter */}
 								<StatusFilter
 									value={Array.isArray(filters.status) ? filters.status : [filters.status]}
 									onChange={(newStatus) => handleFilterChange('status', newStatus)}
 								/>
 
-								{/* Project Types Filter */}
 								<ProjectTypesFilter
 									value={filters.projectTypes || []}
 									onChange={(newTypes) => handleFilterChange('projectTypes', newTypes)}
 								/>
 
-								{/* Coverage Area Filter */}
 								<CoverageAreaFilter
 									value={filters.scope || ['national', 'state_wide', 'county', 'utility']}
 									onChange={(newScope) => handleFilterChange('scope', newScope)}
@@ -675,28 +256,6 @@ function MapPageContent() {
 									}}
 								/>
 
-								{/* AMOUNT FILTER UI DISABLED (Dec 2025)
-								   Reason: 65% of opportunities have NULL maximum_award, making this filter
-								   ineffective. Re-enable if data quality improves or users request it.
-								<div className='hidden sm:block w-[180px] lg:w-[200px]'>
-									<div className='flex justify-between mb-1'>
-										<span className='text-xs sm:text-sm font-medium'>Amount:</span>
-										<span className='text-xs sm:text-sm text-blue-600 dark:text-blue-400'>
-											${(filters.maxAmount / 1000000).toFixed(1)}M+
-										</span>
-									</div>
-									<Slider
-										value={[filters.maxAmount]}
-										max={10000000}
-										step={500000}
-										onValueChange={(values) =>
-											handleFilterChange('maxAmount', values[0])
-										}
-									/>
-								</div>
-							*/}
-
-								{/* Sort Dropdown */}
 								<OpportunitySortDropdown
 									value={sortOption}
 									direction={sortDirection}
@@ -704,7 +263,6 @@ function MapPageContent() {
 								/>
 							</div>
 
-							{/* Reset Button */}
 							<Button
 								variant='outline'
 								onClick={handleResetFilters}
@@ -715,21 +273,17 @@ function MapPageContent() {
 
 						{/* Active Filter Pills */}
 						{(() => {
-							// Check if status differs from default ['Open', 'Upcoming']
 							const statusArray = Array.isArray(filters.status) ? filters.status : [filters.status];
 							const isDefaultStatus = statusArray.length === 2 &&
 								statusArray.includes('Open') && statusArray.includes('Upcoming');
-							// Check if scope differs from default (all 4)
 							const isDefaultScope = filters.scope?.length === 4;
 							const hasActiveFilters = !isDefaultStatus ||
 								filters.projectTypes?.length > 0 ||
 								filters.search ||
-								// filters.maxAmount > 0 ||  // DISABLED - see amount filter comment above
 								!isDefaultScope;
 
 							return hasActiveFilters && (
 								<div className='flex flex-wrap gap-2 mt-3 pt-3 border-t'>
-									{/* Status pills */}
 									{!isDefaultStatus && statusArray.map((status) => (
 										<span
 											key={status}
@@ -745,7 +299,6 @@ function MapPageContent() {
 										</span>
 									))}
 
-									{/* Project type pills */}
 									{filters.projectTypes?.map((type) => {
 										const typeColor = getProjectTypeColor(type);
 										return (
@@ -768,7 +321,6 @@ function MapPageContent() {
 										);
 									})}
 
-									{/* Scope filter pill - only show if not all selected */}
 									{!isDefaultScope && filters.scope?.length > 0 && (
 										<span className='flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200'>
 											Coverage ({filters.scope.length})
@@ -779,10 +331,9 @@ function MapPageContent() {
 										</span>
 									)}
 
-									{/* Search pill */}
 									{filters.search && (
 										<span className='flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800 dark:bg-neutral-700 dark:text-neutral-200'>
-											Search: "{filters.search}"
+											Search: &quot;{filters.search}&quot;
 											<X
 												className='h-3 w-3 cursor-pointer hover:text-gray-600'
 												onClick={() => handleFilterChange('search', '')}
@@ -790,19 +341,6 @@ function MapPageContent() {
 										</span>
 									)}
 
-									{/* Amount pill - DISABLED (see amount filter comment above)
-									{filters.maxAmount > 0 && (
-										<span className='flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'>
-											Max: ${(filters.maxAmount / 1000000).toFixed(1)}M
-											<X
-												className='h-3 w-3 cursor-pointer hover:text-green-600'
-												onClick={() => handleFilterChange('maxAmount', 0)}
-											/>
-										</span>
-									)}
-								*/}
-
-									{/* Clear all button */}
 									<button
 										className='text-xs text-blue-600 hover:text-blue-800 hover:underline'
 										onClick={handleResetFilters}>
@@ -843,24 +381,23 @@ function MapPageContent() {
 									error={error}
 									fundingData={fundingData}
 									colorBy={colorBy}
-									selectedState={selectedState}
+									selectedState={selectedStateName}
 									onStateClick={handleStateClick}
-									stateAbbreviations={stateAbbreviations}
+									stateAbbreviations={stateNameToCode}
 								/>
 							</CardContent>
 						</Card>
 
-						{/* Context-Aware Summary Stats Card */}
+						{/* Summary Stats Card */}
 						<Card className='mt-6'>
 							<CardHeader className='pb-2'>
 								<CardTitle className='text-base'>
 									{viewMode === 'us' && 'Funding Summary'}
-									{viewMode === 'state' && `${selectedState || 'State'} Summary`}
+									{viewMode === 'state' && `${selectedStateName || 'State'} Summary`}
 								</CardTitle>
 							</CardHeader>
 							<CardContent>
 								<div className='space-y-3'>
-									{/* US View Stats */}
 									{viewMode === 'us' && (
 										<>
 											<div className='flex justify-between items-center'>
@@ -880,8 +417,7 @@ function MapPageContent() {
 										</>
 									)}
 
-									{/* State View Stats */}
-									{viewMode === 'state' && selectedState && (
+									{viewMode === 'state' && selectedStateName && (
 										<>
 											<div className='flex justify-between items-center'>
 												<span className='text-muted-foreground text-sm'>State Opportunities</span>
@@ -890,7 +426,7 @@ function MapPageContent() {
 											<div className='flex justify-between items-center'>
 												<span className='text-muted-foreground text-sm'>State Funding</span>
 												<span className='font-semibold text-lg text-green-600 dark:text-green-400'>
-													${formatFundingAmount(fundingData.find(d => d.state === selectedState)?.value || 0)}
+													${formatFundingAmount(fundingData.find(d => d.state === selectedStateName)?.value || 0)}
 												</span>
 											</div>
 										</>
@@ -900,16 +436,15 @@ function MapPageContent() {
 						</Card>
 					</div>
 
-					{/* Side Panel Column - Unified opportunities display */}
+					{/* Side Panel */}
 					<div className='lg:col-span-4'>
-						{/* Unified Opportunities Card - Works for both nationwide and state views */}
 						<Card>
 							<CardHeader className='pb-2'>
 								<CardTitle className='flex items-center'>
-									{selectedState ? (
+									{selectedStateName ? (
 										<>
 											<Building2 className='h-5 w-5 mr-2' />
-											{selectedState}
+											{selectedStateName}
 										</>
 									) : (
 										<>
@@ -919,10 +454,10 @@ function MapPageContent() {
 									)}
 								</CardTitle>
 								<CardDescription>
-									{nationalOpportunitiesLoading
+									{oppsLoading
 										? 'Loading opportunities...'
-										: selectedState
-											? `${nationalTotalCount.toLocaleString()} opportunities for ${selectedState}`
+										: selectedStateName
+											? `${nationalTotalCount.toLocaleString()} opportunities for ${selectedStateName}`
 											: `${nationalTotalCount.toLocaleString()} opportunities nationwide`}
 								</CardDescription>
 							</CardHeader>
@@ -930,62 +465,58 @@ function MapPageContent() {
 								<div className='h-[1px] bg-[#E0E0E0] my-3'></div>
 							</div>
 							<CardContent className='pt-0'>
-								{/* Scope Summary - Compact read-only display */}
 								<ScopeSummary
 									breakdown={scopeBreakdown || {}}
 									selectedScopes={filters.scope || ['national', 'state_wide', 'county', 'utility']}
 									className="mb-4"
 								/>
 
-								{/* Divider */}
 								<div className='h-[1px] bg-[#E0E0E0] my-4'></div>
 
 								{/* Opportunities List */}
 								<div>
-									{/* Header with title and compact pagination */}
 									<div className='flex justify-between items-center mb-3'>
 										<h4 className='text-sm font-semibold text-muted-foreground uppercase tracking-wide'>
 											Opportunities
 										</h4>
-										{nationalTotalCount > 10 && !nationalOpportunitiesLoading && (
+										{nationalTotalCount > 10 && !oppsLoading && (
 											<div className='flex items-center gap-2'>
 												<span className='text-xs text-muted-foreground'>
-													{nationalPage > 1 ? `${(nationalPage - 1) * 10 + 1}-${Math.min(nationalPage * 10, nationalTotalCount)}` : `1-${Math.min(10, nationalTotalCount)}`} of {nationalTotalCount.toLocaleString()}
+													{filters.page > 1 ? `${(filters.page - 1) * 10 + 1}-${Math.min(filters.page * 10, nationalTotalCount)}` : `1-${Math.min(10, nationalTotalCount)}`} of {nationalTotalCount.toLocaleString()}
 												</span>
 												<div className='flex gap-1'>
 													<Button
 														size='icon'
 														variant='ghost'
 														className='h-7 w-7'
-														disabled={nationalPage === 1}
-														onClick={() => setNationalPage((p) => p - 1)}>
+														disabled={filters.page === 1}
+														onClick={() => setPage(filters.page - 1)}>
 														<ChevronLeft className='h-4 w-4' />
 													</Button>
 													<Button
 														size='icon'
 														variant='ghost'
 														className='h-7 w-7'
-														disabled={nationalPage >= Math.ceil(nationalTotalCount / 10)}
-														onClick={() => setNationalPage((p) => p + 1)}>
+														disabled={filters.page >= Math.ceil(nationalTotalCount / 10)}
+														onClick={() => setPage(filters.page + 1)}>
 														<ChevronRight className='h-4 w-4' />
 													</Button>
 												</div>
 											</div>
 										)}
-										{nationalTotalCount > 0 && nationalTotalCount <= 10 && !nationalOpportunitiesLoading && (
+										{nationalTotalCount > 0 && nationalTotalCount <= 10 && !oppsLoading && (
 											<span className='text-xs text-muted-foreground'>
 												{nationalTotalCount.toLocaleString()} total
 											</span>
 										)}
 									</div>
 
-									{nationalOpportunitiesLoading ? (
+									{oppsLoading ? (
 										<div className='flex justify-center py-8'>
 											<div className='animate-spin rounded-full h-8 w-8 border-b-2 border-primary'></div>
 										</div>
 									) : nationalOpportunities.length > 0 ? (
 										<>
-											{/* Scrollable container for opportunity cards */}
 											<div className='max-h-[500px] overflow-y-auto pr-1 custom-scrollbar'>
 												<div className='space-y-4 animate-fadeIn'>
 												{nationalOpportunities.map((opp, index) => {
@@ -1024,7 +555,6 @@ function MapPageContent() {
 																</div>
 															</div>
 
-															{/* View Details with tooltip + Funding Type */}
 															<div className='mt-3 flex items-center justify-between'>
 																<TooltipProvider>
 																	<Tooltip delayDuration={100}>
@@ -1038,15 +568,12 @@ function MapPageContent() {
 																			side='top'
 																			align='start'
 																			className='w-80 p-4 space-y-3 shadow-lg rounded-lg bg-blue-600 text-white z-[100]'>
-																			{/* Program Overview */}
 																			<div>
 																				<p className='text-sm font-medium mb-2'>Program Overview</p>
 																				<p className='text-xs leading-relaxed'>
 																					{opp.program_overview || opp.actionable_summary || opp.summary || 'No overview available.'}
 																				</p>
 																			</div>
-
-																			{/* Project Types */}
 																			<div>
 																				<p className='text-sm font-medium mb-2'>Project Types</p>
 																				<div className='flex flex-wrap gap-1'>
@@ -1059,16 +586,12 @@ function MapPageContent() {
 																					)}
 																				</div>
 																			</div>
-
-																			{/* Who Can Apply */}
 																			<div>
 																				<p className='text-sm font-medium mb-2'>Who Can Apply</p>
 																				<p className='text-xs'>
 																					{opp.eligible_applicants?.join(', ') || 'Eligible organizations'}
 																				</p>
 																			</div>
-
-																			{/* Relevance Meter */}
 																			<div>
 																				<div className='flex justify-between mb-1'>
 																					<p className='text-sm font-medium'>Relevance</p>
@@ -1081,8 +604,6 @@ function MapPageContent() {
 																					/>
 																				</div>
 																			</div>
-
-																			{/* View Full Opportunity Link */}
 																			<Link
 																				href={`/funding/opportunities/${opp.id}`}
 																				className='block w-full text-center text-xs font-medium bg-white hover:bg-gray-100 text-blue-700 py-2 rounded-md transition-colors'>
@@ -1092,7 +613,6 @@ function MapPageContent() {
 																	</Tooltip>
 																</TooltipProvider>
 																{opp.funding_type && (() => {
-																	// Parse funding types (can be JSON array, semicolon-separated, or single value)
 																	let types = [];
 																	try {
 																		if (opp.funding_type.startsWith('[')) {
@@ -1122,24 +642,23 @@ function MapPageContent() {
 												</div>
 											</div>
 
-											{/* Pagination */}
 											{nationalTotalCount > 10 && (
 												<div className='flex justify-between items-center pt-4 mt-4 border-t'>
 													<Button
 														variant='outline'
 														size='sm'
-														disabled={nationalPage === 1}
-														onClick={() => setNationalPage((p) => p - 1)}>
+														disabled={filters.page === 1}
+														onClick={() => setPage(filters.page - 1)}>
 														Previous
 													</Button>
 													<span className='text-sm text-muted-foreground'>
-														Page {nationalPage} of {Math.ceil(nationalTotalCount / 10)}
+														Page {filters.page} of {Math.ceil(nationalTotalCount / 10)}
 													</span>
 													<Button
 														variant='outline'
 														size='sm'
-														disabled={nationalPage >= Math.ceil(nationalTotalCount / 10)}
-														onClick={() => setNationalPage((p) => p + 1)}>
+														disabled={filters.page >= Math.ceil(nationalTotalCount / 10)}
+														onClick={() => setPage(filters.page + 1)}>
 														Next
 													</Button>
 												</div>
@@ -1171,10 +690,7 @@ function MapPageFallback() {
 		<MainLayout>
 			<div className='container py-10'>
 				<div className='animate-pulse'>
-					{/* Header skeleton */}
 					<div className='h-8 bg-gray-200 dark:bg-neutral-700 rounded w-1/4 mb-6'></div>
-
-					{/* Filter bar skeleton */}
 					<div className='border rounded-lg p-4 mb-6'>
 						<div className='flex gap-4'>
 							<div className='h-10 bg-gray-200 dark:bg-neutral-700 rounded w-48'></div>
@@ -1183,8 +699,6 @@ function MapPageFallback() {
 							<div className='h-10 bg-gray-200 dark:bg-neutral-700 rounded w-48'></div>
 						</div>
 					</div>
-
-					{/* Map and sidebar skeleton */}
 					<div className='grid grid-cols-1 lg:grid-cols-12 gap-6'>
 						<div className='lg:col-span-8'>
 							<div className='h-[500px] bg-gray-200 dark:bg-neutral-700 rounded-lg'></div>
@@ -1199,7 +713,6 @@ function MapPageFallback() {
 	);
 }
 
-// Default export with Suspense boundary for useSearchParams
 export default function Page() {
 	return (
 		<Suspense fallback={<MapPageFallback />}>
