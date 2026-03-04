@@ -58,7 +58,8 @@ export async function GET() {
 				maximum_award, close_date, status
 			`
 			)
-			.neq('status', 'closed');
+			.neq('status', 'closed')
+			.or('promotion_status.is.null,promotion_status.eq.promoted');
 
 		if (oppError) {
 			console.error('[TopMatches] Error fetching opportunities:', oppError);

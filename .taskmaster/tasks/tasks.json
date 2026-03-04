@@ -427,80 +427,14 @@
       },
       {
         "id": 9,
-        "title": "Develop Migration Strategy",
-        "description": "Implement a migration strategy for gradual transition from v1 to v2, focusing on job processing, result aggregation, and master run completion detection.",
+        "title": "Implement Comprehensive Test Suite",
+        "description": "Write comprehensive tests for the Meridian ESG application following the testing strategy defined in docs/testing-strategy.md. This task covers all user-facing modules (client matching, explorer, map, dashboard, timeline, clients) and the AI pipeline. Tests will be organized by tier: Critical (Tier 1), API Contracts (Tier 2), Database Integration (Tier 3), and Pipeline (Tier 4).",
         "status": "pending",
-        "dependencies": [
-          8
-        ],
+        "dependencies": [],
         "priority": "high",
-        "details": "1. Replace simpleJobProcessor with real jobProcessor.processJob function in /app/api/cron/process-jobs/route.js\n2. Implement master run aggregation logic with checkAndCompleteMasterRun() function\n3. Rename endpoint from test-processor to process-jobs for production use\n4. Add comprehensive metrics tracking and aggregation\n5. Implement full V2 pipeline processing for each job:\n   - LLM extraction, duplicate detection, analysis, filtering, storage\n   - Full RunManagerV2 integration with stage-by-stage tracking\n6. Enhance master run aggregation:\n   - Aggregate metrics from all jobs\n   - Change master run status from \"processing\" to \"completed\" when all jobs complete\n   - Include total opportunities, tokens, processing time, duplicates, storage stats\n   - Calculate job success rate and efficiency metrics\n7. Capture comprehensive metrics:\n   - Per-job metrics: processingTimeMs, opportunitiesProcessed, tokensUsed, duplicatesFound, newStored, updatesApplied\n   - Aggregated metrics: jobs_processed, jobs_successful, total_opportunities_processed, total_tokens_used, etc.\n   - Efficiency metrics: duplicate_detection_efficiency, job_success_rate, average_processing_time_per_job_ms\n8. Implement production-ready features:\n   - Proper error handling with job failure tracking\n   - Auth check for cron endpoint security\n   - Queue status monitoring\n   - Vercel/local environment detection\n   - Comprehensive logging and debugging\n9. Update all references throughout codebase\n10. Implement Strangler Fig pattern as outlined in the architecture guide\n11. Start with 5% traffic routing to v2\n12. Implement comparison logging between v1 and v2 results\n13. Monitor performance and accuracy metrics\n14. Implement automated rollback triggers\n15. Create dashboard for migration progress monitoring\n16. Implement database schema migrations (use Prisma Migrate)\n17. Develop data consistency checks between v1 and v2\n18. Create detailed rollback procedures\n19. Implement blue-green deployment strategy\n20. Use Terraform v1.5.0 for infrastructure as code",
-        "testStrategy": "1. Test job processing with jobProcessor.processJob function in /app/api/cron/process-jobs/route.js\n2. Validate master run aggregation logic using checkAndCompleteMasterRun() function\n3. Verify master run completion detection and status change\n4. Test job status tracking accuracy\n5. Validate cron processor functionality:\n   - Test job retrieval and processing\n   - Verify result aggregation\n   - Check master run completion marking\n   - Test error handling\n6. Test full V2 pipeline processing for jobs\n7. Verify comprehensive metrics capture and aggregation\n8. Test production-ready features:\n   - Error handling and job failure tracking\n   - Auth check for cron endpoint\n   - Queue status monitoring\n   - Environment detection\n   - Logging and debugging\n9. Test gradual traffic routing mechanism\n10. Validate comparison logging accuracy\n11. Verify automated rollback functionality\n12. Test data consistency between v1 and v2\n13. Perform mock migration scenarios\n14. Validate monitoring and alerting systems\n15. Conduct full rollback test\n16. Review migration dashboard effectiveness",
-        "subtasks": [
-          {
-            "id": 1,
-            "title": "Replace simpleJobProcessor",
-            "description": "Replace simpleJobProcessor with real jobProcessor.processJob function in the V2 pipeline",
-            "status": "done",
-            "dependencies": [],
-            "details": "Implemented in /app/api/cron/process-jobs/route.js",
-            "testStrategy": "Verify correct implementation and integration of jobProcessor.processJob function"
-          },
-          {
-            "id": 2,
-            "title": "Implement master run aggregation",
-            "description": "Add master run aggregation logic to consolidate results when individual jobs complete",
-            "status": "done",
-            "dependencies": [],
-            "details": "Implemented checkAndCompleteMasterRun() function for aggregation",
-            "testStrategy": "Test aggregation of metrics and status change upon all jobs completion"
-          },
-          {
-            "id": 3,
-            "title": "Develop master run completion detection",
-            "description": "Implement logic to detect when all jobs for a master run are completed",
-            "status": "done",
-            "dependencies": [],
-            "details": "Integrated with checkAndCompleteMasterRun() function",
-            "testStrategy": "Verify accurate detection of all jobs completion and master run status update"
-          },
-          {
-            "id": 4,
-            "title": "Update job status tracking",
-            "description": "Enhance job status tracking to properly reflect current state throughout processing",
-            "status": "done",
-            "dependencies": [],
-            "details": "Implemented comprehensive job status tracking in RunManagerV2",
-            "testStrategy": "Test accuracy of job status updates throughout processing stages"
-          },
-          {
-            "id": 5,
-            "title": "Implement cron processor",
-            "description": "Develop cron processor to handle job retrieval, processing, result aggregation, and master run completion",
-            "status": "done",
-            "dependencies": [],
-            "details": "Implemented in /app/api/cron/process-jobs/route.js with full V2 pipeline integration",
-            "testStrategy": "Validate end-to-end functionality of cron processor including job retrieval, processing, and result aggregation"
-          },
-          {
-            "id": 6,
-            "title": "Implement comprehensive metrics tracking",
-            "description": "Add detailed metrics tracking for jobs and master runs",
-            "status": "pending",
-            "dependencies": [],
-            "details": "Implement tracking for per-job and aggregated metrics including processing time, opportunities processed, tokens used, etc.",
-            "testStrategy": "Verify accuracy and completeness of metrics capture and aggregation"
-          },
-          {
-            "id": 7,
-            "title": "Enhance production readiness",
-            "description": "Implement additional features for production deployment",
-            "status": "pending",
-            "dependencies": [],
-            "details": "Add auth checks, error handling, queue monitoring, and environment detection",
-            "testStrategy": "Test all production-ready features for reliability and security"
-          }
-        ]
+        "details": "## Purpose\nEnsure application reliability for sales people using the platform. The primary concern is user-facing functionality: client matching accuracy, filtering correctness, map aggregation calculations, dashboard statistics, and timeline displays.\n\n## Strategy Reference\nFull testing strategy documented in: docs/testing-strategy.md\n\n## Completion Criteria\nThis task is ONLY complete when ALL of the following are true:\n\n1. **All Tests Written**: All ~58 test files are created following the structure in docs/testing-strategy.md:\n   - tests/critical/ (Tier 1): ~30 files covering client-matching, explorer, opportunityDetail, map, dashboard, timeline, clients\n   - tests/api/ (Tier 2): ~7 API contract test files\n   - tests/database/ (Tier 3): ~6 database integration test files\n   - tests/pipeline/ (Tier 4): ~15 AI pipeline test files\n   - tests/fixtures/: Shared test data files\n   - tests/helpers/: Test utilities including supabaseMock.js\n\n2. **All Tests Pass**: Running 'npm run test' completes with 0 failures.\n\n3. **Code Quality Verification**: The agent MUST verify that tests are not written just to pass erroneous code. Tests must validate that code meets the INTENDED standard, not just the current implementation.\n   - If the agent discovers code that is erroneous (does not meet intended functionality), it will NOT edit the code directly.\n   - Instead, it will create a SUBTASK under Task 9 to document and fix the specific code issue.\n   - Only after the subtask is completed and the fix verified should the related test be considered valid.\n\n4. **File Structure Compliance**: The test directory structure MUST match the organization specified in docs/testing-strategy.md:\n   - Single 'tests/' directory at project root\n   - Organized by tier: critical/, api/, database/, pipeline/\n   - fixtures/ and helpers/ directories for shared resources\n   - Vitest as the sole test framework (delete Jest configs)\n\n5. **Old Tests Archived**: All existing test files from __tests__/, __mocks__/, lib/agents-v2/tests/, and lib/services/tests/ must be:\n   - Consolidated into a single archive file: tests/_archived/legacy-tests-archive.md\n   - This archive should list each original file path and note any valuable patterns/fixtures to preserve\n   - The original test files should remain in place until I explicitly approve their deletion\n   - Do NOT delete the old test files - only archive them for my review\n\n## Test Priorities (in order)\n1. Client matching (4 criteria: location, applicant type, project needs, activities)\n2. Explorer filtering, sorting, pagination, URL state\n3. Map aggregations, scope breakdown, state selection\n4. Dashboard statistics, deadlines\n5. Timeline month grouping, days-left colors\n6. Client CRUD, geocoding, PDF export\n7. AI Pipeline: scoring (100% coverage), schema compliance, invariants\n\n## Framework\n- Use Vitest exclusively\n- Use fast-check for property-based/invariant testing\n- Create smart supabaseMock.js (in-memory DB behavior)\n- Delete all 6 Jest config files after migration",
+        "testStrategy": "Run 'npm run test' and verify: (1) All tests pass, (2) Coverage meets thresholds for critical paths, (3) No erroneous code masked by weak tests",
+        "subtasks": []
       },
       {
         "id": 10,
@@ -3609,16 +3543,242 @@
         "description": "Resolve the runtime error in /app/api/debug/anthropic-client/route.js caused by importing Vitest test files that are not available in production environment.",
         "details": "The debug API route is currently importing Vitest test utilities or test files directly, which causes runtime errors when the application runs outside of the test environment. Three potential solutions: 1) Extract shared utility functions from test files into separate modules that can be safely imported in both test and runtime contexts, 2) Add conditional imports with proper error handling to gracefully handle missing test dependencies, or 3) Remove the debug route entirely if it's not essential for production debugging. Recommended approach is to create utility modules in lib/utils/ that contain the needed functionality without test-specific dependencies, then update both the debug route and test files to use these utilities. If conditional imports are chosen, wrap the imports in try-catch blocks and provide fallback functionality when test utilities are unavailable.",
         "testStrategy": "1) Verify the debug API route loads without runtime errors by making a request to /api/debug/anthropic-client in both development and production-like environments, 2) Run npm run build to ensure no build-time errors occur, 3) Execute npm run test to confirm existing tests still pass after refactoring, 4) Test the debug route functionality to ensure it provides the expected debugging information, 5) Verify that any extracted utility functions work correctly in both test and runtime contexts",
-        "status": "pending",
+        "status": "cancelled",
         "dependencies": [],
         "priority": "medium",
-        "subtasks": []
+        "subtasks": [],
+        "updatedAt": "2026-02-05T17:16:41.521Z"
+      },
+      {
+        "id": 2,
+        "title": "Verify and commit existing test suite",
+        "description": "Run all 38 existing Vitest tests across all 4 tiers (critical, api, database, pipeline), verify they pass, then commit the working test suite along with updated documentation files (CLAUDE.md, tests/README.md, docs/testing-strategy.md).",
+        "details": "This task verifies and commits the complete Vitest-based testing infrastructure that was built according to the tier-based testing strategy documented in docs/testing-strategy.md.\n\n## Test Suite Overview\n\nThe codebase contains 38 test files organized into 4 tiers with 1,023 individual test cases:\n\n**Tier 1: Critical (20 files, user-facing business logic)**\n- Client matching (5 files): matchCriteria, synonymExpansion, coverageIntersection, scoring, hiddenMatches\n- Explorer (3 files): filters, sorting, pagination\n- Map (2 files): scopeBreakdown, fundingByState\n- Dashboard (3 files): summaryCards, deadlines, topMatches\n- Timeline (3 files): monthGrouping, daysLeftColors, eventCards\n- Clients (2 files): search, filters\n- Opportunity Detail (2 files): tabContent, daysLeft\n\n**Tier 2: API (3 files, response contracts)**\n- funding.api.test.js\n- client-matching.api.test.js\n- clients.api.test.js\n\n**Tier 3: Database (10 files, database behavior)**\n- RPC functions (4 files): getFundingDynamicSort, findCoverageAreasForPoint, getScopeBreakdown, getFundingByState\n- Views (1 file): fundingOpportunitiesWithGeography\n- Constraints (2 files): duplicatePrevention, cascadeDeletes\n\n**Tier 4: Pipeline (8 files, AI processing)**\n- Extraction (2 files): schemaCompliance, errorRecovery\n- Analysis (2 files): scoring, scoreInvariants\n- Storage (3 files): dataSanitizer, upsertLogic, duplicateDetection\n- Orchestration (1 file): runManager\n\n## Verification Steps\n\n1. **Run full test suite**: Execute `npm run test` to run all 1,023 tests\n2. **Verify tier-specific runs**: Confirm each tier can run independently:\n   - `npm run test:critical` (Tier 1)\n   - `npm run test:api` (Tier 2)\n   - `npm run test:database` (Tier 3)\n   - `npm run test:pipeline` (Tier 4)\n3. **Check test output**: Ensure all 38 test files pass with no failures\n4. **Verify configuration**: Confirm tests/vitest.config.js is properly configured with:\n   - Correct path aliases (@, @/lib, @/app, @/components)\n   - Setup file (tests/helpers/setup.js) loaded\n   - Fixtures and helpers excluded from coverage\n   - Single fork pool for consistent test isolation\n\n## Files to Commit\n\n### Test Infrastructure (new files)\n```\ntests/\n├── critical/              (20 test files)\n├── api/                   (3 test files)\n├── database/              (10 test files)\n├── pipeline/              (8 test files)\n├── fixtures/              (5 fixture files + index.js)\n├── helpers/               (2 helper files: setup.js, supabaseMock.js)\n├── vitest.config.js\n└── README.md\n```\n\n### Documentation Updates (modified files)\n- **CLAUDE.md**: Updated testing section with tier-based approach, commands, and conventions\n- **docs/testing-strategy.md**: Complete testing strategy document explaining the rationale, tier organization, and implementation guidelines\n- **package.json**: Updated test scripts to use Vitest commands instead of Jest\n\n### Modified Package Configuration\n- Test scripts replaced: old Jest-based commands replaced with new Vitest tier-based commands\n- Legacy scripts preserved: `test:legacy:unit`, `test:legacy:integration`, `test:legacy:run` kept for backward compatibility during migration\n\n## Commit Message Template\n\n```\nfeat: add comprehensive Vitest test suite with tier-based organization\n\nImplement 38 test files with 1,023 test cases organized into 4 tiers:\n- Tier 1: Critical user-facing logic (client matching, filtering, map, dashboard)\n- Tier 2: API response contracts (field types, error format)\n- Tier 3: Database behavior (RPC functions, views, constraints)\n- Tier 4: AI pipeline processing (extraction, analysis, storage)\n\nAll tests passing (1.44s execution time).\n\nTest Infrastructure:\n- Vitest configuration with path aliases and setup files\n- Shared fixtures (clients, opportunities, coverage areas, match scenarios)\n- Test helpers (Supabase mock, time freezing utilities)\n\nDocumentation Updates:\n- CLAUDE.md: Testing section with tier-based commands\n- tests/README.md: Complete testing guide with examples\n- docs/testing-strategy.md: Detailed strategy and rationale\n\nPackage Updates:\n- Replace Jest scripts with Vitest tier-based commands\n- Preserve legacy scripts for backward compatibility\n\nCo-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>\n```\n\n## Important Notes\n\n1. **DO NOT commit unrelated files**: The git status shows several untracked files in `docs/prd/opp_staging/` that are unrelated to testing. These should NOT be included in this commit.\n\n2. **Handle modified task files carefully**: `.taskmaster/state.json` and `.taskmaster/tasks/tasks.json` are shown as modified but may contain unrelated task management state. Review these carefully and consider excluding them from this commit if changes are unrelated.\n\n3. **Verify test execution before committing**: The task MUST verify that all tests pass before creating the commit. If any test fails, the commit should be aborted and failures investigated.\n\n4. **Follow git commit policy**: According to CLAUDE.md, NEVER commit without explicit user permission. This task should prepare the commit but ask for confirmation before executing `git commit`.\n\n5. **Test execution confirmed**: According to the verification run, all 38 test files with 1,023 tests are passing (Duration: 1.44s).",
+        "testStrategy": "1. **Pre-commit verification**: Run `npm run test` and confirm all 1,023 tests pass across all 38 test files\n2. **Tier-specific verification**: Run each tier independently to confirm correct organization:\n   - `npm run test:critical` → 20 files pass\n   - `npm run test:api` → 3 files pass\n   - `npm run test:database` → 10 files pass\n   - `npm run test:pipeline` → 8 files pass\n3. **Git staging verification**: \n   - Verify only test-related files are staged: `git status` should show tests/ directory, CLAUDE.md, tests/README.md, docs/testing-strategy.md, and package.json\n   - Confirm unrelated files (docs/prd/opp_staging/, .taskmaster/) are NOT staged\n4. **Diff review**: Use `git diff --staged` to review all changes before committing\n5. **Post-commit verification**: After commit, run `npm run test` again to ensure tests still pass on HEAD\n6. **Branch verification**: Confirm commit is on feature/testing branch (not main)\n7. **Documentation cross-reference check**: \n   - Verify CLAUDE.md references tests/README.md correctly\n   - Verify tests/README.md references docs/testing-strategy.md correctly\n   - Confirm all test commands in documentation match package.json scripts",
+        "status": "done",
+        "dependencies": [],
+        "priority": "high",
+        "subtasks": [],
+        "updatedAt": "2026-02-05T17:25:32.964Z"
+      },
+      {
+        "id": 3,
+        "title": "Write remaining Critical tier tests (10 files)",
+        "description": "Create the 10 missing test files in tests/critical/ covering explorer URL state and tracked opportunities, map interactions (state selection, color toggle, tooltips), dashboard recent opportunities, client CRUD/geocoding/PDF export, and opportunity detail related opportunities. Each test must follow the zero-mock pure-function pattern with shared fixtures.",
+        "details": "This task completes the Tier 1 Critical test suite by adding 10 missing test files, bringing the total from 20 to 30 files. All tests must follow the established patterns from existing critical tests: import from shared fixtures, test pure business logic functions without mocks, and cover comprehensive edge cases.\n\n## Files to Create\n\n### Explorer Module (2 files)\n\n**1. tests/critical/explorer/urlState.test.js**\n- Test URL parameter serialization/deserialization for filters\n- Validate shareable filter URLs reconstruct correct state\n- Cover all filter types: search, status, projectTypes, state, coverageType, trackedOnly\n- Test pagination params (page, limit) in URL\n- Test sort params (sortBy, sortDir) in URL\n- Edge cases: malformed params, missing params, invalid values\n- Reference implementation: App router search params handling\n\n**2. tests/critical/explorer/trackedOpportunities.test.js**\n- Test \"My Opportunities\" filter logic (trackedOnly=true)\n- Validate filtering returns only opportunities in tracked_opportunities table\n- Test combining tracked filter with other filters (status, state, etc.)\n- Test empty tracked list (no results)\n- Test tracked status persistence across filter changes\n- Reference fixture: `opportunities.trackedOpportunity` and tracked_opportunities join logic\n\n### Map Module (3 files)\n\n**3. tests/critical/map/stateSelection.test.js**\n- Test state click → drill-down to county/utility view\n- Test state click again → return to national view\n- Test state deselection behavior\n- Validate selected state highlighting/active state\n- Test navigation between different states\n- Test initial load state (no selection)\n- Edge cases: clicking same state twice, rapid clicks\n- Reference: Map component state management\n\n**4. tests/critical/map/colorToggle.test.js**\n- Test \"Color by Amount\" vs \"Color by Count\" toggle\n- Validate correct color scale calculation for funding amounts\n- Validate correct color scale calculation for opportunity counts\n- Test color ranges and thresholds (e.g., 0-10M, 10-50M, 50M+)\n- Test states with zero funding/opportunities (gray/no-data color)\n- Test national vs state-drill-down color scales differ\n- Reference: Map legend component, color scale utilities\n\n**5. tests/critical/map/tooltips.test.js**\n- Test tooltip content on state hover (name, count, total funding)\n- Test tooltip content on county/utility hover in drill-down view\n- Validate funding amount formatting (e.g., $1.2M, $500K)\n- Test tooltip positioning (not provided, but data accuracy focus)\n- Test tooltip data matches underlying opportunity aggregation\n- Test tooltip for states with no opportunities (shows \"No opportunities\")\n- Reference: Tooltip data preparation functions\n\n### Dashboard Module (1 file)\n\n**6. tests/critical/dashboard/recentOpps.test.js**\n- Test \"Recent Opportunities\" card displays latest 5 opportunities\n- Validate sorting by created_at/updated_at descending\n- Test date formatting for \"Added X days ago\" display\n- Test empty state (no opportunities)\n- Test fewer than 5 opportunities available\n- Test opportunities from different sources mixed correctly\n- Test link generation to opportunity detail page\n- Reference: Dashboard API route, recent opportunities query\n\n### Clients Module (3 files)\n\n**7. tests/critical/clients/crud.test.js**\n- Test client creation validation (required fields: name, type, location)\n- Test client update logic (partial updates, immutable fields)\n- Test client deletion (soft delete vs hard delete behavior)\n- Test form field validation rules (email format, budget range, etc.)\n- Test duplicate client detection (same name + location)\n- Test empty/null field handling\n- Reference: Client API routes (POST, PATCH, DELETE)\n\n**8. tests/critical/clients/geocoding.test.js**\n- Test address → coverage_area_ids detection logic\n- Validate geocoding service response parsing (Mapbox format)\n- Test coverage area matching: point-in-polygon detection for utilities, counties, states\n- Test address not found (graceful failure, manual selection fallback)\n- Test ambiguous address (multiple results, user picks one)\n- Test coverage area priority: utility > county > state\n- Test multi-coverage scenario (client in multiple utility territories)\n- Reference: `scripts/clients/test-geocoding.js`, geocoding utilities\n\n**9. tests/critical/clients/pdfExport.test.js**\n- Test PDF export generates correct structure (client info, match list, opportunity details)\n- Validate all required sections present: client header, match breakdown, opportunities table\n- Test data formatting: funding amounts, deadlines, match scores\n- Test handling of clients with no matches (shows empty state message)\n- Test handling of hidden matches (excluded from export)\n- Test long opportunity lists (pagination or truncation)\n- Test special characters in client/opportunity names (escaping)\n- Reference: PDF generation utility, `@react-pdf/renderer` usage\n\n### Opportunity Detail Module (1 file)\n\n**10. tests/critical/opportunityDetail/relatedOpps.test.js**\n- Test related opportunities recommendation algorithm\n- Validate recommendations based on similarity: same project types, same coverage areas, same funding source\n- Test scoring/ranking of related opportunities (most similar first)\n- Test limiting to top 5 related opportunities\n- Test excluding current opportunity from results\n- Test no related opportunities available (empty state)\n- Test related opportunities respect status filter (only show open/upcoming)\n- Reference: Related opportunities API logic, similarity scoring\n\n## Implementation Guidelines\n\n### Pattern to Follow (from existing tests)\n\n```javascript\n// Import fixtures\nimport { opportunities } from '../../fixtures/opportunities.js';\nimport { clients } from '../../fixtures/clients.js';\nimport { coverageAreas } from '../../fixtures/coverageAreas.js';\n\n// Import business logic functions to test\nimport { functionToTest } from '@/app/api/route-name/utils.js';\n\n// Pure function tests - no mocks\ndescribe('Feature Name: Specific Behavior', () => {\n  test('describes expected behavior', () => {\n    const result = functionToTest(fixtures.input);\n    expect(result).toBe(expected);\n  });\n  \n  describe('Edge Cases', () => {\n    test('handles null input gracefully', () => {\n      expect(() => functionToTest(null)).not.toThrow();\n    });\n  });\n});\n```\n\n### Key Requirements\n\n1. **Zero mocks**: Test pure functions directly with fixture data\n2. **Shared fixtures**: Import from `tests/fixtures/`, never hardcode data inline\n3. **Comprehensive coverage**: Test happy path + edge cases + error conditions\n4. **Clear describe blocks**: Group by feature area, then specific behavior\n5. **Descriptive test names**: Plain English describing expected outcome\n6. **Extract logic**: If route handlers have inline logic, extract to utils for testability\n\n### Where Logic May Need Extraction\n\nSome of the target behaviors may currently be in React components or API route handlers. For pure testing:\n- Extract business logic to `utils.js` files in the relevant API route directory\n- Test the extracted pure functions\n- Leave React components/route handlers as thin wrappers\n\nExample:\n```javascript\n// app/api/clients/geocoding/utils.js (create if needed)\nexport function detectCoverageAreas(geocodingResult, allCoverageAreas) {\n  // Pure function logic here\n}\n\n// tests/critical/clients/geocoding.test.js\nimport { detectCoverageAreas } from '@/app/api/clients/geocoding/utils.js';\ntest('detects coverage areas from geocoding result', () => {\n  const result = detectCoverageAreas(fixtures.geocodingResponse, coverageAreas);\n  expect(result).toEqual([1, 2, 3]);\n});\n```\n\n## Test Count Estimate\n\nEach file should contain 15-25 individual test cases covering:\n- Happy path (3-5 tests)\n- Edge cases (5-10 tests)\n- Error conditions (3-5 tests)\n- Integration scenarios combining multiple conditions (3-5 tests)\n\n**Total**: ~10 files × 20 tests/file = ~200 new test cases\n\n## Success Criteria\n\n1. All 10 test files created in correct `tests/critical/` subdirectories\n2. All tests pass when run with `npm run test:critical`\n3. Zero mocks used (pure function pattern followed)\n4. All tests import from shared `tests/fixtures/`\n5. Edge cases comprehensively covered (nulls, empty arrays, boundary values)\n6. Test names clearly describe expected behavior\n7. Code coverage for tested functions approaches 100%",
+        "testStrategy": "1. **File Creation Verification**: Confirm all 10 test files exist with correct paths:\n   - `tests/critical/explorer/urlState.test.js`\n   - `tests/critical/explorer/trackedOpportunities.test.js`\n   - `tests/critical/map/stateSelection.test.js`\n   - `tests/critical/map/colorToggle.test.js`\n   - `tests/critical/map/tooltips.test.js`\n   - `tests/critical/dashboard/recentOpps.test.js`\n   - `tests/critical/clients/crud.test.js`\n   - `tests/critical/clients/geocoding.test.js`\n   - `tests/critical/clients/pdfExport.test.js`\n   - `tests/critical/opportunityDetail/relatedOpps.test.js`\n\n2. **Pattern Compliance Check**: Review each test file to ensure:\n   - Imports fixtures from `../../fixtures/` (no inline test data)\n   - Tests pure functions directly (no mocks)\n   - Has clear describe blocks grouping related tests\n   - Test names use plain English describing expected outcomes\n   - Includes edge case and error condition tests\n\n3. **Test Execution**: Run `npm run test:critical` and verify:\n   - All 30 critical test files pass (20 existing + 10 new)\n   - Total test count increases by ~200 cases\n   - No test failures or errors\n   - Execution time remains under 5 seconds (pure functions are fast)\n\n4. **Coverage Analysis**: Run `npm run test:coverage` for the critical directory:\n   - New utility functions have >90% code coverage\n   - Edge cases are exercised (nulls, empty arrays, invalid inputs)\n   - All conditional branches tested\n\n5. **Integration Verification**: Run the full test suite:\n   - `npm run test` → All 4 tiers pass\n   - Critical tier still runs independently: `npm run test:critical`\n   - New tests don't break existing tests\n\n6. **Code Quality Review**: \n   - Verify business logic was extracted from components to testable utils where needed\n   - Check that test fixtures were extended if new scenarios required\n   - Confirm no test duplicates behavior already covered elsewhere\n   - Validate test names match the behavior being tested\n\n7. **Documentation Update**: After implementation, update `tests/README.md`:\n   - Update test count: \"30 Critical tier test files\" (was 20)\n   - Add note about new files in directory structure section\n   - Document any new fixture data added",
+        "status": "done",
+        "dependencies": [
+          "2"
+        ],
+        "priority": "high",
+        "subtasks": [],
+        "updatedAt": "2026-02-05T17:40:40.267Z"
+      },
+      {
+        "id": 4,
+        "title": "Write remaining API contract tests (4 files)",
+        "description": "Create 4 missing API test files in tests/api/: map.api.test.js, deadlines.api.test.js, counts.api.test.js, export.api.test.js. Each validates response schemas (required fields, types, pagination metadata) without testing data correctness.",
+        "details": "This task completes the Tier 2 API test suite by adding 4 missing test files, bringing the total from 3 to 7 files. All tests must follow the established schema validation pattern used in existing API tests (funding.api.test.js, clients.api.test.js, client-matching.api.test.js).\n\n## Pattern to Follow\n\nAll API tests use shared helper functions for schema validation:\n\n```javascript\n// Import Vitest\nimport { describe, test, expect } from 'vitest';\n\n// Define schemas as objects mapping field names to type strings\nconst exampleSchema = {\n  id: 'string',\n  count: 'number',\n  optional_field: 'string|null',\n  array_field: 'array',\n};\n\n// Use validateFieldType and validateSchema helpers (copy from existing tests)\nfunction validateFieldType(value, expectedType) { /* ... */ }\nfunction validateSchema(obj, schema) { /* ... */ }\n```\n\n## Files to Create\n\n### 1. tests/api/map.api.test.js\n\nTests for `/api/map/opportunities` endpoint (app/api/map/opportunities/route.js:1-167).\n\n**Schemas to define:**\n- `mapOpportunitySchema`: Complete opportunity object returned in map API (similar to funding.api.test.js but includes coverage_area_types array)\n- `mapResponseSchema`: Response wrapper with opportunities array, total, page, pageSize, totalPages\n- `errorResponseSchema`: Error response shape { success: false, error: string }\n\n**Test cases:**\n1. Validate complete map opportunity object with all required fields\n2. Validate map response wrapper structure\n3. Validate pagination metadata (currentPage, totalPages, totalItems, hasMore if present)\n4. Validate error response format\n5. Validate optional query parameter handling (state, status, scope, projectTypes, sort_by, sort_direction)\n\n**Key fields in map opportunity:**\n- id, title, status, close_date, is_national, maximum_award, total_funding_available\n- coverage_state_codes (array|null)\n- coverage_area_types (array) - unique to map API\n- categories, eligible_project_types, eligible_applicants (all arrays)\n\n---\n\n### 2. tests/api/deadlines.api.test.js\n\nTests for `/api/deadlines` endpoint (app/api/deadlines/route.js:1-93).\n\n**Schemas to define:**\n- `deadlineOpportunitySchema`: Opportunity with deadline metadata (base opportunity + daysLeft, urgency, formattedDate, source_name, source_type)\n- `deadlinesResponseSchema`: Response wrapper { success: true, data: array }\n- `thirtyDayCountResponseSchema`: Response for type=thirty_day_count { success: true, count: number }\n\n**Test cases:**\n1. Validate deadline opportunity object with enhancement fields (daysLeft, urgency, formattedDate)\n2. Validate source information fields (source_name, source_type)\n3. Validate deadlines response array wrapper\n4. Validate thirty-day count response format\n5. Validate urgency categorization ('high' | 'medium' | 'low')\n6. Validate error response format\n\n**Key enhancement fields:**\n- daysLeft (number)\n- urgency ('high' | 'medium' | 'low')\n- formattedDate (string)\n- source_name (string)\n- source_type (string|null)\n\n---\n\n### 3. tests/api/counts.api.test.js\n\nTests for `/api/counts` endpoint (app/api/counts/route.js:1-43).\n\n**Schemas to define:**\n- `countResponseSchema`: { success: true, count: number }\n- `errorResponseSchema`: { success: false, error: string }\n\n**Test cases:**\n1. Validate open_opportunities count response structure\n2. Validate count field is a number\n3. Validate error response for invalid type parameter\n4. Validate success boolean field presence and type\n\n**Query parameters:**\n- type: 'open_opportunities' (only valid value currently)\n\n---\n\n### 4. tests/api/export.api.test.js\n\nTests for `/api/export/client-matches-pdf` endpoint (app/api/export/client-matches-pdf/route.js:1-112).\n\n**Schemas to define:**\n- `pdfRequestSchema`: POST body { clientId: string, options: object }\n- `pdfOptionsSchema`: Options object { viewMode: string, includeCover: boolean, sortBy: string }\n- `errorResponseSchema`: Error response { error: string }\n\n**Test cases:**\n1. Validate PDF request body schema\n2. Validate options object structure (viewMode, includeCover, sortBy)\n3. Validate error response for missing clientId\n4. Validate error response for client not found\n5. Validate error response for failed match fetch\n6. **Note**: Cannot validate actual PDF binary response in contract test - only error responses\n\n**Valid option values:**\n- viewMode: 'summary' | 'detailed'\n- includeCover: boolean\n- sortBy: 'deadline' | 'score' | 'amount'\n\n---\n\n## Implementation Guidelines\n\n1. **Copy validation helpers**: Each test file should include the `validateFieldType` and `validateSchema` helper functions from existing API tests (or extract to shared helper in tests/helpers/schemaValidation.js if preferred)\n\n2. **Schema-only validation**: These are contract tests - do NOT make actual API calls, do NOT test data correctness, do NOT mock Supabase. Only validate that test objects matching expected API responses conform to defined schemas.\n\n3. **Test object creation**: Create mock objects that represent valid API responses and validate them:\n   ```javascript\n   test('validates complete map opportunity object', () => {\n     const opportunity = {\n       id: 'opp-123',\n       title: 'Clean Energy Grant',\n       // ... all required fields\n     };\n     const errors = validateSchema(opportunity, mapOpportunitySchema);\n     expect(errors).toHaveLength(0);\n   });\n   ```\n\n4. **Edge cases to test**:\n   - All required fields present\n   - Optional fields with null values\n   - Array fields (empty arrays, arrays with values)\n   - Nested objects (like pagination metadata)\n   - Error response formats\n\n5. **File structure**: Follow the pattern from funding.api.test.js:\n   - File header comment explaining what endpoints are tested\n   - Schema definitions at top\n   - Helper functions (validateFieldType, validateSchema)\n   - Describe blocks grouping related tests\n   - Clear test names describing what's validated\n\n6. **Response wrapper patterns**:\n   - Success responses: `{ success: true, data: ... }` or `{ success: true, count: ... }`\n   - Error responses: `{ success: false, error: string }`\n   - Map responses include pagination: `{ success: true, data: { opportunities: [], total: 0, page: 1, pageSize: 10, totalPages: 0 } }`\n\n---\n\n## Reference Files\n\n- **Existing API tests**: tests/api/funding.api.test.js, tests/api/clients.api.test.js, tests/api/client-matching.api.test.js\n- **API routes to understand response structure**:\n  - app/api/map/opportunities/route.js\n  - app/api/deadlines/route.js\n  - app/api/counts/route.js\n  - app/api/export/client-matches-pdf/route.js\n- **Testing guide**: tests/README.md (Tier 2 section, lines 126-146)",
+        "testStrategy": "1. **File creation verification**: Confirm all 4 test files exist with correct paths:\n   - `tests/api/map.api.test.js`\n   - `tests/api/deadlines.api.test.js`\n   - `tests/api/counts.api.test.js`\n   - `tests/api/export.api.test.js`\n\n2. **Individual file execution**: Run each test file independently to verify it passes:\n   ```bash\n   npm run test -- tests/api/map.api.test.js\n   npm run test -- tests/api/deadlines.api.test.js\n   npm run test -- tests/api/counts.api.test.js\n   npm run test -- tests/api/export.api.test.js\n   ```\n\n3. **Tier 2 suite execution**: Run all API tests together:\n   ```bash\n   npm run test:api\n   ```\n   Expected: 7 files pass (3 existing + 4 new)\n\n4. **Schema coverage verification**: For each new test file, confirm schemas are defined for:\n   - Main response object(s)\n   - Success response wrapper\n   - Error response wrapper\n   - Nested objects (pagination, options, metadata)\n   - All fields from actual API route examined\n\n5. **Validation helper verification**: Confirm each file includes or imports:\n   - `validateFieldType(value, expectedType)` function\n   - `validateSchema(obj, schema)` function\n   - Or imports from shared helper if extracted\n\n6. **Pattern compliance**: Review each test file to confirm:\n   - Uses Vitest (not Jest)\n   - Follows schema validation pattern (no API calls, no mocks)\n   - Test objects represent valid API responses\n   - Covers required fields, optional fields, arrays, nested objects\n   - Includes error response validation\n   - Clear describe blocks and test names\n\n7. **Full test suite regression**: Run complete test suite to ensure new tests don't break anything:\n   ```bash\n   npm run test\n   ```\n   Expected: All 1,023+ tests pass across all 4 tiers\n\n8. **Coverage check**: Verify new tests cover all endpoints:\n   - Map API: GET /api/map/opportunities with all query params\n   - Deadlines API: Both type=upcoming and type=thirty_day_count\n   - Counts API: type=open_opportunities + error cases\n   - Export API: Request schema + error responses (not binary PDF)",
+        "status": "done",
+        "dependencies": [
+          "2"
+        ],
+        "priority": "high",
+        "subtasks": [],
+        "updatedAt": "2026-02-05T17:40:44.082Z"
+      },
+      {
+        "id": 5,
+        "title": "Write remaining Pipeline tests (7 files)",
+        "description": "Create 7 missing test files: pipeline/analysis/contentEnhancement.test.js, pipeline/analysis/batchProcessing.test.js, pipeline/extraction/apiHandlers.test.js, pipeline/extraction/pagination.test.js, pipeline/orchestration/sourceOrchestrator.test.js, pipeline/orchestration/performanceMetrics.test.js, pipeline/storage/coverageLinking.test.js. Mock Anthropic SDK + use supabaseMock. Test deterministic parts with exact assertions, LLM parts with schema compliance.",
+        "details": "",
+        "testStrategy": "",
+        "status": "done",
+        "dependencies": [
+          "2"
+        ],
+        "priority": "high",
+        "subtasks": [],
+        "updatedAt": "2026-02-05T17:40:47.530Z"
+      },
+      {
+        "id": 6,
+        "title": "Write test infrastructure helpers (3 files)",
+        "description": "Create 3 missing helper files: helpers/apiTestClient.js (HTTP testing helper for integration tests), helpers/factories.js (data generation for dynamic test scenarios), helpers/dateHelpers.js (time freeze/restore utilities beyond what setup.js provides). These support Phases 3-4 tests.",
+        "details": "",
+        "testStrategy": "",
+        "status": "done",
+        "dependencies": [
+          "2"
+        ],
+        "priority": "medium",
+        "subtasks": [],
+        "updatedAt": "2026-02-05T17:40:51.090Z"
+      },
+      {
+        "id": 7,
+        "title": "Write integration tests (3 files)",
+        "description": "Create tests/integration/ folder with 3 flow tests: clientMatchingFlow.test.js (API route -> matching logic -> mock DB -> response), explorerFlow.test.js (API route -> filtering/sorting -> mock DB -> pagination), dashboardFlow.test.js (API route -> stats -> mock DB -> summary cards). These wire together all layers using supabaseMock, NOT real DB.",
+        "details": "",
+        "testStrategy": "",
+        "status": "done",
+        "dependencies": [
+          "2"
+        ],
+        "priority": "medium",
+        "subtasks": [],
+        "updatedAt": "2026-02-05T17:45:15.078Z"
+      },
+      {
+        "id": 8,
+        "title": "Write pipeline handoff tests (2 files)",
+        "description": "Create tests/pipeline/handoff/ folder with 2 tests: extractionToAnalysis.test.js (validates Stage 1 output schema is valid Stage 2 input), analysisToStorage.test.js (validates Stage 2 output schema is valid Stage 3 input). These catch schema contract violations between pipeline stages.",
+        "details": "",
+        "testStrategy": "",
+        "status": "done",
+        "dependencies": [
+          "2"
+        ],
+        "priority": "medium",
+        "subtasks": [],
+        "updatedAt": "2026-02-05T17:45:18.200Z"
+      },
+      {
+        "id": 9,
+        "title": "Write error boundary tests (2 files)",
+        "description": "Create 2 error-focused test files: api/errorResponses.api.test.js (validates error response format - status codes, error shapes, consistent error structure) and pipeline/extraction/supabaseDown.test.js (tests graceful degradation when Supabase is unreachable).",
+        "details": "",
+        "testStrategy": "",
+        "status": "done",
+        "dependencies": [
+          "2"
+        ],
+        "priority": "medium",
+        "subtasks": [],
+        "updatedAt": "2026-02-05T17:45:21.280Z"
+      },
+      {
+        "id": 10,
+        "title": "Write staging pipeline tests (2 files)",
+        "description": "Create tests/pipeline/staging/ folder with 2 tests: stagingStateMachine.test.js (tests pending->complete->failed status transitions for extraction/analysis/storage phases in manual_funding_opportunities_staging) and stagingImport.test.js (tests discovery file -> staging table insertion logic).",
+        "details": "",
+        "testStrategy": "",
+        "status": "done",
+        "dependencies": [
+          "2"
+        ],
+        "priority": "medium",
+        "subtasks": [],
+        "updatedAt": "2026-02-05T17:45:24.386Z"
+      },
+      {
+        "id": 11,
+        "title": "Archive old test infrastructure",
+        "description": "After ALL new tests pass: 1) Delete __tests__/ (57 files), __mocks__/ (27 files), and 6 jest config files. 2) Remove legacy npm scripts (test:legacy:*) from package.json. 3) Remove Jest from devDependencies. 4) Document deletion in commit message with git hash reference. ONLY execute after full test suite passes.",
+        "details": "",
+        "testStrategy": "",
+        "status": "done",
+        "dependencies": [
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "7",
+          "8",
+          "9",
+          "10"
+        ],
+        "priority": "low",
+        "subtasks": [],
+        "updatedAt": "2026-02-05T18:04:11.604Z"
+      },
+      {
+        "id": 12,
+        "title": "Fix browser E2E conditional guards that skip all assertions",
+        "description": "HIGH severity. Files: explorer.spec.js (lines 38-47, 59-66, 78-88), client-matching.spec.js (lines 33-46, 57-87), smoke.spec.js (lines 88-105 hydration filter, lines 20-75 body.isVisible only), timeline.spec.js (lines 37-45), admin-review.spec.js (lines 25-30, 39-56), map-drilldown.spec.js (lines 38-49). Pattern: tests use 'if (count > 0)' guards that skip assertions when elements don't exist, and only assert body.isVisible() which proves nothing. Fix: Replace conditional guards with unconditional expect() assertions. If an element should exist, assert it exists then interact. Replace body.isVisible() with content-specific assertions. For smoke.spec.js hydration filter: stop filtering hydration errors — either fix them or use test.todo() to track.",
+        "details": "",
+        "testStrategy": "",
+        "status": "done",
+        "dependencies": [],
+        "priority": "medium",
+        "subtasks": [],
+        "updatedAt": "2026-02-21T02:00:34.868Z"
+      },
+      {
+        "id": 13,
+        "title": "Fix DB integration tests that skip assertions on empty data",
+        "description": "HIGH severity. Files: tests/database/integration/views.integration.test.js (lines 53-228), rpcs.integration.test.js (lines 54-453), schema.integration.test.js (lines 49-371). Pattern: Every column assertion is gated behind 'if (data.length > 0)' or 'if (result.empty) return'. On empty DB, these tests verify nothing. Also: schema.integration.test.js has 'if (err1) return' guards on constraint tests (lines 124, 213-214, 257-258, 299-300). Fix: Replace 'if (data.length > 0)' guards with 'expect(data.length).toBeGreaterThan(0)' so test FAILS if no data exists. For constraint tests, remove early returns and assert the error is null before proceeding.",
+        "details": "",
+        "testStrategy": "",
+        "status": "done",
+        "dependencies": [],
+        "priority": "medium",
+        "subtasks": [],
+        "updatedAt": "2026-02-21T02:00:40.624Z"
+      },
+      {
+        "id": 14,
+        "title": "Remove or replace tautological API tests that test fixtures not behavior",
+        "description": "HIGH severity. 14+ tests across API tier assert properties of hardcoded fixture objects they just created. Files and lines: clients.api.test.js (136-138, 209-212, 292-310, 335, 361-364), export.api.test.js (66-72, 97-100, 104, 109), funding.api.test.js (316-348, 357-366), client-matching.api.test.js (215-267, 381-382), counts.api.test.js (169-179), deadlines.api.test.js (106-124), admin-review.api.test.js (308-315), funding-stats.api.test.js (99-106, 115-124), system-config.api.test.js (96-114). Pattern: Tests loop over hardcoded arrays asserting typeof or bounds. e.g. expect([0,25,50,75,100].every(s => s>=0 && s<=100)).toBe(true). Fix: Either delete the tautological assertion blocks entirely (preferred if no inline function is exercised), or rewrite to actually call the inline function with edge-case inputs. Replace .toBeDefined() with specific value assertions where fixture values are known.",
+        "details": "",
+        "testStrategy": "",
+        "status": "done",
+        "dependencies": [],
+        "priority": "medium",
+        "subtasks": [],
+        "updatedAt": "2026-02-21T02:00:45.581Z"
+      },
+      {
+        "id": 15,
+        "title": "Fix E2E API early returns and loose assertions",
+        "description": "HIGH+MEDIUM severity. Files: export.e2e.test.js line 44 — 'if (listBody.clients.length === 0) return' silently skips PDF generation test. clients.e2e.test.js lines 61 and 147-149 — same early return pattern in PUT and GET tests. core.e2e.test.js lines 34-50 — filter tests check Array.isArray but never verify items match the filter (status=Open, state=FL). core.e2e.test.js lines 82-164 — conditional shape/sort assertions. client-matching.e2e.test.js lines 57-75 — conditional shape and sort checks. map.e2e.test.js lines 22-90 — conditional shape checks and .toBeDefined() matchers. Fix: Replace 'if (length === 0) return' with 'expect(length).toBeGreaterThan(0)'. For filter tests, add assertions that verify returned items match the filter criteria. Replace .toBeDefined() with specific shape assertions.",
+        "details": "",
+        "testStrategy": "",
+        "status": "done",
+        "dependencies": [],
+        "priority": "medium",
+        "subtasks": [],
+        "updatedAt": "2026-02-21T02:00:50.440Z"
+      },
+      {
+        "id": 16,
+        "title": "Fix pipeline test paper-over patterns",
+        "description": "HIGH+MEDIUM severity. Files and issues: schemaCompliance.test.js lines 447-472 — tests titled 'max_award >= min_award' and 'close_date after open_date' pass because validator doesn't check these; rewrite to test what validator actually does or mark as test.todo(). contentEnhancement.test.js line 150-152 — tests constant against itself; delete or rewrite. coverageLinking.test.js lines 100-138 — 'if (caState)' guards skip linking assertions; make unconditional. analysisToStorage.test.js lines 155-159, 169-173 — tautological score check on hardcoded 7.2 and toBeTruthy() on known values. scoring.test.js lines 382-447 — range assertions (>9, between 5-8) on deterministic calculations; use toBe() with exact values. scoreInvariants.test.js lines 109-119, 292-299 — typeof on literals and >=0 instead of exact values. errorRecovery.test.js lines 244-252 — backoff tolerance so loose (30%) it would pass on decreasing delays. extractionToAnalysis.test.js lines 199-203 — toBeTruthy() on fixture values.",
+        "details": "",
+        "testStrategy": "",
+        "status": "done",
+        "dependencies": [],
+        "priority": "medium",
+        "subtasks": [],
+        "updatedAt": "2026-02-21T02:00:55.261Z"
+      },
+      {
+        "id": 17,
+        "title": "Fix critical tier paper-over patterns",
+        "description": "HIGH+MEDIUM severity. Files and issues: matchCriteria.test.js lines 344-350, 411-415 — 'if (result.isMatch)' guards hide assertion failures; assert isMatch first then check score. matchEvaluation.test.js lines 261-263 — test 'national opp matches any client' never calls evaluateMatch; add the call. matchEvaluation.test.js lines 345-349 — conditional guard. scoring.test.js line 292 — 'toBeGreaterThanOrEqual(0)' should be toBe(0). explorer/filters.test.js lines 43-55 — WRONG INLINE LOGIC: filterByState checks areas.length>0 instead of intersection with state; fix to match production logic. synonymExpansion.test.js lines 209-215, 251-253 — empty if-block and undefined behavior assertion. hiddenMatches.test.js line 171 — >=1 should be exact count. MEDIUM: tabContent.test.js lines 352-363 toBeTruthy on known values. summaryCards.test.js line 287 loose bound. monthGrouping.test.js line 83 >=2 should be 3. search.test.js lines 155-158 >=3 should be exact. colorToggle.test.js lines 117-119 >=1 should be exact. matchEvaluation.test.js lines 324-326 >0 should be exact. LOW: daysLeft, recentOpps, geocoding, relatedOpps, stateSelection, deadlines — all >=0 or >0 on known deterministic values.",
+        "details": "",
+        "testStrategy": "",
+        "status": "done",
+        "dependencies": [],
+        "priority": "medium",
+        "subtasks": [],
+        "updatedAt": "2026-02-21T02:01:00.386Z"
       }
     ],
     "metadata": {
-      "created": "2025-08-05T04:35:00.718Z",
-      "updated": "2025-08-05T04:35:33.740Z",
-      "description": "=Testing-related tasks and bug fixes"
+      "version": "1.0.0",
+      "lastModified": "2026-02-21T02:01:00.387Z",
+      "taskCount": 17,
+      "completedCount": 16,
+      "tags": [
+        "test"
+      ],
+      "created": "2026-02-25T06:51:45.302Z",
+      "description": "Tasks for test context",
+      "updated": "2026-02-25T06:51:45.302Z"
     }
   },
   "v2": {
@@ -3919,14 +4079,15 @@
       },
       {
         "id": 9,
-        "title": "Write and Run Comprehensive Tests",
-        "description": "Develop testing plan for the whole app. Write unit tests, integration tests, and E2E tests for critical paths. Run tests to ensure everything is functional before launch.",
-        "details": "",
-        "testStrategy": "",
-        "status": "pending",
+        "title": "Implement Comprehensive Test Suite",
+        "description": "Write comprehensive tests for the Meridian ESG application following the testing strategy defined in docs/testing-strategy.md. This task covers all user-facing modules (client matching, explorer, map, dashboard, timeline, clients) and the AI pipeline. Tests will be organized by tier: Critical (Tier 1), API Contracts (Tier 2), Database Integration (Tier 3), and Pipeline (Tier 4).",
+        "status": "done",
         "dependencies": [],
         "priority": "high",
-        "subtasks": []
+        "details": "## Purpose\nEnsure application reliability for sales people using the platform. The primary concern is user-facing functionality: client matching accuracy, filtering correctness, map aggregation calculations, dashboard statistics, and timeline displays.\n\n## Strategy Reference\nFull testing strategy documented in: docs/testing-strategy.md\n\n## Completion Criteria\nThis task is ONLY complete when ALL of the following are true:\n\n1. **All Tests Written**: All ~58 test files are created following the structure in docs/testing-strategy.md:\n   - tests/critical/ (Tier 1): ~30 files covering client-matching, explorer, opportunityDetail, map, dashboard, timeline, clients\n   - tests/api/ (Tier 2): ~7 API contract test files\n   - tests/database/ (Tier 3): ~6 database integration test files\n   - tests/pipeline/ (Tier 4): ~15 AI pipeline test files\n   - tests/fixtures/: Shared test data files\n   - tests/helpers/: Test utilities including supabaseMock.js\n\n2. **All Tests Pass**: Running 'npm run test' completes with 0 failures.\n\n3. **Code Quality Verification**: The agent MUST verify that tests are not written just to pass erroneous code. Tests must validate that code meets the INTENDED standard, not just the current implementation.\n   - If the agent discovers code that is erroneous (does not meet intended functionality), it will NOT edit the code directly.\n   - Instead, it will create a SUBTASK under Task 9 to document and fix the specific code issue.\n   - Only after the subtask is completed and the fix verified should the related test be considered valid.\n\n4. **File Structure Compliance**: The test directory structure MUST match the organization specified in docs/testing-strategy.md:\n   - Single 'tests/' directory at project root\n   - Organized by tier: critical/, api/, database/, pipeline/\n   - fixtures/ and helpers/ directories for shared resources\n   - Vitest as the sole test framework (delete Jest configs)\n\n5. **Old Tests Archived**: All existing test files from __tests__/, __mocks__/, lib/agents-v2/tests/, and lib/services/tests/ must be:\n   - Consolidated into a single archive file: tests/_archived/legacy-tests-archive.md\n   - This archive should list each original file path and note any valuable patterns/fixtures to preserve\n   - The original test files should remain in place until I explicitly approve their deletion\n   - Do NOT delete the old test files - only archive them for my review\n\n## Test Priorities (in order)\n1. Client matching (4 criteria: location, applicant type, project needs, activities)\n2. Explorer filtering, sorting, pagination, URL state\n3. Map aggregations, scope breakdown, state selection\n4. Dashboard statistics, deadlines\n5. Timeline month grouping, days-left colors\n6. Client CRUD, geocoding, PDF export\n7. AI Pipeline: scoring (100% coverage), schema compliance, invariants\n\n## Framework\n- Use Vitest exclusively\n- Use fast-check for property-based/invariant testing\n- Create smart supabaseMock.js (in-memory DB behavior)\n- Delete all 6 Jest config files after migration",
+        "testStrategy": "Run 'npm run test' and verify: (1) All tests pass, (2) Coverage meets thresholds for critical paths, (3) No erroneous code masked by weak tests",
+        "subtasks": [],
+        "updatedAt": "2026-01-09T05:27:36.391Z"
       },
       {
         "id": 10,
@@ -4284,10 +4445,13 @@
         "description": "Identify and resolve duplicate entries in the funding_sources table. This includes finding duplicate records by name/type combinations, consolidating references from funding_opportunities, and removing redundant entries while maintaining data integrity.",
         "details": "",
         "testStrategy": "",
-        "status": "pending",
-        "dependencies": [],
+        "status": "in-progress",
+        "dependencies": [
+          "30"
+        ],
         "priority": "medium",
-        "subtasks": []
+        "subtasks": [],
+        "updatedAt": "2026-01-09T05:28:35.470Z"
       },
       {
         "id": 15,
@@ -4295,10 +4459,11 @@
         "description": "Audit the funding_sources table to identify all existing type values. Evaluate whether converting the type field to an ENUM is appropriate based on the variety of values. If converting to ENUM: 1) Document all valid type values needed, 2) Check all insertion points in the codebase (V2 pipeline storageAgent, manual insertion scripts, API endpoints) to ensure they use valid enum values, 3) Create migration that safely converts TEXT to ENUM. Consider: current values in production, future extensibility needs, and error handling for invalid types.",
         "details": "",
         "testStrategy": "",
-        "status": "pending",
+        "status": "cancelled",
         "dependencies": [],
         "priority": "medium",
-        "subtasks": []
+        "subtasks": [],
+        "updatedAt": "2026-02-18T03:57:42.038Z"
       },
       {
         "id": 16,
@@ -4329,7 +4494,7 @@
         "description": "Supplement the current web search discovery strategy with catalog lookup to achieve near-100% program coverage.\n\n## Problem Statement\nCurrent discovery relies entirely on web searches (6-10 per utility), which misses programs documented in centralized rebate catalog PDFs. Analysis comparing our database against IncentifFind revealed:\n- We have 21 PG&E/EBMUD programs vs IncentifFind's 78 utility programs\n- IncentifFind parses catalog PDFs into equipment-level entries\n- Some of our programs (financing, third-party implementers, RCx) aren't in IncentifFind\n- Some IncentifFind programs (equipment rebates) aren't in our DB\n\n## Solution Overview\nAdd catalog lookup as a standard step in the discovery workflow:\n1. Catalog lookup runs FIRST (before web searches)\n2. Three-tier discovery: Registry file → DB cache → Dynamic search\n3. Value-based splitting: $500+ rebate categories become separate programs\n4. Both sources feed same staging pipeline with URL deduplication\n\n## Key Design Decisions\n- **Universal**: Applies to any utility, not just pre-configured ones\n- **Additive**: Supplements web search, doesn't replace it\n- **Value-based granularity**: Split by significant savings ($500+), group trivial items\n- **Same pipeline**: Catalog programs flow through extraction→analysis→storage\n\n## Files to Modify\n- `.claude/agents/discovery-agent.md` - Add Section 2.5 (Catalog Lookup)\n- `.claude/agents/extraction-agent.md` - Add Section 2.6 (Catalog Splitting)\n- `lib/data/utility-catalog-registry.json` - CREATE (known catalog URLs)\n- `CLAUDE.md` - Add discovery_method values reference\n\n## Discovery Method Values\n- `web_search` - Standard web search discovery\n- `catalog_lookup` - Catalog PDF found (pending split)\n- `catalog_program` - Individual program extracted from catalog\n\n## Acceptance Criteria\n- [ ] Discovery agent checks for catalog before running web searches\n- [ ] Catalog PDFs are split into value-based program entries\n- [ ] Both web and catalog programs deduplicate correctly\n- [ ] Test against PG&E shows improved coverage vs current data\n- [ ] Documentation updated with new discovery_method values",
         "details": "",
         "testStrategy": "",
-        "status": "pending",
+        "status": "cancelled",
         "dependencies": [],
         "priority": "medium",
         "subtasks": [
@@ -4393,7 +4558,8 @@
             "parentTaskId": 18,
             "parentId": "undefined"
           }
-        ]
+        ],
+        "updatedAt": "2026-02-18T17:49:50.716Z"
       },
       {
         "id": 19,
@@ -4634,10 +4800,10 @@
         "testStrategy": "## Testing Strategy\n\n### 1. Database Schema Tests\n\n**Test the table creation:**\n```bash\n# Run migration\nsupabase migration up\n\n# Verify table structure\npsql -c \"\\d client_matches\"\npsql -c \"SELECT * FROM pg_indexes WHERE tablename = 'client_matches';\"\n```\n\n**Expected results:**\n- Primary key on (client_id, opportunity_id)\n- 5 indexes created (client_id, opportunity_id, score, last_refreshed_at, match_details GIN)\n- Foreign key constraints to clients and funding_opportunities tables\n\n### 2. Match Calculation Function Tests\n\n**Create test script:** `scripts/clients/test-match-calculation.js`\n\n```javascript\n// Test calculate_client_match() function\nconst testCases = [\n  {\n    name: 'National opportunity matches all clients',\n    clientId: '<test-client-uuid>',\n    opportunityId: '<national-opp-uuid>',\n    expectedScore: '>= 0'\n  },\n  {\n    name: 'Geographic mismatch returns score 0',\n    clientId: '<ca-client-uuid>',\n    opportunityId: '<ny-only-opp-uuid>',\n    expectedScore: 0\n  },\n  {\n    name: 'Full match with 100% project needs overlap',\n    clientId: '<solar-client-uuid>',\n    opportunityId: '<solar-only-opp-uuid>',\n    expectedScore: 100\n  }\n];\n\nfor (const test of testCases) {\n  const { data, error } = await supabase.rpc('calculate_client_match', {\n    p_client_id: test.clientId,\n    p_opportunity_id: test.opportunityId\n  });\n  \n  console.assert(data.score meets test.expectedScore, `${test.name} failed`);\n  console.assert(data.match_details.locationMatch !== undefined, 'Missing match details');\n}\n```\n\n### 3. Refresh Function Tests\n\n**Test refresh_client_matches():**\n```sql\n-- Create test client\nINSERT INTO clients (name, type, project_needs, coverage_area_ids)\nVALUES ('Test School', 'K-12 School Districts', ARRAY['Solar/Renewable Energy'], ARRAY['<ca-coverage-area-uuid>']);\n\n-- Trigger refresh\nSELECT refresh_client_matches('<new-client-uuid>');\n\n-- Verify matches were created\nSELECT COUNT(*) FROM client_matches WHERE client_id = '<new-client-uuid>';\n```\n\n**Test refresh_opportunity_matches():**\n```sql\n-- Trigger refresh for specific opportunity\nSELECT refresh_opportunity_matches('<test-opportunity-uuid>');\n\n-- Verify matches exist\nSELECT COUNT(*) FROM client_matches WHERE opportunity_id = '<test-opportunity-uuid>';\n```\n\n### 4. Trigger Tests\n\n**Test client INSERT trigger:**\n```javascript\n// Create new client via API\nconst response = await fetch('/api/clients', {\n  method: 'POST',\n  body: JSON.stringify({\n    name: 'Trigger Test School',\n    type: 'K-12 School Districts',\n    address: '123 Main St, Sacramento, CA',\n    project_needs: ['HVAC Systems', 'Solar/Renewable Energy']\n  })\n});\n\nconst { client } = await response.json();\n\n// Wait for trigger to complete\nawait new Promise(resolve => setTimeout(resolve, 2000));\n\n// Verify matches were automatically created\nconst { data: matches } = await supabase\n  .from('client_matches')\n  .select('*')\n  .eq('client_id', client.id);\n\nconsole.assert(matches.length > 0, 'No matches created by trigger');\n```\n\n**Test client UPDATE trigger (type change):**\n```javascript\n// Update client type\nawait fetch(`/api/clients/${clientId}`, {\n  method: 'PUT',\n  body: JSON.stringify({\n    ...existingClient,\n    type: 'Municipal Government' // Change type\n  })\n});\n\n// Verify matches were recalculated\nconst { data: updatedMatches } = await supabase\n  .from('client_matches')\n  .select('*')\n  .eq('client_id', clientId)\n  .gte('last_refreshed_at', new Date(Date.now() - 5000).toISOString());\n\nconsole.assert(updatedMatches.length > 0, 'Matches not refreshed after type change');\n```\n\n**Test opportunity_coverage_areas trigger:**\n```sql\n-- Add new coverage area to opportunity\nINSERT INTO opportunity_coverage_areas (opportunity_id, coverage_area_id)\nVALUES ('<test-opp-uuid>', '<new-coverage-area-uuid>');\n\n-- Verify trigger fired and updated matches\nSELECT COUNT(*) \nFROM client_matches \nWHERE opportunity_id = '<test-opp-uuid>'\n  AND last_refreshed_at > NOW() - INTERVAL '10 seconds';\n```\n\n### 5. Backfill Script Tests\n\n```bash\n# Run backfill with dry-run mode first\nnpm run backfill-client-matches\n\n# Verify total match count\npsql -c \"SELECT COUNT(*) FROM client_matches;\"\n\n# Verify distribution across clients\npsql -c \"SELECT client_id, COUNT(*) as match_count FROM client_matches GROUP BY client_id ORDER BY match_count DESC LIMIT 10;\"\n```\n\n### 6. Performance Tests\n\n**Measure query performance:**\n```sql\nEXPLAIN ANALYZE\nSELECT * FROM client_matches\nWHERE client_id = '<uuid>'\nORDER BY score DESC\nLIMIT 10;\n\n-- Should use idx_client_matches_client_id index\n-- Execution time should be < 5ms\n```\n\n**Test concurrent refresh load:**\n```javascript\n// Simulate 10 concurrent client updates\nconst promises = testClientIds.map(id => \n  supabase.rpc('refresh_client_matches', { p_client_id: id })\n);\n\nconst start = Date.now();\nawait Promise.all(promises);\nconst duration = Date.now() - start;\n\nconsole.log(`Concurrent refresh of 10 clients: ${duration}ms`);\n// Should complete in < 5 seconds\n```\n\n### 7. Integration Tests\n\n**Compare API results with table results:**\n```javascript\n// Get matches from real-time calculation API\nconst apiMatches = await fetch(`/api/client-matching?clientId=${clientId}`).then(r => r.json());\n\n// Get matches from persistent table\nconst { data: tableMatches } = await supabase\n  .from('client_matches')\n  .select('*')\n  .eq('client_id', clientId);\n\n// Scores should match (within 5% tolerance due to calculation differences)\nfor (const apiMatch of apiMatches.results.matches) {\n  const tableMatch = tableMatches.find(m => m.opportunity_id === apiMatch.id);\n  console.assert(\n    Math.abs(apiMatch.score - tableMatch.score) <= 5,\n    `Score mismatch: API=${apiMatch.score}, Table=${tableMatch.score}`\n  );\n}\n```\n\n### 8. Edge Case Tests\n\n- **Empty project_needs:** Client with empty project_needs array should get 0 scores\n- **Null eligible_applicants:** Opportunity with null eligible_applicants should not match any clients\n- **Deleted opportunity:** Deleting an opportunity should cascade-delete all related client_matches rows\n- **Deleted client:** Deleting a client should cascade-delete all related client_matches rows\n- **Closed opportunity:** Changing status to 'closed' should refresh matches (likely removing them)\n\n### 9. Monitoring and Validation\n\n**Create validation query:**\n```sql\n-- Find matches that haven't been refreshed in 7 days\nSELECT cm.*, c.name as client_name, fo.title as opportunity_title\nFROM client_matches cm\nJOIN clients c ON cm.client_id = c.id\nJOIN funding_opportunities fo ON cm.opportunity_id = fo.id\nWHERE cm.last_refreshed_at < NOW() - INTERVAL '7 days';\n```\n\n**Check for orphaned matches:**\n```sql\n-- Find matches with no corresponding client or opportunity\nSELECT * FROM client_matches cm\nLEFT JOIN clients c ON cm.client_id = c.id\nLEFT JOIN funding_opportunities fo ON cm.opportunity_id = fo.id\nWHERE c.id IS NULL OR fo.id IS NULL;\n```\n\n### Success Criteria\n\n✅ Table created with correct schema and indexes  \n✅ calculate_client_match() returns same scores as JavaScript implementation  \n✅ refresh_client_matches() successfully populates matches  \n✅ refresh_opportunity_matches() successfully populates matches  \n✅ Client INSERT trigger auto-creates matches  \n✅ Client UPDATE trigger refreshes matches when type/project_needs/coverage_areas change  \n✅ Opportunity UPDATE trigger refreshes matches when eligibility criteria change  \n✅ opportunity_coverage_areas trigger refreshes matches when links change  \n✅ Backfill script successfully populates all existing client-opportunity pairs  \n✅ Query performance is < 5ms for typical client match lookups  \n✅ No orphaned or stale matches exist after 24 hours",
         "status": "pending",
         "dependencies": [
-          3,
-          19
+          "3",
+          "19"
         ],
-        "priority": "medium",
+        "priority": "high",
         "subtasks": []
       },
       {
@@ -4648,24 +4814,1623 @@
         "testStrategy": "## Testing Strategy\n\n### 1. Unit Tests for Validation Logic\n\n**File**: `lib/agents-v2/tests/core/taxonomyValidationAgent.test.js`\n\nTest cases:\n```javascript\n// Exact matching (case-insensitive)\nexpect(validateField(['public agencies'], 'ELIGIBLE_APPLICANTS'))\n  .toEqual(['Public Agencies'])\n\n// Rule-based normalization\nexpect(validateField(['Public Agency'], 'ELIGIBLE_APPLICANTS'))\n  .toEqual(['Public Agencies'])\n\n// Fuzzy matching\nexpect(validateField(['K12 School Districts'], 'ELIGIBLE_APPLICANTS'))\n  .toEqual(['K-12 School Districts']) // Score: 0.92\n\n// Unknown values removed\nexpect(validateField(['Foo Bar Unknown'], 'ELIGIBLE_APPLICANTS'))\n  .toEqual([])\n\n// Mixed valid/invalid\nexpect(validateField(['Public Agencies', 'Unknown Type', 'Hospitals'], 'ELIGIBLE_APPLICANTS'))\n  .toEqual(['Public Agencies', 'Hospitals'])\n\n// Singular field (funding_type)\nexpect(validateSingleValue('grant', 'FUNDING_TYPES'))\n  .toEqual('Grant')\n\n// All taxonomy fields\nconst testOpp = {\n  eligible_applicants: ['public agency', 'K-12 Schools'],\n  eligible_project_types: ['Solar Panel', 'HVAC systems'],\n  eligible_activities: ['new construction'],\n  categories: ['energy', 'Infrastructure'],\n  funding_type: 'grant'\n}\nconst result = await validateTaxonomies([testOpp])\nexpect(result.opportunities[0]).toMatchObject({\n  eligible_applicants: ['Public Agencies', 'K-12 Schools'],\n  eligible_project_types: ['Solar Panels', 'HVAC Systems'],\n  eligible_activities: ['New Construction'],\n  categories: ['Energy', 'Infrastructure'],\n  funding_type: 'Grant'\n})\n```\n\n### 2. Integration Tests with Pipeline\n\n**File**: `lib/agents-v2/tests/integration/pipeline-with-taxonomy-validation.test.js`\n\nTest the full pipeline flow:\n```javascript\n// Mock opportunities with taxonomy inconsistencies\nconst mockOpportunities = [\n  {\n    title: 'Test Grant',\n    eligible_applicants: ['Public Agency', 'K12 Schools'],\n    eligible_project_types: ['solar panel', 'Wind Turbine'],\n    categories: ['energy'],\n    funding_type: 'grant'\n  }\n]\n\n// Run through filter → validation → storage\nconst filterResult = filterOpportunities(mockOpportunities)\nconst validationResult = await validateTaxonomies(filterResult.includedOpportunities)\nconst storageResult = await storeOpportunities(validationResult.opportunities, source, supabase)\n\n// Verify normalized values were stored\nconst { data } = await supabase\n  .from('funding_opportunities')\n  .select('*')\n  .eq('api_opportunity_id', 'test-id')\n  .single()\n\nexpect(data.eligible_applicants).toContain('Public Agencies')\nexpect(data.eligible_project_types).toContain('Solar Panels')\nexpect(data.funding_type).toBe('Grant')\n```\n\n### 3. Performance Testing\n\nTest with large batches (100+ opportunities):\n```javascript\nconst largeSet = Array(100).fill(null).map((_, i) => ({\n  id: `test-${i}`,\n  eligible_applicants: ['Public Agencies', 'K-12 Schools'],\n  eligible_project_types: ['Solar Panels'],\n  categories: ['Energy']\n}))\n\nconst result = await validateTaxonomies(largeSet)\nexpect(result.executionTime).toBeLessThan(5000) // < 5 seconds\nexpect(result.metrics.totalProcessed).toBe(100)\n```\n\n### 4. Manual Testing with Real Data\n\nRun validation on existing opportunities to identify unknown values:\n```bash\nnpm run test:taxonomy-validation -- --source-id=<real-source-id>\n```\n\nCreate audit script: `scripts/audit-taxonomy-values.js`\n```javascript\n// Query existing opportunities\nconst { data } = await supabase\n  .from('funding_opportunities')\n  .select('eligible_applicants, eligible_project_types, eligible_activities, categories, funding_type')\n\n// Check each value against taxonomies\nconst unknownValues = findUnknownValues(data)\nconsole.log('Unknown values found:', unknownValues)\n\n// Generate normalization map entries\ngenerateNormalizationMapSuggestions(unknownValues)\n```\n\n### 5. Metrics Validation\n\nVerify metrics are tracked correctly:\n```javascript\nconst result = await validateTaxonomies(testOpportunities)\n\nexpect(result.metrics).toMatchObject({\n  totalProcessed: expect.any(Number),\n  totalNormalizations: expect.any(Number),\n  ruleBasedMatches: expect.any(Number),\n  fuzzyMatches: expect.any(Number),\n  unknownValues: expect.any(Number),\n  fieldBreakdown: expect.any(Object)\n})\n```\n\n### 6. Database Schema Verification\n\nVerify RunManager stage tracking:\n```javascript\nawait runManager.updateV2TaxonomyValidation('completed', result, metrics, 10, 10)\n\nconst { data: stageData } = await supabase\n  .from('pipeline_stages')\n  .select('*')\n  .eq('run_id', runManager.runId)\n  .eq('stage_name', 'taxonomy_validation')\n  .single()\n\nexpect(stageData.status).toBe('completed')\nexpect(stageData.input_count).toBe(10)\nexpect(stageData.output_count).toBe(10)\n```\n\n### 7. Edge Cases\n\nTest edge cases:\n- Empty arrays: `validateField([], 'CATEGORIES')` → `[]`\n- Null values: `validateField(null, 'CATEGORIES')` → `null`\n- Undefined: `validateField(undefined, 'CATEGORIES')` → `undefined`\n- Invalid field type: `validateField('string', 'CATEGORIES')` → error or graceful handling\n- All unknown values: should return empty array and log warnings\n- Mixed case: `['ENERGY', 'energy', 'Energy']` → all normalize to `'Energy'`\n\n### Success Criteria\n\n✅ All taxonomy fields normalized to standard values\n✅ Unknown values logged but pipeline continues\n✅ Metrics accurately tracked in pipeline_stages\n✅ Performance: < 50ms per opportunity on average\n✅ Integration: Pipeline completes successfully with validation stage\n✅ Database: Stored values match taxonomies exactly\n✅ No regressions: Existing pipeline tests still pass",
         "status": "pending",
         "dependencies": [
-          16,
-          22
+          "16",
+          "22"
         ],
         "priority": "medium",
         "subtasks": []
+      },
+      {
+        "id": 27,
+        "title": "Consolidate duplicate fundingApi definitions",
+        "description": "lib/supabase.js and lib/services/fundingApi.js both export a fundingApi object with overlapping methods (getOpportunities, getOpportunityById, getRecentOpportunities, getUpcomingDeadlines, getFundingSources, getClientApplications). The lib/services/ version takes supabase as a parameter (dependency injection), while the lib/supabase.js version uses a module-level proxy. Both have mock data fallbacks that are identical. This duplication risks silent divergence — e.g., a fix applied to one file but not the other. Consolidate into a single canonical fundingApi in lib/services/fundingApi.js (the DI version), update all consumers to use it, and remove the duplicate from lib/supabase.js. Also remove the shared mock data functions (getMockDeadlines, getMockFundingSources, getMockClientApplications) that are duplicated across both files.",
+        "details": "",
+        "testStrategy": "",
+        "status": "pending",
+        "dependencies": [],
+        "priority": "medium",
+        "subtasks": []
+      },
+      {
+        "id": 28,
+        "title": "Add live-DB integration tests for Tier 3 database tests",
+        "description": "All 7 test files in tests/database/ (views, RPCs, constraints) use inline JS functions that simulate expected behavior against fixture data. None connect to a real database. This means: (1) Schema drift is invisible — if a SQL view is missing a column that an API route depends on, no test fails. The JS simulation just spreads the input object. This caused a production bug where program_id was added to funding_opportunities but not to the view, breaking the admin review page at runtime. (2) SQL logic is untested — the CASE expression for status, ARRAY_AGG for coverage_state_codes, GROUP BY behavior, NULL handling in aggregates are all reimplemented in JS rather than tested against real SQL. (3) Migration correctness is assumed — after running supabase migration up, there is no automated verification that the resulting schema matches what application code expects. A stopgap schema contract test was added to fundingOpportunitiesWithGeography.test.js (manually maintained column list), but the real fix is a set of tests that connect to the local Supabase instance (supabase start) and run real queries. Scope: create a new test tier or sub-tier that requires Docker/Supabase running, with tests that query actual views (assert column sets), call actual RPCs (assert return shapes), and verify migration output matches consumer expectations. See tests/README.md Known Gaps section for full problem statement.",
+        "details": "",
+        "testStrategy": "",
+        "status": "done",
+        "dependencies": [],
+        "priority": "high",
+        "subtasks": [],
+        "updatedAt": "2026-02-20T07:25:23.576Z"
+      },
+      {
+        "id": 29,
+        "title": "Standardize funding_sources fields across both pipelines",
+        "description": "Unify how the API pipeline and manual pipeline write to funding_sources. Currently there are duplicate/competing columns and missing data:\n\n**Problem:**\n1. Two competing type columns: `type` (agency_type ENUM, used by API pipeline + views + UI) and `funder_type` (TEXT, used by manual pipeline skills). Both do the same job.\n2. API-created sources have NULL `state_code` — even obvious state agencies like 'California Energy Commission' have no state_code, making them invisible to manual pipeline orchestrator queries (e.g., WHERE state_code = 'CA').\n3. No convention for federal/national sources — NULL is ambiguous (federal vs unfilled).\n\n**Solution:**\n1. Drop `funder_type` TEXT column (only exists in dev DB, never deployed to production).\n2. Use the existing `type` ENUM column everywhere. Add 'Tribal' value to the ENUM.\n3. Update all manual pipeline skill files to reference `type` instead of `funder_type`.\n4. Adopt `'US'` as the state_code for federal/national sources (fits CHAR(2), not a real state code). No more NULLs.\n5. Update manual pipeline skills and docs to document the `'US'` convention.\n6. Update `fundingSourceManager.js` (API pipeline) to populate `state_code` (infer from source name or LLM extraction) and set 'US' for Federal type sources.\n7. Update views if any reference `funder_type`.\n\n**Files to change:**\n- Migration: drop `funder_type`, add 'Tribal' to ENUM\n- `lib/agents-v2/core/storageAgent/fundingSourceManager.js` — write `state_code`, use ENUM `type`\n- `.claude/skills/source-registry/SKILL.md` — `funder_type` → `type`, document 'US' convention\n- `.claude/skills/pipeline-orchestrator/SKILL.md` — update all `funder_type` references\n- `.claude/skills/opportunity-discovery/SKILL.md` — update JOIN references\n- `.claude/skills/extraction/SKILL.md` — update JOIN references\n- `.claude/skills/analysis/SKILL.md` — update JOIN references\n- `.claude/skills/storage/SKILL.md` — update references\n- `docs/prd/opp_staging/manual-claude-code-pipeline-architecture-proposal.md` — update field references\n\n**Priority:** medium\n**Depends on:** nothing",
+        "details": "",
+        "testStrategy": "",
+        "status": "pending",
+        "dependencies": [],
+        "priority": "high",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Write migration: drop funder_type, add Tribal to ENUM",
+            "description": "Create migration that: (1) Adds 'Tribal' to the agency_type ENUM. (2) Drops the funder_type TEXT column (data already backfilled into type during local dev). (3) Verify no views reference funder_type. Migration file: supabase/migrations/YYYYMMDD_standardize_funding_sources_type.sql. Apply with supabase migration up.",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 29,
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "Update fundingSourceManager.js to populate state_code",
+            "description": "In lib/agents-v2/core/storageAgent/fundingSourceManager.js: (1) In create() function, add state_code field. For Federal type, set 'US'. For State type, infer state code from source name (pattern match state names like 'California' → 'CA'). For other types, leave NULL or infer if possible. (2) In updateIfNeeded(), backfill state_code if existing record has NULL state_code. (3) Keep writing to type ENUM (already works). This is the only API pipeline code change needed.",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 29,
+            "parentId": "undefined"
+          },
+          {
+            "id": 3,
+            "title": "Update manual pipeline skill files: funder_type → type, document US convention",
+            "description": "Update all manual pipeline skill files to use type (ENUM) instead of funder_type (TEXT), and document that state_code='US' means federal/national:\n\nFiles to update:\n- .claude/skills/source-registry/SKILL.md — Replace all funder_type references with type. Update INSERT/UPDATE templates. Add US convention note in field table and examples. Update dedup query to use state_code='US' for federal instead of state_code IS NULL.\n- .claude/skills/pipeline-orchestrator/SKILL.md — Replace funder_type in all WHERE clauses and prompt templates.\n- .claude/skills/opportunity-discovery/SKILL.md — Update JOIN references (fs.funder_type → fs.type::text or fs.type).\n- .claude/skills/extraction/SKILL.md — Update JOIN references.\n- .claude/skills/analysis/SKILL.md — Update JOIN references.\n- .claude/skills/storage/SKILL.md — Update any references.\n- docs/prd/opp_staging/manual-claude-code-pipeline-architecture-proposal.md — Update field references.\n\nIMPORTANT: When referencing the ENUM in SQL, cast with ::text where needed for string comparisons.",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 29,
+            "parentId": "undefined"
+          },
+          {
+            "id": 4,
+            "title": "Update MEMORY.md and CLAUDE.md references",
+            "description": "Update project memory and instructions to reflect the standardized schema:\n- MEMORY.md: Remove note about funding_sources column being state_code (NOT state) — still true but add US convention. Update any funder_type references.\n- CLAUDE.md: If any references to funder_type exist, update them.\n- .claude/agents/*.md: Check agent files for any funder_type references and update.",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 29,
+            "parentId": "undefined"
+          }
+        ]
+      },
+      {
+        "id": 30,
+        "title": "Backfill production funding_sources with state_code values",
+        "description": "After task 29 changes are deployed to production, backfill existing funding_sources records with proper state_code values.\n\n**Scope:**\n1. Federal sources (type='Federal', ~51 records): SET state_code='US'\n2. State sources (type='State', ~57 records): Infer state_code from name (e.g., 'California Energy Commission' → 'CA', 'Board of Forestry' → may need manual review). Many are California agencies from the Salesforce import.\n3. Utility sources (type='Utility', ~83 records): Infer state_code from name or leave for manual review.\n4. 1 source with NULL type: investigate and fix.\n\n**Approach:**\n- Write a SQL script that handles the easy cases (Federal → 'US', obvious state names → state codes).\n- Generate a report of ambiguous sources that need manual state_code assignment.\n- Run via psql against production after deploying task 29 migration.\n\n**Priority:** low — blocked until task 29 is deployed to production.\n**Depends on:** task 29",
+        "details": "",
+        "testStrategy": "",
+        "status": "pending",
+        "dependencies": [
+          "29"
+        ],
+        "priority": "high",
+        "subtasks": []
+      },
+      {
+        "id": 31,
+        "title": "Clean up opportunity fetching patterns",
+        "description": "Consolidate and fix the 25+ API routes that fetch funding opportunities. Key work items: (1) Fix deprecated eligible_states usage in /api/map/opportunities/[stateCode] — 5 locations need coverage_state_codes. (2) Delete dead fundingApi object in lib/supabase.js (keep calculateDaysLeft/determineStatus/createSupabaseClient). (3) Delete 4 dead methods in lib/services/fundingApi.js. (4) Fix inconsistent status filtering — routes querying base table status instead of view's date-computed status (/api/counts, /api/client-matching, /api/deadlines). (5) Standardize Supabase client creation — eliminate direct createClient patterns in favor of SSR utility from utils/supabase/api.js. (6) Fix double-RPC count in fundingApi.getOpportunities — use { count: exact, head: true } instead. (7) Fix /api/funding/verify/grants-gov wrong column name source_id (should be api_source_id or funding_source_id).",
+        "details": "",
+        "testStrategy": "",
+        "status": "pending",
+        "dependencies": [],
+        "priority": "high",
+        "subtasks": []
+      },
+      {
+        "id": 32,
+        "title": "Implement admin role layer and route protection",
+        "description": "Add role-based access control to protect admin features. Key work items: (1) Create a profiles table or user_roles table in public schema with user_id (FK to auth.users) and role (admin/user). (2) Wire up existing requireRole() in utils/supabase/api.js to admin API routes (/api/admin/review, /api/admin/review/approve, /api/admin/review/reject, /api/admin/review/demote). (3) Wire up enforceRBAC() in utils/supabase/middleware.js to protect /admin/* routes. (4) Add conditional rendering in UI to hide admin tab on opportunity detail page and /admin routes from non-admin users. (5) Add user role seeding — mark gborh@energysystemsgroup.com as admin. (6) Consider RLS policies that check user role for write operations.",
+        "details": "",
+        "testStrategy": "",
+        "status": "pending",
+        "dependencies": [],
+        "priority": "high",
+        "subtasks": []
+      },
+      {
+        "id": 33,
+        "title": "Add client-user ownership and filtering",
+        "description": "Add multi-tenancy to the clients table so users only see their own clients. Key work items: (1) Add user_id UUID column to clients table (FK to auth.users, nullable for migration). (2) Backfill existing clients with the single current user. (3) Add RLS policy: SELECT/UPDATE/DELETE restricted to rows where user_id = auth.uid(). (4) Update /api/clients route to filter by authenticated user. (5) Update client creation flow to automatically set user_id from session. (6) Consider admin override — admins can see all clients. Depends on task for admin role layer being completed first.",
+        "details": "",
+        "testStrategy": "",
+        "status": "pending",
+        "dependencies": [
+          "32"
+        ],
+        "priority": "high",
+        "subtasks": []
+      },
+      {
+        "id": 34,
+        "title": "Fix admin tab blank after promotion (verify migration deployment)",
+        "description": "The admin tab on the opportunity detail page (/funding/opportunities/[id]) goes blank after an opportunity is promoted. Root cause: migration 20260218000001 (update_view_add_promotion_status) adds promotion_status, reviewed_by, reviewed_at, review_notes to the view SELECT list and removes the WHERE clause. Without this migration, select('*') returns undefined for these fields, and the strict equality checks in the admin tab (=== 'pending_review', === 'promoted', === null) all fail, rendering nothing. Fix: (1) Verify migration 20260218000001 is deployed to staging/production. (2) Add defensive coding in the admin tab — handle undefined promotion_status gracefully (e.g., treat undefined same as null). (3) Add a check in handleAdminApprove to verify updated_count > 0 from the approve API response.",
+        "details": "",
+        "testStrategy": "",
+        "status": "pending",
+        "dependencies": [],
+        "priority": "high",
+        "subtasks": []
+      },
+      {
+        "id": 35,
+        "title": "Implement caching and performance optimization",
+        "description": "The app has virtually no caching — every page visit re-fetches all data from scratch. Key work: (1) Wire up @tanstack/react-query v5 (already installed) as the client-side cache layer — add QueryClientProvider to layout.js, convert useState+useEffect fetch patterns to useQuery hooks across all pages (dashboard, map, opportunities, clients, timeline, detail). (2) Add HTTP Cache-Control headers to stable API routes: /api/categories (s-maxage=3600), /api/funding/project-type-summary (s-maxage=300), /api/counts (s-maxage=60), /api/map/funding-by-state (s-maxage=120). (3) Consolidate client-matching routes — 3 routes do identical ALL-records fetch + O(n*m) matching. Create a shared cached computation layer. (4) Parallelize map funding-by-state 4 sequential RPCs with Promise.all. (5) Remove cache-busting timestamp from map page. (6) Add React.memo to heavy list-item components (OpportunityCard, ClientCard). (7) Remove unused @tanstack/react-query import placeholder and langchain if unused in client bundle. Priority order: react-query wiring (biggest bang), HTTP cache headers, client-matching consolidation, memo.",
+        "details": "",
+        "testStrategy": "",
+        "status": "pending",
+        "dependencies": [],
+        "priority": "high",
+        "subtasks": []
+      },
+      {
+        "id": 36,
+        "title": "Write Critical + API tests for 10 untested user-facing API routes",
+        "description": "Per the testing framework decision gate, these new API routes require Critical (business logic) + API (contract) tests. All were added on feature/testing with 0 test coverage. Routes: /api/funding/coverage-counts, /api/funding/project-type-summary, /api/funding/total-available, /api/map/coverage-areas/[stateCode], /api/map/national, /api/project-types, /api/clients/[id]/hidden-matches, /api/client-matching/summary, /api/client-matching/top-matches, /api/admin/system-config/[key]. Group into files: (1) tests/critical/funding/coverageCounts.test.js + tests/api/funding-stats.api.test.js for funding stats routes, (2) extend tests/critical/map/ and tests/api/map.api.test.js for map coverage-areas and national, (3) tests/critical/client-matching/hiddenMatches.test.js + extend tests/api/client-matching.api.test.js for hidden-matches/summary/top-matches, (4) tests/api/project-types.api.test.js, (5) tests/api/system-config.api.test.js. Pattern: inline pure functions + fixture data, NO imports from app code. Priority: HIGH.",
+        "details": "",
+        "testStrategy": "",
+        "status": "done",
+        "dependencies": [],
+        "priority": "high",
+        "subtasks": [],
+        "updatedAt": "2026-02-20T06:57:57.652Z"
+      },
+      {
+        "id": 37,
+        "title": "Write Critical tier tests for clientMatching utility functions",
+        "description": "The file lib/utils/clientMatching.js contains 5 pure display functions used across client matching pages. All have 0 test coverage. Test file: tests/critical/client-matching/clientMatchingUtils.test.js. Functions to test: formatMatchScore(score) with boundary values (0, 0.5, 1, null, undefined), getMatchScoreColor(score) with thresholds at 80%/60%/40%, getMatchScoreBgColor(score) with color values at each threshold, formatProjectNeeds(needs) with array passthrough/empty/null, generateClientTags(client, matches, limit) with deduplication/sorting/limiting. Pattern: inline pure functions copied from production code, NO imports from app code. Priority: HIGH.",
+        "details": "",
+        "testStrategy": "",
+        "status": "done",
+        "dependencies": [],
+        "priority": "high",
+        "subtasks": [],
+        "updatedAt": "2026-02-20T06:58:01.979Z"
+      },
+      {
+        "id": 38,
+        "title": "Write API contract tests for internal processing endpoints",
+        "description": "These internal/admin processing endpoints technically require tests per the decision gate but are lower risk since they are not directly user-facing. Cover response shapes and error handling only. Routes: /api/cron/process-jobs (test auth check, response shape), /api/funding/process-source-v2 (test response shape), /api/admin/funding-sources/[id]/process routeV1/V2/V3 (test response shapes). Test file: tests/api/processing.api.test.js. Pattern: API contract tests only (response shapes, not business logic). Priority: LOW.",
+        "details": "",
+        "testStrategy": "",
+        "status": "done",
+        "dependencies": [],
+        "priority": "low",
+        "subtasks": [],
+        "updatedAt": "2026-02-20T07:19:31.756Z"
       }
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2025-12-31T22:51:23.835Z",
-      "taskCount": 24,
-      "completedCount": 16,
+      "lastModified": "2026-02-20T07:25:23.577Z",
+      "taskCount": 38,
+      "completedCount": 21,
       "tags": [
         "v2"
       ],
-      "created": "2026-01-08T06:41:34.123Z",
+      "created": "2026-02-21T01:10:05.170Z",
       "description": "Tasks for v2 context",
-      "updated": "2026-01-09T01:47:44.014Z"
+      "updated": "2026-02-21T01:10:05.170Z"
+    }
+  },
+  "pipeline": {
+    "tasks": [
+      {
+        "id": 1,
+        "title": "Database Migration: Alter funding_sources table",
+        "description": "Add 5 new columns to the existing funding_sources table and create 3 indexes to support the manual pipeline Phase 1 (Source Registry). Columns: funder_type TEXT (replaces agency_type/type), sectors TEXT[], state_code CHAR(2), pipeline TEXT DEFAULT 'api', programs_last_searched_at TIMESTAMPTZ. Indexes: state_code+funder_type composite, sectors GIN, delinquent sources partial. Must also migrate existing data from agency_type/type into funder_type before dropping old columns. Reference: docs/prd/opp_staging/manual-claude-code-pipeline-architecture-proposal.md Section 3a.",
+        "details": "",
+        "testStrategy": "",
+        "status": "done",
+        "dependencies": [],
+        "priority": "medium",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Check current funding_sources schema",
+            "description": "Query information_schema.columns for funding_sources to see what columns already exist. Check if funder_type, sectors, state_code, pipeline, or programs_last_searched_at already exist. Also check the agency_type ENUM type definition and existing type column values.",
+            "details": "",
+            "status": "done",
+            "dependencies": [],
+            "parentTaskId": 1,
+            "updatedAt": "2026-02-06T20:43:32.545Z",
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "Write migration SQL: add new columns",
+            "description": "Create supabase migration file (YYYYMMDD_add_pipeline_columns_to_funding_sources.sql). ADD COLUMN IF NOT EXISTS for: funder_type TEXT, sectors TEXT[], state_code CHAR(2), pipeline TEXT DEFAULT 'api', programs_last_searched_at TIMESTAMPTZ.",
+            "details": "",
+            "status": "done",
+            "dependencies": [],
+            "parentTaskId": 1,
+            "parentId": "undefined",
+            "updatedAt": "2026-02-06T20:43:36.306Z"
+          },
+          {
+            "id": 3,
+            "title": "Write migration SQL: migrate data from old columns",
+            "description": "In the same or follow-up migration, migrate existing data: UPDATE funding_sources SET funder_type = agency_type::TEXT WHERE agency_type IS NOT NULL; UPDATE funding_sources SET funder_type = type WHERE funder_type IS NULL AND type IS NOT NULL. Verify data migrated correctly before marking old columns for removal.",
+            "details": "",
+            "status": "done",
+            "dependencies": [],
+            "parentTaskId": 1,
+            "parentId": "undefined",
+            "updatedAt": "2026-02-06T20:43:40.233Z"
+          },
+          {
+            "id": 4,
+            "title": "Write migration SQL: create indexes",
+            "description": "Create 3 indexes: (1) idx_funding_sources_state_funder_type ON (state_code, funder_type) WHERE state_code IS NOT NULL, (2) idx_funding_sources_sectors USING GIN(sectors), (3) idx_funding_sources_delinquent ON (programs_last_searched_at) WHERE programs_last_searched_at IS NULL OR < NOW() - INTERVAL 90 days.",
+            "details": "",
+            "status": "done",
+            "dependencies": [],
+            "parentTaskId": 1,
+            "parentId": "undefined",
+            "updatedAt": "2026-02-06T20:43:44.085Z"
+          },
+          {
+            "id": 5,
+            "title": "Run migration and verify",
+            "description": "Run supabase migration up against local or dev database. Verify columns exist, indexes created, data migrated correctly. Check that existing API pipeline functionality is not broken by the new columns.",
+            "details": "",
+            "status": "done",
+            "dependencies": [],
+            "parentTaskId": 1,
+            "parentId": "undefined",
+            "updatedAt": "2026-02-06T20:57:48.497Z"
+          }
+        ],
+        "updatedAt": "2026-02-06T20:57:48.497Z"
+      },
+      {
+        "id": 2,
+        "title": "Database Migration: Create source_program_urls table",
+        "description": "Create new source_program_urls table that links funding sources to their program catalog page URLs. Columns: id UUID PK, source_id UUID FK→funding_sources ON DELETE CASCADE, url TEXT NOT NULL, label TEXT (human-readable like 'Main rebate catalog'), last_crawled_at TIMESTAMPTZ, created_at TIMESTAMPTZ DEFAULT NOW(). Constraints: UNIQUE(source_id, url). Indexes: source_id lookup, stale crawl detection (last_crawled_at IS NULL OR < 90 days). Reference: docs/prd/opp_staging/manual-claude-code-pipeline-architecture-proposal.md Section 3a-2.",
+        "details": "",
+        "testStrategy": "",
+        "status": "done",
+        "dependencies": [],
+        "priority": "medium",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Write migration SQL: create source_program_urls table",
+            "description": "Create supabase migration file. CREATE TABLE source_program_urls with: id UUID PK DEFAULT uuid_generate_v4(), source_id UUID NOT NULL REFERENCES funding_sources(id) ON DELETE CASCADE, url TEXT NOT NULL, label TEXT, last_crawled_at TIMESTAMPTZ, created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL. Add UNIQUE(source_id, url) constraint.",
+            "details": "",
+            "status": "done",
+            "dependencies": [],
+            "parentTaskId": 2,
+            "parentId": "undefined",
+            "updatedAt": "2026-02-06T20:43:48.265Z"
+          },
+          {
+            "id": 2,
+            "title": "Write migration SQL: create indexes for source_program_urls",
+            "description": "Create 2 indexes: (1) idx_source_program_urls_source ON source_program_urls(source_id) for FK lookups, (2) idx_source_program_urls_stale ON source_program_urls(last_crawled_at) WHERE last_crawled_at IS NULL OR last_crawled_at < NOW() - INTERVAL 90 days for stale crawl detection.",
+            "details": "",
+            "status": "done",
+            "dependencies": [],
+            "parentTaskId": 2,
+            "parentId": "undefined",
+            "updatedAt": "2026-02-06T20:43:52.254Z"
+          },
+          {
+            "id": 3,
+            "title": "Run migration and verify table creation",
+            "description": "Run supabase migration up. Verify table exists, FK constraint works (test with valid/invalid source_id), UNIQUE constraint works (test duplicate source_id+url), indexes created.",
+            "details": "",
+            "status": "done",
+            "dependencies": [],
+            "parentTaskId": 2,
+            "parentId": "undefined",
+            "updatedAt": "2026-02-06T20:57:52.230Z"
+          }
+        ],
+        "updatedAt": "2026-02-06T20:57:52.230Z"
+      },
+      {
+        "id": 3,
+        "title": "Configure Claude URL environment variables and update references",
+        "description": "Use the three-URL pattern (DEV_CLAUDE_URL, STAGING_CLAUDE_URL, PROD_CLAUDE_URL) instead of creating a PIPELINE_DB_URL. DEV_CLAUDE_URL already added to .env.local. The other two already exist. Orchestrator defaults to PROD_CLAUDE_URL, switches on request. Must update: CLAUDE.md (replace hardcoded psql strings), pipeline-orchestrator SKILL.md (reference real URL vars), db-security doc (add DEV_CLAUDE_URL to reference table), GRANT new pipeline tables to claude_writer role.",
+        "status": "done",
+        "dependencies": [],
+        "priority": "medium",
+        "details": "The three-URL pattern is already established in .env.local:\n- DEV_CLAUDE_URL: postgresql://postgres:postgres@127.0.0.1:54322/postgres (local Supabase, full access)\n- STAGING_CLAUDE_URL: postgresql://claude_writer.wpcytpefkbsakjsryoiz:*ESG2026*@aws-0-us-east-2.pooler.supabase.com:6543/postgres (staging with limited role)\n- PROD_CLAUDE_URL: postgresql://claude_writer.xpzhsyxtxmxxzkijabqa:*ESG2026*@aws-1-us-east-1.pooler.supabase.com:6543/postgres (production with limited role)\n\nKey files to update:\n- CLAUDE.md: Line 252 references $PIPELINE_DB_URL, should reference the three-URL pattern\n- .claude/skills/pipeline-orchestrator/SKILL.md: Lines 34-36 and 362-364 reference $PIPELINE_DB_URL\n- docs/prd/db-security/production-database-configuration.md: Appendix section has connection strings reference table (lines 324-330) - add DEV_CLAUDE_URL\n\nNew pipeline tables that need claude_writer GRANT:\n- funding_programs (INSERT, UPDATE)\n- source_program_urls (INSERT, UPDATE)\n- manual_funding_opportunities_staging (INSERT, UPDATE)\n- claude_change_log (INSERT only - already in db-security doc)",
+        "testStrategy": "1. Verify all three environment variables exist in .env.local with correct values\n2. Add them to .env.example with placeholder values\n3. Search codebase for $PIPELINE_DB_URL references and verify all are updated to reference the three-URL pattern\n4. Verify docs/prd/db-security/production-database-configuration.md includes DEV_CLAUDE_URL in the reference table\n5. Check that CLAUDE.md and pipeline-orchestrator SKILL.md correctly document the three-URL pattern and how orchestrator switches between them\n6. Verify GRANT statements for claude_writer role include all new pipeline tables (funding_programs, source_program_urls, manual_funding_opportunities_staging)",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Update CLAUDE.md: replace hardcoded psql strings",
+            "description": "Search CLAUDE.md for any hardcoded psql connection strings (like postgresql://postgres:postgres@127.0.0.1:54322/postgres) and PIPELINE_DB_URL references. Replace with the three-URL pattern: DEV_CLAUDE_URL (local), STAGING_CLAUDE_URL (staging), PROD_CLAUDE_URL (production). Document that the orchestrator defaults to PROD_CLAUDE_URL.",
+            "details": "",
+            "status": "done",
+            "dependencies": [],
+            "parentTaskId": 3,
+            "parentId": "undefined",
+            "updatedAt": "2026-02-06T20:43:56.396Z"
+          },
+          {
+            "id": 2,
+            "title": "Update pipeline-orchestrator SKILL.md: replace PIPELINE_DB_URL",
+            "description": "Update .claude/skills/pipeline-orchestrator/SKILL.md Section 1 (mission) and Section 11 (maintenance) to replace all PIPELINE_DB_URL references with: Reads via mcp__postgres__query, Writes via psql PROD_CLAUDE_URL (default), STAGING_CLAUDE_URL, or DEV_CLAUDE_URL. Document that user can say 'use staging' or 'use dev' to switch.",
+            "details": "",
+            "status": "done",
+            "dependencies": [],
+            "parentTaskId": 3,
+            "parentId": "undefined",
+            "updatedAt": "2026-02-06T20:44:01.081Z"
+          },
+          {
+            "id": 3,
+            "title": "Update db-security doc: add DEV_CLAUDE_URL",
+            "description": "Update docs/prd/db-security/production-database-configuration.md: add DEV_CLAUDE_URL to the .env.local structure example and the Connection Strings quick reference table in the appendix. Three rows: DEV_CLAUDE_URL (local, full postgres), STAGING_CLAUDE_URL (pooler, claude_writer), PROD_CLAUDE_URL (pooler, claude_writer).",
+            "details": "",
+            "status": "done",
+            "dependencies": [],
+            "parentTaskId": 3,
+            "parentId": "undefined",
+            "updatedAt": "2026-02-06T20:44:05.691Z"
+          },
+          {
+            "id": 4,
+            "title": "GRANT pipeline tables to claude_writer",
+            "description": "Run on both staging and production: GRANT INSERT, UPDATE ON source_program_urls TO claude_writer; GRANT INSERT, UPDATE ON manual_funding_opportunities_staging TO claude_writer; Also add these to the db-security doc GRANT section so future setup is documented. Verify with test INSERT from claude_writer role.",
+            "details": "",
+            "status": "deferred",
+            "dependencies": [],
+            "parentTaskId": 3,
+            "parentId": "undefined",
+            "updatedAt": "2026-02-06T20:49:57.666Z"
+          },
+          {
+            "id": 5,
+            "title": "Update proposal doc: replace PIPELINE_DB_URL references",
+            "description": "Update docs/prd/opp_staging/manual-claude-code-pipeline-architecture-proposal.md to replace all PIPELINE_DB_URL references with the three-URL pattern (DEV_CLAUDE_URL, STAGING_CLAUDE_URL, PROD_CLAUDE_URL). Key sections to update: Section 2b (Production Database Model), Section 3c (promotion_status), Section 7 (design decisions), Section 11 (orchestration). Default is PROD_CLAUDE_URL, orchestrator switches on user request.",
+            "details": "",
+            "status": "done",
+            "dependencies": [],
+            "parentTaskId": 3,
+            "parentId": "undefined",
+            "updatedAt": "2026-02-06T20:44:09.902Z"
+          }
+        ],
+        "updatedAt": "2026-02-09T19:17:09.022Z"
+      },
+      {
+        "id": 4,
+        "title": "Create source-registry SKILL.md",
+        "description": "Write .claude/skills/source-registry/SKILL.md — the procedural knowledge for Phase 1 Source Registration. This skill contains the 3-step process: Step 1 - Multi-strategy parallel web search (6 strategies: direct listing, regulatory/PUC, EIA database, aggregator sites like DSIRE/EnergySage, state agencies, foundation databases). For each entity capture: name, website URL, funder_type, sectors[], state_code. Step 2 - Deduplication and registration: check against existing funding_sources by fuzzy name match, INSERT new or UPDATE incomplete records (enrichment case for API-created sources missing fields). Step 3 - Program catalog URL discovery: WebFetch source websites, search for rebate/incentive catalog pages, INSERT into source_program_urls with descriptive labels. Output: summary report of X new sources, Y enriched, Z catalog URLs found. Tools: WebSearch, WebFetch, mcp__postgres__query (reads), psql via Bash (writes). Reference: proposal Section Skill 1 (lines 470-538).",
+        "details": "",
+        "testStrategy": "",
+        "status": "done",
+        "dependencies": [
+          "1",
+          "2"
+        ],
+        "priority": "medium",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Create skill directory structure",
+            "description": "mkdir -p .claude/skills/source-registry. Verify path exists.",
+            "details": "",
+            "status": "done",
+            "dependencies": [],
+            "parentTaskId": 4,
+            "parentId": "undefined",
+            "updatedAt": "2026-02-06T21:01:26.449Z"
+          },
+          {
+            "id": 2,
+            "title": "Write SKILL.md frontmatter and mission section",
+            "description": "Write YAML frontmatter (name: source-registry, description). Write Section 1: Mission — what this skill does, the three-tier data model context, quality standards. Reference the orchestrator skill for how this fits into the pipeline.",
+            "details": "",
+            "status": "done",
+            "dependencies": [],
+            "parentTaskId": 4,
+            "parentId": "undefined",
+            "updatedAt": "2026-02-06T21:01:30.628Z"
+          },
+          {
+            "id": 3,
+            "title": "Write Step 1: Multi-strategy search instructions",
+            "description": "Document the 6 parallel search strategies with example queries for each: direct listing, regulatory/PUC cross-reference, EIA industry database, aggregator sites (DSIRE/EnergySage), state agency searches, foundation database searches. Include the capture fields: name, website URL, funder_type, sectors[], state_code.",
+            "details": "",
+            "status": "done",
+            "dependencies": [],
+            "parentTaskId": 4,
+            "parentId": "undefined",
+            "updatedAt": "2026-02-06T21:01:34.866Z"
+          },
+          {
+            "id": 4,
+            "title": "Write Step 2: Dedup and registration instructions",
+            "description": "Document the dedup-then-register process: fuzzy name match against existing funding_sources, INSERT new sources, UPDATE incomplete sources (enrichment case for API-created sources). Include example SQL for both paths. Reference the funding_sources schema from task 1.",
+            "details": "",
+            "status": "done",
+            "dependencies": [],
+            "parentTaskId": 4,
+            "parentId": "undefined",
+            "updatedAt": "2026-02-06T21:01:38.825Z"
+          },
+          {
+            "id": 5,
+            "title": "Write Step 3: Catalog URL discovery instructions",
+            "description": "Document how to find program catalog URLs: WebFetch source websites, search for rebate/incentive listing pages, follow links to catalog pages, INSERT into source_program_urls with descriptive labels. Include example labels and the output summary format.",
+            "details": "",
+            "status": "done",
+            "dependencies": [],
+            "parentTaskId": 4,
+            "parentId": "undefined",
+            "updatedAt": "2026-02-06T21:01:42.966Z"
+          }
+        ],
+        "updatedAt": "2026-02-06T21:01:42.966Z"
+      },
+      {
+        "id": 5,
+        "title": "Create source-registry-agent.md",
+        "description": "Write .claude/agents/source-registry-agent.md — a lightweight agent role definition that preloads the source-registry skill via skills: [source-registry] in YAML frontmatter. This agent is spawned by the pipeline orchestrator as part of an Agent Team during Phase 1 discovery. Each teammate gets this agent definition, which injects the full source-registry SKILL.md into their context. The agent file should define: name, description, model preference (opus for search quality), color for UI, role statement (research teammate for source discovery), and the skills frontmatter field. Follow the pattern established in existing agents like .claude/agents/extraction-agent.md and .claude/agents/discovery-agent.md.",
+        "details": "",
+        "testStrategy": "",
+        "status": "done",
+        "dependencies": [
+          "4"
+        ],
+        "priority": "medium",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Review existing agent file patterns",
+            "description": "Read .claude/agents/extraction-agent.md and .claude/agents/discovery-agent.md to understand the YAML frontmatter pattern, role statement structure, and how existing agents are defined. Note the fields: name, description, model, color, skills (if present).",
+            "details": "",
+            "status": "done",
+            "dependencies": [],
+            "parentTaskId": 5,
+            "parentId": "undefined",
+            "updatedAt": "2026-02-06T21:57:13.128Z"
+          },
+          {
+            "id": 2,
+            "title": "Write source-registry-agent.md",
+            "description": "Create .claude/agents/source-registry-agent.md with YAML frontmatter: name (source-registry-agent), description (research teammate for Phase 1 source discovery), model (opus for search quality), color (for UI), skills: [source-registry] to preload the skill. Body: role statement, core responsibility (find and register funding sources), tools it uses (WebSearch, WebFetch, mcp__postgres__query, psql). Keep it lightweight — the skill has the detailed instructions.",
+            "details": "",
+            "status": "done",
+            "dependencies": [],
+            "parentTaskId": 5,
+            "parentId": "undefined",
+            "updatedAt": "2026-02-06T21:57:18.136Z"
+          },
+          {
+            "id": 3,
+            "title": "Verify skill preloading works",
+            "description": "Test that spawning the source-registry-agent via Task tool correctly injects the source-registry SKILL.md content. Spawn a quick test agent and confirm it has access to the skill's procedural knowledge (ask it to describe its search strategies).",
+            "details": "",
+            "status": "done",
+            "dependencies": [],
+            "parentTaskId": 5,
+            "parentId": "undefined",
+            "updatedAt": "2026-02-06T21:57:22.252Z"
+          }
+        ],
+        "updatedAt": "2026-02-06T21:57:22.252Z"
+      },
+      {
+        "id": 6,
+        "title": "Create claude_change_log audit table and integrate into pipeline",
+        "description": "Create the claude_change_log audit table for tracking all pipeline write operations at the orchestrator level only. Individual agents remain lightweight with zero audit overhead — the orchestrator queries counts before/after each phase and logs one summary row per phase per table. This includes: (1) DB migration to create the table with columns: id UUID PK, table_name TEXT, record_id UUID, operation TEXT (INSERT/UPDATE), change_details JSONB, change_reason TEXT, executed_at TIMESTAMPTZ DEFAULT NOW(), pipeline_phase TEXT (source_registry/extraction/storage/etc), batch_id TEXT (groups all ops from one pipeline run), record_count INTEGER (for batch summaries). (2) GRANT INSERT on claude_change_log to claude_writer role on both staging and production. (3) Update docs/prd/db-security/production-database-configuration.md to document the finalized table schema (replace the optional section with the actual schema including pipeline additions). (4) Update the pipeline-orchestrator SKILL.md to document orchestrator-only audit logging: the orchestrator generates a batch_id at pipeline start and logs summary entries after each phase completes by querying counts before/after and recording one summary row per phase per table affected.",
+        "status": "done",
+        "dependencies": [],
+        "priority": "medium",
+        "details": "",
+        "testStrategy": "",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Write migration SQL: create claude_change_log table",
+            "description": "Create supabase migration file. CREATE TABLE claude_change_log with: id UUID PK DEFAULT gen_random_uuid(), table_name TEXT NOT NULL, record_id UUID, operation TEXT NOT NULL (INSERT/UPDATE), change_details JSONB, change_reason TEXT, executed_at TIMESTAMPTZ DEFAULT NOW(), pipeline_phase TEXT, batch_id TEXT, record_count INTEGER. Add index on batch_id for querying by pipeline run. Add index on executed_at for time-based queries.",
+            "dependencies": [],
+            "details": "Migration file should be created in supabase/migrations/ with timestamp prefix (YYYYMMDDHHMMSS_create_claude_change_log.sql). Follow existing migration patterns in the codebase. Include proper constraints and indexes for performance.",
+            "status": "done",
+            "testStrategy": "After migration: verify table exists, verify indexes exist (check pg_indexes), verify default UUID generation works on INSERT.",
+            "parentId": "undefined",
+            "updatedAt": "2026-02-06T20:44:13.700Z"
+          },
+          {
+            "id": 2,
+            "title": "GRANT INSERT on claude_writer role",
+            "description": "Run GRANT INSERT ON claude_change_log TO claude_writer on both staging and production databases. The role should only be able to INSERT (append-only audit log), not UPDATE or DELETE log entries. Verify with a test INSERT from the claude_writer role.",
+            "dependencies": [],
+            "details": "Execute the GRANT statement using psql connected to both database environments. Test by attempting INSERT (should succeed), UPDATE (should fail), and DELETE (should fail) to verify append-only permissions are correct.",
+            "status": "deferred",
+            "testStrategy": "Test INSERT succeeds, UPDATE fails with permission error, DELETE fails with permission error. Verify with SELECT from pg_tables that permissions are set correctly.",
+            "parentId": "undefined",
+            "updatedAt": "2026-02-06T20:50:01.765Z"
+          },
+          {
+            "id": 3,
+            "title": "Update db-security documentation",
+            "description": "Update docs/prd/db-security/production-database-configuration.md: replace the Optional Enhancement section (lines 265-288) with the finalized claude_change_log schema including the pipeline_phase, batch_id, and record_count columns. Add the GRANT statement to the claude_writer role section. Update the What Claude Code Can and Cannot Do table to include audit log INSERT. Document that audit logging is orchestrator-only (not agent-level).",
+            "dependencies": [],
+            "details": "Read the current documentation at lines 265-288 to understand the Optional Enhancement section. Replace it with the finalized schema from the migration. Add a note that individual agents do NOT log — only the orchestrator logs summary entries. Update the security table to reflect that claude_writer can INSERT to claude_change_log.",
+            "status": "done",
+            "testStrategy": "Review updated documentation for accuracy, completeness, and clarity. Verify schema matches migration file exactly.",
+            "parentId": "undefined",
+            "updatedAt": "2026-02-06T20:50:57.309Z"
+          },
+          {
+            "id": 4,
+            "title": "Update pipeline-orchestrator SKILL.md with orchestrator-only audit logging",
+            "description": "Add a section to .claude/skills/pipeline-orchestrator/SKILL.md documenting orchestrator-only audit logging: (1) orchestrator generates a batch_id (format: run-YYYYMMDD-HHMM) at pipeline start, (2) after each phase completes, the orchestrator queries counts before/after to determine what changed (e.g., SELECT COUNT(*) FROM funding_sources before source registration, then after, then log one summary row: INSERT INTO claude_change_log (table_name, operation, pipeline_phase, batch_id, record_count, change_reason) VALUES ('funding_sources', 'INSERT', 'source_registry', batch_id, new_count - old_count, 'Registered X new sources')), (3) the final summary can query claude_change_log WHERE batch_id = current run to show what was done. Include example INSERT statements for common operations. Document that individual agents do NOT log — only the orchestrator logs.",
+            "dependencies": [],
+            "details": "Add a new section after Section 8 (Phase Reporting) titled '9. Audit Logging (Orchestrator-Only)'. Include code examples showing how to query counts before/after each phase and how to construct the audit log INSERT statement. Reference the batch_id generation format. Emphasize that extraction-agent, analysis-agent, and storage-agent remain lightweight with zero audit overhead.",
+            "status": "done",
+            "testStrategy": "Review SKILL.md for clarity and completeness. Verify example SQL statements are syntactically correct and match the claude_change_log schema.",
+            "parentId": "undefined",
+            "updatedAt": "2026-02-06T20:51:01.161Z"
+          },
+          {
+            "id": 5,
+            "title": "Run migration and verify audit logging works",
+            "description": "Run the migration. Test INSERT from claude_writer role. Verify indexes exist. Test a sample audit log entry with pipeline_phase and batch_id. Verify UPDATE/DELETE on claude_change_log is denied for claude_writer (append-only).",
+            "dependencies": [],
+            "details": "Execute migration with supabase migration up (or equivalent). Connect as claude_writer role and attempt test operations. Query pg_indexes to verify index creation. Insert a sample audit log row and verify it appears in the table with correct timestamp and UUID.",
+            "status": "done",
+            "testStrategy": "Migration runs without errors. Test INSERT succeeds with all expected columns populated (including auto-generated id and executed_at). Verify indexes exist in pg_indexes. Verify UPDATE/DELETE are denied (permission error). Query claude_change_log to confirm test row exists.",
+            "parentId": "undefined",
+            "updatedAt": "2026-02-06T20:57:56.155Z"
+          }
+        ],
+        "updatedAt": "2026-02-06T20:58:12.945Z"
+      },
+      {
+        "id": 7,
+        "title": "Database Migration: Enhance funding_programs table",
+        "description": "Create migration supabase/migrations/20260206000004_enhance_funding_programs.sql to add columns and indexes to the existing funding_programs table. Table exists with basic columns (id, source_id, name, description, created_at, updated_at) but needs 10 new columns for Phase 2: program_urls JSONB, categories TEXT[], eligible_applicants TEXT[], eligible_project_types TEXT[], funding_type TEXT, status TEXT default unknown, recurrence TEXT default unknown, last_checked_at TIMESTAMPTZ, next_check_at TIMESTAMPTZ, pipeline TEXT default manual, api_program_id TEXT. Plus 4 indexes and claude_writer permissions. Reference: architecture proposal Section 3b (lines 220-311).",
+        "details": "",
+        "testStrategy": "",
+        "status": "done",
+        "dependencies": [],
+        "priority": "high",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Add program data columns",
+            "description": "Add program_urls JSONB DEFAULT '[]', categories TEXT[], eligible_applicants TEXT[], eligible_project_types TEXT[], funding_type TEXT to funding_programs table",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 7,
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "Add lifecycle columns",
+            "description": "Add status TEXT DEFAULT 'unknown', recurrence TEXT DEFAULT 'unknown', last_checked_at TIMESTAMPTZ, next_check_at TIMESTAMPTZ to funding_programs table",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 7,
+            "parentId": "undefined"
+          },
+          {
+            "id": 3,
+            "title": "Add pipeline tracking columns",
+            "description": "Add pipeline TEXT DEFAULT 'manual', api_program_id TEXT to funding_programs table",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 7,
+            "parentId": "undefined"
+          },
+          {
+            "id": 4,
+            "title": "Add indexes",
+            "description": "Add indexes: idx_funding_programs_source(source_id), idx_funding_programs_status(status), idx_funding_programs_categories GIN(categories), idx_funding_programs_next_check partial index on next_check_at WHERE status='active'",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 7,
+            "parentId": "undefined"
+          },
+          {
+            "id": 5,
+            "title": "Grant claude_writer permissions",
+            "description": "GRANT SELECT, INSERT, UPDATE ON funding_programs TO claude_writer",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 7,
+            "parentId": "undefined"
+          },
+          {
+            "id": 6,
+            "title": "Test migration locally",
+            "description": "Run supabase migration up and verify all columns, indexes, and permissions are applied correctly",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 7,
+            "parentId": "undefined"
+          }
+        ],
+        "updatedAt": "2026-02-08T20:27:42.008Z"
+      },
+      {
+        "id": 8,
+        "title": "Database Migration: Add program_id to staging table",
+        "description": "Create migration supabase/migrations/20260206000005_add_program_id_to_staging.sql to add program_id UUID REFERENCES funding_programs(id) to manual_funding_opportunities_staging. This links staging records to their parent program for Phase 3 usage. Column is nullable. Also add index on program_id.",
+        "details": "",
+        "testStrategy": "",
+        "status": "done",
+        "dependencies": [
+          "7"
+        ],
+        "priority": "high",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Add program_id column",
+            "description": "ALTER TABLE manual_funding_opportunities_staging ADD COLUMN program_id UUID REFERENCES funding_programs(id)",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 8,
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "Add program_id index",
+            "description": "CREATE INDEX idx_staging_program_id ON manual_funding_opportunities_staging(program_id)",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 8,
+            "parentId": "undefined"
+          },
+          {
+            "id": 3,
+            "title": "Test migration locally",
+            "description": "Run supabase migration up and verify program_id column and index exist on staging table",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 8,
+            "parentId": "undefined"
+          }
+        ],
+        "updatedAt": "2026-02-08T20:27:47.347Z"
+      },
+      {
+        "id": 9,
+        "title": "Create program-discovery SKILL.md",
+        "description": "Write .claude/skills/program-discovery/SKILL.md — the procedural knowledge for Phase 2 Program Discovery. Defines two modes: (1) Scout Mode — crawl catalog URLs from source_program_urls, follow links 1 level deep, identify programs using taxonomy guidance (TAXONOMIES.CATEGORIES, funding types), note PDF URLs, supplementary web search for searcher variant, output program list with {name, url, source_id, source_name, pdf_urls[], brief_description}, cross-check protocol. (2) Extractor Mode — receive program assignments from orchestrator (url, source_id, name), visit program URL, extract 7+ structured fields (name, description, categories[], eligible_applicants[], eligible_project_types[], funding_type, status, recurrence, program_urls JSONB), handle PDFs, dedup by name+source_id fuzzy match, INSERT/UPDATE funding_programs, set next_check_at=NOW(), update programs_last_searched_at on source. Include SQL templates and output format sections. Reference: architecture proposal Skill 2 (lines 543-648), source-registry SKILL.md as template.",
+        "details": "",
+        "testStrategy": "",
+        "status": "done",
+        "dependencies": [
+          "7"
+        ],
+        "priority": "high",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Create directory and write frontmatter + mission",
+            "description": "mkdir -p .claude/skills/program-discovery, write SKILL.md frontmatter (name, description, skills ref) and mission section. Define inputs (source_ids, catalog URLs, funder_type, state_code), outputs (funding_programs rows), two modes (scout and extractor detected from prompt).",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 9,
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "Write Scout Mode instructions",
+            "description": "Crawl assigned catalog URL(s), follow links 1 level deep to find program pages, identify programs using TAXONOMIES.CATEGORIES and funding type guidance, note PDF URLs with type:pdf label, searcher variant does supplementary web search. Output format: list of {program_name, program_url, source_id, source_name, pdf_urls[], brief_description}. Cross-check protocol: broadcast findings, compare with pair partner, dedup overlapping results.",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 9,
+            "parentId": "undefined"
+          },
+          {
+            "id": 3,
+            "title": "Write Extractor Mode instructions",
+            "description": "Receive program assignments from orchestrator (program_url, source_id, program_name). Visit each URL, extract: name, description, categories[], eligible_applicants[], eligible_project_types[], funding_type, status (active), recurrence, program_urls JSONB. Handle PDFs. Dedup by name+source_id fuzzy match. INSERT new / UPDATE existing. Set next_check_at=NOW(). Update funding_sources.programs_last_searched_at.",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 9,
+            "parentId": "undefined"
+          },
+          {
+            "id": 4,
+            "title": "Write SQL templates section",
+            "description": "Query to get sources + catalog URLs for a scope, INSERT/UPDATE templates for funding_programs, dedup check query (fuzzy name + source_id), update programs_last_searched_at on source, update source_program_urls.last_crawled_at.",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 9,
+            "parentId": "undefined"
+          },
+          {
+            "id": 5,
+            "title": "Write output format and reporting section",
+            "description": "Scout report format (program list per source with URLs and confidence), extractor report format (programs stored per source with field completeness), cross-check report format.",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 9,
+            "parentId": "undefined"
+          }
+        ],
+        "updatedAt": "2026-02-08T20:32:40.067Z"
+      },
+      {
+        "id": 10,
+        "title": "Create program-discovery-agent.md",
+        "description": "Write .claude/agents/program-discovery-agent.md — a lightweight agent role definition that preloads the program-discovery skill via skills: [program-discovery] in YAML frontmatter. Spawned by orchestrator in two contexts: as scout teammate (Round 1 — crawl catalog URLs, find programs) or as extractor teammate (Round 2 — visit program URLs, extract structured data, write to DB). Include mode detection (scout vs extractor based on prompt keywords), tools required (WebFetch, WebSearch, Playwright, mcp__postgres__query, psql, Read), model preference (opus). Follow pattern from .claude/agents/source-registry-agent.md.",
+        "details": "",
+        "testStrategy": "",
+        "status": "done",
+        "dependencies": [
+          "9"
+        ],
+        "priority": "medium",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Review source-registry-agent.md pattern",
+            "description": "Read .claude/agents/source-registry-agent.md to understand the template: frontmatter structure, mode detection, tools required, role description format.",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 10,
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "Write program-discovery-agent.md",
+            "description": "Write agent with skills: [program-discovery] frontmatter, mode detection (scout vs extractor from prompt keywords), tools required (WebFetch, WebSearch, Playwright, mcp__postgres__query, psql, Read), model: opus, role description.",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 10,
+            "parentId": "undefined"
+          },
+          {
+            "id": 3,
+            "title": "Verify skill preloading works",
+            "description": "Spawn a test agent via Task tool to confirm the program-discovery skill content is injected into context.",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 10,
+            "parentId": "undefined"
+          }
+        ],
+        "updatedAt": "2026-02-08T20:27:52.431Z"
+      },
+      {
+        "id": 11,
+        "title": "Update Orchestrator SKILL.md — Phase 2 Details",
+        "description": "Update .claude/skills/pipeline-orchestrator/SKILL.md Section 6 Phase 2 placeholder (lines 464-468) with the full two-round scout/extractor pattern. Step 0: orchestrator queries sources + URL counts per source, plans batches (3 sources at a time, grouped by funder type). Round 1: TeamCreate scout team — 1 scout per catalog URL + 1 searcher per source, all parallel, cross-check, report program lists, TeamDelete. Between rounds: orchestrator deduplicates, counts programs, plans extractors. Round 2: TeamCreate extractor team or Task tool — assign programs to extractors, extract + store, TeamDelete. Add batch sizing rules (6-12 teammates per team, 1 scout per URL, 1 searcher per source, extractors based on program count ~1 per 10 programs). Add Phase 2 prerequisite checks to Section 4/5. Update request parsing table in Section 3.",
+        "details": "",
+        "testStrategy": "",
+        "status": "done",
+        "dependencies": [
+          "9",
+          "10"
+        ],
+        "priority": "high",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Write full Phase 2 two-round pattern",
+            "description": "Replace Phase 2 placeholder in orchestrator SKILL.md (lines 464-468) with: Step 0 (query sources + URL counts, plan batches), Round 1 (TeamCreate scout team, 1 scout per URL + 1 searcher per source, cross-check, collect program lists, TeamDelete), Between rounds (orchestrator deduplicates, counts programs, plans extractors), Round 2 (TeamCreate extractor team or Task tool, assign programs, extract + store, TeamDelete).",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 11,
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "Add batch sizing rules",
+            "description": "Target 6-12 teammates per batch, 1 scout per catalog URL, 1 searcher per source in batch, extractor count ~1 per 10 programs, group sources by funder type within batches.",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 11,
+            "parentId": "undefined"
+          },
+          {
+            "id": 3,
+            "title": "Add Phase 2 prerequisite checks",
+            "description": "Update Section 4/5: check sources exist for scope, check source_program_urls has URLs, offer to chain from Phase 1 if missing.",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 11,
+            "parentId": "undefined"
+          },
+          {
+            "id": 4,
+            "title": "Update request parsing table",
+            "description": "Ensure Section 3 includes: Discover programs for [X] -> Phase 2, Discover programs for all delinquent sources -> Phase 2 with 90-day delinquency filter.",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 11,
+            "parentId": "undefined"
+          }
+        ],
+        "updatedAt": "2026-02-08T20:30:32.293Z"
+      },
+      {
+        "id": 12,
+        "title": "Update Architecture Documentation for Phase 2",
+        "description": "Update docs/prd/opp_staging/manual-claude-code-pipeline-architecture-proposal.md to reflect Phase 2 design changes from planning session: two-round scout/extractor pattern (not in original proposal which just said parallel subagents), Agent Team-based execution via TeamCreate, batch sizing rules, source-by-source processing, taxonomy-driven discovery. Update Skill 2 section (lines 543-648), decisions table (lines 1048+), and CLAUDE.md Phase 2 command descriptions if needed.",
+        "details": "",
+        "testStrategy": "",
+        "status": "done",
+        "dependencies": [
+          "11"
+        ],
+        "priority": "medium",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Update Skill 2 section in architecture proposal",
+            "description": "Update lines 543-648 of manual-claude-code-pipeline-architecture-proposal.md with two-round scout/extractor pattern, Agent Team execution via TeamCreate, batch sizing.",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 12,
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "Update decisions table",
+            "description": "Update decisions table (lines 1048+) for any Phase 2 entries that changed (e.g., execution strategy, team pattern).",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 12,
+            "parentId": "undefined"
+          },
+          {
+            "id": 3,
+            "title": "Update CLAUDE.md if needed",
+            "description": "Check if CLAUDE.md Phase 2 command descriptions need updates for the two-round pattern.",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 12,
+            "parentId": "undefined"
+          }
+        ],
+        "updatedAt": "2026-02-08T20:31:58.695Z"
+      },
+      {
+        "id": 13,
+        "title": "Test Phase 2 with FL Dev Data",
+        "description": "End-to-end test of Phase 2 using the 28 FL sources (16 County + 12 State) already in dev DB with 85 catalog URLs. Run migration on dev, invoke via orchestrator: Discover programs for Florida sources (dev). Verify: programs written to funding_programs with correct source_id FKs, program_urls JSONB populated, categories/eligibility/funding_type extracted, dedup working (name+source_id fuzzy match), programs_last_searched_at updated on sources, source_program_urls.last_crawled_at updated. Test Round 1 scout team with small batch first (1-2 sources), then Round 2 extractors, then full run. Assess batch sizing and performance.",
+        "details": "",
+        "testStrategy": "",
+        "status": "done",
+        "dependencies": [
+          "7",
+          "8",
+          "9",
+          "10",
+          "11"
+        ],
+        "priority": "high",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Run migrations on dev DB",
+            "description": "Apply migrations 20260206000004 and 20260206000005 to local dev database via supabase migration up. Verify columns exist.",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 13,
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "Test Round 1 scout team (small batch)",
+            "description": "Test with 1-2 FL sources to validate scout team flow: TeamCreate, spawn scouts per URL + searcher, cross-check, collect program lists.",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 13,
+            "parentId": "undefined"
+          },
+          {
+            "id": 3,
+            "title": "Test Round 2 extractor team",
+            "description": "Use scout results to spawn extractors. Verify programs written to funding_programs with correct source_id, populated fields, program_urls JSONB.",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 13,
+            "parentId": "undefined"
+          },
+          {
+            "id": 4,
+            "title": "Verify data quality",
+            "description": "Check funding_programs: all fields populated, source_id FK correct, no duplicates, programs_last_searched_at updated, last_crawled_at updated on source_program_urls.",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 13,
+            "parentId": "undefined"
+          },
+          {
+            "id": 5,
+            "title": "Full FL run and performance assessment",
+            "description": "Run full Phase 2 for all 28 FL sources. Assess batch sizing, total programs found, agent performance, context window usage.",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 13,
+            "parentId": "undefined"
+          },
+          {
+            "id": 6,
+            "title": "Fix issues from testing",
+            "description": "Address any bugs, edge cases, or performance issues discovered during testing. Update skill/agent/orchestrator as needed.",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 13,
+            "parentId": "undefined"
+          }
+        ],
+        "updatedAt": "2026-02-09T19:17:12.453Z"
+      },
+      {
+        "id": 14,
+        "title": "Phase 3 Migration: Fix staging constraints + add missing columns",
+        "description": "Create migration file supabase/migrations/20260214000001_phase3_staging_and_opportunities.sql. Changes: (1) DROP mfos_unique_url UNIQUE constraint on staging url, (2) DROP idx_mfos_unique_source_title UNIQUE index on staging (source_id, title), (3) ADD non-unique replacement indexes: idx_mfos_url on (url) and idx_mfos_source_title on (source_id, title), (4) ADD program_urls JSONB DEFAULT '[]' to staging table, (5) ADD program_id UUID REFERENCES funding_programs(id) to funding_opportunities production table, (6) ADD index idx_fo_program_id on funding_opportunities(program_id), (7) GRANT permissions to claude_writer. Verify: Run migration, check constraints dropped, columns added, existing 246 staging records intact.",
+        "details": "",
+        "testStrategy": "",
+        "status": "done",
+        "dependencies": [],
+        "priority": "high",
+        "subtasks": [],
+        "updatedAt": "2026-02-14T22:43:25.427Z"
+      },
+      {
+        "id": 15,
+        "title": "Create opportunity-discovery SKILL.md",
+        "description": "Create .claude/skills/opportunity-discovery/SKILL.md (~500 lines, 10 sections). Sections: 0-Before You Start, 0a-Content Retrieval Standard (copy from Phase 2 verbatim), 1-Mission (inputs=program assignments, outputs=staging records + scheduling updates), 2-Pre-Flight (auto-close SQL, smart scheduling query with NOT EXISTS, scope filtering), 3-Crawling Process (per-program: crawl program_urls, follow application links 1-2 levels, supplementary web search, URL failure cascade), 4-Decision Tree (6-row table: Open+close_date->INSERT staging next_check=close_date, Open+perpetual->INSERT staging next_check=NOW+180d, Upcoming+guidelines+date->INSERT staging next_check=open_date-30d, Upcoming+guidelines+no_date->SKIP next_check=NOW+30d, Upcoming+no_guidelines->SKIP next_check=NOW+30d, Nothing_found->SKIP next_check=NOW+30d), 5-Staging Record Creation (INSERT SQL template), 6-Program Scheduling Updates, 7-Output Report, 8-Error Handling, 9-Database Reference, 10-Agent Team Protocol. Depends on Task 14 (migration adds columns referenced in SQL templates).",
+        "details": "",
+        "testStrategy": "",
+        "status": "done",
+        "dependencies": [
+          "14"
+        ],
+        "priority": "high",
+        "subtasks": [],
+        "updatedAt": "2026-02-14T22:46:02.980Z"
+      },
+      {
+        "id": 16,
+        "title": "Create opportunity-discovery-agent.md",
+        "description": "Create .claude/agents/opportunity-discovery-agent.md (~80 lines). Follow pattern from .claude/agents/program-discovery-agent.md exactly. Frontmatter: name=opportunity-discovery-agent, description=Phase 3 opportunity discovery teammate, model=opus, skills=[opportunity-discovery]. Body: role description, mode detection (team vs standalone), tool requirements (WebFetch, WebSearch, Playwright, mcp__postgres__query, Bash/psql, Read). Depends on Task 15 (skill must exist first).",
+        "details": "",
+        "testStrategy": "",
+        "status": "done",
+        "dependencies": [
+          "15"
+        ],
+        "priority": "high",
+        "subtasks": [],
+        "updatedAt": "2026-02-14T22:46:35.567Z"
+      },
+      {
+        "id": 17,
+        "title": "Update orchestrator SKILL.md Phase 3 section",
+        "description": "Update .claude/skills/pipeline-orchestrator/SKILL.md — replace the 5-line Phase 3 stub (lines 692-696) with full ~80-100 line section. Content: STEP 0 Pre-flight (auto-close + smart scheduling query run by orchestrator directly), STEP 1 TeamCreate opportunity-check-[SCOPE], STEP 2 Spawn opportunity-discovery-agent teammates (~10-15 programs each grouped by source), STEP 3 Collect results, STEP 4 Clean up (shutdown + TeamDelete) + chain to Phase 4 if requested. Also verify: pipeline map table Phase 3 row is accurate, database state assessment SQL references fo.program_id correctly, prerequisite logic is correct. Depends on Tasks 15 and 16.",
+        "details": "",
+        "testStrategy": "",
+        "status": "done",
+        "dependencies": [
+          "15",
+          "16"
+        ],
+        "priority": "high",
+        "subtasks": [],
+        "updatedAt": "2026-02-14T22:47:46.868Z"
+      },
+      {
+        "id": 18,
+        "title": "Update architecture proposal doc for Phase 3",
+        "description": "Update docs/prd/opp_staging/manual-claude-code-pipeline-architecture-proposal.md. Changes: (1) Skill 3 section (lines 689-825): update decision table to match refined algorithm (perpetual=180d, upcoming needs guidelines+date, url_failure->inactive, no ON CONFLICT on staging, re-checks create new records), (2) Dedup layer documentation: update to reflect dropped staging constraints and smart scheduling as dedup mechanism, (3) Schema section: document dropped constraints, added program_urls on staging, added program_id on funding_opportunities, (4) Version bump v7.0->v8.0 with Phase 3 refinements noted. Can run in parallel with Tasks 15-17.",
+        "details": "",
+        "testStrategy": "",
+        "status": "done",
+        "dependencies": [],
+        "priority": "medium",
+        "subtasks": [],
+        "updatedAt": "2026-02-14T22:52:26.435Z"
+      },
+      {
+        "id": 19,
+        "title": "Test Phase 3 with dev data",
+        "description": "End-to-end testing after Tasks 14-17: (1) Run migration on dev, verify constraints dropped and columns added, (2) Dry-run smart scheduling query for AZ utilities (should return all 44 programs since next_check_at is in the past), (3) Small live test: run opportunity-discovery-agent standalone against 2-3 known programs, (4) Verify staging records created with correct program_id, source_id, program_urls, (5) Verify next_check_at updated per decision table, (6) Verify existing 246 staging records unaffected. Depends on Tasks 14, 15, 16, 17.",
+        "details": "",
+        "testStrategy": "",
+        "status": "done",
+        "dependencies": [
+          "14",
+          "15",
+          "16",
+          "17"
+        ],
+        "priority": "high",
+        "subtasks": [],
+        "updatedAt": "2026-02-14T22:53:32.624Z"
+      },
+      {
+        "id": 20,
+        "title": "Phase 6: Migration — add promotion_status column + update view & RPCs",
+        "description": "Create migration file supabase/migrations/20260216000001_add_promotion_status.sql. Part A: ALTER TABLE funding_opportunities ADD COLUMN promotion_status text DEFAULT NULL. Part B: Recreate funding_opportunities_with_geography view with WHERE (promotion_status IS NULL OR promotion_status = 'promoted'). Part C: Update all 9 RPC functions with same filter. Part D: Read current view/RPC definitions from latest migrations and recreate.",
+        "details": "",
+        "testStrategy": "",
+        "status": "done",
+        "dependencies": [],
+        "priority": "medium",
+        "subtasks": [],
+        "updatedAt": "2026-02-16T05:12:23.428Z"
+      },
+      {
+        "id": 21,
+        "title": "Phase 6: Update direct table query API routes for promotion_status filter",
+        "description": "Add .or('promotion_status.is.null,promotion_status.eq.promoted') filter to 5 API routes that query funding_opportunities directly: counts, deadlines, client-matching, client-matching/top-matches, client-matching/summary. Depends on Task 1 (column must exist).",
+        "details": "",
+        "testStrategy": "",
+        "status": "done",
+        "dependencies": [
+          "20"
+        ],
+        "priority": "medium",
+        "subtasks": [],
+        "updatedAt": "2026-02-16T05:14:42.313Z"
+      },
+      {
+        "id": 22,
+        "title": "Phase 6: Create .claude/skills/storage/SKILL.md",
+        "description": "Create storage skill file (~280 lines, 10 sections) following Phase 4/5 pattern. Extract from existing 330-line storage-agent.md. Sections: 0-Before You Start (V2 file reads), 1-Mission, 2-Input Processing, 3-Data Sanitization (field mapping + VERBATIM text), 4-Funding Source Enrichment, 5-UPSERT template, 6-Coverage Area Linking, 7-Staging Status Updates, 8-Batch Report, 9-Error Handling, 10-Verification Query. Add program_id mapping, stored_by, promotion_status='pending_review'.",
+        "details": "",
+        "testStrategy": "",
+        "status": "done",
+        "dependencies": [],
+        "priority": "medium",
+        "subtasks": [],
+        "updatedAt": "2026-02-16T05:12:28.056Z"
+      },
+      {
+        "id": 23,
+        "title": "Phase 6: Rewrite storage-agent.md as slim wrapper",
+        "description": "Replace 330-line monolith with ~65-line slim wrapper. Add skills: [storage] frontmatter, model: opus. Body covers role, process, tools, key reminders (VERBATIM text, dollar-quote, program_id, promotion_status). Depends on Task 3.",
+        "details": "",
+        "testStrategy": "",
+        "status": "done",
+        "dependencies": [
+          "22"
+        ],
+        "priority": "medium",
+        "subtasks": [],
+        "updatedAt": "2026-02-16T05:14:45.881Z"
+      },
+      {
+        "id": 24,
+        "title": "Phase 6: Update orchestrator Phase 6 section",
+        "description": "Expand orchestrator Phase 6 stub (lines 920-930, 9 lines) to ~35 lines. Add skill file + V2 reference file paths in prompt template, program_id and promotion_status instructions, re-check loop, and report format. Depends on Task 3.",
+        "details": "",
+        "testStrategy": "",
+        "status": "done",
+        "dependencies": [
+          "22"
+        ],
+        "priority": "medium",
+        "subtasks": [],
+        "updatedAt": "2026-02-16T05:14:49.538Z"
+      },
+      {
+        "id": 25,
+        "title": "Phase 6: Update architecture proposal Skill 6 section",
+        "description": "Update docs/prd/opp_staging/manual-claude-code-pipeline-architecture-proposal.md Skill 6 section (lines 940-964). Ensure consistency: promotion_status='pending_review', program_id mapping, stored_by='storage-agent', storage_status values, reference promotion_status migration. Depends on Task 3.",
+        "details": "",
+        "testStrategy": "",
+        "status": "done",
+        "dependencies": [
+          "22"
+        ],
+        "priority": "medium",
+        "subtasks": [],
+        "updatedAt": "2026-02-16T05:14:53.446Z"
+      },
+      {
+        "id": 26,
+        "title": "Phase 6: Test storage agent with 3 Oregon records",
+        "description": "Run storage agent against 3 analyzed Oregon records (Solar for Your Business, LIFT Rental, 319 Grants). Verify: promotion_status='pending_review', text fields NOT truncated, program_id populated, coverage areas linked, staging updated with storage_status='complete' and opportunity_id. Depends on Tasks 1-5.",
+        "details": "",
+        "testStrategy": "",
+        "status": "done",
+        "dependencies": [
+          "20",
+          "21",
+          "22",
+          "23",
+          "24",
+          "25"
+        ],
+        "priority": "medium",
+        "subtasks": [],
+        "updatedAt": "2026-02-16T05:21:04.841Z"
+      },
+      {
+        "id": 27,
+        "title": "Fix local Supabase migration tracking",
+        "description": "8 pipeline migrations (20260206000001 through 20260216000001) were applied via psql directly, bypassing supabase migration up. The schema exists but the tracking table doesn't record them. Fix: INSERT INTO supabase_migrations.schema_migrations for all 8, verify with supabase migration list. Update CLAUDE.md to reinforce: always use supabase migration up, never psql -f for migrations.",
+        "details": "",
+        "testStrategy": "",
+        "status": "done",
+        "dependencies": [],
+        "priority": "high",
+        "subtasks": [],
+        "updatedAt": "2026-02-17T15:26:57.353Z"
+      },
+      {
+        "id": 28,
+        "title": "Phase 7: Migration — add review metadata columns",
+        "description": "Create supabase/migrations/20260217000001_add_review_metadata.sql with: reviewed_by TEXT, reviewed_at TIMESTAMPTZ, review_notes TEXT on funding_opportunities. Add partial index on promotion_status WHERE NOT NULL. Apply via supabase migration up.",
+        "details": "",
+        "testStrategy": "",
+        "status": "done",
+        "dependencies": [
+          "27"
+        ],
+        "priority": "high",
+        "subtasks": [],
+        "updatedAt": "2026-02-17T15:27:31.406Z"
+      },
+      {
+        "id": 29,
+        "title": "Phase 7: GET /api/admin/review route",
+        "description": "Create app/api/admin/review/route.js. GET handler fetches funding_opportunities WHERE promotion_status=pending_review (or rejected, or all). Filters: status, source_id, state, min_score, search text. Pagination (page, page_size=50). Sort by created_at/relevance_score/title. Query raw table (not view) joined with funding_sources. Use createAdminClient from utils/supabase/api. Response: { success, data, total_count, pagination }.",
+        "details": "",
+        "testStrategy": "",
+        "status": "done",
+        "dependencies": [
+          "28"
+        ],
+        "priority": "high",
+        "subtasks": [],
+        "updatedAt": "2026-02-17T15:29:22.399Z"
+      },
+      {
+        "id": 30,
+        "title": "Phase 7: POST /api/admin/review/approve route",
+        "description": "Create app/api/admin/review/approve/route.js. Body: { ids, reviewed_by }. Updates promotion_status to promoted, sets reviewed_by and reviewed_at. Safety guard: only pending_review records. Uses createAdminClient. Response: { success, updated_count, ids }.",
+        "details": "",
+        "testStrategy": "",
+        "status": "done",
+        "dependencies": [
+          "28"
+        ],
+        "priority": "high",
+        "subtasks": [],
+        "updatedAt": "2026-02-17T15:29:26.956Z"
+      },
+      {
+        "id": 31,
+        "title": "Phase 7: POST /api/admin/review/reject route",
+        "description": "Create app/api/admin/review/reject/route.js. Body: { ids, reviewed_by, review_notes? }. Updates promotion_status to rejected, sets reviewed_by, reviewed_at, review_notes. Safety guard: only pending_review records. Uses createAdminClient. Response: { success, updated_count, ids }.",
+        "details": "",
+        "testStrategy": "",
+        "status": "done",
+        "dependencies": [
+          "28"
+        ],
+        "priority": "high",
+        "subtasks": [],
+        "updatedAt": "2026-02-17T15:29:31.024Z"
+      },
+      {
+        "id": 32,
+        "title": "Phase 7: POST /api/admin/review/demote route",
+        "description": "Create app/api/admin/review/demote/route.js. Body: { id, reviewed_by, review_notes? }. Guard: only demotes promoted or NULL records. Sets promotion_status=rejected. Uses createAdminClient. Response: { success, id, previous_status, new_status }.",
+        "details": "",
+        "testStrategy": "",
+        "status": "done",
+        "dependencies": [
+          "28"
+        ],
+        "priority": "high",
+        "subtasks": [],
+        "updatedAt": "2026-02-17T15:29:35.487Z"
+      },
+      {
+        "id": 33,
+        "title": "Phase 7: Fix getOpportunityById for pending_review records",
+        "description": "Modify lib/services/fundingApi.js getOpportunityById. After view query returns null/error, fallback to raw funding_opportunities table query with same fields. This allows the detail page to display pending_review records for admin tab. No change to list endpoints.",
+        "details": "",
+        "testStrategy": "",
+        "status": "done",
+        "dependencies": [
+          "28"
+        ],
+        "priority": "high",
+        "subtasks": [],
+        "updatedAt": "2026-02-17T15:29:40.661Z"
+      },
+      {
+        "id": 34,
+        "title": "Phase 7: API contract tests for review endpoints",
+        "description": "Create tests/api/admin-review.api.test.js and tests/fixtures/reviewOpportunities.js. Test groups: Review List Response Schema, Pending Review Filter (inline function), Approve/Reject/Demote Action Contracts, Bulk Operations. Follow inline-function pattern. No imports from app code.",
+        "details": "",
+        "testStrategy": "",
+        "status": "done",
+        "dependencies": [
+          "29",
+          "30",
+          "31",
+          "32"
+        ],
+        "priority": "high",
+        "subtasks": [],
+        "updatedAt": "2026-02-17T15:33:55.819Z"
+      },
+      {
+        "id": 35,
+        "title": "Phase 7: Admin review page UI",
+        "description": "Create app/admin/review/page.js. Client component with: filter bar (search, state, source, score, status toggle), table with checkboxes (title, source, state, type, award, score, created, actions), bulk action bar (select all filtered, approve selected, reject selected), pagination, reject dialog with notes textarea. Follow RunsTableV2 filter pattern + funding-sources page structure. Components: Table, Badge, Button, Input, Select, Checkbox, Dialog, Textarea, Skeleton from shadcn/ui.",
+        "details": "",
+        "testStrategy": "",
+        "status": "done",
+        "dependencies": [
+          "29",
+          "30",
+          "31"
+        ],
+        "priority": "high",
+        "subtasks": [],
+        "updatedAt": "2026-02-17T15:37:16.056Z"
+      },
+      {
+        "id": 36,
+        "title": "Phase 7: Admin tab on opportunity detail page",
+        "description": "Modify app/funding/opportunities/[id]/page.jsx. Add admin to tab array at line 217. New TabsContent for admin showing: promotion_status badge, review metadata (reviewed_by, reviewed_at, review_notes), context-aware buttons — Downgrade for promoted/null, Approve+Reject for pending_review, Re-approve for rejected. Calls /api/admin/review/approve, reject, or demote endpoints.",
+        "details": "",
+        "testStrategy": "",
+        "status": "done",
+        "dependencies": [
+          "30",
+          "31",
+          "32",
+          "33"
+        ],
+        "priority": "medium",
+        "subtasks": [],
+        "updatedAt": "2026-02-17T15:40:17.048Z"
+      },
+      {
+        "id": 37,
+        "title": "Phase 7: Update orchestrator SKILL.md",
+        "description": "Update .claude/skills/pipeline-orchestrator/SKILL.md Phase 7 to be read-only status reporter. When user says Review pending or Publish approved: run count query, report counts (pending/promoted/rejected), direct to /admin/review. No CLI approve/reject.",
+        "details": "",
+        "testStrategy": "",
+        "status": "done",
+        "dependencies": [
+          "35"
+        ],
+        "priority": "low",
+        "subtasks": [],
+        "updatedAt": "2026-02-17T15:41:42.089Z"
+      },
+      {
+        "id": 38,
+        "title": "Phase 7: Update CLAUDE.md documentation",
+        "description": "Add admin review page to Key Features section in CLAUDE.md. Document: review page at /admin/review, promotion_status workflow, API routes at /api/admin/review/*, detail page admin tab. Also reinforce migration workflow: always use supabase migration up for local dev, never psql -f.",
+        "details": "",
+        "testStrategy": "",
+        "status": "done",
+        "dependencies": [
+          "35"
+        ],
+        "priority": "low",
+        "subtasks": [],
+        "updatedAt": "2026-02-17T15:41:46.317Z"
+      }
+    ],
+    "metadata": {
+      "version": "1.0.0",
+      "lastModified": "2026-02-17T15:41:46.319Z",
+      "taskCount": 38,
+      "completedCount": 38,
+      "tags": [
+        "pipeline"
+      ],
+      "created": "2026-02-18T02:48:02.627Z",
+      "description": "Tasks for pipeline context",
+      "updated": "2026-02-18T02:48:02.627Z"
+    }
+  },
+  "e2e": {
+    "tasks": [
+      {
+        "id": 1,
+        "title": "Write smoke API e2e tests for core endpoints",
+        "description": "Create tests/e2e/api/core.e2e.test.js. Test GET /api/funding (200, paginated array), GET /api/counts (200, integers), GET /api/deadlines (200, sorted), GET /api/categories (200, string array), GET /api/project-types (200, objects array). Use apiUrl() helper from tests/e2e/helpers/server.js. Assert HTTP status and response shape only.",
+        "details": "",
+        "testStrategy": "",
+        "status": "done",
+        "dependencies": [],
+        "priority": "medium",
+        "subtasks": [],
+        "updatedAt": "2026-02-20T07:53:06.285Z"
+      },
+      {
+        "id": 2,
+        "title": "Write API e2e tests for client-matching endpoints",
+        "description": "Create tests/e2e/api/client-matching.e2e.test.js. Test GET /api/client-matching (200, match objects with score), GET /api/client-matching/summary (200, summary shape with counts), GET /api/client-matching/top-matches (200, ranked matches array). Use apiUrl() helper. Assert status and response shape.",
+        "details": "",
+        "testStrategy": "",
+        "status": "done",
+        "dependencies": [],
+        "priority": "medium",
+        "subtasks": [],
+        "updatedAt": "2026-02-20T07:53:41.355Z"
+      },
+      {
+        "id": 3,
+        "title": "Write API e2e tests for clients CRUD",
+        "description": "Create tests/e2e/api/clients.e2e.test.js. Test GET /api/clients (200, paginated array), POST /api/clients (201, created with id), GET /api/clients/[id] (200, single object), PUT /api/clients/[id] (200, updated fields), DELETE /api/clients/[id] (200/204, removed). Also test error cases: GET nonexistent id (404), POST with missing fields (400). Use apiUrl() helper.",
+        "details": "",
+        "testStrategy": "",
+        "status": "done",
+        "dependencies": [],
+        "priority": "medium",
+        "subtasks": [],
+        "updatedAt": "2026-02-20T07:54:14.064Z"
+      },
+      {
+        "id": 4,
+        "title": "Write API e2e tests for map endpoints",
+        "description": "Create tests/e2e/api/map.e2e.test.js. Test GET /api/map/funding-by-state (200, state aggregation), GET /api/map/scope-breakdown/[stateCode] (200, scope counts), GET /api/map/opportunities/[stateCode] (200, filtered array), GET /api/map/opportunities (200, all), GET /api/map/national (200), GET /api/map/coverage-areas/[stateCode] (200). Use a real state code from the DB (e.g. FL or OR). Use apiUrl() helper.",
+        "details": "",
+        "testStrategy": "",
+        "status": "done",
+        "dependencies": [],
+        "priority": "medium",
+        "subtasks": [],
+        "updatedAt": "2026-02-20T07:54:52.838Z"
+      },
+      {
+        "id": 5,
+        "title": "Write API e2e tests for admin review flow",
+        "description": "Create tests/e2e/api/admin-review.e2e.test.js. Test GET /api/admin/review (200, pending_review records array), POST /api/admin/review/approve (200, status updated), POST /api/admin/review/reject (200, status updated), POST /api/admin/review/demote (200, status downgraded). Test the full flow: list pending -> approve one -> verify it's gone from pending list. Use apiUrl() helper.",
+        "details": "",
+        "testStrategy": "",
+        "status": "done",
+        "dependencies": [],
+        "priority": "medium",
+        "subtasks": [],
+        "updatedAt": "2026-02-20T07:55:29.548Z"
+      },
+      {
+        "id": 6,
+        "title": "Write browser e2e smoke tests (P0 pages)",
+        "description": "Create tests/e2e/browser/smoke.spec.js. Test that these pages load without JS errors and show expected content: / (dashboard - summary cards visible), /funding/opportunities (explorer - opportunity cards rendered), /map (map SVG rendered), /clients (client cards or empty state). Use Playwright test/expect imports, page.goto() with relative paths. These are P0 priority.",
+        "details": "",
+        "testStrategy": "",
+        "status": "done",
+        "dependencies": [],
+        "priority": "medium",
+        "subtasks": [],
+        "updatedAt": "2026-02-20T07:56:09.025Z"
+      },
+      {
+        "id": 7,
+        "title": "Write browser e2e test for explorer filter+paginate flow",
+        "description": "Create tests/e2e/browser/explorer.spec.js. Test: navigate to /funding/opportunities, verify list loads, apply a status filter (e.g. Open), verify results narrow, apply a state filter, verify count updates. If pagination exists, click next page and verify new results load. Use Playwright getByText/getByRole selectors.",
+        "details": "",
+        "testStrategy": "",
+        "status": "done",
+        "dependencies": [],
+        "priority": "medium",
+        "subtasks": [],
+        "updatedAt": "2026-02-20T07:56:45.403Z"
+      },
+      {
+        "id": 8,
+        "title": "Write browser e2e test for client matching flow",
+        "description": "Create tests/e2e/browser/client-matching.spec.js. Test: navigate to /clients, verify client list loads, click on a client, verify match scores are displayed. If the detail page has tabs, verify tab switching works. Use Playwright getByText/getByRole selectors.",
+        "details": "",
+        "testStrategy": "",
+        "status": "done",
+        "dependencies": [],
+        "priority": "medium",
+        "subtasks": [],
+        "updatedAt": "2026-02-20T07:57:19.480Z"
+      },
+      {
+        "id": 9,
+        "title": "Update E2E-MATRIX.md status as tests are written",
+        "description": "Living maintenance task. As each e2e test file is created (tasks 1-8), update the corresponding rows in tests/E2E-MATRIX.md: change Status from needs-test to covered, fill in the Test File column with the actual filename. This should be done incrementally after each test task completes.",
+        "details": "",
+        "testStrategy": "",
+        "status": "done",
+        "dependencies": [],
+        "priority": "medium",
+        "subtasks": [],
+        "updatedAt": "2026-02-20T07:58:05.229Z"
+      },
+      {
+        "id": 10,
+        "title": "Set up Playwright in CI (GitHub Actions)",
+        "description": "Deferred until local e2e tests are stable. Create .github/workflows/e2e.yml or add an e2e job to the existing CI workflow. Install Chromium in CI, start dev server, run test:e2e:api and test:e2e:browser. Consider caching Playwright browsers. Uncomment the webServer block in tests/e2e/playwright.config.js for CI use.",
+        "details": "",
+        "testStrategy": "",
+        "status": "done",
+        "dependencies": [],
+        "priority": "medium",
+        "subtasks": [],
+        "updatedAt": "2026-02-20T07:58:48.197Z"
+      },
+      {
+        "id": 11,
+        "title": "Add E2E test for PUT /api/clients/[id]",
+        "description": "Add tests to clients.e2e.test.js: (1) Update existing client name, verify response shape (success, client, addressChanged), restore original. (2) PUT to nil UUID returns 404. Update E2E-MATRIX.md.",
+        "details": "",
+        "testStrategy": "",
+        "status": "done",
+        "dependencies": [],
+        "priority": "medium",
+        "subtasks": [],
+        "updatedAt": "2026-02-21T01:18:04.132Z"
+      },
+      {
+        "id": 12,
+        "title": "Add E2E test for DELETE /api/clients/[id]",
+        "description": "Add lifecycle test to clients.e2e.test.js: POST temp client, DELETE it, verify 200 response, GET to confirm 404. Self-cleaning pattern. Update E2E-MATRIX.md.",
+        "details": "",
+        "testStrategy": "",
+        "status": "done",
+        "dependencies": [],
+        "priority": "medium",
+        "subtasks": [],
+        "updatedAt": "2026-02-21T01:18:08.965Z"
+      },
+      {
+        "id": 13,
+        "title": "Add E2E test for GET /api/funding/coverage-counts",
+        "description": "Add tests to core.e2e.test.js: (1) No params - verify 200, counts object with numeric values. (2) With ?state=OR - verify same shape. Update E2E-MATRIX.md.",
+        "details": "",
+        "testStrategy": "",
+        "status": "done",
+        "dependencies": [],
+        "priority": "medium",
+        "subtasks": [],
+        "updatedAt": "2026-02-21T01:18:13.879Z"
+      },
+      {
+        "id": 14,
+        "title": "Add E2E test for GET /api/funding/total-available",
+        "description": "Add test to core.e2e.test.js: verify 200, total (number), timestamp (string), cached (boolean). Update E2E-MATRIX.md.",
+        "details": "",
+        "testStrategy": "",
+        "status": "done",
+        "dependencies": [],
+        "priority": "medium",
+        "subtasks": [],
+        "updatedAt": "2026-02-21T01:18:19.626Z"
+      },
+      {
+        "id": 15,
+        "title": "Add E2E test for POST /api/export/client-matches-pdf",
+        "description": "Create new export.e2e.test.js: (1) Empty body returns 400. (2) Nil UUID returns 404. (3) Real client ID returns 200 with content-type application/pdf. Update E2E-MATRIX.md.",
+        "details": "",
+        "testStrategy": "",
+        "status": "done",
+        "dependencies": [],
+        "priority": "medium",
+        "subtasks": [],
+        "updatedAt": "2026-02-21T01:18:26.479Z"
+      },
+      {
+        "id": 16,
+        "title": "Add E2E test for 404 on invalid API endpoint",
+        "description": "Add test to core.e2e.test.js: GET /api/this-endpoint-does-not-exist returns 404. Update E2E-MATRIX.md.",
+        "details": "",
+        "testStrategy": "",
+        "status": "done",
+        "dependencies": [],
+        "priority": "medium",
+        "subtasks": [],
+        "updatedAt": "2026-02-21T01:18:31.522Z"
+      },
+      {
+        "id": 17,
+        "title": "Add browser E2E test for opportunity detail page",
+        "description": "Create opportunity-detail.spec.js: Fetch real ID via API, navigate to /funding/opportunities/{id}, verify title + status badge + 4 tabs, click through tabs. Update E2E-MATRIX.md.",
+        "details": "",
+        "testStrategy": "",
+        "status": "done",
+        "dependencies": [],
+        "priority": "medium",
+        "subtasks": [],
+        "updatedAt": "2026-02-21T01:18:36.499Z"
+      },
+      {
+        "id": 18,
+        "title": "Add browser E2E test for map drill-down",
+        "description": "Create map-drilldown.spec.js: Navigate to /map?view=state&state=OR (bypass SVG click), verify state heading + opportunity list, back-to-US button. Update E2E-MATRIX.md.",
+        "details": "",
+        "testStrategy": "",
+        "status": "done",
+        "dependencies": [],
+        "priority": "medium",
+        "subtasks": [],
+        "updatedAt": "2026-02-21T01:18:41.644Z"
+      },
+      {
+        "id": 19,
+        "title": "Add browser E2E test for admin review UI",
+        "description": "Create admin-review.spec.js: Verify heading, filter controls (search, status select), table or empty state. If pending rows exist verify Approve/Reject buttons visible but DO NOT click. Update E2E-MATRIX.md.",
+        "details": "",
+        "testStrategy": "",
+        "status": "done",
+        "dependencies": [],
+        "priority": "medium",
+        "subtasks": [],
+        "updatedAt": "2026-02-21T01:18:46.342Z"
+      },
+      {
+        "id": 20,
+        "title": "Add browser E2E test for timeline view",
+        "description": "Create timeline.spec.js: Navigate to /timeline, verify heading, no errors. If events exist verify month headers, Funding Deadline badges, View Details links. Update E2E-MATRIX.md.",
+        "details": "",
+        "testStrategy": "",
+        "status": "done",
+        "dependencies": [],
+        "priority": "medium",
+        "subtasks": [],
+        "updatedAt": "2026-02-21T01:18:51.419Z"
+      },
+      {
+        "id": 21,
+        "title": "Update E2E-MATRIX.md to mark all 10 gaps as covered",
+        "description": "Update tests/E2E-MATRIX.md: change all 10 remaining needs-test rows to covered with test file names. Verify zero needs-test entries remain. Depends on tasks 11-20.",
+        "details": "",
+        "testStrategy": "",
+        "status": "done",
+        "dependencies": [],
+        "priority": "medium",
+        "subtasks": [],
+        "updatedAt": "2026-02-21T01:18:56.305Z"
+      }
+    ],
+    "metadata": {
+      "version": "1.0.0",
+      "lastModified": "2026-02-21T01:18:56.305Z",
+      "taskCount": 21,
+      "completedCount": 21,
+      "tags": [
+        "e2e"
+      ],
+      "created": "2026-02-21T01:52:29.214Z",
+      "description": "Tasks for e2e context",
+      "updated": "2026-02-21T01:52:29.214Z"
     }
   }
 }

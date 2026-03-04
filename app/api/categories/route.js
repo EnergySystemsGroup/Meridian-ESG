@@ -12,6 +12,7 @@ export async function GET(request) {
 		const { data, error } = await supabase
 			.from('funding_opportunities_with_geography') // Using the view with geography
 			.select('id, categories')
+			.or('promotion_status.is.null,promotion_status.eq.promoted')
 			.not('categories', 'is', null);
 
 		if (error) {

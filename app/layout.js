@@ -1,8 +1,8 @@
 import { Inter, JetBrains_Mono } from 'next/font/google';
 import './globals.css';
+import { QueryProvider } from '@/lib/providers/QueryProvider';
 import { ThemeProvider } from '@/components/theme-provider';
 import { AuthProvider } from '@/contexts/AuthContext';
-import { TrackedOpportunitiesProvider } from '@/contexts/TrackedOpportunitiesContext';
 
 const inter = Inter({
 	subsets: ['latin'],
@@ -25,13 +25,13 @@ export default function RootLayout({ children }) {
 	return (
 		<html lang='en' className={`${inter.variable} ${jetbrainsMono.variable}`}>
 			<body className='antialiased min-h-screen bg-white dark:bg-neutral-950'>
-				<ThemeProvider>
-					<AuthProvider>
-						<TrackedOpportunitiesProvider>
+				<QueryProvider>
+					<ThemeProvider>
+						<AuthProvider>
 							{children}
-						</TrackedOpportunitiesProvider>
-					</AuthProvider>
-				</ThemeProvider>
+						</AuthProvider>
+					</ThemeProvider>
+				</QueryProvider>
 			</body>
 		</html>
 	);

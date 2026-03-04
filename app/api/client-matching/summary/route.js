@@ -62,7 +62,8 @@ export async function GET() {
 				status
 			`
 			)
-			.neq('status', 'closed');
+			.neq('status', 'closed')
+			.or('promotion_status.is.null,promotion_status.eq.promoted');
 
 		if (oppError) {
 			console.error('[ClientMatchingSummary] Error fetching opportunities:', oppError);

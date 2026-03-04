@@ -15,7 +15,8 @@ export async function GET(request) {
 			const { count, error } = await supabase
 				.from('funding_opportunities')
 				.select('id', { count: 'exact', head: true })
-				.ilike('status', 'open');
+				.ilike('status', 'open')
+				.or('promotion_status.is.null,promotion_status.eq.promoted');
 
 			if (error) {
 				throw error;

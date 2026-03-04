@@ -22,7 +22,8 @@ export async function GET(request) {
 				.from('funding_opportunities')
 				.select('id', { count: 'exact' })
 				.gte('close_date', today.toISOString())
-				.lt('close_date', thirtyDaysFromNow.toISOString());
+				.lt('close_date', thirtyDaysFromNow.toISOString())
+				.or('promotion_status.is.null,promotion_status.eq.promoted');
 
 			if (error) {
 				throw error;
@@ -49,6 +50,7 @@ export async function GET(request) {
 			`
 			)
 			.gte('close_date', today)
+			.or('promotion_status.is.null,promotion_status.eq.promoted')
 			.order('close_date', { ascending: true })
 			.limit(limit);
 

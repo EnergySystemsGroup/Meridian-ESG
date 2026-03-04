@@ -1,0 +1,65 @@
+name: Chore / Maintenance
+description: Refactoring, dependency updates, config changes
+labels: ["chore"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Describe the maintenance goal. Focus on WHAT and WHY — not HOW.
+  - type: textarea
+    id: goal
+    attributes:
+      label: Goal
+      description: What needs to happen and why? 1-3 sentences.
+      placeholder: "The test suite configuration needs updating to support the new Vitest version..."
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance-criteria
+    attributes:
+      label: Acceptance Criteria
+      description: Outcome-based checkboxes. What would a human verify?
+      placeholder: |
+        - [ ] All tests pass with the updated configuration
+        - [ ] No regressions in CI pipeline
+      value: |
+        - [ ]
+    validations:
+      required: true
+  - type: dropdown
+    id: testing-tier
+    attributes:
+      label: Testing Tier
+      description: What level of testing does this change require?
+      options:
+        - Critical (user-facing logic)
+        - API (response contracts)
+        - Database (queries/RPCs)
+        - Pipeline (AI processing)
+        - API E2E (full HTTP round-trip)
+        - Browser E2E (user workflow)
+        - None (config/docs only)
+    validations:
+      required: true
+  - type: dropdown
+    id: module
+    attributes:
+      label: Module
+      description: Which area of the application?
+      options:
+        - Dashboard
+        - Map
+        - Funding
+        - Pipeline
+        - Admin
+        - Clients
+        - Auth
+    validations:
+      required: true
+  - type: textarea
+    id: context
+    attributes:
+      label: Context
+      description: Links, error logs, or related issues.
+    validations:
+      required: false

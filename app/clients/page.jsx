@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useEffect, useMemo, useCallback, Suspense } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
+import { useQueryClient } from '@tanstack/react-query';
 import MainLayout from '@/components/layout/main-layout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -32,7 +33,10 @@ import { AlertTriangle, Loader2, Search, Plus, Filter, X, ChevronDown } from 'lu
 import ClientProfileModal from '@/components/clients/ClientProfileModal';
 import ClientForm from '@/components/clients/ClientForm';
 import Link from 'next/link';
-import { fetchClientMatches, generateClientTags, formatMatchScore, getMatchScoreBgColor } from '@/lib/utils/clientMatching';
+import { generateClientTags, formatMatchScore, getMatchScoreBgColor } from '@/lib/utils/clientMatching';
+import { useClientMatches } from '@/lib/hooks/queries/useClients';
+import { useClientsFilterStore, ITEMS_PER_PAGE } from '@/lib/stores/clientsFilterStore';
+import { queryKeys } from '@/lib/queries/queryKeys';
 
 const SORT_OPTIONS = [
 	{ value: 'matchCount-desc', label: 'Match Count (High to Low)' },
@@ -42,35 +46,50 @@ const SORT_OPTIONS = [
 	{ value: 'location', label: 'Location (State, City)' },
 ];
 
-const ITEMS_PER_PAGE = 12;
-
 function ClientsPageContent() {
 	const searchParams = useSearchParams();
 	const router = useRouter();
+	const queryClient = useQueryClient();
 
-	const [clientMatches, setClientMatches] = useState({});
-	const [loading, setLoading] = useState(true);
-	const [error, setError] = useState(null);
+	// TanStack Query for data fetching
+	const { data: clientMatches = {}, isLoading: loading, error: queryError } = useClientMatches(undefined, {
+		select: (data) => data?.results || {},
+	});
+	const error = queryError?.message || null;
+
+	// Zustand store for filter/sort state
+	const {
+		searchQuery, sortBy, filterTypes, filterStates,
+		filterHasMatches, filterDac, displayCount,
+		setSearchQuery, setSortBy, setFilterTypes, setFilterStates,
+		setFilterHasMatches, setFilterDac, setDisplayCount, loadMore,
+	} = useClientsFilterStore();
+
+	// UI-only local state
 	const [selectedClient, setSelectedClient] = useState(null);
 	const [showProfileModal, setShowProfileModal] = useState(false);
 	const [showAddClientModal, setShowAddClientModal] = useState(false);
-	const [displayCount, setDisplayCount] = useState(ITEMS_PER_PAGE);
 
-	// Initialize state from URL params
-	const [searchQuery, setSearchQuery] = useState(searchParams.get('q') || '');
-	const [sortBy, setSortBy] = useState(searchParams.get('sort') || 'matchCount-desc');
-	const [filterTypes, setFilterTypes] = useState(
-		searchParams.get('types')?.split(',').filter(Boolean) || []
-	);
-	const [filterStates, setFilterStates] = useState(
-		searchParams.get('states')?.split(',').filter(Boolean) || []
-	);
-	const [filterHasMatches, setFilterHasMatches] = useState(
-		searchParams.get('hasMatches') || 'all'
-	);
-	const [filterDac, setFilterDac] = useState(
-		searchParams.get('dac') || 'all'
-	);
+	// Initialize store from URL params on mount
+	const initializedFromUrl = useRef(false);
+	useEffect(() => {
+		if (initializedFromUrl.current) return;
+		initializedFromUrl.current = true;
+
+		const q = searchParams.get('q');
+		const sort = searchParams.get('sort');
+		const types = searchParams.get('types')?.split(',').filter(Boolean);
+		const states = searchParams.get('states')?.split(',').filter(Boolean);
+		const hasMatches = searchParams.get('hasMatches');
+		const dac = searchParams.get('dac');
+
+		if (q) setSearchQuery(q);
+		if (sort) setSortBy(sort);
+		if (types?.length) setFilterTypes(types);
+		if (states?.length) setFilterStates(states);
+		if (hasMatches) setFilterHasMatches(hasMatches);
+		if (dac) setFilterDac(dac);
+	}, [searchParams, setSearchQuery, setSortBy, setFilterTypes, setFilterStates, setFilterHasMatches, setFilterDac]);
 
 	// Update URL when filters change
 	const updateURL = useCallback((updates) => {
@@ -98,49 +117,18 @@ function ClientsPageContent() {
 		return { types, states };
 	}, [clientMatches]);
 
-	useEffect(() => {
-		async function loadClientMatches() {
-			try {
-				setLoading(true);
-				const matches = await fetchClientMatches();
-				setClientMatches(matches || {});
-			} catch (err) {
-				console.error('Error loading client matches:', err);
-				if (err.message.includes('404') || err.message.includes('not found')) {
-					setClientMatches({});
-					setError(null);
-				} else {
-					setError(err.message);
-				}
-			} finally {
-				setLoading(false);
-			}
-		}
-
-		loadClientMatches();
-	}, []);
+	const invalidateMatches = useCallback(() => {
+		queryClient.invalidateQueries({ queryKey: queryKeys.clientMatching.all });
+	}, [queryClient]);
 
 	const handleViewProfile = (client) => {
 		setSelectedClient(client);
 		setShowProfileModal(true);
 	};
 
-	const handleClientCreated = async () => {
+	const handleClientCreated = () => {
 		setShowAddClientModal(false);
-		await reloadClientMatches();
-	};
-
-	const reloadClientMatches = async () => {
-		try {
-			setLoading(true);
-			const matches = await fetchClientMatches();
-			setClientMatches(matches);
-		} catch (err) {
-			console.error('Error reloading client matches:', err);
-			setError(err.message);
-		} finally {
-			setLoading(false);
-		}
+		invalidateMatches();
 	};
 
 	// Filter and sort logic
@@ -549,7 +537,7 @@ function ClientsPageContent() {
 							<div className='flex justify-center mt-8'>
 								<Button
 									variant='outline'
-									onClick={() => setDisplayCount(prev => prev + ITEMS_PER_PAGE)}
+									onClick={loadMore}
 									className='px-8'
 								>
 									Load More ({filteredAndSortedClients.length - displayCount} remaining)
@@ -599,7 +587,7 @@ function ClientsPageContent() {
 					client={selectedClient}
 					isOpen={showProfileModal}
 					onClose={() => setShowProfileModal(false)}
-					onClientUpdate={reloadClientMatches}
+					onClientUpdate={invalidateMatches}
 				/>
 
 				<Dialog open={showAddClientModal} onOpenChange={setShowAddClientModal}>
