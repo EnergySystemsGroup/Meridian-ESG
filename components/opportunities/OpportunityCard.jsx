@@ -8,7 +8,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { DollarSign, Calendar, Map, Star, Tag, Info } from 'lucide-react';
 import { calculateDaysLeft, determineStatus } from '@/lib/supabase';
-import { useTrackedOpportunities } from '@/hooks/useTrackedOpportunities';
+import { useTrackedOpportunitiesStore } from '@/lib/stores';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import {
@@ -100,11 +100,15 @@ const OpportunityCard = ({ opportunity, badgeOverride }) => {
 	const pathname = usePathname();
 	const searchParams = useSearchParams();
 
-	// Use our custom hook for tracking opportunities
-	const { isTracked, toggleTracked, trackedCount } = useTrackedOpportunities();
+	// Use Zustand store for tracking opportunities
+	// Subscribe to trackedOpportunityIds directly so the component re-renders
+	// when the array changes (selecting s.isTracked returns a stable function
+	// reference that never triggers re-renders).
+	const trackedIds = useTrackedOpportunitiesStore((s) => s.trackedOpportunityIds);
+	const toggleTracked = useTrackedOpportunitiesStore((s) => s.toggleTracked);
 
 	// Check if this opportunity is being tracked
-	const opportunityIsTracked = isTracked(opportunity.id);
+	const opportunityIsTracked = trackedIds.includes(opportunity.id);
 
 	// Format the data from our database to match the UI expectations
 	const title = opportunity.title;

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -31,6 +31,8 @@ import {
 	DialogHeader,
 	DialogTitle,
 } from '@/components/ui/dialog';
+import { useAdminReviewStore } from '@/lib/stores';
+import { useAdminReview, useApproveReview, useRejectReview } from '@/lib/hooks/queries/useAdmin';
 
 // --- Helpers ---
 
@@ -75,30 +77,34 @@ function StatusBadge({ status }) {
 
 // --- Main Component ---
 
+const PAGE_SIZE = 50;
+
 export default function AdminReviewPage() {
-	// Data state
-	const [data, setData] = useState([]);
-	const [totalCount, setTotalCount] = useState(0);
-	const [loading, setLoading] = useState(true);
+	// --- Zustand store for filters, sort, pagination, selection ---
+	const statusFilter = useAdminReviewStore((s) => s.statusFilter);
+	const setStatusFilter = useAdminReviewStore((s) => s.setStatusFilter);
+	const searchInput = useAdminReviewStore((s) => s.searchInput);
+	const setSearchInput = useAdminReviewStore((s) => s.setSearchInput);
+	const searchText = useAdminReviewStore((s) => s.searchText);
+	const setSearchText = useAdminReviewStore((s) => s.setSearchText);
+	const stateFilter = useAdminReviewStore((s) => s.stateFilter);
+	const setStateFilter = useAdminReviewStore((s) => s.setStateFilter);
+	const minScoreFilter = useAdminReviewStore((s) => s.minScoreFilter);
+	const setMinScoreFilter = useAdminReviewStore((s) => s.setMinScoreFilter);
+	const sortBy = useAdminReviewStore((s) => s.sortBy);
+	const setSortBy = useAdminReviewStore((s) => s.setSortBy);
+	const sortDirection = useAdminReviewStore((s) => s.sortDirection);
+	const setSortDirection = useAdminReviewStore((s) => s.setSortDirection);
+	const page = useAdminReviewStore((s) => s.page);
+	const setPage = useAdminReviewStore((s) => s.setPage);
+	const selectedIds = useAdminReviewStore((s) => s.selectedIds);
+	const toggleSelectedId = useAdminReviewStore((s) => s.toggleSelectedId);
+	const selectAll = useAdminReviewStore((s) => s.selectAll);
+	const clearSelection = useAdminReviewStore((s) => s.clearSelection);
 
-	// Filter state
-	const [statusFilter, setStatusFilter] = useState('pending_review');
-	const [searchText, setSearchText] = useState('');
-	const [stateFilter, setStateFilter] = useState('');
-	const [minScoreFilter, setMinScoreFilter] = useState('');
-	const [sortBy, setSortBy] = useState('created_at');
-	const [sortDirection, setSortDirection] = useState('desc');
-	const [page, setPage] = useState(1);
-	const pageSize = 50;
-
-	// Selection state
-	const [selectedIds, setSelectedIds] = useState(new Set());
-
-	// Dialog state
+	// --- Local UI state (ephemeral) ---
 	const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
 	const [rejectNotes, setRejectNotes] = useState('');
-
-	// Notification state
 	const [notifications, setNotifications] = useState([]);
 
 	const addNotification = (message, type = 'info') => {
@@ -109,121 +115,82 @@ export default function AdminReviewPage() {
 		}, 5000);
 	};
 
-	// --- Data Fetching ---
-
-	const fetchData = useCallback(async () => {
-		setLoading(true);
-		try {
-			const params = new URLSearchParams({
-				status: statusFilter,
-				page: String(page),
-				page_size: String(pageSize),
-				sort_by: sortBy,
-				sort_direction: sortDirection,
-			});
-			if (searchText) params.set('search', searchText);
-			if (stateFilter) params.set('state', stateFilter);
-			if (minScoreFilter) params.set('min_score', minScoreFilter);
-
-			const res = await fetch(`/api/admin/review?${params}`);
-			if (!res.ok) throw new Error('Failed to fetch review data');
-			const json = await res.json();
-
-			setData(json.data || []);
-			setTotalCount(json.total_count || 0);
-		} catch (err) {
-			console.error('Error fetching review data:', err);
-			addNotification(`Error loading data: ${err.message}`, 'error');
-		} finally {
-			setLoading(false);
-		}
-	}, [statusFilter, searchText, stateFilter, minScoreFilter, sortBy, sortDirection, page]);
-
-	useEffect(() => {
-		fetchData();
-	}, [fetchData]);
-
-	// Reset page when filters change
-	useEffect(() => {
-		setPage(1);
-		setSelectedIds(new Set());
-	}, [statusFilter, searchText, stateFilter, minScoreFilter, sortBy, sortDirection]);
-
-	// --- Debounced search ---
-	const [searchInput, setSearchInput] = useState('');
+	// --- Search debounce ---
 	useEffect(() => {
 		const timer = setTimeout(() => setSearchText(searchInput), 300);
 		return () => clearTimeout(timer);
-	}, [searchInput]);
+	}, [searchInput, setSearchText]);
 
-	// --- Selection ---
+	// --- Clear selection when filters or sort change ---
+	useEffect(() => {
+		clearSelection();
+	}, [statusFilter, searchText, stateFilter, minScoreFilter, sortBy, sortDirection, clearSelection]);
 
-	const toggleSelect = (id) => {
-		setSelectedIds(prev => {
-			const next = new Set(prev);
-			if (next.has(id)) next.delete(id);
-			else next.add(id);
-			return next;
-		});
+	// --- TanStack Query: data fetching ---
+	const filters = useMemo(() => ({
+		status: statusFilter,
+		page,
+		page_size: PAGE_SIZE,
+		sort_by: sortBy,
+		sort_direction: sortDirection,
+		...(searchText && { search: searchText }),
+		...(stateFilter && { state: stateFilter }),
+		...(minScoreFilter && { min_score: minScoreFilter }),
+	}), [statusFilter, page, sortBy, sortDirection, searchText, stateFilter, minScoreFilter]);
+
+	const { data: reviewData, isLoading, refetch } = useAdminReview(filters);
+	const data = reviewData?.data ?? [];
+	const totalCount = reviewData?.total_count ?? 0;
+
+	// --- TanStack Query: mutations ---
+	// Note: callbacks passed via mutate() so the hook's own onSuccess (query
+	// invalidation) is not overridden by the ...options spread.
+	const approveMutation = useApproveReview();
+	const rejectMutation = useRejectReview();
+
+	// --- Handlers ---
+
+	const handleApprove = (ids) => {
+		approveMutation.mutate(
+			{ ids: [...ids], reviewed_by: 'admin' },
+			{
+				onSuccess: (result) => {
+					addNotification(`Approved ${result.updated_count} record(s)`, 'success');
+					clearSelection();
+				},
+				onError: (err) => {
+					addNotification(`Error approving: ${err.message}`, 'error');
+				},
+			}
+		);
 	};
 
-	const toggleSelectAll = () => {
-		if (selectedIds.size === data.length) {
-			setSelectedIds(new Set());
-		} else {
-			setSelectedIds(new Set(data.map(d => d.id)));
-		}
-	};
-
-	const clearSelection = () => setSelectedIds(new Set());
-
-	// --- Actions ---
-
-	const handleApprove = async (ids) => {
-		try {
-			const res = await fetch('/api/admin/review/approve', {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ ids: [...ids], reviewed_by: 'admin' }),
-			});
-			if (!res.ok) throw new Error('Approve request failed');
-			const json = await res.json();
-			addNotification(`Approved ${json.updated_count} record(s)`, 'success');
-			setSelectedIds(new Set());
-			fetchData();
-		} catch (err) {
-			addNotification(`Error approving: ${err.message}`, 'error');
-		}
-	};
-
-	const handleReject = async () => {
-		try {
-			const ids = [...selectedIds];
-			const res = await fetch('/api/admin/review/reject', {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({
-					ids,
-					reviewed_by: 'admin',
-					review_notes: rejectNotes || undefined,
-				}),
-			});
-			if (!res.ok) throw new Error('Reject request failed');
-			const json = await res.json();
-			addNotification(`Rejected ${json.updated_count} record(s)`, 'success');
-			setSelectedIds(new Set());
-			setRejectDialogOpen(false);
-			setRejectNotes('');
-			fetchData();
-		} catch (err) {
-			addNotification(`Error rejecting: ${err.message}`, 'error');
-		}
+	const handleReject = () => {
+		rejectMutation.mutate(
+			{
+				ids: [...selectedIds],
+				reviewed_by: 'admin',
+				review_notes: rejectNotes || undefined,
+			},
+			{
+				onSuccess: (result) => {
+					addNotification(`Rejected ${result.updated_count} record(s)`, 'success');
+					clearSelection();
+					setRejectDialogOpen(false);
+					setRejectNotes('');
+				},
+				onError: (err) => {
+					addNotification(`Error rejecting: ${err.message}`, 'error');
+				},
+			}
+		);
 	};
 
 	const handleQuickApprove = (id) => handleApprove([id]);
 
 	const handleQuickReject = (id) => {
-		setSelectedIds(new Set([id]));
+		clearSelection();
+		toggleSelectedId(id);
 		setRejectDialogOpen(true);
 	};
 
@@ -231,7 +198,7 @@ export default function AdminReviewPage() {
 
 	const handleSort = (column) => {
 		if (sortBy === column) {
-			setSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
+			setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
 		} else {
 			setSortBy(column);
 			setSortDirection('desc');
@@ -245,11 +212,7 @@ export default function AdminReviewPage() {
 
 	// --- Pagination ---
 
-	const totalPages = Math.ceil(totalCount / pageSize) || 1;
-
-	// --- Counts for header ---
-
-	const pendingCount = statusFilter === 'pending_review' ? totalCount : null;
+	const totalPages = Math.ceil(totalCount / PAGE_SIZE) || 1;
 
 	return (
 		<div className="p-6 max-w-[1400px] mx-auto">
@@ -339,7 +302,7 @@ export default function AdminReviewPage() {
 					</div>
 
 					{/* Refresh */}
-					<Button variant="outline" size="sm" onClick={fetchData} disabled={loading}>
+					<Button variant="outline" size="sm" onClick={() => refetch()} disabled={isLoading}>
 						Refresh
 					</Button>
 				</div>
@@ -361,13 +324,15 @@ export default function AdminReviewPage() {
 								size="sm"
 								className="bg-green-600 hover:bg-green-700 text-white"
 								onClick={() => handleApprove([...selectedIds])}
+								disabled={approveMutation.isPending}
 							>
-								Approve Selected
+								{approveMutation.isPending ? 'Approving...' : 'Approve Selected'}
 							</Button>
 							<Button
 								size="sm"
 								variant="destructive"
 								onClick={() => setRejectDialogOpen(true)}
+								disabled={rejectMutation.isPending}
 							>
 								Reject Selected
 							</Button>
@@ -377,7 +342,7 @@ export default function AdminReviewPage() {
 			)}
 
 			{/* Table */}
-			{loading ? (
+			{isLoading ? (
 				<div className="space-y-3">
 					{Array.from({ length: 8 }).map((_, i) => (
 						<Skeleton key={i} className="h-12 w-full" />
@@ -395,7 +360,13 @@ export default function AdminReviewPage() {
 								<TableHead className="w-10">
 									<Checkbox
 										checked={data.length > 0 && selectedIds.size === data.length}
-										onCheckedChange={toggleSelectAll}
+										onCheckedChange={() => {
+											if (selectedIds.size === data.length) {
+												clearSelection();
+											} else {
+												selectAll(data.map(d => d.id));
+											}
+										}}
 									/>
 								</TableHead>
 								<TableHead
@@ -430,7 +401,7 @@ export default function AdminReviewPage() {
 									<TableCell>
 										<Checkbox
 											checked={selectedIds.has(opp.id)}
-											onCheckedChange={() => toggleSelect(opp.id)}
+											onCheckedChange={() => toggleSelectedId(opp.id)}
 										/>
 									</TableCell>
 									<TableCell className="max-w-[300px]">
@@ -491,6 +462,7 @@ export default function AdminReviewPage() {
 														variant="outline"
 														className="h-7 text-xs text-green-700 border-green-300 hover:bg-green-50"
 														onClick={() => handleQuickApprove(opp.id)}
+														disabled={approveMutation.isPending}
 													>
 														Approve
 													</Button>
@@ -499,6 +471,7 @@ export default function AdminReviewPage() {
 														variant="outline"
 														className="h-7 text-xs text-red-700 border-red-300 hover:bg-red-50"
 														onClick={() => handleQuickReject(opp.id)}
+														disabled={rejectMutation.isPending}
 													>
 														Reject
 													</Button>
@@ -520,7 +493,7 @@ export default function AdminReviewPage() {
 						variant="outline"
 						size="sm"
 						disabled={page <= 1}
-						onClick={() => setPage(p => p - 1)}
+						onClick={() => setPage(page - 1)}
 					>
 						Previous
 					</Button>
@@ -531,7 +504,7 @@ export default function AdminReviewPage() {
 						variant="outline"
 						size="sm"
 						disabled={page >= totalPages}
-						onClick={() => setPage(p => p + 1)}
+						onClick={() => setPage(page + 1)}
 					>
 						Next
 					</Button>
@@ -563,8 +536,12 @@ export default function AdminReviewPage() {
 						>
 							Cancel
 						</Button>
-						<Button variant="destructive" onClick={handleReject}>
-							Reject
+						<Button
+							variant="destructive"
+							onClick={handleReject}
+							disabled={rejectMutation.isPending}
+						>
+							{rejectMutation.isPending ? 'Rejecting...' : 'Reject'}
 						</Button>
 					</DialogFooter>
 				</DialogContent>
