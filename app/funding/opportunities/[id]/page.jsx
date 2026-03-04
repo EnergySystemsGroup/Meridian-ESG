@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
+import { useQueryClient } from '@tanstack/react-query';
 import MainLayout from '@/components/layout/main-layout';
 import { Button } from '@/components/ui/button';
 import {
@@ -47,7 +48,9 @@ import {
 	DialogTitle,
 } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
-import { useTrackedOpportunities } from '@/hooks/useTrackedOpportunities';
+import { useOpportunityDetail } from '@/lib/hooks/queries/useFunding';
+import { useTrackedOpportunitiesStore } from '@/lib/stores/trackedOpportunitiesStore';
+import { queryKeys } from '@/lib/queries/queryKeys';
 import {
 	getCategoryColor,
 	formatCategoryForDisplay,
@@ -56,12 +59,11 @@ import {
 export default function OpportunityDetailPage() {
 	const params = useParams();
 	const router = useRouter();
-	const [opportunity, setOpportunity] = useState(null);
-	const [loading, setLoading] = useState(true);
-	const [error, setError] = useState(null);
+	const queryClient = useQueryClient();
+	const { data: opportunity, isLoading, error } = useOpportunityDetail(params.id);
 
-	// Use our custom hook for tracking opportunities
-	const { isTracked, toggleTracked } = useTrackedOpportunities();
+	const isTracked = useTrackedOpportunitiesStore((s) => s.isTracked);
+	const toggleTracked = useTrackedOpportunitiesStore((s) => s.toggleTracked);
 
 	// Admin review state
 	const [adminActionLoading, setAdminActionLoading] = useState(false);
@@ -70,41 +72,7 @@ export default function OpportunityDetailPage() {
 	const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
 	const [reviewNotes, setReviewNotes] = useState('');
 
-	useEffect(() => {
-		async function fetchOpportunityDetails() {
-			try {
-				setLoading(true);
-				const response = await fetch('/api/funding', {
-					method: 'POST',
-					headers: {
-						'Content-Type': 'application/json',
-					},
-					body: JSON.stringify({ id: params.id }),
-				});
-
-				const result = await response.json();
-
-				if (!result.success) {
-					throw new Error(
-						result.error || 'Failed to fetch opportunity details'
-					);
-				}
-
-				setOpportunity(result.data);
-			} catch (err) {
-				console.error('Error fetching opportunity details:', err);
-				setError(err.message);
-			} finally {
-				setLoading(false);
-			}
-		}
-
-		if (params.id) {
-			fetchOpportunityDetails();
-		}
-	}, [params.id]);
-
-	if (loading) {
+	if (isLoading) {
 		return (
 			<MainLayout>
 				<div className='container py-10'>
@@ -121,7 +89,7 @@ export default function OpportunityDetailPage() {
 			<MainLayout>
 				<div className='container py-10'>
 					<div className='bg-red-50 text-red-800 p-4 rounded-md'>
-						<p>Error: {error}</p>
+						<p>Error: {error.message}</p>
 						<Button
 							variant='outline'
 							className='mt-2'
@@ -187,7 +155,7 @@ export default function OpportunityDetailPage() {
 				body: JSON.stringify({ ids: [opportunity.id], reviewed_by: 'admin' }),
 			});
 			if (!res.ok) throw new Error('Approve failed');
-			setOpportunity(prev => ({ ...prev, promotion_status: 'promoted', reviewed_by: 'admin', reviewed_at: new Date().toISOString() }));
+			queryClient.setQueryData(queryKeys.funding.detail(params.id), (prev) => ({ ...prev, promotion_status: 'promoted', reviewed_by: 'admin', reviewed_at: new Date().toISOString() }));
 			showAdminNotification('Record approved successfully', 'success');
 		} catch (err) {
 			showAdminNotification(`Error: ${err.message}`, 'error');
@@ -205,7 +173,7 @@ export default function OpportunityDetailPage() {
 				body: JSON.stringify({ ids: [opportunity.id], reviewed_by: 'admin', review_notes: reviewNotes || undefined }),
 			});
 			if (!res.ok) throw new Error('Reject failed');
-			setOpportunity(prev => ({ ...prev, promotion_status: 'rejected', reviewed_by: 'admin', reviewed_at: new Date().toISOString(), review_notes: reviewNotes || null }));
+			queryClient.setQueryData(queryKeys.funding.detail(params.id), (prev) => ({ ...prev, promotion_status: 'rejected', reviewed_by: 'admin', reviewed_at: new Date().toISOString(), review_notes: reviewNotes || null }));
 			setRejectDialogOpen(false);
 			setReviewNotes('');
 			showAdminNotification('Record rejected', 'success');
@@ -225,7 +193,7 @@ export default function OpportunityDetailPage() {
 				body: JSON.stringify({ id: opportunity.id, reviewed_by: 'admin', review_notes: reviewNotes || undefined }),
 			});
 			if (!res.ok) throw new Error('Downgrade failed');
-			setOpportunity(prev => ({ ...prev, promotion_status: 'rejected', reviewed_by: 'admin', reviewed_at: new Date().toISOString(), review_notes: reviewNotes || null }));
+			queryClient.setQueryData(queryKeys.funding.detail(params.id), (prev) => ({ ...prev, promotion_status: 'rejected', reviewed_by: 'admin', reviewed_at: new Date().toISOString(), review_notes: reviewNotes || null }));
 			setDowngradeDialogOpen(false);
 			setReviewNotes('');
 			showAdminNotification('Record downgraded to rejected', 'success');
