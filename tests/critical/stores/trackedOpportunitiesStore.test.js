@@ -128,7 +128,42 @@ describe('trackedOpportunitiesStore', () => {
 		});
 	});
 
-	describe('backward-compatible storage', () => {
+	describe('storage serialization (setItem)', () => {
+		/**
+		 * Mirrors the store's setItem: always writes Zustand's native
+		 * StorageValue envelope (not a plain array).
+		 */
+		function serializeStorageValue(name, value) {
+			return JSON.stringify(value);
+		}
+
+		it('writes Zustand StorageValue envelope, not a plain array', () => {
+			const storeValue = {
+				state: { trackedOpportunityIds: ['id-1', 'id-2'] },
+				version: 0,
+			};
+			const serialized = serializeStorageValue('trackedOpportunities', storeValue);
+			const parsed = JSON.parse(serialized);
+
+			// Must be an object with state/version, never a plain array
+			expect(Array.isArray(parsed)).toBe(false);
+			expect(parsed).toHaveProperty('state');
+			expect(parsed).toHaveProperty('version');
+			expect(parsed.state.trackedOpportunityIds).toEqual(['id-1', 'id-2']);
+		});
+
+		it('round-trips through getItem (parseStorageValue)', () => {
+			const storeValue = {
+				state: { trackedOpportunityIds: ['id-a'] },
+				version: 0,
+			};
+			const serialized = serializeStorageValue('trackedOpportunities', storeValue);
+			const result = parseStorageValue(serialized);
+			expect(result).toEqual(storeValue);
+		});
+	});
+
+	describe('backward-compatible storage (getItem)', () => {
 		it('returns null for empty storage', () => {
 			expect(parseStorageValue(null)).toBeNull();
 			expect(parseStorageValue('')).toBeNull();

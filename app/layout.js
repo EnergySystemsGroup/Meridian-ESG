@@ -3,7 +3,6 @@ import './globals.css';
 import { QueryProvider } from '@/lib/providers/QueryProvider';
 import { ThemeProvider } from '@/components/theme-provider';
 import { AuthProvider } from '@/contexts/AuthContext';
-import { TrackedOpportunitiesProvider } from '@/contexts/TrackedOpportunitiesContext';
 
 const inter = Inter({
 	subsets: ['latin'],
@@ -29,9 +28,7 @@ export default function RootLayout({ children }) {
 				<QueryProvider>
 					<ThemeProvider>
 						<AuthProvider>
-							<TrackedOpportunitiesProvider>
-								{children}
-							</TrackedOpportunitiesProvider>
+							{children}
 						</AuthProvider>
 					</ThemeProvider>
 				</QueryProvider>

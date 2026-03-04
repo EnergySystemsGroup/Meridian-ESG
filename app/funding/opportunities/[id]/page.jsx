@@ -62,8 +62,9 @@ export default function OpportunityDetailPage() {
 	const queryClient = useQueryClient();
 	const { data: opportunity, isLoading, error } = useOpportunityDetail(params.id);
 
-	const isTracked = useTrackedOpportunitiesStore((s) => s.isTracked);
+	const trackedIds = useTrackedOpportunitiesStore((s) => s.trackedOpportunityIds);
 	const toggleTracked = useTrackedOpportunitiesStore((s) => s.toggleTracked);
+	const isTracked = (id) => trackedIds.includes(id);
 
 	// Admin review state
 	const [adminActionLoading, setAdminActionLoading] = useState(false);
