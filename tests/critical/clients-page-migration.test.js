@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import { clientMatches as mockClientMatches } from '../fixtures/clients.js';
 
 // ---------------------------------------------------------------------------
 // Inline pure functions replicating production logic from app/clients/page.jsx
@@ -147,36 +148,7 @@ function getAvailableFilters(clientMatchesObj) {
 	return { types, states };
 }
 
-// ---------------------------------------------------------------------------
-// Test fixtures
-// ---------------------------------------------------------------------------
-
-const mockClientMatches = {
-	'client-1': {
-		client: { id: 'client-1', name: 'City of San Francisco', type: 'Municipal Government', city: 'San Francisco', state_code: 'CA', description: 'City government', dac: false, project_needs: ['Solar', 'EV Charging'] },
-		matches: [],
-		matchCount: 5,
-		topMatches: [{ id: 'opp-1', title: 'Solar Grant', agency_name: 'DOE', score: 85 }],
-	},
-	'client-2': {
-		client: { id: 'client-2', name: 'Texas Energy Corp', type: 'Commercial Entity', city: 'Houston', state_code: 'TX', description: 'Commercial building', dac: false, project_needs: ['HVAC Upgrades'] },
-		matches: [],
-		matchCount: 2,
-		topMatches: [],
-	},
-	'client-3': {
-		client: { id: 'client-3', name: 'Oakland Schools', type: 'School District', city: 'Oakland', state_code: 'CA', description: 'School district in DAC area', dac: true, project_needs: ['Solar', 'HVAC Upgrades'] },
-		matches: [],
-		matchCount: 0,
-		topMatches: [],
-	},
-	'client-4': {
-		client: { id: 'client-4', name: 'Green Foundation', type: 'Non-Profit Organization', city: 'Sacramento', state_code: 'CA', description: 'Nonprofit', dac: true, project_needs: ['Community Solar'] },
-		matches: [],
-		matchCount: 8,
-		topMatches: [],
-	},
-};
+// Test fixtures imported from tests/fixtures/clients.js
 
 // ---------------------------------------------------------------------------
 // Tests
