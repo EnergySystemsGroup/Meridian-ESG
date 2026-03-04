@@ -1,6 +1,5 @@
 'use client';
 
-import { useState, useEffect } from 'react';
 import MainLayout from '@/components/layout/main-layout';
 import {
 	Card,
@@ -11,227 +10,44 @@ import {
 } from '@/components/ui/card';
 import Link from 'next/link';
 import FundingProjectTypeChart from '@/components/dashboard/FundingProjectTypeChart';
+import {
+	useUpcomingDeadlines,
+	useThirtyDayDeadlineCount,
+	useOpenOpportunitiesCount,
+	useRecentOpportunities,
+} from '@/lib/hooks/queries/useDashboard';
+import {
+	useClientMatchSummary,
+	useTopClientMatches,
+} from '@/lib/hooks/queries/useClients';
+import { useFundingCount } from '@/lib/hooks/queries/useFunding';
 
 export default function Home() {
 	//======================================
-	// STATE MANAGEMENT
+	// DATA FETCHING (TanStack Query)
 	//======================================
-	// List of upcoming deadlines (for detail card)
-	const [upcomingDeadlines, setUpcomingDeadlines] = useState([]);
-	const [deadlinesLoading, setDeadlinesLoading] = useState(true);
-	const [deadlinesError, setDeadlinesError] = useState(null);
+	const { data: deadlinesData, isLoading: deadlinesLoading, error: deadlinesError } = useUpcomingDeadlines(5);
+	const upcomingDeadlines = deadlinesData?.data ?? sampleUpcomingDeadlines;
 
-	// Count of deadlines in the next 30 days (for summary card)
-	const [thirtyDayCount, setThirtyDayCount] = useState(0);
-	const [thirtyDayCountLoading, setThirtyDayCountLoading] = useState(true);
-	const [thirtyDayCountError, setThirtyDayCountError] = useState(null);
+	const { data: thirtyDayData, isLoading: thirtyDayCountLoading } = useThirtyDayDeadlineCount();
+	const thirtyDayCount = thirtyDayData?.count ?? 0;
 
-	// Count of open funding opportunities
-	const [openOpportunitiesCount, setOpenOpportunitiesCount] = useState(0);
-	const [openOpportunitiesLoading, setOpenOpportunitiesLoading] =
-		useState(true);
+	const { data: openOppData, isLoading: openOpportunitiesLoading } = useOpenOpportunitiesCount();
+	const openOpportunitiesCount = openOppData?.count ?? 0;
 
-	// Recent opportunities
-	const [recentOpportunities, setRecentOpportunities] = useState([]);
-	const [recentOpportunitiesLoading, setRecentOpportunitiesLoading] =
-		useState(true);
-	const [recentOpportunitiesError, setRecentOpportunitiesError] =
-		useState(null);
+	const { data: recentOppData, isLoading: recentOpportunitiesLoading, error: recentOpportunitiesError } = useRecentOpportunities();
+	const recentOpportunities = recentOppData?.data ?? sampleRecentOpportunities;
 
-	// Client matches data
-	const [clientMatchData, setClientMatchData] = useState({
-		clientsWithMatches: 0,
-		totalMatches: 0,
-		totalClients: 0,
-	});
-	const [clientMatchesLoading, setClientMatchesLoading] = useState(true);
+	const { data: clientMatchRaw, isLoading: clientMatchesLoading } = useClientMatchSummary();
+	const clientMatchData = clientMatchRaw
+		? { clientsWithMatches: clientMatchRaw.clientsWithMatches, totalMatches: clientMatchRaw.totalMatches, totalClients: clientMatchRaw.totalClients }
+		: { clientsWithMatches: 0, totalMatches: 0, totalClients: 0 };
 
-	// Max available funding
-	const [maxFunding, setMaxFunding] = useState(0);
-	const [maxFundingLoading, setMaxFundingLoading] = useState(true);
+	const { data: fundingData, isLoading: maxFundingLoading } = useFundingCount();
+	const maxFunding = fundingData?.total ?? 0;
 
-	// Top client matches
-	const [topClientMatches, setTopClientMatches] = useState([]);
-	const [topClientMatchesLoading, setTopClientMatchesLoading] = useState(true);
-
-	//======================================
-	// DATA FETCHING
-	//======================================
-	useEffect(() => {
-		// Fetch the 5 closest upcoming deadlines for detail list
-		async function fetchDeadlines() {
-			try {
-				setDeadlinesLoading(true);
-				const response = await fetch('/api/deadlines?type=upcoming&limit=5');
-				const result = await response.json();
-
-				if (!result.success) {
-					throw new Error(result.error || 'Failed to fetch deadlines');
-				}
-
-				setUpcomingDeadlines(result.data);
-			} catch (err) {
-				console.error('Error fetching deadlines:', err);
-				setDeadlinesError(err.message);
-				// Fall back to sample data if API fails
-				setUpcomingDeadlines(sampleUpcomingDeadlines);
-			} finally {
-				setDeadlinesLoading(false);
-			}
-		}
-
-		// Fetch count of deadlines in the next 30 days for summary card
-		async function fetchThirtyDayCount() {
-			try {
-				setThirtyDayCountLoading(true);
-				const response = await fetch('/api/deadlines?type=thirty_day_count');
-				const result = await response.json();
-
-				if (!result.success) {
-					throw new Error(
-						result.error || 'Failed to fetch 30-day deadline count'
-					);
-				}
-
-				setThirtyDayCount(result.count);
-			} catch (err) {
-				console.error('Error fetching 30-day deadline count:', err);
-				setThirtyDayCountError(err.message);
-				// Fall back to a default value
-				setThirtyDayCount(8); // Use the previous hardcoded value as fallback
-			} finally {
-				setThirtyDayCountLoading(false);
-			}
-		}
-
-		// Fetch count of current open opportunities
-		async function fetchOpenOpportunitiesCount() {
-			try {
-				setOpenOpportunitiesLoading(true);
-				const response = await fetch('/api/counts?type=open_opportunities');
-				const result = await response.json();
-
-				if (!result.success) {
-					throw new Error(
-						result.error || 'Failed to fetch open opportunities count'
-					);
-				}
-
-				setOpenOpportunitiesCount(result.count);
-			} catch (err) {
-				console.error('Error fetching open opportunities count:', err);
-				// Fallback to a default value
-				setOpenOpportunitiesCount(24); // Use the previous hardcoded value as fallback
-			} finally {
-				setOpenOpportunitiesLoading(false);
-			}
-		}
-
-		// Fetch recent opportunities
-		async function fetchRecentOpportunities() {
-			try {
-				setRecentOpportunitiesLoading(true);
-				// Sort by created_at, descending order, limit to 5 results
-				const response = await fetch(
-					'/api/funding?sort_by=created_at&sort_direction=desc&page=1&page_size=5'
-				);
-				const result = await response.json();
-
-				if (!result.success) {
-					throw new Error(
-						result.error || 'Failed to fetch recent opportunities'
-					);
-				}
-
-				setRecentOpportunities(result.data);
-			} catch (err) {
-				console.error('Error fetching recent opportunities:', err);
-				setRecentOpportunitiesError(err.message);
-				// Fall back to sample data if API fails
-				setRecentOpportunities(sampleRecentOpportunities);
-			} finally {
-				setRecentOpportunitiesLoading(false);
-			}
-		}
-
-		// Fetch client matches data
-		async function fetchClientMatchData() {
-			try {
-				setClientMatchesLoading(true);
-				const response = await fetch('/api/client-matching/summary');
-				const result = await response.json();
-
-				if (!result.success) {
-					throw new Error(result.error || 'Failed to fetch client matches data');
-				}
-
-				setClientMatchData({
-					clientsWithMatches: result.clientsWithMatches,
-					totalMatches: result.totalMatches,
-					totalClients: result.totalClients,
-				});
-			} catch (err) {
-				console.error('Error fetching client matches data:', err);
-				// Fallback to default values
-				setClientMatchData({
-					clientsWithMatches: 0,
-					totalMatches: 0,
-					totalClients: 0,
-				});
-			} finally {
-				setClientMatchesLoading(false);
-			}
-		}
-
-		// Fetch max available funding
-		async function fetchMaxFunding() {
-			try {
-				setMaxFundingLoading(true);
-				const response = await fetch('/api/funding/total-available');
-				const result = await response.json();
-
-				if (!result.success) {
-					throw new Error(result.error || 'Failed to fetch max funding');
-				}
-
-				setMaxFunding(result.total);
-			} catch (err) {
-				console.error('Error fetching max funding:', err);
-				setMaxFunding(0);
-			} finally {
-				setMaxFundingLoading(false);
-			}
-		}
-
-		// Fetch top client matches
-		async function fetchTopClientMatches() {
-			try {
-				setTopClientMatchesLoading(true);
-				const response = await fetch('/api/client-matching/top-matches');
-				const result = await response.json();
-
-				if (!result.success) {
-					throw new Error(result.error || 'Failed to fetch top matches');
-				}
-
-				setTopClientMatches(result.matches);
-			} catch (err) {
-				console.error('Error fetching top client matches:', err);
-				setTopClientMatches([]);
-			} finally {
-				setTopClientMatchesLoading(false);
-			}
-		}
-
-		// Execute all data fetching functions
-		fetchDeadlines();
-		fetchThirtyDayCount();
-		fetchOpenOpportunitiesCount();
-		fetchRecentOpportunities();
-		fetchClientMatchData();
-		fetchMaxFunding();
-		fetchTopClientMatches();
-	}, []);
+	const { data: topMatchesData, isLoading: topClientMatchesLoading } = useTopClientMatches();
+	const topClientMatches = topMatchesData?.matches ?? [];
 
 	//======================================
 	// MAIN COMPONENT RENDER
