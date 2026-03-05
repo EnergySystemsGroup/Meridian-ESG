@@ -13,23 +13,7 @@
 
 import { createClient } from '@supabase/supabase-js';
 import { TAXONOMIES, getExpandedClientTypes } from '@/lib/constants/taxonomies';
-
-/**
- * Normalize a type string for matching comparison.
- * Handles plurals, case, and common variations.
- *
- * @param {string} type - The type string to normalize
- * @returns {string} Normalized type string
- */
-function normalizeType(type) {
-  if (!type) return '';
-  return type
-    .toLowerCase()
-    .trim()
-    .replace(/ies$/, 'y')           // agencies → agency, utilities → utility
-    .replace(/(ch|sh|ss|x|z)es$/, '$1')  // churches → church, businesses → business (only after ch/sh/ss/x/z)
-    .replace(/s$/, '');             // hospitals → hospital, colleges → college, governments → government
-}
+import { evaluateMatch } from '@/lib/matching/evaluateMatch';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -179,9 +163,13 @@ export async function GET(request) {
  */
 function calculateMatches(client, opportunities) {
   const matches = [];
+  const deps = {
+    hotActivities: TAXONOMIES.ELIGIBLE_ACTIVITIES.hot,
+    getExpandedClientTypes
+  };
 
   for (const opportunity of opportunities) {
-    const matchResult = evaluateMatch(client, opportunity);
+    const matchResult = evaluateMatch(client, opportunity, deps);
 
     if (matchResult.isMatch) {
       matches.push({
@@ -193,99 +181,4 @@ function calculateMatches(client, opportunities) {
   }
 
   return matches;
-}
-
-/**
- * Evaluate if an opportunity matches a client
- */
-function evaluateMatch(client, opportunity) {
-  const details = {
-    locationMatch: false,
-    applicantTypeMatch: false,
-    projectNeedsMatch: false,
-    activitiesMatch: false,
-    matchedProjectNeeds: []
-  };
-
-  // 1. Location Match (using coverage_area_ids for precise geographic matching)
-  if (opportunity.is_national) {
-    // National opportunities match all clients
-    details.locationMatch = true;
-  } else if (client.coverage_area_ids && Array.isArray(client.coverage_area_ids) &&
-             opportunity.coverage_area_ids && Array.isArray(opportunity.coverage_area_ids)) {
-    // Check if client's coverage areas intersect with opportunity's coverage areas
-    // This provides utility-level, county-level, or state-level precision
-    const hasIntersection = client.coverage_area_ids.some(clientAreaId =>
-      opportunity.coverage_area_ids.includes(clientAreaId)
-    );
-    details.locationMatch = hasIntersection;
-  }
-
-  // 2. Applicant Type Match (with synonym + hierarchy expansion)
-  if (opportunity.eligible_applicants && Array.isArray(opportunity.eligible_applicants)) {
-    // Get expanded types for this client (synonyms + child → parent expansion)
-    // e.g., "Municipal Government" expands to ["Municipal Government", "City Government", "Township Government", "Local Governments"]
-    const expandedTypes = getExpandedClientTypes(client.type);
-
-    // Check if any expanded type matches any eligible applicant
-    // Uses normalization for plural/case tolerance
-    details.applicantTypeMatch = opportunity.eligible_applicants.some(applicant => {
-      const normalizedApplicant = normalizeType(applicant);
-      return expandedTypes.some(clientType => {
-        const normalizedClient = normalizeType(clientType);
-        return (
-          normalizedApplicant === normalizedClient ||
-          normalizedApplicant.includes(normalizedClient) ||
-          normalizedClient.includes(normalizedApplicant)
-        );
-      });
-    });
-  }
-
-  // 3. Project Needs Match
-  if (opportunity.eligible_project_types && Array.isArray(opportunity.eligible_project_types) &&
-      client.project_needs && Array.isArray(client.project_needs)) {
-
-    for (const need of client.project_needs) {
-      const hasMatch = opportunity.eligible_project_types.some(projectType =>
-        projectType.toLowerCase().includes(need.toLowerCase()) ||
-        need.toLowerCase().includes(projectType.toLowerCase())
-      );
-
-      if (hasMatch) {
-        details.matchedProjectNeeds.push(need);
-      }
-    }
-
-    details.projectNeedsMatch = details.matchedProjectNeeds.length > 0;
-  }
-
-  // 4. Activities Match (must include "hot" activities for construction/implementation)
-  if (opportunity.eligible_activities && Array.isArray(opportunity.eligible_activities)) {
-    const hotActivities = TAXONOMIES.ELIGIBLE_ACTIVITIES.hot;
-    details.activitiesMatch = opportunity.eligible_activities.some(activity =>
-      hotActivities.some(hotActivity =>
-        activity.toLowerCase().includes(hotActivity.toLowerCase()) ||
-        hotActivity.toLowerCase().includes(activity.toLowerCase())
-      )
-    );
-  }
-
-  // Check if all criteria are met
-  const isMatch = details.locationMatch &&
-                  details.applicantTypeMatch &&
-                  details.projectNeedsMatch &&
-                  details.activitiesMatch;
-
-  // Calculate score (% of project needs matched)
-  let score = 0;
-  if (isMatch && client.project_needs && client.project_needs.length > 0) {
-    score = Math.round((details.matchedProjectNeeds.length / client.project_needs.length) * 100);
-  }
-
-  return {
-    isMatch,
-    score,
-    details
-  };
 }
