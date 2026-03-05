@@ -73,7 +73,55 @@ function validateSchema(obj, schema) {
   return errors;
 }
 
+/**
+ * Inline function replicating the requireRole authorization guard from
+ * utils/supabase/api.js, used in all 4 admin review routes.
+ * Must be kept in sync with the production requireRole + route guard pattern.
+ */
+function checkAdminAuthorization(user, allowedRoles = ['admin']) {
+  if (!user) return { authorized: false, status: 403 };
+  const userRole =
+    user?.app_metadata?.role || user?.user_metadata?.role || user?.role;
+  const authorized = allowedRoles.includes(userRole);
+  return { authorized, status: authorized ? 200 : 403 };
+}
+
 describe('Admin Review API Contracts', () => {
+
+  describe('Admin Route Authorization (403 guard)', () => {
+    test('admin user is authorized', () => {
+      const user = { app_metadata: { role: 'admin' } };
+      const result = checkAdminAuthorization(user);
+      expect(result.authorized).toBe(true);
+      expect(result.status).toBe(200);
+    });
+
+    test('non-admin user gets 403', () => {
+      const user = { app_metadata: { role: 'viewer' } };
+      const result = checkAdminAuthorization(user);
+      expect(result.authorized).toBe(false);
+      expect(result.status).toBe(403);
+    });
+
+    test('unauthenticated user (null) gets 403', () => {
+      const result = checkAdminAuthorization(null);
+      expect(result.authorized).toBe(false);
+      expect(result.status).toBe(403);
+    });
+
+    test('user with no role metadata gets 403', () => {
+      const user = { app_metadata: {}, user_metadata: {} };
+      const result = checkAdminAuthorization(user);
+      expect(result.authorized).toBe(false);
+      expect(result.status).toBe(403);
+    });
+
+    test('user with role only in user_metadata is authorized if admin', () => {
+      const user = { app_metadata: {}, user_metadata: { role: 'admin' } };
+      const result = checkAdminAuthorization(user);
+      expect(result.authorized).toBe(true);
+    });
+  });
 
   describe('Review List Response Schema', () => {
     test('validates complete review item', () => {
