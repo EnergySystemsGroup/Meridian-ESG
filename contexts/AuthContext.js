@@ -112,6 +112,12 @@ export function AuthProvider({ children }) {
 		signInWithMicrosoft,
 		signOut,
 		isAuthenticated: !!user,
+		// Admin role derived from Supabase app_metadata (set via service_role only)
+		// In dev mode, NEXT_PUBLIC_DEV_ADMIN=true simulates admin without real metadata
+		isAdmin:
+			(process.env.NODE_ENV === 'development' &&
+				process.env.NEXT_PUBLIC_DEV_ADMIN === 'true') ||
+			user?.app_metadata?.role === 'admin',
 		// Helper to get user display name from Microsoft user metadata
 		displayName:
 			user?.user_metadata?.full_name ||
