@@ -97,6 +97,21 @@ export async function GET(request) {
 
     console.log(`[ClientMatching] Found ${opportunities.length} opportunities to match against`);
 
+    // Batch-fetch all hidden matches in a single query (eliminates N+1 pattern)
+    const { data: allHiddenMatches, error: hiddenError } = await supabase
+      .from('hidden_matches')
+      .select('client_id, opportunity_id');
+
+    if (hiddenError) {
+      console.error('[ClientMatching] Error fetching hidden matches:', hiddenError);
+    }
+
+    const hiddenMap = new Map();
+    for (const h of allHiddenMatches || []) {
+      if (!hiddenMap.has(h.client_id)) hiddenMap.set(h.client_id, new Set());
+      hiddenMap.get(h.client_id).add(h.opportunity_id);
+    }
+
     // Calculate matches for each client
     const results = {};
 
@@ -110,17 +125,7 @@ export async function GET(request) {
         state_code: client.state_code
       });
 
-      // Fetch hidden matches for this client
-      const { data: hiddenMatches, error: hiddenError } = await supabase
-        .from('hidden_matches')
-        .select('opportunity_id')
-        .eq('client_id', client.id);
-
-      if (hiddenError) {
-        console.error('[ClientMatching] Error fetching hidden matches:', hiddenError);
-      }
-
-      const hiddenOpportunityIds = new Set((hiddenMatches || []).map(h => h.opportunity_id));
+      const hiddenOpportunityIds = hiddenMap.get(client.id) || new Set();
       const hiddenCount = hiddenOpportunityIds.size;
 
       // Filter out hidden opportunities before matching

@@ -9,6 +9,7 @@
 import { createClient } from '@supabase/supabase-js';
 import { geocodeAddress } from '@/lib/services/geocoder';
 import { NextResponse } from 'next/server';
+import { computeMatchesForClient } from '@/lib/matching/computeMatches';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -179,6 +180,11 @@ export async function PUT(request, { params }) {
     }
 
     console.log(`[API] ✅ Updated client: ${client.id}`);
+
+    // Fire-and-forget: recompute matches for the updated client
+    computeMatchesForClient(supabase, client.id).catch(err =>
+      console.error('[API] Background match computation failed:', err.message)
+    );
 
     return NextResponse.json({
       success: true,
