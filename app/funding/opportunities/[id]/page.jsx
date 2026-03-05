@@ -30,6 +30,7 @@ import {
 	Star,
 } from 'lucide-react';
 import { calculateDaysLeft, determineStatus } from '@/lib/supabase';
+import { useAuth } from '@/contexts/AuthContext';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import {
@@ -62,6 +63,7 @@ export default function OpportunityDetailPage() {
 	const queryClient = useQueryClient();
 	const { data: opportunity, isLoading, error } = useOpportunityDetail(params.id);
 
+	const { isAdmin } = useAuth();
 	const trackedIds = useTrackedOpportunitiesStore((s) => s.trackedOpportunityIds);
 	const toggleTracked = useTrackedOpportunitiesStore((s) => s.toggleTracked);
 	const isTracked = (id) => trackedIds.includes(id);
@@ -263,7 +265,10 @@ export default function OpportunityDetailPage() {
 							<CardContent className='px-6 pt-2 pb-6'>
 								<Tabs defaultValue='overview' className='w-full'>
 									<TabsList className='mb-6 bg-neutral-100/70 dark:bg-neutral-900/30 p-1 rounded-lg'>
-										{['overview', 'eligibility', 'relevance', 'admin'].map((tab) => (
+										{(isAdmin
+										? ['overview', 'eligibility', 'relevance', 'admin']
+										: ['overview', 'eligibility']
+									).map((tab) => (
 											<TabsTrigger
 												key={tab}
 												value={tab}
