@@ -190,8 +190,8 @@ export async function requireRole(request, allowedRoles) {
     return { authorized: false, user: null, supabase, response };
   }
   
-  // Check user role (assumes role is stored in user metadata or custom claims)
-  const userRole = user.user_metadata?.role || user.role;
+  // Check user role — app_metadata is the secure source (server-only settable)
+  const userRole = user.app_metadata?.role || user.user_metadata?.role || user.role;
   const authorized = allowedRoles.includes(userRole);
   
   return { authorized, user, supabase, response };
