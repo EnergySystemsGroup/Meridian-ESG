@@ -64,6 +64,14 @@ export async function middleware(request) {
 		return NextResponse.redirect(loginUrl);
 	}
 
+	// Admin routes require admin role
+	if (request.nextUrl.pathname.startsWith('/admin')) {
+		const userRole = user.app_metadata?.role;
+		if (userRole !== 'admin') {
+			return NextResponse.redirect(new URL('/', request.url));
+		}
+	}
+
 	// User is authenticated - allow access
 	return supabaseResponse;
 }

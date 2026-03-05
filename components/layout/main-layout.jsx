@@ -11,8 +11,9 @@ import {
 	NavigationMenuTrigger,
 } from '@/components/ui/navigation-menu';
 import { cn } from '@/lib/utils';
-import { HelpCircle, Moon, Sun } from 'lucide-react';
+import { HelpCircle, Moon, Sun, Shield } from 'lucide-react';
 import { useTheme } from '@/components/theme-provider';
+import { useAuth } from '@/contexts/AuthContext';
 import { UserMenu } from '@/components/auth/UserMenu';
 import HelpModal from '@/components/help/HelpModal';
 
@@ -106,6 +107,8 @@ const MainLayout = ({ children }) => {
 };
 
 const MainNav = () => {
+	const { isAdmin } = useAuth();
+
 	// Memoize common navigation class styles
 	const navLinkClasses = cn(
 		'inline-flex h-9 md:h-10 items-center justify-center rounded-md px-3 md:px-4 py-2 text-sm font-medium transition-all duration-200',
@@ -168,6 +171,26 @@ const MainNav = () => {
 						Timeline
 					</ClientSideActiveLink>
 				</NavigationMenuItem>
+				{isAdmin && (
+					<NavigationMenuItem>
+						<NavigationMenuTrigger className={cn(navLinkClasses, 'group')}>
+							<Shield size={14} className='mr-1' />
+							Admin
+						</NavigationMenuTrigger>
+						<NavigationMenuContent>
+							<ul className='grid w-[400px] gap-4 p-6 md:w-[500px] md:grid-cols-2 lg:w-[600px] animate-in fade-in-50 zoom-in-95 duration-200'>
+								{adminNavItems.map((item) => (
+									<ListItem
+										key={item.title}
+										title={item.title}
+										href={item.href}>
+										{item.description}
+									</ListItem>
+								))}
+							</ul>
+						</NavigationMenuContent>
+					</NavigationMenuItem>
+				)}
 			</NavigationMenuList>
 		</NavigationMenu>
 	);
@@ -216,6 +239,29 @@ const fundingNavItems = [
 		title: 'Map View',
 		href: '/map',
 		description: 'Visualize funding opportunities by geographic region.',
+	},
+];
+
+const adminNavItems = [
+	{
+		title: 'Review Queue',
+		href: '/admin/review',
+		description: 'Review and approve pending funding opportunities.',
+	},
+	{
+		title: 'Funding Sources',
+		href: '/admin/funding-sources',
+		description: 'Manage API sources and processing configurations.',
+	},
+	{
+		title: 'Verify Data',
+		href: '/admin/funding/verify',
+		description: 'Verify funding data integrity and accuracy.',
+	},
+	{
+		title: 'Debug',
+		href: '/admin/debug',
+		description: 'Debug tools and system diagnostics.',
 	},
 ];
 
