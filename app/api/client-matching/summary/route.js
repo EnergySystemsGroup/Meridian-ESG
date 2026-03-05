@@ -9,6 +9,7 @@
 
 import { createClient } from '@supabase/supabase-js';
 import { TAXONOMIES, getExpandedClientTypes } from '@/lib/constants/taxonomies';
+import { evaluateMatch } from '@/lib/matching/evaluateMatch';
 
 const supabase = createClient(
 	process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -146,90 +147,17 @@ export async function GET() {
  */
 function countMatches(client, opportunities) {
 	let count = 0;
+	const deps = {
+		hotActivities: TAXONOMIES.ELIGIBLE_ACTIVITIES.hot,
+		getExpandedClientTypes
+	};
 
 	for (const opportunity of opportunities) {
-		if (evaluateMatch(client, opportunity)) {
+		const result = evaluateMatch(client, opportunity, deps);
+		if (result.isMatch) {
 			count++;
 		}
 	}
 
 	return count;
-}
-
-/**
- * Evaluate if an opportunity matches a client
- * Uses same logic as top-matches API for consistency
- */
-function evaluateMatch(client, opportunity) {
-	// 1. Location Match
-	let locationMatch = false;
-	if (opportunity.is_national) {
-		locationMatch = true;
-	} else if (
-		client.coverage_area_ids &&
-		Array.isArray(client.coverage_area_ids) &&
-		opportunity.coverage_area_ids &&
-		Array.isArray(opportunity.coverage_area_ids)
-	) {
-		locationMatch = client.coverage_area_ids.some((clientAreaId) =>
-			opportunity.coverage_area_ids.includes(clientAreaId)
-		);
-	}
-
-	if (!locationMatch) return false;
-
-	// 2. Applicant Type Match
-	let applicantTypeMatch = false;
-	if (opportunity.eligible_applicants && Array.isArray(opportunity.eligible_applicants)) {
-		const expandedTypes = getExpandedClientTypes(client.type);
-		applicantTypeMatch = opportunity.eligible_applicants.some((applicant) =>
-			expandedTypes.some(
-				(clientType) =>
-					applicant.toLowerCase() === clientType.toLowerCase() ||
-					applicant.toLowerCase().includes(clientType.toLowerCase()) ||
-					clientType.toLowerCase().includes(applicant.toLowerCase())
-			)
-		);
-	}
-
-	if (!applicantTypeMatch) return false;
-
-	// 3. Project Needs Match
-	let projectNeedsMatch = false;
-	if (
-		opportunity.eligible_project_types &&
-		Array.isArray(opportunity.eligible_project_types) &&
-		client.project_needs &&
-		Array.isArray(client.project_needs)
-	) {
-		for (const need of client.project_needs) {
-			const hasMatch = opportunity.eligible_project_types.some(
-				(projectType) =>
-					projectType.toLowerCase().includes(need.toLowerCase()) ||
-					need.toLowerCase().includes(projectType.toLowerCase())
-			);
-
-			if (hasMatch) {
-				projectNeedsMatch = true;
-				break;
-			}
-		}
-	}
-
-	if (!projectNeedsMatch) return false;
-
-	// 4. Activities Match
-	let activitiesMatch = false;
-	if (opportunity.eligible_activities && Array.isArray(opportunity.eligible_activities)) {
-		const hotActivities = TAXONOMIES.ELIGIBLE_ACTIVITIES.hot;
-		activitiesMatch = opportunity.eligible_activities.some((activity) =>
-			hotActivities.some(
-				(hotActivity) =>
-					activity.toLowerCase().includes(hotActivity.toLowerCase()) ||
-					hotActivity.toLowerCase().includes(activity.toLowerCase())
-			)
-		);
-	}
-
-	return activitiesMatch;
 }

@@ -1,11 +1,10 @@
 /**
  * Client Match Evaluation Critical Tests
  *
- * Tests the full 4-criteria match evaluation logic used by:
- * - /api/client-matching/summary (countMatches / evaluateMatch)
- * - /api/client-matching/top-matches (calculateMatches / evaluateMatch with scoring)
+ * Tests the full 4-criteria match evaluation logic used by all client-matching routes
+ * via the shared module: lib/matching/evaluateMatch.js
  *
- * Both routes share the same match criteria; top-matches adds scoring.
+ * All routes now use identical logic with normalizeType for plural tolerance.
  */
 
 import { describe, test, expect } from 'vitest';
@@ -82,8 +81,23 @@ function getExpandedClientTypes(clientType) {
 }
 
 /**
- * Full 4-criteria evaluateMatch (boolean version, used by summary route).
- * Mirrors: app/api/client-matching/summary/route.js lines 163-234
+ * Normalize a type string for matching comparison.
+ * Mirrors: lib/matching/evaluateMatch.js normalizeType()
+ */
+function normalizeType(type) {
+	if (!type) return '';
+	return type
+		.toLowerCase()
+		.trim()
+		.replace(/ies$/, 'y')
+		.replace(/(ch|sh|ss|x|z)es$/, '$1')
+		.replace(/s$/, '');
+}
+
+/**
+ * Full 4-criteria evaluateMatch (boolean version).
+ * Mirrors: lib/matching/evaluateMatch.js (shared module)
+ * Now includes normalizeType for applicant type matching (consistent across all routes).
  */
 function evaluateMatch(client, opportunity) {
 	// 1. Location Match
@@ -102,18 +116,21 @@ function evaluateMatch(client, opportunity) {
 	}
 	if (!locationMatch) return false;
 
-	// 2. Applicant Type Match
+	// 2. Applicant Type Match (with normalizeType)
 	let applicantTypeMatch = false;
 	if (opportunity.eligible_applicants && Array.isArray(opportunity.eligible_applicants)) {
 		const expandedTypes = getExpandedClientTypes(client.type);
-		applicantTypeMatch = opportunity.eligible_applicants.some(applicant =>
-			expandedTypes.some(
-				clientType =>
-					applicant.toLowerCase() === clientType.toLowerCase() ||
-					applicant.toLowerCase().includes(clientType.toLowerCase()) ||
-					clientType.toLowerCase().includes(applicant.toLowerCase())
-			)
-		);
+		applicantTypeMatch = opportunity.eligible_applicants.some(applicant => {
+			const normalizedApplicant = normalizeType(applicant);
+			return expandedTypes.some(clientType => {
+				const normalizedClient = normalizeType(clientType);
+				return (
+					normalizedApplicant === normalizedClient ||
+					normalizedApplicant.includes(normalizedClient) ||
+					normalizedClient.includes(normalizedApplicant)
+				);
+			});
+		});
 	}
 	if (!applicantTypeMatch) return false;
 
@@ -155,8 +172,9 @@ function evaluateMatch(client, opportunity) {
 }
 
 /**
- * evaluateMatch with scoring (used by top-matches route).
- * Mirrors: app/api/client-matching/top-matches/route.js lines 177-267
+ * evaluateMatch with scoring.
+ * Mirrors: lib/matching/evaluateMatch.js (shared module)
+ * Now includes normalizeType for applicant type matching.
  */
 function evaluateMatchWithScore(client, opportunity) {
 	const details = {
@@ -179,17 +197,20 @@ function evaluateMatchWithScore(client, opportunity) {
 		);
 	}
 
-	// 2. Applicant Type
+	// 2. Applicant Type (with normalizeType)
 	if (opportunity.eligible_applicants && Array.isArray(opportunity.eligible_applicants)) {
 		const expandedTypes = getExpandedClientTypes(client.type);
-		details.applicantTypeMatch = opportunity.eligible_applicants.some(applicant =>
-			expandedTypes.some(
-				ct =>
-					applicant.toLowerCase() === ct.toLowerCase() ||
-					applicant.toLowerCase().includes(ct.toLowerCase()) ||
-					ct.toLowerCase().includes(applicant.toLowerCase())
-			)
-		);
+		details.applicantTypeMatch = opportunity.eligible_applicants.some(applicant => {
+			const normalizedApplicant = normalizeType(applicant);
+			return expandedTypes.some(ct => {
+				const normalizedCt = normalizeType(ct);
+				return (
+					normalizedApplicant === normalizedCt ||
+					normalizedApplicant.includes(normalizedCt) ||
+					normalizedCt.includes(normalizedApplicant)
+				);
+			});
+		});
 	}
 
 	// 3. Project Needs
@@ -461,5 +482,50 @@ describe('Client Match Evaluation with Scoring (Top-Matches Route Logic)', () =>
 			expect(top5).toHaveLength(5);
 			expect(top5[0].match_count).toBe(10);
 		});
+	});
+});
+
+describe('normalizeType', () => {
+	test('strips -ies plural to -y', () => {
+		expect(normalizeType('agencies')).toBe('agency');
+		expect(normalizeType('utilities')).toBe('utility');
+		expect(normalizeType('counties')).toBe('county');
+	});
+
+	test('strips -es after ch/sh/ss/x/z', () => {
+		expect(normalizeType('churches')).toBe('church');
+		// "businesses" → "business" (ss rule) → "busines" (trailing s rule)
+		// Both "businesses" and "business" normalize to "busines", enabling matching
+		expect(normalizeType('businesses')).toBe('busines');
+		expect(normalizeType('business')).toBe('busines');
+	});
+
+	test('strips trailing -s', () => {
+		expect(normalizeType('hospitals')).toBe('hospital');
+		expect(normalizeType('governments')).toBe('government');
+		expect(normalizeType('colleges')).toBe('college');
+	});
+
+	test('lowercases and trims', () => {
+		expect(normalizeType('  Municipal Government  ')).toBe('municipal government');
+		expect(normalizeType('LOCAL GOVERNMENTS')).toBe('local government');
+	});
+
+	test('handles null/empty', () => {
+		expect(normalizeType(null)).toBe('');
+		expect(normalizeType(undefined)).toBe('');
+		expect(normalizeType('')).toBe('');
+	});
+
+	test('singular types pass through unchanged', () => {
+		expect(normalizeType('school')).toBe('school');
+		expect(normalizeType('municipality')).toBe('municipality');
+	});
+
+	test('normalizeType enables plural-tolerant applicant matching', () => {
+		// "Local Governments" (opportunity) should match "Local Government" (client type)
+		const applicant = 'Local Governments';
+		const clientType = 'Local Government';
+		expect(normalizeType(applicant)).toBe(normalizeType(clientType));
 	});
 });
