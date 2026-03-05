@@ -1,9 +1,14 @@
 import { NextResponse } from 'next/server';
-import { createAdminClient } from '@/utils/supabase/api';
+import { createAdminClient, requireRole } from '@/utils/supabase/api';
 
 // GET /api/admin/review - Fetch opportunities for admin review
 export async function GET(request) {
 	try {
+		const { authorized } = await requireRole(request, ['admin']);
+		if (!authorized) {
+			return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+		}
+
 		const { supabase } = createAdminClient(request);
 		const { searchParams } = new URL(request.url);
 

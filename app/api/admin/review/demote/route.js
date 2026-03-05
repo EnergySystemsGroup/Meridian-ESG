@@ -1,9 +1,14 @@
 import { NextResponse } from 'next/server';
-import { createAdminClient } from '@/utils/supabase/api';
+import { createAdminClient, requireRole } from '@/utils/supabase/api';
 
 // POST /api/admin/review/demote - Demote a promoted/null record to rejected
 export async function POST(request) {
 	try {
+		const { authorized } = await requireRole(request, ['admin']);
+		if (!authorized) {
+			return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+		}
+
 		const { supabase } = createAdminClient(request);
 		const { id, reviewed_by, review_notes } = await request.json();
 

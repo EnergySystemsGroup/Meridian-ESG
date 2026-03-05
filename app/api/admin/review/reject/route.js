@@ -1,9 +1,14 @@
 import { NextResponse } from 'next/server';
-import { createAdminClient } from '@/utils/supabase/api';
+import { createAdminClient, requireRole } from '@/utils/supabase/api';
 
 // POST /api/admin/review/reject - Bulk reject pending_review records
 export async function POST(request) {
 	try {
+		const { authorized } = await requireRole(request, ['admin']);
+		if (!authorized) {
+			return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+		}
+
 		const { supabase } = createAdminClient(request);
 		const { ids, reviewed_by, review_notes } = await request.json();
 
