@@ -6,6 +6,7 @@
  */
 
 import { createClient } from '@supabase/supabase-js';
+import { requireAuth } from '@/utils/supabase/api';
 import { geocodeAddress } from '@/lib/services/geocoder';
 import { NextResponse } from 'next/server';
 import { computeMatchesForClient } from '@/lib/matching/computeMatches';
@@ -181,6 +182,18 @@ export async function POST(request) {
       );
     }
 
+    // Attempt to identify authenticated user (soft auth — doesn't block if not found)
+    let ownerId = null;
+    try {
+      const { user } = await requireAuth(request);
+      if (user?.id) {
+        ownerId = user.id;
+        console.log(`[API] Authenticated user: ${user.id}`);
+      }
+    } catch (authErr) {
+      console.log('[API] No authenticated user session (proceeding without owner_id)');
+    }
+
     const clientData = {
       name,
       type,
@@ -196,7 +209,8 @@ export async function POST(request) {
       contact: body.contact || null,
       description: body.description || null,
       dac: body.dac || false,
-      salesforce_id: body.salesforce_id || null
+      salesforce_id: body.salesforce_id || null,
+      owner_id: ownerId
     };
 
     // Log the data being inserted
@@ -247,6 +261,17 @@ export async function POST(request) {
     }
 
     console.log(`[API] ✅ Created client: ${client.id}`);
+
+    // Create client_users association if authenticated
+    if (ownerId) {
+      const { error: assocError } = await supabase
+        .from('client_users')
+        .insert({ client_id: client.id, user_id: ownerId });
+
+      if (assocError) {
+        console.error('[API] Failed to create client_users association:', assocError.message);
+      }
+    }
 
     // Fire-and-forget: compute matches for the new client
     computeMatchesForClient(supabase, client.id, { trigger: 'client_created' }).catch(err =>

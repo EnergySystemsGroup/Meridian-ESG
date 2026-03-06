@@ -26,6 +26,7 @@ const clientSchema = {
   match_count: 'number|null',
   is_dac: 'boolean|null',
   budget_range: 'string|null',
+  owner_id: 'string|null',
   created_at: 'string',
   updated_at: 'string|null',
 };
@@ -98,6 +99,7 @@ describe('Clients API Contract', () => {
         match_count: 5,
         is_dac: false,
         budget_range: '$1M - $10M',
+        owner_id: 'user-abc-123',
         created_at: '2024-01-15T10:00:00Z',
         updated_at: '2024-03-01T15:30:00Z',
       };
@@ -119,6 +121,7 @@ describe('Clients API Contract', () => {
         match_count: null,
         is_dac: null,
         budget_range: null,
+        owner_id: null,
         created_at: '2024-01-15T10:00:00Z',
         updated_at: null,
       };
