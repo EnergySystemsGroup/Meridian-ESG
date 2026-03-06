@@ -262,14 +262,24 @@ export async function POST(request) {
 
     console.log(`[API] ✅ Created client: ${client.id}`);
 
-    // Create client_users association if authenticated
-    if (ownerId) {
+    // Create client_users associations
+    const assignedUsers = Array.isArray(body.assigned_users) && body.assigned_users.length > 0
+      ? body.assigned_users
+      : (ownerId ? [ownerId] : []);
+
+    if (assignedUsers.length > 0) {
+      const rows = assignedUsers.map((userId) => ({
+        client_id: client.id,
+        user_id: userId,
+      }));
       const { error: assocError } = await supabase
         .from('client_users')
-        .insert({ client_id: client.id, user_id: ownerId });
+        .insert(rows);
 
       if (assocError) {
-        console.error('[API] Failed to create client_users association:', assocError.message);
+        console.error('[API] Failed to create client_users associations:', assocError.message);
+      } else {
+        console.log(`[API] Created ${rows.length} client_users association(s)`);
       }
     }
 

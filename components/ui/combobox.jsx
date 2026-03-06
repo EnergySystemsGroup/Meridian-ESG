@@ -31,6 +31,13 @@ export function Combobox({
   const [open, setOpen] = React.useState(false)
   const [searchValue, setSearchValue] = React.useState("")
 
+  // Normalize options: support both string[] and {value, label}[]
+  const normalizedOptions = React.useMemo(() => {
+    return options.map((opt) =>
+      typeof opt === 'string' ? { value: opt, label: opt } : opt
+    )
+  }, [options])
+
   // Normalize value to always be array internally for easier handling
   const selectedValues = React.useMemo(() => {
     if (multiple) {
@@ -38,6 +45,12 @@ export function Combobox({
     }
     return value ? [value] : []
   }, [value, multiple])
+
+  // Lookup label for a stored value
+  const getLabelForValue = React.useCallback((val) => {
+    const found = normalizedOptions.find((o) => o.value === val)
+    return found ? found.label : val
+  }, [normalizedOptions])
 
   const handleSelect = (currentValue) => {
     if (multiple) {
@@ -66,8 +79,8 @@ export function Combobox({
     if (multiple) {
       return `${selectedValues.length} selected`
     }
-    return selectedValues[0]
-  }, [selectedValues, placeholder, multiple])
+    return getLabelForValue(selectedValues[0])
+  }, [selectedValues, placeholder, multiple, getLabelForValue])
 
   return (
     <div className={cn("w-full", className)}>
@@ -88,7 +101,7 @@ export function Combobox({
                     key={val}
                     className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-primary/10 text-primary text-sm"
                   >
-                    {val}
+                    {getLabelForValue(val)}
                     <div
                       role="button"
                       tabIndex={0}
@@ -103,7 +116,7 @@ export function Combobox({
                           handleRemove(val)
                         }
                       }}
-                      aria-label={`Remove ${val}`}
+                      aria-label={`Remove ${getLabelForValue(val)}`}
                       className="cursor-pointer hover:opacity-70 focus:outline-none focus:ring-1 focus:ring-primary rounded-sm p-0.5 -m-0.5"
                     >
                       <X className="h-3 w-3" />
@@ -127,25 +140,24 @@ export function Combobox({
             <CommandList>
               <CommandEmpty>{emptyMessage}</CommandEmpty>
               <CommandGroup>
-                {options
-                  .filter((option) => {
-                    // Manual filtering since we disabled cmdk's filter
+                {normalizedOptions
+                  .filter((opt) => {
                     if (!searchValue) return true
-                    return option.toLowerCase().includes(searchValue.toLowerCase())
+                    return opt.label.toLowerCase().includes(searchValue.toLowerCase())
                   })
-                  .map((option) => {
-                    const isSelected = selectedValues.includes(option)
+                  .map((opt) => {
+                    const isSelected = selectedValues.includes(opt.value)
                     return (
                       <CommandItem
-                        key={option}
-                        value={option}
+                        key={opt.value}
+                        value={opt.value}
                         onSelect={(selectedValue) => {
                           // cmdk lowercases values, so find the actual option
-                          const actualOption = options.find(
-                            opt => opt.toLowerCase() === selectedValue.toLowerCase()
+                          const actualOpt = normalizedOptions.find(
+                            (o) => o.value.toLowerCase() === selectedValue.toLowerCase()
                           )
-                          if (actualOption) {
-                            handleSelect(actualOption)
+                          if (actualOpt) {
+                            handleSelect(actualOpt.value)
                           }
                         }}
                       >
@@ -155,7 +167,7 @@ export function Combobox({
                             isSelected ? "opacity-100" : "opacity-0"
                           )}
                         />
-                        {option}
+                        {opt.label}
                       </CommandItem>
                     )
                   })}
