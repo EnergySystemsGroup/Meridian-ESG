@@ -21,11 +21,14 @@ import {
 	useTopClientMatches,
 } from '@/lib/hooks/queries/useClients';
 import { useFundingCount } from '@/lib/hooks/queries/useFunding';
+import { useClientsFilterStore } from '@/lib/stores/clientsFilterStore';
 
 export default function Home() {
 	//======================================
 	// DATA FETCHING (TanStack Query)
 	//======================================
+	const filterUserId = useClientsFilterStore((s) => s.filterUserId);
+	const apiUserId = filterUserId === null ? undefined : filterUserId;
 	const { data: deadlinesData, isLoading: deadlinesLoading, error: deadlinesError } = useUpcomingDeadlines(5);
 	const upcomingDeadlines = deadlinesData?.data ?? sampleUpcomingDeadlines;
 
@@ -38,7 +41,7 @@ export default function Home() {
 	const { data: recentOppData, isLoading: recentOpportunitiesLoading, error: recentOpportunitiesError } = useRecentOpportunities();
 	const recentOpportunities = recentOppData?.data ?? sampleRecentOpportunities;
 
-	const { data: clientMatchRaw, isLoading: clientMatchesLoading } = useClientMatchSummary();
+	const { data: clientMatchRaw, isLoading: clientMatchesLoading } = useClientMatchSummary({ userId: apiUserId });
 	const clientMatchData = clientMatchRaw
 		? { clientsWithMatches: clientMatchRaw.clientsWithMatches, totalMatches: clientMatchRaw.totalMatches, totalClients: clientMatchRaw.totalClients }
 		: { clientsWithMatches: 0, totalMatches: 0, totalClients: 0 };
@@ -46,7 +49,7 @@ export default function Home() {
 	const { data: fundingData, isLoading: maxFundingLoading } = useFundingCount();
 	const maxFunding = fundingData?.total ?? 0;
 
-	const { data: topMatchesData, isLoading: topClientMatchesLoading } = useTopClientMatches();
+	const { data: topMatchesData, isLoading: topClientMatchesLoading } = useTopClientMatches({ userId: apiUserId });
 	const topClientMatches = topMatchesData?.matches ?? [];
 
 	//======================================
