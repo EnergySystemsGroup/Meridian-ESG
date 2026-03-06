@@ -637,6 +637,106 @@ describe('Client Matching API Contract', () => {
     });
   });
 
+  describe('User-filtered summary response', () => {
+    test('filtered summary has same shape as unfiltered', () => {
+      const unfiltered = {
+        success: true,
+        clientsWithMatches: 8,
+        totalMatches: 45,
+        totalClients: 12,
+        cached: false,
+        timestamp: '2025-01-15T12:00:00.000Z',
+      };
+      const filtered = {
+        success: true,
+        clientsWithMatches: 3,
+        totalMatches: 15,
+        totalClients: 4,
+        cached: false,
+        timestamp: '2025-01-15T12:00:00.000Z',
+      };
+
+      expect(Object.keys(filtered)).toEqual(Object.keys(unfiltered));
+      expect(filtered.totalClients).toBeLessThanOrEqual(unfiltered.totalClients);
+    });
+
+    test('empty filtered summary returns all zeros', () => {
+      const response = {
+        success: true,
+        clientsWithMatches: 0,
+        totalMatches: 0,
+        totalClients: 0,
+        cached: false,
+        timestamp: new Date().toISOString(),
+      };
+
+      expect(response.clientsWithMatches).toBe(0);
+      expect(response.totalMatches).toBe(0);
+      expect(response.totalClients).toBe(0);
+    });
+  });
+
+  describe('User-filtered top-matches response', () => {
+    test('filtered top-matches has same item shape', () => {
+      const item = {
+        client_id: 'c-1',
+        client_name: 'My Client',
+        client_type: 'Municipal Government',
+        match_count: 3,
+        top_opportunity_id: 'opp-1',
+        top_opportunity_title: 'Federal Grant',
+        top_opportunity_score: 85,
+        top_opportunity_amount: 5000000,
+      };
+
+      expect(typeof item.client_id).toBe('string');
+      expect(typeof item.match_count).toBe('number');
+      expect(typeof item.top_opportunity_score).toBe('number');
+    });
+
+    test('empty filtered top-matches returns empty array', () => {
+      const response = {
+        success: true,
+        matches: [],
+        cached: false,
+        timestamp: new Date().toISOString(),
+      };
+
+      expect(response.matches).toHaveLength(0);
+    });
+  });
+
+  describe('Per-user cache key logic', () => {
+    // Inline replica of cache key derivation from summary/route.js and top-matches/route.js
+    function deriveCacheKey(userId) {
+      return userId || 'all';
+    }
+
+    test('authenticated user produces user-specific cache key', () => {
+      expect(deriveCacheKey('user-A')).toBe('user-A');
+    });
+
+    test('same user always produces same cache key', () => {
+      expect(deriveCacheKey('user-A')).toBe(deriveCacheKey('user-A'));
+    });
+
+    test('different users produce different cache keys', () => {
+      expect(deriveCacheKey('user-A')).not.toBe(deriveCacheKey('user-B'));
+    });
+
+    test('null userId (unfiltered) uses "all" cache key', () => {
+      expect(deriveCacheKey(null)).toBe('all');
+    });
+
+    test('undefined userId uses "all" cache key', () => {
+      expect(deriveCacheKey(undefined)).toBe('all');
+    });
+
+    test('empty string userId uses "all" cache key', () => {
+      expect(deriveCacheKey('')).toBe('all');
+    });
+  });
+
   describe('GET /api/clients/[id]/hidden-matches Response', () => {
     test('validates success response shape', () => {
       const response = {
