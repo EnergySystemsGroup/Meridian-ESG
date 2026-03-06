@@ -34,9 +34,9 @@ const queryKeys = {
 	},
 	clientMatching: {
 		all: ['clientMatching'],
-		matches: (clientId) => ['clientMatching', 'matches', clientId],
-		summary: () => ['clientMatching', 'summary'],
-		topMatches: () => ['clientMatching', 'topMatches'],
+		matches: (clientId, userId) => ['clientMatching', 'matches', clientId, userId],
+		summary: (userId) => ['clientMatching', 'summary', userId],
+		topMatches: (userId) => ['clientMatching', 'topMatches', userId],
 	},
 	dashboard: {
 		all: ['dashboard'],
@@ -144,24 +144,27 @@ function buildCategoryMappingConfig(options = {}) {
 }
 
 function buildClientMatchesConfig(clientId, options = {}) {
+	const { userId, ...rest } = options;
 	return {
-		queryKey: queryKeys.clientMatching.matches(clientId),
+		queryKey: queryKeys.clientMatching.matches(clientId, userId),
 		hasPlaceholderData: true,
-		...options,
+		...rest,
 	};
 }
 
 function buildClientMatchSummaryConfig(options = {}) {
+	const { userId, ...rest } = options;
 	return {
-		queryKey: queryKeys.clientMatching.summary(),
-		...options,
+		queryKey: queryKeys.clientMatching.summary(userId),
+		...rest,
 	};
 }
 
 function buildTopClientMatchesConfig(options = {}) {
+	const { userId, ...rest } = options;
 	return {
-		queryKey: queryKeys.clientMatching.topMatches(),
-		...options,
+		queryKey: queryKeys.clientMatching.topMatches(userId),
+		...rest,
 	};
 }
 
@@ -348,23 +351,43 @@ describe('useCategoryMapping select transform', () => {
 describe('useClients hooks', () => {
 	test('useClientMatches uses clientMatching.matches key', () => {
 		const config = buildClientMatchesConfig('client-1');
-		expect(config.queryKey).toEqual(['clientMatching', 'matches', 'client-1']);
+		expect(config.queryKey).toEqual(['clientMatching', 'matches', 'client-1', undefined]);
 		expect(config.hasPlaceholderData).toBe(true);
 	});
 
 	test('useClientMatches with undefined clientId fetches all', () => {
 		const config = buildClientMatchesConfig(undefined);
-		expect(config.queryKey).toEqual(['clientMatching', 'matches', undefined]);
+		expect(config.queryKey).toEqual(['clientMatching', 'matches', undefined, undefined]);
+	});
+
+	test('useClientMatches with userId scopes cache per user', () => {
+		const config = buildClientMatchesConfig(undefined, { userId: 'user-abc' });
+		expect(config.queryKey).toEqual(['clientMatching', 'matches', undefined, 'user-abc']);
+	});
+
+	test('useClientMatches with "all" userId fetches all clients', () => {
+		const config = buildClientMatchesConfig(undefined, { userId: 'all' });
+		expect(config.queryKey).toEqual(['clientMatching', 'matches', undefined, 'all']);
 	});
 
 	test('useClientMatchSummary uses clientMatching.summary key', () => {
 		const config = buildClientMatchSummaryConfig();
-		expect(config.queryKey).toEqual(['clientMatching', 'summary']);
+		expect(config.queryKey).toEqual(['clientMatching', 'summary', undefined]);
+	});
+
+	test('useClientMatchSummary with userId scopes cache', () => {
+		const config = buildClientMatchSummaryConfig({ userId: 'user-abc' });
+		expect(config.queryKey).toEqual(['clientMatching', 'summary', 'user-abc']);
 	});
 
 	test('useTopClientMatches uses clientMatching.topMatches key', () => {
 		const config = buildTopClientMatchesConfig();
-		expect(config.queryKey).toEqual(['clientMatching', 'topMatches']);
+		expect(config.queryKey).toEqual(['clientMatching', 'topMatches', undefined]);
+	});
+
+	test('useTopClientMatches with userId scopes cache', () => {
+		const config = buildTopClientMatchesConfig({ userId: 'all' });
+		expect(config.queryKey).toEqual(['clientMatching', 'topMatches', 'all']);
 	});
 });
 

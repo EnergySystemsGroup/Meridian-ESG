@@ -29,12 +29,14 @@ import {
 } from '@/components/ui/popover';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
-import { AlertTriangle, Loader2, Search, Plus, Filter, X, ChevronDown } from 'lucide-react';
+import { AlertTriangle, Loader2, Search, Plus, Filter, X, ChevronDown, Users } from 'lucide-react';
 import ClientProfileModal from '@/components/clients/ClientProfileModal';
 import ClientForm from '@/components/clients/ClientForm';
 import Link from 'next/link';
 import { generateClientTags, formatMatchScore, getMatchScoreBgColor } from '@/lib/utils/clientMatching';
 import { useClientMatches } from '@/lib/hooks/queries/useClients';
+import { useUsers } from '@/lib/hooks/queries/useUsers';
+import { useAuth } from '@/contexts/AuthContext';
 import { useClientsFilterStore, ITEMS_PER_PAGE } from '@/lib/stores/clientsFilterStore';
 import { queryKeys } from '@/lib/queries/queryKeys';
 
@@ -50,20 +52,32 @@ function ClientsPageContent() {
 	const searchParams = useSearchParams();
 	const router = useRouter();
 	const queryClient = useQueryClient();
-
-	// TanStack Query for data fetching
-	const { data: clientMatches = {}, isLoading: loading, error: queryError } = useClientMatches(undefined, {
-		select: (data) => data?.results || {},
-	});
-	const error = queryError?.message || null;
+	const { user } = useAuth();
 
 	// Zustand store for filter/sort state
 	const {
 		searchQuery, sortBy, filterTypes, filterStates,
-		filterHasMatches, filterDac, displayCount,
+		filterHasMatches, filterDac, filterUserId, displayCount,
 		setSearchQuery, setSortBy, setFilterTypes, setFilterStates,
-		setFilterHasMatches, setFilterDac, setDisplayCount, loadMore,
+		setFilterHasMatches, setFilterDac, setFilterUserId, setDisplayCount, loadMore,
 	} = useClientsFilterStore();
+
+	// Resolve the user_id param to send to the API
+	// null (default) = don't send param → API defaults to current user
+	// 'all' = send user_id=all → no filtering
+	// uuid = send user_id=<uuid> → specific user
+	const apiUserId = filterUserId === null ? undefined : filterUserId;
+
+	// TanStack Query for data fetching
+	const { data: clientMatches = {}, isLoading: loading, error: queryError } = useClientMatches(undefined, {
+		userId: apiUserId,
+		select: (data) => data?.results || {},
+	});
+	const error = queryError?.message || null;
+
+	// Fetch workspace users for the filter dropdown
+	const { data: usersData } = useUsers();
+	const allUsers = usersData?.users || [];
 
 	// UI-only local state
 	const [selectedClient, setSelectedClient] = useState(null);
@@ -82,6 +96,7 @@ function ClientsPageContent() {
 		const states = searchParams.get('states')?.split(',').filter(Boolean);
 		const hasMatches = searchParams.get('hasMatches');
 		const dac = searchParams.get('dac');
+		const userId = searchParams.get('userId');
 
 		if (q) setSearchQuery(q);
 		if (sort) setSortBy(sort);
@@ -89,14 +104,19 @@ function ClientsPageContent() {
 		if (states?.length) setFilterStates(states);
 		if (hasMatches) setFilterHasMatches(hasMatches);
 		if (dac) setFilterDac(dac);
-	}, [searchParams, setSearchQuery, setSortBy, setFilterTypes, setFilterStates, setFilterHasMatches, setFilterDac]);
+		if (userId) setFilterUserId(userId);
+	}, [searchParams, setSearchQuery, setSortBy, setFilterTypes, setFilterStates, setFilterHasMatches, setFilterDac, setFilterUserId]);
 
 	// Update URL when filters change
 	const updateURL = useCallback((updates) => {
 		const params = new URLSearchParams(searchParams.toString());
 
 		Object.entries(updates).forEach(([key, value]) => {
-			if (value === '' || value === 'all' || (Array.isArray(value) && value.length === 0)) {
+			// userId uses 'all' as a meaningful value (not default), so don't delete it
+			const isDefault = key === 'userId'
+				? (value === '' || value === null || value === undefined)
+				: (value === '' || value === 'all' || (Array.isArray(value) && value.length === 0));
+			if (isDefault) {
 				params.delete(key);
 			} else if (Array.isArray(value)) {
 				params.set(key, value.join(','));
@@ -207,12 +227,20 @@ function ClientsPageContent() {
 	const hasMore = displayCount < filteredAndSortedClients.length;
 	const totalCount = Object.values(clientMatches).length;
 
-	// Active filter count
+	// Active filter count (user filter counted separately since it has its own UI)
 	const activeFilterCount =
 		filterTypes.length +
 		filterStates.length +
 		(filterHasMatches !== 'all' ? 1 : 0) +
 		(filterDac !== 'all' ? 1 : 0);
+
+	// Resolve user filter display label
+	const userFilterLabel = useMemo(() => {
+		if (filterUserId === null) return 'My Clients';
+		if (filterUserId === 'all') return 'All Clients';
+		const found = allUsers.find(u => u.id === filterUserId);
+		return found?.display_name || 'Unknown User';
+	}, [filterUserId, allUsers]);
 
 	const clearAllFilters = () => {
 		setFilterTypes([]);
@@ -221,6 +249,7 @@ function ClientsPageContent() {
 		setFilterDac('all');
 		setDisplayCount(ITEMS_PER_PAGE);
 		updateURL({ types: [], states: [], hasMatches: 'all', dac: 'all' });
+		// Note: user filter is not cleared by "Clear All Filters" — it's a separate scope control
 	};
 
 	const removeFilter = (type, value) => {
@@ -396,6 +425,32 @@ function ClientsPageContent() {
 								</div>
 							</PopoverContent>
 						</Popover>
+						<Select
+							value={filterUserId === null ? '__me__' : filterUserId}
+							onValueChange={(value) => {
+								const newUserId = value === '__me__' ? null : value;
+								setFilterUserId(newUserId);
+								setDisplayCount(ITEMS_PER_PAGE);
+								updateURL({ userId: newUserId === null ? '' : newUserId });
+							}}
+						>
+							<SelectTrigger className='w-[160px]'>
+								<Users className='h-4 w-4 mr-2 flex-shrink-0' />
+								<SelectValue>{userFilterLabel}</SelectValue>
+							</SelectTrigger>
+							<SelectContent>
+								<SelectItem value='__me__'>My Clients</SelectItem>
+								<SelectItem value='all'>All Clients</SelectItem>
+								{allUsers
+									.filter(u => u.id !== user?.id)
+									.map(u => (
+										<SelectItem key={u.id} value={u.id}>
+											{u.display_name}
+										</SelectItem>
+									))
+								}
+							</SelectContent>
+						</Select>
 						<Button onClick={() => setShowAddClientModal(true)}>
 							<Plus className='h-4 w-4 mr-2' />
 							Add Client
@@ -499,6 +554,9 @@ function ClientsPageContent() {
 						Showing {displayedClients.length} of {filteredAndSortedClients.length} clients
 						{filteredAndSortedClients.length !== totalCount && (
 							<span> (filtered from {totalCount} total)</span>
+						)}
+						{filterUserId !== 'all' && (
+							<span className='text-gray-400'> &middot; {userFilterLabel}</span>
 						)}
 					</div>
 				)}
