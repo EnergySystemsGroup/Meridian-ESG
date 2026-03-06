@@ -199,6 +199,39 @@ describe('Clients API Contract', () => {
     });
   });
 
+  describe('Filtered Client List Response', () => {
+    test('filtered response has same shape as unfiltered', () => {
+      // When user_id filtering is applied, the response shape is identical
+      const unfilteredResponse = {
+        success: true,
+        clients: [
+          { id: 'client-1', name: 'City of SF', type: 'Municipal Government' },
+          { id: 'client-2', name: 'City of LA', type: 'Municipal Government' },
+        ],
+        count: 2,
+      };
+
+      const filteredResponse = {
+        success: true,
+        clients: [
+          { id: 'client-1', name: 'City of SF', type: 'Municipal Government' },
+        ],
+        count: 1,
+      };
+
+      expect(Object.keys(filteredResponse)).toEqual(Object.keys(unfilteredResponse));
+      expect(filteredResponse.success).toBe(true);
+      expect(Array.isArray(filteredResponse.clients)).toBe(true);
+      expect(filteredResponse.count).toBe(filteredResponse.clients.length);
+    });
+
+    test('empty filtered result returns empty array with count 0', () => {
+      const response = { success: true, clients: [], count: 0 };
+      expect(response.clients).toHaveLength(0);
+      expect(response.count).toBe(0);
+    });
+  });
+
   describe('Error Responses', () => {
     test('client not found (404)', () => {
       const response = {

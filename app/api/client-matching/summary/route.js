@@ -10,38 +10,52 @@
  */
 
 import { createClient } from '@supabase/supabase-js';
+import { getFilteredClientIds } from '@/lib/utils/clientFiltering';
 
 const supabase = createClient(
 	process.env.NEXT_PUBLIC_SUPABASE_URL,
 	process.env.SUPABASE_SECRET_KEY
 );
 
-// Simple in-memory cache
-let cache = {
-	data: null,
-	timestamp: null,
-	ttl: 5 * 60 * 1000, // 5 minutes
-};
+// Per-user in-memory cache (keyed by userId or 'all')
+const cache = new Map();
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
-export async function GET() {
+export async function GET(request) {
 	try {
+		// Resolve user-based filtering
+		const { clientIds, userId } = await getFilteredClientIds(supabase, request);
+		const cacheKey = userId || 'all';
+
 		// Check cache
 		const now = Date.now();
-		if (cache.data && cache.timestamp && now - cache.timestamp < cache.ttl) {
+		const cached = cache.get(cacheKey);
+		if (cached && now - cached.timestamp < CACHE_TTL) {
 			return Response.json({
 				success: true,
-				...cache.data,
+				...cached.data,
 				cached: true,
 				timestamp: new Date().toISOString(),
 			});
 		}
 
-		console.log('[ClientMatchingSummary] Calculating match statistics from client_matches');
+		console.log(`[ClientMatchingSummary] Calculating match statistics (user: ${cacheKey})`);
 
-		// 1. Count total clients
-		const { count: totalClients, error: clientError } = await supabase
-			.from('clients')
-			.select('*', { count: 'exact', head: true });
+		// Short-circuit: user has no assigned clients
+		if (clientIds !== null && clientIds.length === 0) {
+			const result = { clientsWithMatches: 0, totalMatches: 0, totalClients: 0 };
+			cache.set(cacheKey, { data: result, timestamp: now });
+			return Response.json({
+				success: true, ...result, cached: false, timestamp: new Date().toISOString(),
+			});
+		}
+
+		// 1. Count total clients (filtered)
+		let clientQuery = supabase.from('clients').select('*', { count: 'exact', head: true });
+		if (clientIds !== null) {
+			clientQuery = clientQuery.in('id', clientIds);
+		}
+		const { count: totalClients, error: clientError } = await clientQuery;
 
 		if (clientError) {
 			console.error('[ClientMatchingSummary] Error counting clients:', clientError);
@@ -51,12 +65,17 @@ export async function GET() {
 			);
 		}
 
-		// 2. Fetch all non-stale match pairs
-		const { data: matchRows, error: matchError } = await supabase
+		// 2. Fetch non-stale match pairs (filtered)
+		let matchQuery = supabase
 			.from('client_matches')
 			.select('client_id, opportunity_id')
 			.eq('is_stale', false)
 			.limit(10000);
+
+		if (clientIds !== null) {
+			matchQuery = matchQuery.in('client_id', clientIds);
+		}
+		const { data: matchRows, error: matchError } = await matchQuery;
 
 		if (matchError) {
 			console.error('[ClientMatchingSummary] Error fetching matches:', matchError);
@@ -66,11 +85,16 @@ export async function GET() {
 			);
 		}
 
-		// 3. Fetch hidden matches to exclude
-		const { data: hiddenRows, error: hiddenError } = await supabase
+		// 3. Fetch hidden matches to exclude (filtered)
+		let hiddenQuery = supabase
 			.from('hidden_matches')
 			.select('client_id, opportunity_id')
 			.limit(10000);
+
+		if (clientIds !== null) {
+			hiddenQuery = hiddenQuery.in('client_id', clientIds);
+		}
+		const { data: hiddenRows, error: hiddenError } = await hiddenQuery;
 
 		if (hiddenError) {
 			console.error('[ClientMatchingSummary] Error fetching hidden matches:', hiddenError);
@@ -98,8 +122,7 @@ export async function GET() {
 		};
 
 		// Cache the result
-		cache.data = result;
-		cache.timestamp = now;
+		cache.set(cacheKey, { data: result, timestamp: now });
 
 		console.log(
 			`[ClientMatchingSummary] ${result.clientsWithMatches}/${result.totalClients} clients with matches, ${totalMatches} total`

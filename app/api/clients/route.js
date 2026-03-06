@@ -10,6 +10,7 @@ import { requireAuth } from '@/utils/supabase/api';
 import { geocodeAddress } from '@/lib/services/geocoder';
 import { NextResponse } from 'next/server';
 import { computeMatchesForClient } from '@/lib/matching/computeMatches';
+import { getFilteredClientIds } from '@/lib/utils/clientFiltering';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -22,10 +23,22 @@ const supabase = createClient(
  */
 export async function GET(request) {
   try {
-    const { data: clients, error } = await supabase
+    // Resolve user-based filtering (defaults to current user's clients)
+    const { clientIds } = await getFilteredClientIds(supabase, request);
+
+    let query = supabase
       .from('clients')
       .select('*')
       .order('created_at', { ascending: false });
+
+    if (clientIds !== null) {
+      if (clientIds.length === 0) {
+        return NextResponse.json({ success: true, clients: [], count: 0 });
+      }
+      query = query.in('id', clientIds);
+    }
+
+    const { data: clients, error } = await query;
 
     if (error) throw error;
 
