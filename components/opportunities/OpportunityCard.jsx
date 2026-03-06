@@ -200,6 +200,25 @@ const OpportunityCard = ({ opportunity, badgeOverride }) => {
 			  })()
 			: null;
 
+	// Determine if this is a new match (is_new flag set AND matched within last 7 days)
+	const isNewMatch =
+		opportunity.is_new === true &&
+		opportunity.first_matched_at &&
+		(new Date() - new Date(opportunity.first_matched_at)) / (1000 * 60 * 60 * 24) <= 7;
+
+
+
+	const matchedDaysAgo =
+		isNewMatch && opportunity.first_matched_at
+			? (() => {
+					const today = new Date();
+					const matchedDate = new Date(opportunity.first_matched_at);
+					today.setHours(0, 0, 0, 0);
+					matchedDate.setHours(0, 0, 0, 0);
+					return Math.round((today - matchedDate) / (1000 * 60 * 60 * 24));
+			  })()
+			: null;
+
 	// Get relevance score if available - handle both old and new scoring formats
 	const relevanceScore = opportunity.relevance_score ||
 		opportunity.scoring?.finalScore ||
@@ -250,31 +269,39 @@ const OpportunityCard = ({ opportunity, badgeOverride }) => {
 					)}
 				</div>
 
-				{/* NEW badge if applicable - updated to match category pill styling */}
-				{isNew && (
-					<div className='mt-2'>
-						<span className='text-xs font-medium px-2 py-1 rounded bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'>
-							NEW •{' '}
-							{addedDaysAgo === 0
-								? 'Today'
-								: addedDaysAgo === 1
-								? 'Yesterday'
-								: `${addedDaysAgo} days ago`}
-						</span>
-					</div>
-				)}
-
-				{/* NEWLY UPDATED badge if applicable */}
-				{isNewlyUpdated && (
-					<div className='mt-2'>
-						<span className='text-xs font-medium px-2 py-1 rounded bg-sky-100 text-sky-700 dark:bg-sky-900/30 dark:text-sky-300'>
-							UPDATED •{' '}
-							{updatedDaysAgo === 0
-								? 'Today'
-								: updatedDaysAgo === 1
-								? 'Yesterday'
-								: `${updatedDaysAgo} days ago`}
-						</span>
+				{/* Badge row: NEW, UPDATED, and NEW MATCH badges side by side */}
+				{(isNew || isNewlyUpdated || isNewMatch) && (
+					<div className='mt-2 flex flex-wrap gap-1.5'>
+						{isNew && (
+							<span className='text-xs font-medium px-2 py-1 rounded bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'>
+								NEW •{' '}
+								{addedDaysAgo === 0
+									? 'Today'
+									: addedDaysAgo === 1
+									? 'Yesterday'
+									: `${addedDaysAgo} days ago`}
+							</span>
+						)}
+						{isNewlyUpdated && (
+							<span className='text-xs font-medium px-2 py-1 rounded bg-sky-100 text-sky-700 dark:bg-sky-900/30 dark:text-sky-300'>
+								UPDATED •{' '}
+								{updatedDaysAgo === 0
+									? 'Today'
+									: updatedDaysAgo === 1
+									? 'Yesterday'
+									: `${updatedDaysAgo} days ago`}
+							</span>
+						)}
+						{isNewMatch && (
+							<span className='text-xs font-medium px-2 py-1 rounded bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'>
+								NEW MATCH •{' '}
+								{matchedDaysAgo === 0
+									? 'Today'
+									: matchedDaysAgo === 1
+									? 'Yesterday'
+									: `${matchedDaysAgo} days ago`}
+							</span>
+						)}
 					</div>
 				)}
 			</CardHeader>

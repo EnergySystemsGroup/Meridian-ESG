@@ -15,7 +15,9 @@ const supabase = createClient(
 /**
  * POST /api/export/client-matches-pdf
  *
- * Server-side PDF generation for larger exports
+ * Server-side PDF generation for larger exports.
+ * Reads from persisted client_matches table instead of making
+ * a nested HTTP call to /api/client-matching.
  *
  * Body: {
  *   clientId: string,
@@ -34,7 +36,7 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Client ID is required' }, { status: 400 });
     }
 
-    // Fetch client data
+    // 1. Fetch client data
     const { data: client, error: clientError } = await supabase
       .from('clients')
       .select('*')
@@ -48,37 +50,46 @@ export async function POST(request) {
       );
     }
 
-    // Fetch matches using the existing matching API logic
-    const matchesResponse = await fetch(
-      `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/client-matching?clientId=${clientId}`,
-      {
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      }
-    );
+    // 2. Fetch persisted matches with opportunity details
+    const { data: matchRows, error: matchError } = await supabase
+      .from('client_matches')
+      .select(`
+        score, match_details,
+        opportunity:funding_opportunities!inner(*)
+      `)
+      .eq('client_id', clientId)
+      .eq('is_stale', false)
+      .order('score', { ascending: false })
+      .limit(10000);
 
-    if (!matchesResponse.ok) {
+    if (matchError) {
       return NextResponse.json(
         { error: 'Failed to fetch client matches' },
         { status: 500 }
       );
     }
 
-    const matchesData = await matchesResponse.json();
+    // 3. Exclude hidden matches
+    const { data: hiddenRows } = await supabase
+      .from('hidden_matches')
+      .select('opportunity_id')
+      .eq('client_id', clientId)
+      .limit(10000);
 
-    if (!matchesData.success) {
-      return NextResponse.json(
-        { error: matchesData.error || 'Failed to fetch matches' },
-        { status: 500 }
-      );
-    }
+    const hiddenIds = new Set((hiddenRows || []).map(h => h.opportunity_id));
 
-    const matches = matchesData.results?.matches || [];
+    // 4. Transform to shape expected by PDF component
+    const matches = (matchRows || [])
+      .filter(row => !hiddenIds.has(row.opportunity.id))
+      .map(row => ({
+        ...row.opportunity,
+        score: row.score,
+        matchDetails: row.match_details
+      }));
 
-    // Generate PDF
+    // 5. Generate PDF
     const pdfDoc = React.createElement(ClientMatchesPDF, {
-      client: matchesData.results?.client || client,
+      client,
       matches,
       options,
     });

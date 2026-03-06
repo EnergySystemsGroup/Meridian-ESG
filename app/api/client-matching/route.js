@@ -1,159 +1,49 @@
 /**
  * Client-Opportunity Matching API
  *
- * Matches clients from the database against real opportunities
- * Returns match scores based on location, applicant type, project needs, and activities
+ * Reads pre-computed matches from the client_matches table (populated by
+ * the background match computation job). JOINs funding_opportunities for
+ * full opportunity details.
  *
- * Location matching uses coverage_area_ids for precise geographic matching:
- * - Utility-level precision (e.g., PG&E vs SCE)
- * - County-level precision (e.g., Marin County)
- * - State-level matching
- * - National opportunities match all clients
+ * Much faster than the previous approach which recomputed matches from
+ * scratch on every request using O(n*m) evaluateMatch() calls.
  */
 
 import { createClient } from '@supabase/supabase-js';
-import { TAXONOMIES, getExpandedClientTypes } from '@/lib/constants/taxonomies';
-import { evaluateMatch } from '@/lib/matching/evaluateMatch';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
   process.env.SUPABASE_SECRET_KEY
 );
 
+/**
+ * Transform a raw client_matches row (with joined opportunity) into the
+ * response shape the frontend expects.
+ */
+function transformMatch(row) {
+  const opp = row.opportunity;
+  return {
+    ...opp,
+    source_type: opp.funding_sources?.type || null,
+    funding_sources: undefined,
+    score: row.score,
+    matchDetails: row.match_details,
+    is_new: row.is_new,
+    first_matched_at: row.first_matched_at
+  };
+}
+
 export async function GET(request) {
   try {
     const { searchParams } = new URL(request.url);
     const clientId = searchParams.get('clientId');
 
-    console.log(`[ClientMatching] Starting matching process${clientId ? ` for client: ${clientId}` : ' for all clients'}`);
-
-    // Get clients from database
-    let clientQuery = supabase.from('clients').select('*');
+    console.log(`[ClientMatching] Reading persisted matches${clientId ? ` for client: ${clientId}` : ' for all clients'}`);
 
     if (clientId) {
-      clientQuery = clientQuery.eq('id', clientId);
+      return handleSingleClient(clientId);
     }
-
-    const { data: clientsToProcess, error: clientError } = await clientQuery;
-
-    if (clientError) {
-      console.error('[ClientMatching] Error fetching clients:', clientError);
-      return Response.json({ error: 'Failed to fetch clients' }, { status: 500 });
-    }
-
-    if (!clientsToProcess || clientsToProcess.length === 0) {
-      return Response.json({ error: 'Client not found' }, { status: 404 });
-    }
-
-    // Get all open opportunities with source type from funding_sources (exclude closed)
-    const { data: rawOpportunities, error } = await supabase
-      .from('funding_opportunities')
-      .select(`
-        id, title, eligible_locations, eligible_applicants,
-        eligible_project_types, eligible_activities, is_national,
-        minimum_award, maximum_award, total_funding_available,
-        close_date, agency_name, categories, relevance_score,
-        status, created_at, program_overview, program_insights,
-        funding_sources(type)
-      `)
-      .neq('status', 'closed')
-      .or('promotion_status.is.null,promotion_status.eq.promoted');
-
-    if (error) {
-      console.error('[ClientMatching] Database error:', error);
-      return Response.json({ error: 'Failed to fetch opportunities' }, { status: 500 });
-    }
-
-    // Flatten funding_sources.type to source_type on each opportunity
-    const opportunities = (rawOpportunities || []).map(opp => ({
-      ...opp,
-      source_type: opp.funding_sources?.type || null,
-      funding_sources: undefined // Remove nested object
-    }));
-
-    // Get opportunity coverage areas separately (since we need to join)
-    const { data: opportunityCoverageAreas, error: coverageError } = await supabase
-      .from('opportunity_coverage_areas')
-      .select('opportunity_id, coverage_area_id');
-
-    if (coverageError) {
-      console.error('[ClientMatching] Error fetching coverage areas:', coverageError);
-      return Response.json({ error: 'Failed to fetch opportunity coverage areas' }, { status: 500 });
-    }
-
-    // Build lookup map: opportunityId -> coverageAreaIds[]
-    const opportunityCoverageMap = {};
-    for (const link of opportunityCoverageAreas || []) {
-      if (!opportunityCoverageMap[link.opportunity_id]) {
-        opportunityCoverageMap[link.opportunity_id] = [];
-      }
-      opportunityCoverageMap[link.opportunity_id].push(link.coverage_area_id);
-    }
-
-    // Attach coverage area IDs to each opportunity
-    for (const opp of opportunities) {
-      opp.coverage_area_ids = opportunityCoverageMap[opp.id] || [];
-    }
-
-    console.log(`[ClientMatching] Found ${opportunities.length} opportunities to match against`);
-
-    // Batch-fetch all hidden matches in a single query (eliminates N+1 pattern)
-    const { data: allHiddenMatches, error: hiddenError } = await supabase
-      .from('hidden_matches')
-      .select('client_id, opportunity_id');
-
-    if (hiddenError) {
-      console.error('[ClientMatching] Error fetching hidden matches:', hiddenError);
-    }
-
-    const hiddenMap = new Map();
-    for (const h of allHiddenMatches || []) {
-      if (!hiddenMap.has(h.client_id)) hiddenMap.set(h.client_id, new Set());
-      hiddenMap.get(h.client_id).add(h.opportunity_id);
-    }
-
-    // Calculate matches for each client
-    const results = {};
-
-    for (const client of clientsToProcess) {
-      console.log(`[ClientMatching] Processing client: ${client.name}`);
-      console.log(`[ClientMatching] Client details:`, {
-        type: client.type,
-        project_needs: client.project_needs,
-        coverage_area_count: client.coverage_area_ids?.length || 0,
-        city: client.city,
-        state_code: client.state_code
-      });
-
-      const hiddenOpportunityIds = hiddenMap.get(client.id) || new Set();
-      const hiddenCount = hiddenOpportunityIds.size;
-
-      // Filter out hidden opportunities before matching
-      const visibleOpportunities = opportunities.filter(opp => !hiddenOpportunityIds.has(opp.id));
-
-      if (hiddenCount > 0) {
-        console.log(`[ClientMatching] Filtered out ${hiddenCount} hidden matches for ${client.name}`);
-      }
-
-      const matches = calculateMatches(client, visibleOpportunities);
-
-      results[client.id] = {
-        client,
-        matches: matches.sort((a, b) => b.score - a.score), // Sort by score descending
-        matchCount: matches.length,
-        hiddenCount, // Include hidden count in response
-        topMatches: matches.slice(0, 3) // Top 3 for card display
-      };
-
-      console.log(`[ClientMatching] Found ${matches.length} matches for ${client.name}`);
-    }
-
-    return Response.json({
-      success: true,
-      results: clientId ? results[clientId] : results,
-      timestamp: new Date().toISOString()
-    });
-
+    return handleAllClients();
   } catch (error) {
     console.error('[ClientMatching] API error:', error);
     return Response.json({
@@ -164,26 +54,161 @@ export async function GET(request) {
 }
 
 /**
- * Calculate matches between a client and opportunities
+ * Single-client mode: returns matches for one client.
  */
-function calculateMatches(client, opportunities) {
-  const matches = [];
-  const deps = {
-    hotActivities: TAXONOMIES.ELIGIBLE_ACTIVITIES.hot,
-    getExpandedClientTypes
-  };
+async function handleSingleClient(clientId) {
+  // 1. Fetch the client
+  const { data: client, error: clientError } = await supabase
+    .from('clients')
+    .select('*')
+    .eq('id', clientId)
+    .single();
 
-  for (const opportunity of opportunities) {
-    const matchResult = evaluateMatch(client, opportunity, deps);
-
-    if (matchResult.isMatch) {
-      matches.push({
-        ...opportunity,
-        score: matchResult.score,
-        matchDetails: matchResult.details
-      });
-    }
+  if (clientError || !client) {
+    console.error('[ClientMatching] Error fetching client:', clientError);
+    return Response.json({ error: 'Client not found' }, { status: 404 });
   }
 
-  return matches;
+  // 2. Fetch hidden opportunity IDs for this client
+  const { data: hiddenRows, error: hiddenError } = await supabase
+    .from('hidden_matches')
+    .select('opportunity_id')
+    .eq('client_id', clientId)
+    .limit(10000);
+
+  if (hiddenError) {
+    console.error('[ClientMatching] Error fetching hidden matches:', hiddenError);
+  }
+
+  const hiddenIds = new Set((hiddenRows || []).map(h => h.opportunity_id));
+
+  // 3. Query persisted matches with opportunity details
+  const { data: matchRows, error: matchError } = await supabase
+    .from('client_matches')
+    .select(`
+      score, match_details, is_new, first_matched_at,
+      opportunity:funding_opportunities!inner(
+        *, funding_sources(type)
+      )
+    `)
+    .eq('client_id', clientId)
+    .eq('is_stale', false)
+    .limit(10000);
+
+  if (matchError) {
+    console.error('[ClientMatching] Error fetching matches:', matchError);
+    return Response.json({ error: 'Failed to fetch matches' }, { status: 500 });
+  }
+
+  // 4. Filter hidden and transform
+  const matches = (matchRows || [])
+    .filter(row => !hiddenIds.has(row.opportunity.id))
+    .map(transformMatch)
+    .sort((a, b) => b.score - a.score);
+
+  const result = {
+    client,
+    matches,
+    matchCount: matches.length,
+    hiddenCount: hiddenIds.size,
+    topMatches: matches.slice(0, 3)
+  };
+
+  console.log(`[ClientMatching] Found ${matches.length} matches for ${client.name}`);
+
+  return Response.json({
+    success: true,
+    results: result,
+    timestamp: new Date().toISOString()
+  });
+}
+
+/**
+ * All-clients mode: returns matches grouped by client.
+ */
+async function handleAllClients() {
+  // 1. Fetch all clients
+  const { data: clients, error: clientError } = await supabase
+    .from('clients')
+    .select('*');
+
+  if (clientError) {
+    console.error('[ClientMatching] Error fetching clients:', clientError);
+    return Response.json({ error: 'Failed to fetch clients' }, { status: 500 });
+  }
+
+  if (!clients || clients.length === 0) {
+    return Response.json({ error: 'No clients found' }, { status: 404 });
+  }
+
+  // 2. Fetch all non-stale matches with opportunity details
+  const { data: matchRows, error: matchError } = await supabase
+    .from('client_matches')
+    .select(`
+      client_id, score, match_details, is_new, first_matched_at,
+      opportunity:funding_opportunities!inner(
+        *, funding_sources(type)
+      )
+    `)
+    .eq('is_stale', false)
+    .limit(10000);
+
+  if (matchError) {
+    console.error('[ClientMatching] Error fetching matches:', matchError);
+    return Response.json({ error: 'Failed to fetch matches' }, { status: 500 });
+  }
+
+  // 3. Batch-fetch all hidden matches
+  const { data: allHiddenMatches, error: hiddenError } = await supabase
+    .from('hidden_matches')
+    .select('client_id, opportunity_id')
+    .limit(10000);
+
+  if (hiddenError) {
+    console.error('[ClientMatching] Error fetching hidden matches:', hiddenError);
+  }
+
+  const hiddenMap = new Map();
+  for (const h of allHiddenMatches || []) {
+    if (!hiddenMap.has(h.client_id)) hiddenMap.set(h.client_id, new Set());
+    hiddenMap.get(h.client_id).add(h.opportunity_id);
+  }
+
+  // 4. Group matches by client, filter hidden, transform
+  const matchesByClient = new Map();
+  for (const row of matchRows || []) {
+    const cid = row.client_id;
+    const hiddenIds = hiddenMap.get(cid);
+    if (hiddenIds && hiddenIds.has(row.opportunity.id)) continue;
+
+    if (!matchesByClient.has(cid)) matchesByClient.set(cid, []);
+    matchesByClient.get(cid).push(transformMatch(row));
+  }
+
+  // 5. Build results keyed by client ID
+  const results = {};
+
+  for (const client of clients) {
+    const clientMatches = matchesByClient.get(client.id) || [];
+    clientMatches.sort((a, b) => b.score - a.score);
+
+    const hiddenIds = hiddenMap.get(client.id);
+    const hiddenCount = hiddenIds ? hiddenIds.size : 0;
+
+    results[client.id] = {
+      client,
+      matches: clientMatches,
+      matchCount: clientMatches.length,
+      hiddenCount,
+      topMatches: clientMatches.slice(0, 3)
+    };
+  }
+
+  console.log(`[ClientMatching] Returned matches for ${clients.length} clients`);
+
+  return Response.json({
+    success: true,
+    results,
+    timestamp: new Date().toISOString()
+  });
 }

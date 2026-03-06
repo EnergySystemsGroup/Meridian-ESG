@@ -3,11 +3,11 @@
  *
  * Returns the top 5 clients with their best opportunity matches for dashboard display.
  * Each result includes the client name, their best matching opportunity, and match score.
+ *
+ * Reads from persisted client_matches table instead of recomputing.
  */
 
 import { createClient } from '@supabase/supabase-js';
-import { TAXONOMIES, getExpandedClientTypes } from '@/lib/constants/taxonomies';
-import { evaluateMatch } from '@/lib/matching/evaluateMatch';
 
 const supabase = createClient(
 	process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -34,88 +34,81 @@ export async function GET() {
 			});
 		}
 
-		console.log('[TopMatches] Calculating top client matches');
+		console.log('[TopMatches] Reading top client matches from client_matches');
 
-		// Get all clients
-		const { data: clients, error: clientError } = await supabase
-			.from('clients')
-			.select('*');
+		// 1. Fetch all non-stale matches with client and opportunity details
+		const { data: matchRows, error: matchError } = await supabase
+			.from('client_matches')
+			.select(`
+				client_id, score, opportunity_id,
+				client:clients!inner(id, name, type),
+				opportunity:funding_opportunities!inner(id, title, maximum_award)
+			`)
+			.eq('is_stale', false)
+			.limit(10000);
 
-		if (clientError) {
-			console.error('[TopMatches] Error fetching clients:', clientError);
+		if (matchError) {
+			console.error('[TopMatches] Error fetching matches:', matchError);
 			return Response.json(
-				{ success: false, error: 'Failed to fetch clients' },
+				{ success: false, error: 'Failed to fetch matches' },
 				{ status: 500 }
 			);
 		}
 
-		// Get all open opportunities
-		const { data: rawOpportunities, error: oppError } = await supabase
-			.from('funding_opportunities')
-			.select(
-				`
-				id, title, eligible_locations, eligible_applicants,
-				eligible_project_types, eligible_activities, is_national,
-				maximum_award, close_date, status
-			`
-			)
-			.neq('status', 'closed')
-			.or('promotion_status.is.null,promotion_status.eq.promoted');
+		// 2. Fetch hidden matches to exclude
+		const { data: hiddenRows, error: hiddenError } = await supabase
+			.from('hidden_matches')
+			.select('client_id, opportunity_id')
+			.limit(10000);
 
-		if (oppError) {
-			console.error('[TopMatches] Error fetching opportunities:', oppError);
-			return Response.json(
-				{ success: false, error: 'Failed to fetch opportunities' },
-				{ status: 500 }
-			);
+		if (hiddenError) {
+			console.error('[TopMatches] Error fetching hidden matches:', hiddenError);
 		}
 
-		// Get opportunity coverage areas
-		const { data: opportunityCoverageAreas, error: coverageError } = await supabase
-			.from('opportunity_coverage_areas')
-			.select('opportunity_id, coverage_area_id');
+		const hiddenSet = new Set(
+			(hiddenRows || []).map(h => `${h.client_id}:${h.opportunity_id}`)
+		);
 
-		if (coverageError) {
-			console.error('[TopMatches] Error fetching coverage areas:', coverageError);
-		}
+		// 3. Group by client, filter hidden
+		const clientMap = {};
+		for (const row of matchRows || []) {
+			const key = `${row.client_id}:${row.opportunity_id}`;
+			if (hiddenSet.has(key)) continue;
 
-		// Build coverage map
-		const opportunityCoverageMap = {};
-		for (const link of opportunityCoverageAreas || []) {
-			if (!opportunityCoverageMap[link.opportunity_id]) {
-				opportunityCoverageMap[link.opportunity_id] = [];
+			const cid = row.client_id;
+			if (!clientMap[cid]) {
+				clientMap[cid] = {
+					client_id: row.client.id,
+					client_name: row.client.name,
+					client_type: row.client.type,
+					matches: [],
+				};
 			}
-			opportunityCoverageMap[link.opportunity_id].push(link.coverage_area_id);
+			clientMap[cid].matches.push({
+				id: row.opportunity.id,
+				title: row.opportunity.title,
+				score: row.score,
+				maximum_award: row.opportunity.maximum_award,
+			});
 		}
 
-		// Attach coverage areas to opportunities
-		const opportunities = (rawOpportunities || []).map((opp) => ({
-			...opp,
-			coverage_area_ids: opportunityCoverageMap[opp.id] || [],
-		}));
+		// 4. Build top-matches list
+		const clientResults = Object.values(clientMap).map(entry => {
+			entry.matches.sort((a, b) => b.score - a.score);
+			const top = entry.matches[0];
+			return {
+				client_id: entry.client_id,
+				client_name: entry.client_name,
+				client_type: entry.client_type,
+				match_count: entry.matches.length,
+				top_opportunity_id: top.id,
+				top_opportunity_title: top.title,
+				top_opportunity_score: top.score,
+				top_opportunity_amount: top.maximum_award,
+			};
+		});
 
-		// Calculate matches for each client
-		const clientResults = [];
-
-		for (const client of clients || []) {
-			const matches = calculateMatches(client, opportunities);
-			const topMatch = matches[0]; // Best match by score
-
-			if (topMatch) {
-				clientResults.push({
-					client_id: client.id,
-					client_name: client.name,
-					client_type: client.type,
-					match_count: matches.length,
-					top_opportunity_id: topMatch.id,
-					top_opportunity_title: topMatch.title,
-					top_opportunity_score: topMatch.score,
-					top_opportunity_amount: topMatch.maximum_award,
-				});
-			}
-		}
-
-		// Sort by match count (clients with most matches first), then by top score
+		// 5. Sort by match count (desc), then top score (desc), take top 5
 		clientResults.sort((a, b) => {
 			if (b.match_count !== a.match_count) {
 				return b.match_count - a.match_count;
@@ -123,7 +116,6 @@ export async function GET() {
 			return b.top_opportunity_score - a.top_opportunity_score;
 		});
 
-		// Take top 5
 		const topMatches = clientResults.slice(0, 5);
 
 		// Cache the result
@@ -149,29 +141,4 @@ export async function GET() {
 			{ status: 500 }
 		);
 	}
-}
-
-/**
- * Calculate matches between a client and opportunities
- */
-function calculateMatches(client, opportunities) {
-	const matches = [];
-	const deps = {
-		hotActivities: TAXONOMIES.ELIGIBLE_ACTIVITIES.hot,
-		getExpandedClientTypes
-	};
-
-	for (const opportunity of opportunities) {
-		const matchResult = evaluateMatch(client, opportunity, deps);
-
-		if (matchResult.isMatch) {
-			matches.push({
-				...opportunity,
-				score: matchResult.score,
-			});
-		}
-	}
-
-	// Sort by score descending
-	return matches.sort((a, b) => b.score - a.score);
 }
