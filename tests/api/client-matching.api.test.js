@@ -13,22 +13,27 @@ import { opportunities } from '../fixtures/opportunities.js';
 
 /**
  * Expected match object shape
+ * Matches the output of transformMatch in app/api/client-matching/route.js:
+ * { ...opp, source_type, score, matchDetails, is_new, first_matched_at }
  */
 const matchSchema = {
-  opportunity_id: 'string',
-  opportunity_title: 'string',
+  id: 'string',
+  title: 'string',
   agency_name: 'string|null',
   score: 'number',
-  matching_criteria: 'object',
+  matchDetails: 'object',
   close_date: 'string|null',
   maximum_award: 'number|null',
   is_national: 'boolean',
+  source_type: 'string|null',
+  is_new: 'boolean',
+  first_matched_at: 'string|null',
 };
 
 /**
- * Expected matching criteria shape
+ * Expected matchDetails shape (camelCase, mapped from match_details in client_matches)
  */
-const matchingCriteriaSchema = {
+const matchDetailsSchema = {
   locationMatch: 'boolean',
   applicantTypeMatch: 'boolean',
   projectNeedsMatch: 'boolean',
@@ -81,11 +86,11 @@ describe('Client Matching API Contract', () => {
   describe('Match Schema', () => {
     test('validates complete match object', () => {
       const match = {
-        opportunity_id: 'opp-123',
-        opportunity_title: 'Clean Energy Grant',
+        id: 'opp-123',
+        title: 'Clean Energy Grant',
         agency_name: 'DOE',
         score: 85,
-        matching_criteria: {
+        matchDetails: {
           locationMatch: true,
           applicantTypeMatch: true,
           projectNeedsMatch: true,
@@ -94,6 +99,9 @@ describe('Client Matching API Contract', () => {
         close_date: '2025-06-30T23:59:59Z',
         maximum_award: 5000000,
         is_national: true,
+        source_type: 'federal',
+        is_new: true,
+        first_matched_at: '2025-06-01T00:00:00Z',
       };
 
       const errors = validateSchema(match, matchSchema);
@@ -102,11 +110,11 @@ describe('Client Matching API Contract', () => {
 
     test('validates match with null optional fields', () => {
       const match = {
-        opportunity_id: 'opp-123',
-        opportunity_title: 'Minimal Grant',
+        id: 'opp-123',
+        title: 'Minimal Grant',
         agency_name: null,
         score: 50,
-        matching_criteria: {
+        matchDetails: {
           locationMatch: true,
           applicantTypeMatch: false,
           projectNeedsMatch: true,
@@ -115,6 +123,9 @@ describe('Client Matching API Contract', () => {
         close_date: null,
         maximum_award: null,
         is_national: false,
+        source_type: null,
+        is_new: false,
+        first_matched_at: null,
       };
 
       const errors = validateSchema(match, matchSchema);
@@ -123,14 +134,17 @@ describe('Client Matching API Contract', () => {
 
     test('score must be a number', () => {
       const match = {
-        opportunity_id: 'opp-123',
-        opportunity_title: 'Grant',
+        id: 'opp-123',
+        title: 'Grant',
         agency_name: null,
         score: 'high', // Invalid
-        matching_criteria: {},
+        matchDetails: {},
         close_date: null,
         maximum_award: null,
         is_national: false,
+        source_type: null,
+        is_new: false,
+        first_matched_at: null,
       };
 
       const errors = validateSchema(match, matchSchema);
@@ -138,7 +152,7 @@ describe('Client Matching API Contract', () => {
     });
   });
 
-  describe('Matching Criteria Schema', () => {
+  describe('Match Details Schema', () => {
     test('validates all boolean criteria', () => {
       const criteria = {
         locationMatch: true,
@@ -147,7 +161,7 @@ describe('Client Matching API Contract', () => {
         activitiesMatch: true,
       };
 
-      const errors = validateSchema(criteria, matchingCriteriaSchema);
+      const errors = validateSchema(criteria, matchDetailsSchema);
       expect(errors).toHaveLength(0);
     });
 
@@ -158,51 +172,78 @@ describe('Client Matching API Contract', () => {
         // missing projectNeedsMatch and activitiesMatch
       };
 
-      const errors = validateSchema(incompleteCriteria, matchingCriteriaSchema);
+      const errors = validateSchema(incompleteCriteria, matchDetailsSchema);
       expect(errors.length).toBeGreaterThan(0);
     });
   });
 
   describe('List Response Shape', () => {
-    test('validates matches array response', () => {
-      const response = {
-        client_id: 'client-123',
-        client_name: 'City of SF',
-        matches: [
-          {
-            opportunity_id: 'opp-1',
-            opportunity_title: 'Grant 1',
-            agency_name: 'DOE',
-            score: 90,
-            matching_criteria: {
-              locationMatch: true,
-              applicantTypeMatch: true,
-              projectNeedsMatch: true,
-              activitiesMatch: true,
-            },
-            close_date: '2025-06-30',
-            maximum_award: 1000000,
-            is_national: true,
-          },
-        ],
-        total_matches: 1,
+    // Inline version of the single-client response shape from route.js handleSingleClient
+    function buildSingleClientResponse(client, matches, hiddenCount) {
+      return {
+        success: true,
+        results: {
+          client,
+          matches,
+          matchCount: matches.length,
+          hiddenCount,
+          topMatches: matches.slice(0, 3)
+        },
+        timestamp: new Date().toISOString()
       };
+    }
 
-      expect(Array.isArray(response.matches)).toBe(true);
-      expect(response.total_matches).toBe(1);
-      expect(response.client_id).toBe('client-123');
+    test('validates single-client response shape', () => {
+      const client = { id: 'client-123', name: 'City of SF' };
+      const matches = [
+        {
+          id: 'opp-1',
+          title: 'Grant 1',
+          agency_name: 'DOE',
+          score: 90,
+          matchDetails: {
+            locationMatch: true,
+            applicantTypeMatch: true,
+            projectNeedsMatch: true,
+            activitiesMatch: true,
+          },
+          close_date: '2025-06-30',
+          maximum_award: 1000000,
+          is_national: true,
+          source_type: 'federal',
+          is_new: true,
+          first_matched_at: '2025-06-01T00:00:00Z',
+        },
+      ];
+
+      const response = buildSingleClientResponse(client, matches, 0);
+      expect(response.success).toBe(true);
+      expect(Array.isArray(response.results.matches)).toBe(true);
+      expect(response.results.matchCount).toBe(1);
+      expect(response.results.client.id).toBe('client-123');
+      expect(response.results.topMatches).toHaveLength(1);
+      expect(response.timestamp).toBeDefined();
     });
 
     test('empty matches array is valid', () => {
-      const response = {
-        client_id: 'client-123',
-        client_name: 'New Client',
-        matches: [],
-        total_matches: 0,
-      };
+      const client = { id: 'client-123', name: 'New Client' };
+      const response = buildSingleClientResponse(client, [], 0);
 
-      expect(response.matches).toHaveLength(0);
-      expect(response.total_matches).toBe(0);
+      expect(response.results.matches).toHaveLength(0);
+      expect(response.results.matchCount).toBe(0);
+      expect(response.results.hiddenCount).toBe(0);
+    });
+
+    test('topMatches limited to 3', () => {
+      const client = { id: 'client-123', name: 'City of SF' };
+      const matches = Array.from({ length: 5 }, (_, i) => ({
+        id: `opp-${i}`, title: `Grant ${i}`, score: 90 - i * 5
+      }));
+      const response = buildSingleClientResponse(client, matches, 2);
+
+      expect(response.results.matchCount).toBe(5);
+      expect(response.results.topMatches).toHaveLength(3);
+      expect(response.results.hiddenCount).toBe(2);
     });
   });
 
@@ -239,7 +280,7 @@ describe('Client Matching API Contract', () => {
 
   describe('Promotion Status Filter (opportunity visibility)', () => {
     // Inline filter replicating: .neq('status', 'closed').or('promotion_status.is.null,promotion_status.eq.promoted')
-    // Used by client-matching, top-matches, and summary routes
+    // Used by lib/matching/computeMatches.js when fetching opportunities for match computation
     function filterVisibleOpportunities(opps) {
       return opps.filter(
         (o) =>
@@ -298,6 +339,143 @@ describe('Client Matching API Contract', () => {
       expect(visible).toHaveLength(2);
       expect(visibleIds).toContain('vis-1');
       expect(visibleIds).toContain('vis-2');
+    });
+  });
+
+  describe('is_new Field (from client_matches)', () => {
+    test('match object can include is_new boolean', () => {
+      const match = {
+        id: 'opp-123',
+        title: 'New Grant',
+        agency_name: 'DOE',
+        score: 85,
+        matchDetails: {
+          locationMatch: true,
+          applicantTypeMatch: true,
+          projectNeedsMatch: true,
+          activitiesMatch: true,
+        },
+        close_date: '2025-06-30',
+        maximum_award: 5000000,
+        is_national: true,
+        source_type: 'federal',
+        is_new: true,
+        first_matched_at: '2025-06-01T00:00:00Z',
+      };
+
+      expect(typeof match.is_new).toBe('boolean');
+      expect(match.is_new).toBe(true);
+    });
+
+    test('is_new defaults to true for new matches', () => {
+      const newMatch = { is_new: true };
+      const seenMatch = { is_new: false };
+      expect(newMatch.is_new).toBe(true);
+      expect(seenMatch.is_new).toBe(false);
+    });
+  });
+
+  describe('Match Transform (client_matches row to API shape)', () => {
+    // Inline version of transformMatch from the route
+    function transformMatch(row) {
+      const opp = row.opportunity;
+      return {
+        ...opp,
+        source_type: opp.funding_sources?.type || null,
+        funding_sources: undefined,
+        score: row.score,
+        matchDetails: row.match_details,
+        is_new: row.is_new,
+        first_matched_at: row.first_matched_at
+      };
+    }
+
+    test('maps match_details to matchDetails (camelCase)', () => {
+      const row = {
+        score: 75,
+        match_details: {
+          locationMatch: true,
+          applicantTypeMatch: true,
+          projectNeedsMatch: true,
+          activitiesMatch: true,
+          matchedProjectNeeds: ['Solar Installation']
+        },
+        is_new: true,
+        first_matched_at: '2025-06-01T00:00:00Z',
+        opportunity: {
+          id: 'opp-1',
+          title: 'Solar Grant',
+          agency_name: 'DOE',
+          funding_sources: { type: 'federal' }
+        }
+      };
+
+      const result = transformMatch(row);
+      expect(result.matchDetails).toEqual(row.match_details);
+      expect(result.matchDetails.matchedProjectNeeds).toEqual(['Solar Installation']);
+      expect(result.score).toBe(75);
+      expect(result.is_new).toBe(true);
+      expect(result.first_matched_at).toBe('2025-06-01T00:00:00Z');
+      expect(result.source_type).toBe('federal');
+      expect(result.funding_sources).toBeUndefined();
+    });
+
+    test('handles null funding_sources gracefully', () => {
+      const row = {
+        score: 50,
+        match_details: {},
+        is_new: false,
+        first_matched_at: '2025-05-15T00:00:00Z',
+        opportunity: {
+          id: 'opp-2',
+          title: 'State Grant',
+          funding_sources: null
+        }
+      };
+
+      const result = transformMatch(row);
+      expect(result.source_type).toBeNull();
+      expect(result.first_matched_at).toBe('2025-05-15T00:00:00Z');
+    });
+  });
+
+  describe('Hidden Match Filtering (query-time)', () => {
+    // Inline version of the hidden matches filtering logic
+    function filterHiddenMatches(matchRows, hiddenIds) {
+      const hiddenSet = new Set(hiddenIds);
+      return matchRows.filter(row => !hiddenSet.has(row.opportunity_id));
+    }
+
+    test('excludes hidden opportunity IDs', () => {
+      const rows = [
+        { opportunity_id: 'opp-1', score: 90 },
+        { opportunity_id: 'opp-2', score: 80 },
+        { opportunity_id: 'opp-3', score: 70 },
+      ];
+      const hidden = ['opp-2'];
+
+      const visible = filterHiddenMatches(rows, hidden);
+      expect(visible).toHaveLength(2);
+      expect(visible.map(r => r.opportunity_id)).toEqual(['opp-1', 'opp-3']);
+    });
+
+    test('returns all when no hidden matches', () => {
+      const rows = [
+        { opportunity_id: 'opp-1', score: 90 },
+        { opportunity_id: 'opp-2', score: 80 },
+      ];
+
+      const visible = filterHiddenMatches(rows, []);
+      expect(visible).toHaveLength(2);
+    });
+
+    test('returns empty when all hidden', () => {
+      const rows = [
+        { opportunity_id: 'opp-1', score: 90 },
+      ];
+
+      const visible = filterHiddenMatches(rows, ['opp-1']);
+      expect(visible).toHaveLength(0);
     });
   });
 
@@ -571,6 +749,55 @@ describe('Client Matching API Contract', () => {
 
       expect(response.success).toBe(false);
       expect(response.error).toContain('opportunityId');
+    });
+  });
+
+  describe('POST /api/client-matching/mark-seen Response', () => {
+    // Inline version of input validation from mark-seen/route.js
+    function validateMarkSeenInput(body) {
+      if (!body || !body.clientId) {
+        return { valid: false, error: 'clientId is required', status: 400 };
+      }
+      return { valid: true };
+    }
+
+    // Inline version of response building from mark-seen/route.js
+    function buildMarkSeenResponse(dbError) {
+      if (dbError) {
+        return { body: { error: 'Failed to mark matches as seen' }, status: 500 };
+      }
+      return { body: { success: true }, status: 200 };
+    }
+
+    test('valid clientId passes validation', () => {
+      const result = validateMarkSeenInput({ clientId: 'client-123' });
+      expect(result.valid).toBe(true);
+    });
+
+    test('missing clientId fails validation with 400', () => {
+      const result = validateMarkSeenInput({});
+      expect(result.valid).toBe(false);
+      expect(result.error).toBe('clientId is required');
+      expect(result.status).toBe(400);
+    });
+
+    test('null body fails validation with 400', () => {
+      const result = validateMarkSeenInput(null);
+      expect(result.valid).toBe(false);
+      expect(result.error).toBe('clientId is required');
+      expect(result.status).toBe(400);
+    });
+
+    test('successful DB update returns success', () => {
+      const response = buildMarkSeenResponse(null);
+      expect(response.body.success).toBe(true);
+      expect(response.status).toBe(200);
+    });
+
+    test('DB error returns 500', () => {
+      const response = buildMarkSeenResponse({ message: 'DB connection failed' });
+      expect(response.body.error).toBe('Failed to mark matches as seen');
+      expect(response.status).toBe(500);
     });
   });
 });

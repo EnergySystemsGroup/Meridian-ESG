@@ -151,6 +151,14 @@ const OpportunityCard = ({ opportunity, badgeOverride }) => {
 	const formatDaysAgo = (days) =>
 		days === 0 ? 'Today' : days === 1 ? 'Yesterday' : `${days}d ago`;
 
+	// New match detection (from client matching)
+	const isNewMatch =
+		opportunity.is_new === true &&
+		opportunity.first_matched_at &&
+		(new Date() - new Date(opportunity.first_matched_at)) / (1000 * 60 * 60 * 24) <= 7;
+
+	const matchedDaysAgo = isNewMatch ? getDaysAgo(opportunity.first_matched_at) : null;
+
 	// Relevance score
 	const relevanceScore =
 		opportunity.relevance_score ||
@@ -208,6 +216,12 @@ const OpportunityCard = ({ opportunity, badgeOverride }) => {
 						<span className='flex items-center gap-1 text-[10px] font-medium text-sky-600 dark:text-sky-400'>
 							<span className='w-1.5 h-1.5 rounded-full bg-sky-500' />
 							Updated {formatDaysAgo(updatedDaysAgo)}
+						</span>
+					)}
+					{isNewMatch && (
+						<span className='flex items-center gap-1 text-[10px] font-medium text-blue-600 dark:text-blue-400'>
+							<span className='w-1.5 h-1.5 rounded-full bg-blue-500' />
+							New Match {formatDaysAgo(matchedDaysAgo)}
 						</span>
 					)}
 				</div>

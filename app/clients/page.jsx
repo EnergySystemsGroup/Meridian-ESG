@@ -634,13 +634,53 @@ function ClientCard({ clientResult, onViewProfile }) {
 	const locationParts = [client.city, client.state_code].filter(Boolean);
 	const location = locationParts.length > 0 ? locationParts.join(', ') : client.address;
 
+	// Find the most recent new match within 7 days
+	const newestNewMatch = useMemo(() => {
+		if (!matches || matches.length === 0) return null;
+		const now = new Date();
+		const sevenDaysMs = 7 * 24 * 60 * 60 * 1000;
+		let newest = null;
+		for (const m of matches) {
+			if (m.is_new && m.first_matched_at) {
+				const matchDate = new Date(m.first_matched_at);
+				if (now - matchDate <= sevenDaysMs) {
+					if (!newest || matchDate > new Date(newest.first_matched_at)) {
+						newest = m;
+					}
+				}
+			}
+		}
+		return newest;
+	}, [matches]);
+
+	const newMatchLabel = useMemo(() => {
+		if (!newestNewMatch) return null;
+		const today = new Date();
+		const matchDate = new Date(newestNewMatch.first_matched_at);
+		today.setHours(0, 0, 0, 0);
+		matchDate.setHours(0, 0, 0, 0);
+		const daysAgo = Math.round((today - matchDate) / (1000 * 60 * 60 * 24));
+		if (daysAgo === 0) return 'NEW MATCH • Today';
+		if (daysAgo === 1) return 'NEW MATCH • Yesterday';
+		return `NEW MATCH • ${daysAgo} days ago`;
+	}, [newestNewMatch]);
+
 	return (
 		<Card className='overflow-hidden flex flex-col h-full'>
 			{/* Blue stripe at top */}
 			<div className='h-1.5 w-full bg-blue-600' />
 			<CardHeader className='pb-4'>
-				<CardTitle className='text-xl font-bold'>{client.name}</CardTitle>
-				<CardDescription className='text-sm text-muted-foreground'>{location}</CardDescription>
+				<div className='flex items-start justify-between gap-2'>
+					<div>
+						<CardTitle className='text-xl font-bold'>{client.name}</CardTitle>
+						<CardDescription className='text-sm text-muted-foreground'>{location}</CardDescription>
+					</div>
+					{newMatchLabel && (
+						<span className='text-[10px] font-semibold px-2 py-1 rounded bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 whitespace-nowrap flex-shrink-0'>
+							{newMatchLabel}
+						</span>
+					)}
+				</div>
 			</CardHeader>
 			<CardContent className='px-6 pb-6 flex flex-col flex-1'>
 				<div className='flex-1 space-y-5'>
@@ -664,7 +704,14 @@ function ClientCard({ clientResult, onViewProfile }) {
 									<li
 										key={`${client.name}-${match.id}-${index}`}
 										className='text-sm border-l-2 border-blue-500 pl-3 py-1 hover:bg-blue-50 dark:hover:bg-blue-900/10 transition-colors duration-200 cursor-pointer rounded-r'>
-										<div className='font-medium truncate pr-12'>{match.title}</div>
+										<div className='font-medium truncate pr-12'>
+											{match.is_new && (
+												<span className='text-[10px] font-semibold px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 mr-1.5 inline-block'>
+													NEW
+												</span>
+											)}
+											{match.title}
+										</div>
 										<div className='flex justify-between items-center'>
 											<span className='text-xs text-gray-500 dark:text-gray-400 truncate flex-1 pr-2'>
 												{match.agency_name || 'Unknown Agency'}
