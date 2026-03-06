@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect } from 'react';
+import React, { useCallback } from 'react';
 import {
 	Card,
 	CardHeader,
@@ -6,114 +6,93 @@ import {
 	CardTitle,
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { DollarSign, Calendar, Map, Star, Tag, Info } from 'lucide-react';
+import { DollarSign, Calendar, MapPin, Star, Sparkles, ArrowRight } from 'lucide-react';
 import { calculateDaysLeft, determineStatus } from '@/lib/supabase';
 import { useTrackedOpportunitiesStore } from '@/lib/stores';
-import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import {
-	getCategoryColor,
-	formatCategoryForDisplay,
 	getProjectTypeColor,
 	prioritizeProjectTypes,
 } from '@/lib/utils/uiHelpers';
 
-// Status indicators with colors for badges
-const statusIndicator = {
-	open: { color: '#2563EB', bgColor: '#EFF6FF', display: 'Open' },
-	upcoming: { color: '#4CAF50', bgColor: '#E8F5E9', display: 'Upcoming' },
-	closed: { color: '#EF4444', bgColor: '#FEF2F2', display: 'Closed' },
+// Status badge styles — border-only pills with tinted backgrounds
+const statusStyles = {
+	open: {
+		classes: 'border-blue-300 text-blue-700 bg-blue-50 dark:border-blue-700 dark:text-blue-400 dark:bg-blue-950/50',
+		display: 'Open',
+	},
+	upcoming: {
+		classes: 'border-emerald-300 text-emerald-700 bg-emerald-50 dark:border-emerald-700 dark:text-emerald-400 dark:bg-emerald-950/50',
+		display: 'Upcoming',
+	},
+	closed: {
+		classes: 'border-neutral-300 text-neutral-500 bg-neutral-50 dark:border-neutral-700 dark:text-neutral-400 dark:bg-neutral-800/50',
+		display: 'Closed',
+	},
 };
 
-// Helper to get status color regardless of case
-const getStatusColor = (status) => {
-	if (!status) return '#9E9E9E';
-	const statusKey = status.toLowerCase();
-	return statusIndicator[statusKey]?.color || '#9E9E9E';
+const getStatusStyle = (status) => {
+	if (!status) return statusStyles.open;
+	return statusStyles[status.toLowerCase()] || statusStyles.open;
 };
 
-// Helper to format status for display
 const formatStatusForDisplay = (status) => {
 	if (!status) return '';
-	const statusKey = status.toLowerCase();
-	return (
-		statusIndicator[statusKey]?.display ||
-		status.charAt(0).toUpperCase() + status.slice(1).toLowerCase()
-	);
+	const key = status.toLowerCase();
+	return statusStyles[key]?.display || status.charAt(0).toUpperCase() + status.slice(1).toLowerCase();
 };
 
-// Get relevance color based on the raw relevance score (0-10 scale)
-const getRelevanceColor = (score) => {
-	// Normalize score to 0-10 range
-	const normalizedScore = Math.min(10, Math.max(0, score));
-
-	if (normalizedScore >= 8) return '#4CAF50'; // High relevance - green
-	if (normalizedScore >= 6) return '#FF9800'; // Medium relevance - orange
-	return '#9E9E9E'; // Low relevance - gray
+// Relevance score colors and labels
+const getRelevanceConfig = (score) => {
+	const s = Math.min(10, Math.max(0, score));
+	if (s >= 8) return {
+		color: '#059669', barColor: '#10b981',
+		chipClasses: 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/50 dark:text-emerald-400 dark:border-emerald-800',
+		barBg: 'bg-emerald-100 dark:bg-emerald-900/30',
+	};
+	if (s >= 6) return {
+		color: '#d97706', barColor: '#f59e0b',
+		chipClasses: 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/50 dark:text-amber-400 dark:border-amber-800',
+		barBg: 'bg-amber-100 dark:bg-amber-900/30',
+	};
+	return {
+		color: '#6b7280', barColor: '#9ca3af',
+		chipClasses: 'bg-neutral-100 text-neutral-500 border-neutral-200 dark:bg-neutral-800 dark:text-neutral-400 dark:border-neutral-700',
+		barBg: 'bg-neutral-100 dark:bg-neutral-800',
+	};
 };
 
-// Helper to format location eligibility for display
+// Top accent bar — consistent brand color
+const ACCENT_BAR_COLOR = 'bg-blue-500 dark:bg-blue-400';
+
+// Format location eligibility
 const formatLocationEligibility = (opportunity) => {
-	// Check if opportunity is national
-	if (opportunity.is_national) {
-		return 'National';
-	}
-
-	// Check for coverage_state_codes array from coverage_areas system
-	if (opportunity.coverage_state_codes && opportunity.coverage_state_codes.length > 0) {
+	if (opportunity.is_national) return 'National';
+	if (opportunity.coverage_state_codes?.length > 0) {
 		if (opportunity.coverage_state_codes.length > 3) {
-			return `${opportunity.coverage_state_codes.slice(0, 3).join(', ')} +${
-				opportunity.coverage_state_codes.length - 3
-			} more`;
+			return `${opportunity.coverage_state_codes.slice(0, 3).join(', ')} +${opportunity.coverage_state_codes.length - 3} more`;
 		}
 		return opportunity.coverage_state_codes.join(', ');
 	}
-
-	// Fallback to eligible_locations array
-	if (
-		opportunity.eligible_locations &&
-		opportunity.eligible_locations.length > 0
-	) {
-		// If it contains 'National', show that
-		if (opportunity.eligible_locations.includes('National')) {
-			return 'National';
-		}
-
-		// Otherwise, show the list of locations
+	if (opportunity.eligible_locations?.length > 0) {
+		if (opportunity.eligible_locations.includes('National')) return 'National';
 		if (opportunity.eligible_locations.length > 3) {
-			return `${opportunity.eligible_locations.slice(0, 3).join(', ')} +${
-				opportunity.eligible_locations.length - 3
-			} more`;
+			return `${opportunity.eligible_locations.slice(0, 3).join(', ')} +${opportunity.eligible_locations.length - 3} more`;
 		}
 		return opportunity.eligible_locations.join(', ');
 	}
-
-	// Default if no location data
 	return 'Location not specified';
 };
 
-// Badge colors are now handled via Tailwind classes for dark mode support
-
 const OpportunityCard = ({ opportunity, badgeOverride }) => {
-	// Use Next.js router and search params
-	const router = useRouter();
-	const pathname = usePathname();
-	const searchParams = useSearchParams();
-
-	// Use Zustand store for tracking opportunities
-	// Subscribe to trackedOpportunityIds directly so the component re-renders
-	// when the array changes (selecting s.isTracked returns a stable function
-	// reference that never triggers re-renders).
 	const trackedIds = useTrackedOpportunitiesStore((s) => s.trackedOpportunityIds);
 	const toggleTracked = useTrackedOpportunitiesStore((s) => s.toggleTracked);
-
-	// Check if this opportunity is being tracked
 	const opportunityIsTracked = trackedIds.includes(opportunity.id);
 
-	// Format the data from our database to match the UI expectations
+	// Derived data
 	const title = opportunity.title;
+	const fundingType = opportunity.funding_type || null;
 
-	// Format amount display
 	const amount =
 		opportunity.minimum_award && opportunity.maximum_award
 			? `$${opportunity.minimum_award.toLocaleString()} - $${opportunity.maximum_award.toLocaleString()}`
@@ -125,263 +104,226 @@ const OpportunityCard = ({ opportunity, badgeOverride }) => {
 			? `$${opportunity.total_funding_available.toLocaleString()} total`
 			: 'Amount not specified';
 
-	// Format close date
 	const closeDate = opportunity.close_date
 		? new Date(opportunity.close_date).toLocaleDateString('en-US', {
 				month: 'short',
 				day: 'numeric',
 				year: 'numeric',
 		  })
-		: 'No deadline specified';
+		: 'No deadline';
 
-	// Format location eligibility
 	const locationEligibility = formatLocationEligibility(opportunity);
 
-	// Determine status
 	const status =
 		opportunity.status ||
 		determineStatus(opportunity.open_date, opportunity.close_date);
-
-	// Format status for display (ensuring correct capitalization)
+	const statusStyle = getStatusStyle(status);
 	const displayStatus = formatStatusForDisplay(status);
 
-	// Use program overview if available, fall back to description
 	const summary =
 		opportunity.program_overview ||
 		opportunity.description ||
 		'No description available';
 
-	// Get tags
-	const tags = opportunity.tags || [];
-
-	// Determine if opportunity is new (added in the last 6 days)
+	// Freshness badges
 	const isNew =
 		opportunity.created_at &&
-		(new Date() - new Date(opportunity.created_at)) / (1000 * 60 * 60 * 24) <=
-			6;
+		(new Date() - new Date(opportunity.created_at)) / (1000 * 60 * 60 * 24) <= 6;
 
-	// Determine if opportunity was recently updated (within last 7 days, but not new)
 	const isNewlyUpdated =
 		!isNew &&
 		opportunity.updated_at &&
 		opportunity.created_at !== opportunity.updated_at &&
-		(new Date() - new Date(opportunity.updated_at)) / (1000 * 60 * 60 * 24) <=
-			7;
+		(new Date() - new Date(opportunity.updated_at)) / (1000 * 60 * 60 * 24) <= 7;
 
-	// Calculate days since creation if it's new
-	const addedDaysAgo =
-		isNew && opportunity.created_at
-			? (() => {
-					const today = new Date();
-					const createdDate = new Date(opportunity.created_at);
+	const getDaysAgo = (dateStr) => {
+		if (!dateStr) return null;
+		const today = new Date();
+		const date = new Date(dateStr);
+		today.setHours(0, 0, 0, 0);
+		date.setHours(0, 0, 0, 0);
+		return Math.round((today - date) / (1000 * 60 * 60 * 24));
+	};
 
-					// Reset hours to compare calendar days only
-					today.setHours(0, 0, 0, 0);
-					createdDate.setHours(0, 0, 0, 0);
+	const addedDaysAgo = isNew ? getDaysAgo(opportunity.created_at) : null;
+	const updatedDaysAgo = isNewlyUpdated ? getDaysAgo(opportunity.updated_at) : null;
 
-					// Calculate difference in days
-					return Math.round((today - createdDate) / (1000 * 60 * 60 * 24));
-			  })()
-			: null;
+	const formatDaysAgo = (days) =>
+		days === 0 ? 'Today' : days === 1 ? 'Yesterday' : `${days}d ago`;
 
-	// Calculate days since update if it was newly updated
-	const updatedDaysAgo =
-		isNewlyUpdated && opportunity.updated_at
-			? (() => {
-					const today = new Date();
-					const updatedDate = new Date(opportunity.updated_at);
-
-					// Reset hours to compare calendar days only
-					today.setHours(0, 0, 0, 0);
-					updatedDate.setHours(0, 0, 0, 0);
-
-					// Calculate difference in days
-					return Math.round((today - updatedDate) / (1000 * 60 * 60 * 24));
-			  })()
-			: null;
-
-	// Get relevance score if available - handle both old and new scoring formats
-	const relevanceScore = opportunity.relevance_score ||
+	// Relevance score
+	const relevanceScore =
+		opportunity.relevance_score ||
 		opportunity.scoring?.finalScore ||
 		opportunity.scoring?.overallScore ||
 		null;
 
-	// Extract categories - for now, we'll use tags as categories if categories aren't available
-	const categories =
-		opportunity.categories || (tags.length > 0 ? [tags[0]] : ['Other']);
-
-	// Get prioritized project types (top 3 based on taxonomy)
+	// Project types — top 3 by taxonomy tier
 	const projectTypes = prioritizeProjectTypes(opportunity.eligible_project_types || [], 3);
 
-	// Function to handle tracking
 	const handleTrackToggle = useCallback(
 		(e) => {
-			e.preventDefault(); // Prevent link navigation
-			e.stopPropagation(); // Prevent event bubbling up to parent elements
-			e.nativeEvent.stopImmediatePropagation(); // Stop all other event handlers
-
-			// Toggle the tracked status
+			e.preventDefault();
+			e.stopPropagation();
+			e.nativeEvent.stopImmediatePropagation();
 			toggleTracked(opportunity.id);
 		},
 		[toggleTracked, opportunity.id]
 	);
 
 	return (
-		<Card className='overflow-hidden hover:shadow-md transition-shadow duration-200 flex flex-col h-full relative'>
-			{/* Thin blue bar at the top */}
-			<div className='h-1.5 w-full bg-blue-600 rounded-t-lg' />
+		<Link href={`/funding/opportunities/${opportunity.id}`} className='block h-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 rounded-lg'>
+		<Card className='overflow-hidden hover:shadow-lg hover:-translate-y-0.5 transition-all duration-150 flex flex-col h-full relative border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 shadow-sm group cursor-pointer'>
+			{/* Brand accent bar */}
+			<div className={`h-1.5 w-full ${ACCENT_BAR_COLOR}`} />
 
-			<CardHeader className='pb-3'>
-				<div className='flex justify-between items-start'>
-					<CardTitle className='text-lg line-clamp-2'>{title}</CardTitle>
+			<CardHeader className='px-4 pt-3 pb-2'>
+				{/* Title + Status row */}
+				<div className='flex justify-between items-start gap-2'>
+					<CardTitle className='text-base font-semibold leading-snug tracking-tight line-clamp-2 text-neutral-900 dark:text-neutral-50' title={title}>
+						{title}
+					</CardTitle>
 
-					{/* Status badge OR custom badge override */}
-					{badgeOverride ? (
-						badgeOverride
-					) : (
-						<span
-							className='text-xs px-2 py-1 rounded-full flex-shrink-0 ml-2 font-medium'
-							style={{
-								backgroundColor: getStatusColor(status),
-								color: 'white',
-							}}>
+					{badgeOverride || (
+						<span className={`text-[10px] px-2 py-0.5 rounded-full border font-medium flex-shrink-0 whitespace-nowrap ${statusStyle.classes}`}>
 							{displayStatus}
 						</span>
 					)}
 				</div>
 
-				{/* NEW badge if applicable - updated to match category pill styling */}
-				{isNew && (
-					<div className='mt-2'>
-						<span className='text-xs font-medium px-2 py-1 rounded bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'>
-							NEW •{' '}
-							{addedDaysAgo === 0
-								? 'Today'
-								: addedDaysAgo === 1
-								? 'Yesterday'
-								: `${addedDaysAgo} days ago`}
+				{/* Meta row: funding type + freshness badges */}
+				<div className='flex items-center gap-1.5 flex-wrap mt-1.5'>
+					{fundingType && (
+						<span className='text-[11px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded border border-neutral-300 text-neutral-700 bg-neutral-50 dark:border-neutral-600 dark:text-neutral-300 dark:bg-neutral-800/50'>
+							{fundingType}
 						</span>
-					</div>
-				)}
-
-				{/* NEWLY UPDATED badge if applicable */}
-				{isNewlyUpdated && (
-					<div className='mt-2'>
-						<span className='text-xs font-medium px-2 py-1 rounded bg-sky-100 text-sky-700 dark:bg-sky-900/30 dark:text-sky-300'>
-							UPDATED •{' '}
-							{updatedDaysAgo === 0
-								? 'Today'
-								: updatedDaysAgo === 1
-								? 'Yesterday'
-								: `${updatedDaysAgo} days ago`}
+					)}
+					{isNew && (
+						<span className='flex items-center gap-1 text-[10px] font-medium text-blue-600 dark:text-blue-400'>
+							<span className='w-1.5 h-1.5 rounded-full bg-blue-500' />
+							New {formatDaysAgo(addedDaysAgo)}
 						</span>
-					</div>
-				)}
+					)}
+					{isNewlyUpdated && (
+						<span className='flex items-center gap-1 text-[10px] font-medium text-sky-600 dark:text-sky-400'>
+							<span className='w-1.5 h-1.5 rounded-full bg-sky-500' />
+							Updated {formatDaysAgo(updatedDaysAgo)}
+						</span>
+					)}
+				</div>
 			</CardHeader>
 
-			<CardContent className='flex-grow flex flex-col pt-0'>
-				<div className='space-y-4 flex-grow'>
-					{/* Summary */}
-					<p className='text-sm text-neutral-600 dark:text-neutral-400'>{summary}</p>
+			<CardContent className='flex-grow flex flex-col pt-0 px-4 pb-4'>
+				<div className='space-y-3 flex-grow'>
+					{/* Summary — truncated to 3 lines */}
+					<p className='text-sm text-neutral-600 dark:text-neutral-400 line-clamp-3 leading-relaxed'>
+						{summary}
+					</p>
 
-					{/* Project type pills */}
-					<div className='flex flex-wrap gap-1'>
+					{/* Project type pills — left-edge color stripe */}
+					<div className='flex flex-wrap gap-1.5' role='list'>
 						{projectTypes.map((projectType, index) => {
-							const projectTypeColor = getProjectTypeColor(projectType);
+							const typeColor = getProjectTypeColor(projectType);
 							return (
 								<span
 									key={index}
-									className='project-type-tag text-xs px-2 py-1 rounded'
-									style={{
-										backgroundColor: projectTypeColor.bgColor,
-										color: projectTypeColor.color,
-									}}>
+									role='listitem'
+									className='text-[11px] font-medium px-2 py-0.5 rounded-md border border-l-2 bg-neutral-50 text-neutral-700 border-neutral-200 dark:bg-neutral-800/50 dark:text-neutral-300 dark:border-neutral-700'
+									style={{ borderLeftColor: typeColor.color }}>
 									{projectType}
 								</span>
 							);
 						})}
 					</div>
 
-					{/* Key details */}
-					<div className='space-y-2 text-sm'>
+					{/* Key details — compact */}
+					<div className='space-y-1.5'>
 						<div className='flex items-center gap-2'>
-							<DollarSign size={16} className='text-neutral-500 dark:text-neutral-400' />
-							<span>{amount}</span>
+							<DollarSign size={14} className='text-neutral-400 dark:text-neutral-500 flex-shrink-0' />
+							<span className='text-sm font-medium text-neutral-700 dark:text-neutral-300'>{amount}</span>
 						</div>
-
 						<div className='flex items-center gap-2'>
-							<Calendar size={16} className='text-neutral-500 dark:text-neutral-400' />
-							<span>{closeDate}</span>
+							<Calendar size={14} className='text-neutral-400 dark:text-neutral-500 flex-shrink-0' />
+							<span className='text-xs text-neutral-500 dark:text-neutral-400'>{closeDate}</span>
 						</div>
-
 						<div className='flex items-center gap-2'>
-							<Map size={16} className='text-neutral-500 dark:text-neutral-400' />
-							<span className='line-clamp-1'>{locationEligibility}</span>
+							<MapPin size={14} className='text-neutral-400 dark:text-neutral-500 flex-shrink-0' />
+							<span className='text-xs text-neutral-500 dark:text-neutral-400 line-clamp-1'>{locationEligibility}</span>
 						</div>
 					</div>
 				</div>
 
-				{/* Footer section with relevance score and buttons - fixed at bottom */}
-				<div className='pt-4 mt-auto'>
-					{/* Relevance score if available */}
-					{relevanceScore !== null && relevanceScore !== undefined && (
-						<div className='flex items-center gap-2 mb-4'>
-							<div className='flex-grow bg-neutral-200 dark:bg-neutral-700 h-2 rounded-full overflow-hidden'>
-								<div
-									className='h-full rounded-full'
-									style={{
-										width: `${Math.max(
-											0,
-											Math.min(100, (Math.min(10, relevanceScore) / 10) * 100)
-										)}%`, // Ensure max is 100%
-										backgroundColor: getRelevanceColor(relevanceScore),
-									}}></div>
+				{/* Footer: Relevance score + actions */}
+				<div className='pt-3 mt-auto border-t border-neutral-100 dark:border-neutral-800'>
+					{/* Relevance score — labeled module */}
+					{relevanceScore !== null && relevanceScore !== undefined && (() => {
+						const config = getRelevanceConfig(relevanceScore);
+						const normalizedScore = Math.min(10, relevanceScore);
+						const percentage = Math.max(0, Math.min(100, (normalizedScore / 10) * 100));
+						return (
+							<div
+								className='flex items-center gap-2 mb-3'
+								aria-label={`Relevance score: ${normalizedScore.toFixed(1)} out of 10`}
+							>
+								<div className='flex items-center gap-1'>
+									<Sparkles size={12} style={{ color: config.color }} />
+									<span className='text-[10px] font-semibold uppercase tracking-wider text-neutral-500 dark:text-neutral-400'>
+										Relevance
+									</span>
+								</div>
+								<span className={`text-xs font-bold px-2 py-0.5 rounded border ${config.chipClasses}`}>
+									{normalizedScore.toFixed(1)}
+								</span>
+								<div className={`flex-grow h-1.5 rounded-full overflow-hidden ${config.barBg}`}>
+									<div
+										className='h-full rounded-full transition-all duration-300'
+										style={{
+											width: `${percentage}%`,
+											backgroundColor: config.barColor,
+										}}
+									/>
+								</div>
 							</div>
-							<span
-								className='text-xs font-medium whitespace-nowrap'
-								style={{ color: getRelevanceColor(relevanceScore) }}>
-								{Math.min(10, relevanceScore).toFixed(1)}/10
-							</span>
-						</div>
-					)}
+						);
+					})()}
 
-					{/* Button row with View Details and Track buttons */}
-					<div className='flex gap-2'>
-						<Button className='flex-1' asChild>
-							<Link href={`/funding/opportunities/${opportunity.id}`}>
-								View Details
-							</Link>
-						</Button>
-
+					{/* Footer actions — quiet text link + compact Track */}
+					<div className='flex items-center justify-between'>
+						<span className='text-sm text-neutral-500 group-hover:text-primary dark:text-neutral-400 dark:group-hover:text-primary transition-colors flex items-center gap-1'>
+							View Details
+							<ArrowRight className='h-3.5 w-3.5 opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-200' />
+						</span>
 						<Button
-							variant={opportunityIsTracked ? 'outline' : 'outline'}
-							className={
+							variant='ghost'
+							size='sm'
+							className={`h-7 text-xs px-2 ${
 								opportunityIsTracked
-									? 'border-slate-200 dark:border-slate-700 text-amber-700 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-900/30 flex-1'
-									: 'border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 flex-1'
-							}
+									? 'text-amber-700 hover:bg-amber-50 dark:text-amber-400 dark:hover:bg-amber-950/30'
+									: 'text-neutral-500 hover:bg-neutral-100 dark:text-neutral-400 dark:hover:bg-neutral-800'
+							}`}
 							onClick={handleTrackToggle}
 							onMouseDown={(e) => e.stopPropagation()}
 							onTouchStart={(e) => e.stopPropagation()}
 							data-track-button='true'
-							title={
-								opportunityIsTracked
-									? 'Remove from tracked opportunities'
-									: 'Add to tracked opportunities'
-							}>
+							aria-label={opportunityIsTracked ? 'Remove from tracked opportunities' : 'Add to tracked opportunities'}
+							aria-pressed={opportunityIsTracked}
+						>
 							<Star
-								className={`h-4 w-4 mr-2 ${
+								className={`h-3.5 w-3.5 mr-1 ${
 									opportunityIsTracked
 										? 'fill-amber-500 text-amber-500'
-										: 'fill-none text-slate-500'
+										: 'fill-none text-neutral-400'
 								}`}
 							/>
-							{opportunityIsTracked ? 'Untrack' : 'Track'}
+							{opportunityIsTracked ? 'Tracked' : 'Track'}
 						</Button>
 					</div>
 				</div>
 			</CardContent>
+			{/* Bottom accent bar — bookend */}
+			<div className={`h-1.5 w-full mt-auto ${ACCENT_BAR_COLOR}`} />
 		</Card>
+		</Link>
 	);
 };
 
