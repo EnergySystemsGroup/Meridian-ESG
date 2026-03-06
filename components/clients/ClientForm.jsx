@@ -6,7 +6,7 @@
  * Form for creating and editing clients with automatic geocoding and coverage area detection.
  */
 
-import { useState, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -15,6 +15,8 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Combobox } from '@/components/ui/combobox';
 import { AddressAutofillInput } from '@/components/ui/address-autofill-input-client';
 import { TAXONOMIES, getSelectableClientTypes } from '@/lib/constants/taxonomies';
+import { useUsers } from '@/lib/hooks/queries/useUsers';
+import { useAuth } from '@/contexts/AuthContext';
 
 // Get selectable client types (children + standalone + selectable parent exceptions)
 // This encourages users to select specific types rather than broad parent categories
@@ -29,6 +31,14 @@ const PROJECT_NEEDS = [
 
 export default function ClientForm({ client, onSuccess, onCancel }) {
   const isEdit = !!client;
+  const { user } = useAuth();
+  const { data: usersData } = useUsers();
+  const allUsers = useMemo(() => usersData?.users || [], [usersData]);
+
+  const userOptions = useMemo(
+    () => allUsers.map((u) => ({ value: u.id, label: u.display_name })),
+    [allUsers]
+  );
 
   const [formData, setFormData] = useState({
     name: client?.name || '',
@@ -38,13 +48,34 @@ export default function ClientForm({ client, onSuccess, onCancel }) {
     budget: client?.budget || '',
     contact: client?.contact || '',
     description: client?.description || '',
-    dac: client?.dac || false
+    dac: client?.dac || false,
+    assigned_users: [],
   });
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [geocodedInfo, setGeocodedInfo] = useState(null);
   const [autofilledLocation, setAutofilledLocation] = useState(null);
+
+  // Load assigned users: pre-populate current user on add, fetch existing on edit
+  useEffect(() => {
+    let cancelled = false;
+
+    if (isEdit && client?.id) {
+      fetch(`/api/clients/${client.id}/users`)
+        .then((r) => r.json())
+        .then((data) => {
+          if (!cancelled && data.success) {
+            setFormData((prev) => ({ ...prev, assigned_users: data.user_ids || [] }));
+          }
+        })
+        .catch(() => {});
+    } else if (!isEdit && user?.id) {
+      setFormData((prev) => ({ ...prev, assigned_users: [user.id] }));
+    }
+
+    return () => { cancelled = true; };
+  }, [isEdit, client?.id, user?.id]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -300,6 +331,20 @@ export default function ClientForm({ client, onSuccess, onCancel }) {
         <Label htmlFor="dac" className="cursor-pointer">
           Disadvantaged Community (DAC)
         </Label>
+      </div>
+
+      {/* Assigned Users */}
+      <div>
+        <Label>Assigned Users</Label>
+        <Combobox
+          multiple
+          options={userOptions}
+          value={formData.assigned_users}
+          onChange={(value) => setFormData({ ...formData, assigned_users: value })}
+          placeholder="Select users to assign..."
+          searchPlaceholder="Search users..."
+          emptyMessage="No users found."
+        />
       </div>
 
       {/* Buttons */}

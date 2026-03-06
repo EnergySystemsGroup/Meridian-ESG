@@ -7,7 +7,7 @@
  * Supports editing mode via ClientForm integration.
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -26,20 +26,63 @@ import {
   FileText,
   ExternalLink,
   Pencil,
+  Users,
 } from 'lucide-react';
 import Link from 'next/link';
 import { formatProjectNeeds } from '@/lib/utils/clientMatching';
+import { useUsers } from '@/lib/hooks/queries/useUsers';
 import ClientForm from './ClientForm';
 
 export default function ClientProfileModal({ client, isOpen, onClose, onClientUpdate }) {
   const [isEditing, setIsEditing] = useState(false);
+  const [assignedUserIds, setAssignedUserIds] = useState([]);
 
-  // Reset editing state when modal closes
+  const { data: usersData } = useUsers();
+  const allUsers = useMemo(() => usersData?.users || [], [usersData]);
+
+  // Reset state when modal closes
   useEffect(() => {
-    if (!isOpen) setIsEditing(false);
+    if (!isOpen) {
+      setIsEditing(false);
+      setAssignedUserIds([]);
+    }
   }, [isOpen]);
 
+  // Fetch assigned user IDs when modal opens
+  useEffect(() => {
+    if (!isOpen || !client?.id) return;
+    let cancelled = false;
+
+    fetch(`/api/clients/${client.id}/users`)
+      .then((r) => r.json())
+      .then((data) => {
+        if (!cancelled && data.success) {
+          setAssignedUserIds(data.user_ids || []);
+        }
+      })
+      .catch(() => {});
+
+    return () => { cancelled = true; };
+  }, [isOpen, client?.id]);
+
+  // Re-fetch assigned users after an edit saves
+  const handleClientUpdate = (updatedClient) => {
+    setIsEditing(false);
+    // Re-fetch assignments since the edit may have changed them
+    if (updatedClient?.id) {
+      fetch(`/api/clients/${updatedClient.id}/users`)
+        .then((r) => r.json())
+        .then((data) => {
+          if (data.success) setAssignedUserIds(data.user_ids || []);
+        })
+        .catch(() => {});
+    }
+    onClientUpdate?.(updatedClient);
+  };
+
   if (!client) return null;
+
+  const assignedUsers = allUsers.filter((u) => assignedUserIds.includes(u.id));
 
   const budgetLabels = {
     small: 'Small ($50K - $500K)',
@@ -62,10 +105,7 @@ export default function ClientProfileModal({ client, isOpen, onClose, onClientUp
         {isEditing ? (
           <ClientForm
             client={client}
-            onSuccess={(updatedClient) => {
-              setIsEditing(false);
-              onClientUpdate?.(updatedClient);
-            }}
+            onSuccess={handleClientUpdate}
             onCancel={() => setIsEditing(false)}
           />
         ) : (
@@ -155,6 +195,33 @@ export default function ClientProfileModal({ client, isOpen, onClose, onClientUp
               </div>
               {(!client.project_needs || client.project_needs.length === 0) && (
                 <p className="text-neutral-500 italic">No project needs specified</p>
+              )}
+            </div>
+
+            <Separator />
+
+            {/* Assigned Users */}
+            <div>
+              <div className="flex items-center mb-3">
+                <Users className="h-5 w-5 mr-2 text-neutral-500" />
+                <h3 className="text-lg font-semibold">Assigned Users</h3>
+              </div>
+              {assignedUsers.length > 0 ? (
+                <div className="flex flex-wrap gap-2">
+                  {assignedUsers.map((u) => (
+                    <div
+                      key={u.id}
+                      className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-neutral-100 dark:bg-neutral-800 text-sm font-medium text-neutral-700 dark:text-neutral-300"
+                    >
+                      <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 text-primary text-xs font-bold">
+                        {u.display_name?.charAt(0)?.toUpperCase() || '?'}
+                      </span>
+                      {u.display_name}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-neutral-500 italic">No users assigned</p>
               )}
             </div>
 

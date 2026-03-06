@@ -148,6 +148,57 @@ describe('Clients API Contract', () => {
     });
   });
 
+  describe('POST /api/clients - assigned_users contract', () => {
+    // Mirrors the resolution logic in POST /api/clients route.js
+    function resolveAssignedUsers(bodyAssignedUsers, ownerId) {
+      if (Array.isArray(bodyAssignedUsers) && bodyAssignedUsers.length > 0) {
+        return bodyAssignedUsers;
+      }
+      return ownerId ? [ownerId] : [];
+    }
+
+    test('accepts assigned_users array in request body', () => {
+      const body = {
+        name: 'Test Client',
+        type: 'Municipal Government',
+        address: '123 Main St',
+        assigned_users: ['user-1', 'user-2'],
+      };
+
+      expect(Array.isArray(body.assigned_users)).toBe(true);
+      expect(resolveAssignedUsers(body.assigned_users, 'owner-1')).toEqual(['user-1', 'user-2']);
+    });
+
+    test('falls back to ownerId when assigned_users absent', () => {
+      const body = {
+        name: 'Test Client',
+        type: 'Municipal Government',
+        address: '123 Main St',
+      };
+
+      expect(resolveAssignedUsers(body.assigned_users, 'owner-1')).toEqual(['owner-1']);
+    });
+  });
+
+  describe('PUT /api/clients/[id] - assigned_users contract', () => {
+    // Mirrors the sync guard in PUT /api/clients/[id] route.js
+    function shouldSyncUsers(body) {
+      return Array.isArray(body.assigned_users);
+    }
+
+    test('syncs when assigned_users is an array', () => {
+      expect(shouldSyncUsers({ assigned_users: ['u1'] })).toBe(true);
+    });
+
+    test('syncs when assigned_users is empty (clears all)', () => {
+      expect(shouldSyncUsers({ assigned_users: [] })).toBe(true);
+    });
+
+    test('skips sync when assigned_users absent (backward compat)', () => {
+      expect(shouldSyncUsers({ name: 'Updated' })).toBe(false);
+    });
+  });
+
   describe('Filtered Client List Response', () => {
     test('filtered response has same shape as unfiltered', () => {
       // When user_id filtering is applied, the response shape is identical
