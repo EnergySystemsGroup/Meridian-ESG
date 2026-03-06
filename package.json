@@ -9,7 +9,7 @@
     "staging:cron": "node scripts/staging-cron.js",
     "staging:cron:once": "node scripts/staging-cron.js --max-empty=1",
     "staging:cron:fast": "node scripts/staging-cron.js --interval=30",
-    "build": "next build",
+    "build": "next build && node scripts/seed-matches.mjs",
     "start": "next start",
     "lint": "next lint",
     "test": "vitest run --config tests/vitest.config.js",

@@ -542,3 +542,411 @@ describe('generateClientTags', () => {
     });
   });
 });
+
+// ---------------------------------------------------------------------------
+// New inline pure functions — added for match page redesign
+// ---------------------------------------------------------------------------
+
+/**
+ * Generate project needs with match counts (merged view)
+ * (Logic from clientMatching.js:generateProjectNeedsWithCounts)
+ */
+function generateProjectNeedsWithCounts(projectNeeds, matches = []) {
+  if (!projectNeeds || !Array.isArray(projectNeeds) || projectNeeds.length === 0) return [];
+
+  const countMap = new Map();
+  if (Array.isArray(matches)) {
+    matches.forEach(match => {
+      const matchedNeeds = match.matchDetails?.matchedProjectNeeds || [];
+      matchedNeeds.forEach(need => {
+        countMap.set(need, (countMap.get(need) || 0) + 1);
+      });
+    });
+  }
+
+  return projectNeeds.map(need => ({
+    need,
+    count: countMap.get(need) || 0,
+  }));
+}
+
+/**
+ * Funding type group definitions, ordered by desirability
+ * (Logic from clientMatching.js:FUNDING_TYPE_GROUPS)
+ */
+const FUNDING_TYPE_GROUPS = [
+  {
+    key: 'grants',
+    label: 'Grants',
+    description: 'Direct Grant Funding',
+    types: ['Grant', 'Cooperative Agreement'],
+  },
+  {
+    key: 'tax',
+    label: 'Tax Benefits',
+    description: 'Tax Incentives',
+    types: ['Tax Credit', 'Tax Incentive', 'Tax Deduction', 'Tax Exemption'],
+  },
+  {
+    key: 'loans',
+    label: 'Loans',
+    description: 'Loans & Credit',
+    types: ['Loan', 'Forgivable Loan', 'Guarantee', 'Bond'],
+  },
+  {
+    key: 'incentives',
+    label: 'Rebates & Incentives',
+    description: 'Utility Incentives',
+    types: ['Rebate', 'Direct Payment', 'Voucher'],
+  },
+  {
+    key: 'other',
+    label: 'Other',
+    description: 'Support & Services',
+    types: [],
+  },
+];
+
+function getRelevanceScore(opportunity) {
+  return opportunity.relevance_score
+    || opportunity.scoring?.finalScore
+    || opportunity.scoring?.overallScore
+    || 0;
+}
+
+/**
+ * Group matches by funding type category
+ * (Logic from clientMatching.js:groupMatchesByFundingType)
+ */
+function groupMatchesByFundingType(matches) {
+  if (!matches || !Array.isArray(matches) || matches.length === 0) return [];
+
+  const typeToGroup = new Map();
+  FUNDING_TYPE_GROUPS.forEach((group, index) => {
+    group.types.forEach(type => typeToGroup.set(type, index));
+  });
+
+  const groups = FUNDING_TYPE_GROUPS.map(g => ({ ...g, matches: [] }));
+
+  matches.forEach(match => {
+    const fundingType = match.funding_type || '';
+    const groupIndex = typeToGroup.has(fundingType) ? typeToGroup.get(fundingType) : groups.length - 1;
+    groups[groupIndex].matches.push(match);
+  });
+
+  groups.forEach(group => {
+    group.matches.sort((a, b) => getRelevanceScore(b) - getRelevanceScore(a));
+  });
+
+  return groups.filter(g => g.matches.length > 0);
+}
+
+/**
+ * Get match score badge inline styles
+ * (Logic from clientMatching.js:getMatchScoreBadgeStyles)
+ */
+function getMatchScoreBadgeStyles(score) {
+  if (score >= 60) return { backgroundColor: '#f5f3ff', color: '#6d28d9', border: '1px solid #c4b5fd' };
+  if (score >= 30) return { backgroundColor: '#fffbeb', color: '#b45309', border: '1px solid #fcd34d' };
+  return { backgroundColor: '#f9fafb', color: '#6b7280', border: '1px solid #d1d5db' };
+}
+
+/**
+ * Get funding group dot color
+ * (Logic from clientMatching.js:getFundingGroupDotColor)
+ */
+function getFundingGroupDotColor(key) {
+  const colors = {
+    grants: '#10b981',
+    incentives: '#8b5cf6',
+    tax: '#f59e0b',
+    loans: '#3b82f6',
+    other: '#a3a3a3',
+  };
+  return colors[key] || colors.other;
+}
+
+/**
+ * Budget display formatting
+ * (Logic from matches/page.jsx budget formatting)
+ */
+function formatBudgetDisplay(budget) {
+  const budgetLabels = {
+    small: 'Small ($50K - $500K)',
+    medium: 'Medium ($500K - $5M)',
+    large: 'Large ($5M - $50M)',
+    very_large: 'Very Large ($50M+)',
+  };
+  return budgetLabels[budget]
+    || (typeof budget === 'number'
+      ? `$${budget.toLocaleString()}`
+      : (typeof budget === 'string' && budget !== '' && !isNaN(Number(budget))
+        ? `$${Number(budget).toLocaleString()}`
+        : budget || 'Not specified'));
+}
+
+// ---------------------------------------------------------------------------
+// Tests — New functions
+// ---------------------------------------------------------------------------
+
+describe('generateProjectNeedsWithCounts', () => {
+  function buildMatch(matchedProjectNeeds) {
+    return { matchDetails: { matchedProjectNeeds } };
+  }
+
+  test('returns needs with zero counts when no matches', () => {
+    const result = generateProjectNeedsWithCounts(['Solar', 'HVAC'], []);
+    expect(result).toEqual([
+      { need: 'Solar', count: 0 },
+      { need: 'HVAC', count: 0 },
+    ]);
+  });
+
+  test('counts matched needs correctly', () => {
+    const matches = [
+      buildMatch(['Solar', 'HVAC']),
+      buildMatch(['Solar']),
+    ];
+    const result = generateProjectNeedsWithCounts(['Solar', 'HVAC', 'Wind'], matches);
+    expect(result).toEqual([
+      { need: 'Solar', count: 2 },
+      { need: 'HVAC', count: 1 },
+      { need: 'Wind', count: 0 },
+    ]);
+  });
+
+  test('preserves project needs order', () => {
+    const matches = [buildMatch(['Z', 'A'])];
+    const result = generateProjectNeedsWithCounts(['A', 'Z'], matches);
+    expect(result[0].need).toBe('A');
+    expect(result[1].need).toBe('Z');
+  });
+
+  test('returns empty array for null projectNeeds', () => {
+    expect(generateProjectNeedsWithCounts(null, [])).toEqual([]);
+  });
+
+  test('returns empty array for empty projectNeeds', () => {
+    expect(generateProjectNeedsWithCounts([], [])).toEqual([]);
+  });
+
+  test('handles matches with no matchDetails', () => {
+    const matches = [{ matchDetails: null }, {}];
+    const result = generateProjectNeedsWithCounts(['Solar'], matches);
+    expect(result).toEqual([{ need: 'Solar', count: 0 }]);
+  });
+});
+
+describe('groupMatchesByFundingType', () => {
+  test('returns empty array for null/empty matches', () => {
+    expect(groupMatchesByFundingType(null)).toEqual([]);
+    expect(groupMatchesByFundingType([])).toEqual([]);
+    expect(groupMatchesByFundingType(undefined)).toEqual([]);
+  });
+
+  test('groups grants correctly', () => {
+    const matches = [
+      { funding_type: 'Grant', relevance_score: 8 },
+      { funding_type: 'Cooperative Agreement', relevance_score: 6 },
+    ];
+    const groups = groupMatchesByFundingType(matches);
+    expect(groups).toHaveLength(1);
+    expect(groups[0].key).toBe('grants');
+    expect(groups[0].matches).toHaveLength(2);
+  });
+
+  test('groups rebates/incentives correctly', () => {
+    const matches = [
+      { funding_type: 'Rebate', relevance_score: 7 },
+      { funding_type: 'Direct Payment', relevance_score: 5 },
+    ];
+    const groups = groupMatchesByFundingType(matches);
+    expect(groups).toHaveLength(1);
+    expect(groups[0].key).toBe('incentives');
+    expect(groups[0].matches).toHaveLength(2);
+  });
+
+  test('groups tax benefits correctly', () => {
+    const matches = [
+      { funding_type: 'Tax Credit', relevance_score: 7 },
+      { funding_type: 'Tax Exemption', relevance_score: 9 },
+    ];
+    const groups = groupMatchesByFundingType(matches);
+    expect(groups).toHaveLength(1);
+    expect(groups[0].key).toBe('tax');
+    expect(groups[0].matches).toHaveLength(2);
+  });
+
+  test('groups loans correctly', () => {
+    const matches = [
+      { funding_type: 'Loan', relevance_score: 5 },
+      { funding_type: 'Forgivable Loan', relevance_score: 8 },
+    ];
+    const groups = groupMatchesByFundingType(matches);
+    expect(groups).toHaveLength(1);
+    expect(groups[0].key).toBe('loans');
+  });
+
+  test('unknown funding types go to "other"', () => {
+    const matches = [
+      { funding_type: 'Technical Assistance', relevance_score: 4 },
+    ];
+    const groups = groupMatchesByFundingType(matches);
+    expect(groups).toHaveLength(1);
+    expect(groups[0].key).toBe('other');
+  });
+
+  test('multiple groups returned in order: grants → tax → loans → incentives', () => {
+    const matches = [
+      { funding_type: 'Tax Credit', relevance_score: 7 },
+      { funding_type: 'Grant', relevance_score: 9 },
+      { funding_type: 'Loan', relevance_score: 5 },
+      { funding_type: 'Rebate', relevance_score: 4 },
+    ];
+    const groups = groupMatchesByFundingType(matches);
+    expect(groups).toHaveLength(4);
+    expect(groups[0].key).toBe('grants');
+    expect(groups[1].key).toBe('tax');
+    expect(groups[2].key).toBe('loans');
+    expect(groups[3].key).toBe('incentives');
+  });
+
+  test('empty groups are excluded', () => {
+    const matches = [{ funding_type: 'Grant', relevance_score: 8 }];
+    const groups = groupMatchesByFundingType(matches);
+    expect(groups).toHaveLength(1);
+    expect(groups[0].key).toBe('grants');
+  });
+
+  test('matches within a group are sorted by relevance score descending', () => {
+    const matches = [
+      { funding_type: 'Grant', relevance_score: 3 },
+      { funding_type: 'Grant', relevance_score: 9 },
+      { funding_type: 'Grant', relevance_score: 6 },
+    ];
+    const groups = groupMatchesByFundingType(matches);
+    expect(groups[0].matches[0].relevance_score).toBe(9);
+    expect(groups[0].matches[1].relevance_score).toBe(6);
+    expect(groups[0].matches[2].relevance_score).toBe(3);
+  });
+
+  test('uses scoring.finalScore as fallback for relevance', () => {
+    const matches = [
+      { funding_type: 'Grant', scoring: { finalScore: 4 } },
+      { funding_type: 'Grant', scoring: { finalScore: 8 } },
+    ];
+    const groups = groupMatchesByFundingType(matches);
+    expect(groups[0].matches[0].scoring.finalScore).toBe(8);
+    expect(groups[0].matches[1].scoring.finalScore).toBe(4);
+  });
+
+  test('missing funding_type goes to other', () => {
+    const matches = [{ relevance_score: 5 }];
+    const groups = groupMatchesByFundingType(matches);
+    expect(groups[0].key).toBe('other');
+  });
+});
+
+describe('getMatchScoreBadgeStyles', () => {
+  test('60+ returns violet style', () => {
+    const style = getMatchScoreBadgeStyles(60);
+    expect(style.backgroundColor).toBe('#f5f3ff');
+    expect(style.color).toBe('#6d28d9');
+    expect(style.border).toContain('#c4b5fd');
+  });
+
+  test('100 returns violet style', () => {
+    expect(getMatchScoreBadgeStyles(100).color).toBe('#6d28d9');
+  });
+
+  test('30-59 returns amber style', () => {
+    const style = getMatchScoreBadgeStyles(30);
+    expect(style.backgroundColor).toBe('#fffbeb');
+    expect(style.color).toBe('#b45309');
+    expect(style.border).toContain('#fcd34d');
+  });
+
+  test('59 returns amber (boundary)', () => {
+    expect(getMatchScoreBadgeStyles(59).color).toBe('#b45309');
+  });
+
+  test('<30 returns neutral style', () => {
+    const style = getMatchScoreBadgeStyles(0);
+    expect(style.backgroundColor).toBe('#f9fafb');
+    expect(style.color).toBe('#6b7280');
+    expect(style.border).toContain('#d1d5db');
+  });
+
+  test('29 is neutral, 30 is amber (boundary)', () => {
+    expect(getMatchScoreBadgeStyles(29).color).toBe('#6b7280');
+    expect(getMatchScoreBadgeStyles(30).color).toBe('#b45309');
+  });
+
+  test('always returns object with 3 keys', () => {
+    [0, 15, 29, 30, 59, 60, 100].forEach(score => {
+      const style = getMatchScoreBadgeStyles(score);
+      expect(style).toHaveProperty('backgroundColor');
+      expect(style).toHaveProperty('color');
+      expect(style).toHaveProperty('border');
+    });
+  });
+});
+
+describe('getFundingGroupDotColor', () => {
+  test('grants returns emerald hex', () => {
+    expect(getFundingGroupDotColor('grants')).toBe('#10b981');
+  });
+
+  test('incentives returns violet hex', () => {
+    expect(getFundingGroupDotColor('incentives')).toBe('#8b5cf6');
+  });
+
+  test('tax returns amber hex', () => {
+    expect(getFundingGroupDotColor('tax')).toBe('#f59e0b');
+  });
+
+  test('loans returns blue hex', () => {
+    expect(getFundingGroupDotColor('loans')).toBe('#3b82f6');
+  });
+
+  test('other returns neutral hex', () => {
+    expect(getFundingGroupDotColor('other')).toBe('#a3a3a3');
+  });
+
+  test('unknown key returns other color', () => {
+    expect(getFundingGroupDotColor('unknown')).toBe('#a3a3a3');
+  });
+});
+
+describe('formatBudgetDisplay', () => {
+  test('label key returns human-readable label', () => {
+    expect(formatBudgetDisplay('small')).toBe('Small ($50K - $500K)');
+    expect(formatBudgetDisplay('medium')).toBe('Medium ($500K - $5M)');
+    expect(formatBudgetDisplay('large')).toBe('Large ($5M - $50M)');
+    expect(formatBudgetDisplay('very_large')).toBe('Very Large ($50M+)');
+  });
+
+  test('numeric budget is formatted with commas', () => {
+    expect(formatBudgetDisplay(30000000)).toBe('$30,000,000');
+    expect(formatBudgetDisplay(500000)).toBe('$500,000');
+    expect(formatBudgetDisplay(0)).toBe('$0');
+  });
+
+  test('string numeric budget is formatted', () => {
+    expect(formatBudgetDisplay('30000000')).toBe('$30,000,000');
+    expect(formatBudgetDisplay('500000')).toBe('$500,000');
+  });
+
+  test('non-numeric string passes through', () => {
+    expect(formatBudgetDisplay('custom budget')).toBe('custom budget');
+  });
+
+  test('null/undefined returns "Not specified"', () => {
+    expect(formatBudgetDisplay(null)).toBe('Not specified');
+    expect(formatBudgetDisplay(undefined)).toBe('Not specified');
+  });
+
+  test('empty string returns "Not specified"', () => {
+    expect(formatBudgetDisplay('')).toBe('Not specified');
+  });
+});

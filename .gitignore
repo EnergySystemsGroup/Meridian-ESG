@@ -50,6 +50,12 @@ next-env.d.ts
 # supabase
 supabase/.temp/
 
+# Claude Code worktrees
+.claude/worktrees/
+
+# Playwright MCP
+.playwright-mcp/
+
 # temp working files (discovery data, etc.)
 temp/
 
