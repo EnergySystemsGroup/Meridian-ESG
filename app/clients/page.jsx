@@ -80,6 +80,15 @@ function ClientsPageContent() {
 	const { data: usersData } = useUsers();
 	const allUsers = usersData?.users || [];
 
+	// Smart fallback: if "My Clients" returns empty, switch to "All Clients"
+	const hasAutoFallenBack = useRef(false);
+	useEffect(() => {
+		if (!loading && filterUserId === null && !hasAutoFallenBack.current && Object.keys(clientMatches).length === 0) {
+			hasAutoFallenBack.current = true;
+			setFilterUserId('all');
+		}
+	}, [loading, filterUserId, clientMatches, setFilterUserId]);
+
 	// UI-only local state
 	const [selectedClient, setSelectedClient] = useState(null);
 	const [showProfileModal, setShowProfileModal] = useState(false);
