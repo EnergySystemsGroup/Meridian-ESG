@@ -2,14 +2,14 @@
  * Client Matching Summary API
  *
  * Returns client matching statistics for dashboard display:
- * - clientsWithMatches: number of clients that have at least 1 match
- * - totalMatches: sum of all matches across all clients
+ * - clientsWithMatches: number of clients that have at least 1 visible match
+ * - totalMatches: sum of all visible matches across all clients
  * - totalClients: total number of clients in system
+ *
+ * Reads from persisted client_matches table instead of recomputing.
  */
 
 import { createClient } from '@supabase/supabase-js';
-import { TAXONOMIES, getExpandedClientTypes } from '@/lib/constants/taxonomies';
-import { evaluateMatch } from '@/lib/matching/evaluateMatch';
 
 const supabase = createClient(
 	process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -36,91 +36,73 @@ export async function GET() {
 			});
 		}
 
-		console.log('[ClientMatchingSummary] Calculating match statistics');
+		console.log('[ClientMatchingSummary] Calculating match statistics from client_matches');
 
-		// Get all clients from database
-		const { data: clients, error: clientError } = await supabase
+		// 1. Count total clients
+		const { count: totalClients, error: clientError } = await supabase
 			.from('clients')
-			.select('*');
+			.select('*', { count: 'exact', head: true });
 
 		if (clientError) {
-			console.error('[ClientMatchingSummary] Error fetching clients:', clientError);
+			console.error('[ClientMatchingSummary] Error counting clients:', clientError);
 			return Response.json(
-				{ success: false, error: 'Failed to fetch clients' },
+				{ success: false, error: 'Failed to count clients' },
 				{ status: 500 }
 			);
 		}
 
-		const totalClients = clients?.length || 0;
+		// 2. Fetch all non-stale match pairs
+		const { data: matchRows, error: matchError } = await supabase
+			.from('client_matches')
+			.select('client_id, opportunity_id')
+			.eq('is_stale', false)
+			.limit(10000);
 
-		// Get all open opportunities
-		const { data: rawOpportunities, error: oppError } = await supabase
-			.from('funding_opportunities')
-			.select(
-				`
-				id, title, eligible_locations, eligible_applicants,
-				eligible_project_types, eligible_activities, is_national,
-				status
-			`
-			)
-			.neq('status', 'closed')
-			.or('promotion_status.is.null,promotion_status.eq.promoted');
-
-		if (oppError) {
-			console.error('[ClientMatchingSummary] Error fetching opportunities:', oppError);
+		if (matchError) {
+			console.error('[ClientMatchingSummary] Error fetching matches:', matchError);
 			return Response.json(
-				{ success: false, error: 'Failed to fetch opportunities' },
+				{ success: false, error: 'Failed to fetch matches' },
 				{ status: 500 }
 			);
 		}
 
-		// Get opportunity coverage areas
-		const { data: opportunityCoverageAreas, error: coverageError } = await supabase
-			.from('opportunity_coverage_areas')
-			.select('opportunity_id, coverage_area_id');
+		// 3. Fetch hidden matches to exclude
+		const { data: hiddenRows, error: hiddenError } = await supabase
+			.from('hidden_matches')
+			.select('client_id, opportunity_id')
+			.limit(10000);
 
-		if (coverageError) {
-			console.error('[ClientMatchingSummary] Error fetching coverage areas:', coverageError);
+		if (hiddenError) {
+			console.error('[ClientMatchingSummary] Error fetching hidden matches:', hiddenError);
 		}
 
-		// Build coverage map
-		const opportunityCoverageMap = {};
-		for (const link of opportunityCoverageAreas || []) {
-			if (!opportunityCoverageMap[link.opportunity_id]) {
-				opportunityCoverageMap[link.opportunity_id] = [];
-			}
-			opportunityCoverageMap[link.opportunity_id].push(link.coverage_area_id);
-		}
+		const hiddenSet = new Set(
+			(hiddenRows || []).map(h => `${h.client_id}:${h.opportunity_id}`)
+		);
 
-		// Attach coverage areas to opportunities
-		const opportunities = (rawOpportunities || []).map((opp) => ({
-			...opp,
-			coverage_area_ids: opportunityCoverageMap[opp.id] || [],
-		}));
-
-		// Calculate matches for each client
-		let clientsWithMatches = 0;
+		// 4. Filter visible matches and compute stats
+		const clientsWithMatchesSet = new Set();
 		let totalMatches = 0;
 
-		for (const client of clients || []) {
-			const matchCount = countMatches(client, opportunities);
-			if (matchCount > 0) {
-				clientsWithMatches++;
-				totalMatches += matchCount;
-			}
+		for (const row of matchRows || []) {
+			const key = `${row.client_id}:${row.opportunity_id}`;
+			if (hiddenSet.has(key)) continue;
+			clientsWithMatchesSet.add(row.client_id);
+			totalMatches++;
 		}
 
-		// Cache the result
 		const result = {
-			clientsWithMatches,
+			clientsWithMatches: clientsWithMatchesSet.size,
 			totalMatches,
-			totalClients,
+			totalClients: totalClients || 0,
 		};
+
+		// Cache the result
 		cache.data = result;
 		cache.timestamp = now;
 
 		console.log(
-			`[ClientMatchingSummary] ${clientsWithMatches}/${totalClients} clients with matches, ${totalMatches} total`
+			`[ClientMatchingSummary] ${result.clientsWithMatches}/${result.totalClients} clients with matches, ${totalMatches} total`
 		);
 
 		return Response.json({
@@ -140,24 +122,4 @@ export async function GET() {
 			{ status: 500 }
 		);
 	}
-}
-
-/**
- * Count matches between a client and opportunities
- */
-function countMatches(client, opportunities) {
-	let count = 0;
-	const deps = {
-		hotActivities: TAXONOMIES.ELIGIBLE_ACTIVITIES.hot,
-		getExpandedClientTypes
-	};
-
-	for (const opportunity of opportunities) {
-		const result = evaluateMatch(client, opportunity, deps);
-		if (result.isMatch) {
-			count++;
-		}
-	}
-
-	return count;
 }

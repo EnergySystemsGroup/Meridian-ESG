@@ -17,12 +17,18 @@ import {
 } from '../../../../lib/matching/computeMatches.js';
 
 /**
- * Verify the request has a valid Bearer token matching CRON_SECRET.
+ * Verify the request is authorized.
+ * Accepts either:
+ *  1. Bearer token matching CRON_SECRET (Vercel Cron, GitHub Actions, manual triggers)
+ *  2. Dev mode (NODE_ENV !== 'production')
  * Returns null if valid, or a Response if invalid.
  */
 function verifyAuth(request) {
-  const expectedAuth = process.env.CRON_SECRET;
+  // Allow in dev mode
+  if (process.env.NODE_ENV !== 'production') return null;
 
+  // Verify CRON_SECRET — Vercel automatically includes it as Bearer token for cron jobs
+  const expectedAuth = process.env.CRON_SECRET;
   if (!expectedAuth) {
     console.error('[ComputeMatchesCron] CRON_SECRET is not set');
     return Response.json({ error: 'Server misconfigured' }, { status: 500 });

@@ -199,6 +199,70 @@ describe('Match Computation: Job Logging', () => {
   });
 });
 
+describe('Match Computation: First-Time Client Detection', () => {
+  /**
+   * Identify clients with zero prior matches (first-ever computation).
+   * Mirrors lib/matching/computeMatches.js lines 160-167.
+   */
+  function identifyFirstTimeClients(clients, existingMatches) {
+    const clientsWithExistingMatches = new Set(
+      (existingMatches || []).map(m => m.client_id)
+    );
+    return clients
+      .map(c => c.id)
+      .filter(cid => !clientsWithExistingMatches.has(cid));
+  }
+
+  test('brand new clients with no existing matches are identified', () => {
+    const clients = [
+      { id: 'c1' },
+      { id: 'c2' },
+      { id: 'c3' },
+    ];
+    const existingMatches = [
+      { client_id: 'c1', opportunity_id: 'opp-1' },
+    ];
+
+    const firstTime = identifyFirstTimeClients(clients, existingMatches);
+    expect(firstTime).toEqual(['c2', 'c3']);
+  });
+
+  test('all clients are first-time when no existing matches', () => {
+    const clients = [{ id: 'c1' }, { id: 'c2' }];
+    const firstTime = identifyFirstTimeClients(clients, []);
+    expect(firstTime).toEqual(['c1', 'c2']);
+  });
+
+  test('no first-time clients when all have existing matches', () => {
+    const clients = [{ id: 'c1' }, { id: 'c2' }];
+    const existingMatches = [
+      { client_id: 'c1', opportunity_id: 'opp-1' },
+      { client_id: 'c2', opportunity_id: 'opp-2' },
+    ];
+
+    const firstTime = identifyFirstTimeClients(clients, existingMatches);
+    expect(firstTime).toEqual([]);
+  });
+
+  test('handles null existingMatches gracefully', () => {
+    const clients = [{ id: 'c1' }];
+    const firstTime = identifyFirstTimeClients(clients, null);
+    expect(firstTime).toEqual(['c1']);
+  });
+
+  test('a client with any match is not first-time (even one)', () => {
+    const clients = [{ id: 'c1' }, { id: 'c2' }];
+    const existingMatches = [
+      { client_id: 'c1', opportunity_id: 'opp-1' },
+      { client_id: 'c1', opportunity_id: 'opp-2' },
+      // c2 has no matches — it's first-time
+    ];
+
+    const firstTime = identifyFirstTimeClients(clients, existingMatches);
+    expect(firstTime).toEqual(['c2']);
+  });
+});
+
 describe('Match Computation: Scoped vs Full', () => {
   test('client-scoped computation only processes that client', () => {
     // Simulate: 1 client, all opportunities
