@@ -14,9 +14,11 @@ import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Combobox } from '@/components/ui/combobox';
 import { AddressAutofillInput } from '@/components/ui/address-autofill-input-client';
-import { TAXONOMIES, getSelectableClientTypes } from '@/lib/constants/taxonomies';
+import { TAXONOMIES, getSelectableClientTypes, PROJECT_TYPE_GROUPS, CLIENT_TYPE_GROUPS } from '@/lib/constants/taxonomies';
 import { useUsers } from '@/lib/hooks/queries/useUsers';
 import { useAuth } from '@/contexts/AuthContext';
+import { ChevronDown, X } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 // Get selectable client types (children + standalone + selectable parent exceptions)
 // This encourages users to select specific types rather than broad parent categories
@@ -56,6 +58,7 @@ export default function ClientForm({ client, onSuccess, onCancel }) {
   const [error, setError] = useState(null);
   const [geocodedInfo, setGeocodedInfo] = useState(null);
   const [autofilledLocation, setAutofilledLocation] = useState(null);
+  const [showProjectNeedsSummary, setShowProjectNeedsSummary] = useState(isEdit);
 
   // Load assigned users: pre-populate current user on add, fetch existing on edit
   useEffect(() => {
@@ -174,16 +177,16 @@ export default function ClientForm({ client, onSuccess, onCancel }) {
 
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
+    <form onSubmit={handleSubmit} className="space-y-5">
       {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
           {error}
         </div>
       )}
 
       {geocodedInfo && (
-        <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded">
-          <p className="font-semibold">Location detected:</p>
+        <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg">
+          <p className="font-semibold text-sm">Location detected:</p>
           <p className="text-sm">
             {geocodedInfo.location.city && `${geocodedInfo.location.city}, `}
             {geocodedInfo.location.county && `${geocodedInfo.location.county}, `}
@@ -195,169 +198,235 @@ export default function ClientForm({ client, onSuccess, onCancel }) {
         </div>
       )}
 
-      {/* Name */}
-      <div>
-        <Label htmlFor="name">Client Name *</Label>
-        <Input
-          id="name"
-          value={formData.name}
-          onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-          placeholder="Organization name"
-          required
-        />
+      {/* Section: Identity */}
+      <SectionHeader label="Identity" />
+      <div className="space-y-4">
+        {/* Name */}
+        <div>
+          <Label htmlFor="name">Client Name <span className="text-red-400 ml-0.5">*</span></Label>
+          <Input
+            id="name"
+            value={formData.name}
+            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+            placeholder="Organization name"
+            required
+          />
+        </div>
+
+        {/* Type */}
+        <div>
+          <Label htmlFor="type">Client Type <span className="text-red-400 ml-0.5">*</span></Label>
+          <Combobox
+            groups={CLIENT_TYPE_GROUPS}
+            options={CLIENT_TYPES}
+            value={formData.type}
+            onChange={(value) => setFormData({ ...formData, type: value })}
+            placeholder="Select client type..."
+            searchPlaceholder="Search client types..."
+            emptyMessage="No client type found."
+          />
+        </div>
       </div>
 
-      {/* Type */}
-      <div>
-        <Label htmlFor="type">Client Type *</Label>
-        <Combobox
-          options={CLIENT_TYPES}
-          value={formData.type}
-          onChange={(value) => setFormData({ ...formData, type: value })}
-          placeholder="Select client type..."
-          searchPlaceholder="Search client types..."
-          emptyMessage="No client type found."
-        />
-      </div>
+      {/* Section: Location */}
+      <SectionHeader label="Location" />
+      <div className="space-y-4">
+        {/* Address */}
+        <div>
+          <Label htmlFor="address">Address <span className="text-red-400 ml-0.5">*</span></Label>
+          <AddressAutofillInput
+            id="address"
+            value={formData.address}
+            onChange={(e) => {
+              setFormData({ ...formData, address: e.target.value });
+              // Clear autofilled location when manually editing
+              if (autofilledLocation) {
+                setAutofilledLocation(null);
+              }
+            }}
+            onAddressSelect={(locationData) => {
+              // Update form with selected address
+              setFormData({ ...formData, address: locationData.address });
+              // Store location data for preview and submission
+              setAutofilledLocation(locationData);
+              console.log('[ClientForm] Address selected:', locationData);
+            }}
+            placeholder="Start typing an address..."
+            required
+          />
+          <p className="text-xs text-gray-500 mt-1">
+            Start typing to see address suggestions. Select from the dropdown for best geocoding accuracy.
+          </p>
 
-      {/* Address */}
-      <div>
-        <Label htmlFor="address">Address *</Label>
-        <AddressAutofillInput
-          id="address"
-          value={formData.address}
-          onChange={(e) => {
-            setFormData({ ...formData, address: e.target.value });
-            // Clear autofilled location when manually editing
-            if (autofilledLocation) {
-              setAutofilledLocation(null);
-            }
-          }}
-          onAddressSelect={(locationData) => {
-            // Update form with selected address
-            setFormData({ ...formData, address: locationData.address });
-            // Store location data for preview and submission
-            setAutofilledLocation(locationData);
-            console.log('[ClientForm] Address selected:', locationData);
-          }}
-          placeholder="Start typing an address..."
-          required
-        />
-        <p className="text-xs text-gray-500 mt-1">
-          Start typing to see address suggestions. Select from the dropdown for best geocoding accuracy.
-        </p>
-
-        {/* Show preview of selected location */}
-        {autofilledLocation && (
-          <div className="mt-2 p-3 bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-md">
-            <p className="text-sm font-semibold text-blue-900 dark:text-blue-100 mb-1">
-              📍 Location Detected:
-            </p>
-            <p className="text-sm text-blue-700 dark:text-blue-300">
-              {autofilledLocation.location.city && `${autofilledLocation.location.city}, `}
-              {autofilledLocation.location.county && `${autofilledLocation.location.county}, `}
-              {autofilledLocation.location.state} {autofilledLocation.location.zipcode}
-            </p>
-            {autofilledLocation.coordinates && (
-              <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">
-                Coordinates: {autofilledLocation.coordinates.lat?.toFixed(6)}, {autofilledLocation.coordinates.lng?.toFixed(6)}
+          {/* Show preview of selected location */}
+          {autofilledLocation && (
+            <div className="mt-2 p-3 bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg">
+              <p className="text-sm font-semibold text-blue-900 dark:text-blue-100 mb-1">
+                Location Detected:
               </p>
-            )}
-          </div>
-        )}
+              <p className="text-sm text-blue-700 dark:text-blue-300">
+                {autofilledLocation.location.city && `${autofilledLocation.location.city}, `}
+                {autofilledLocation.location.county && `${autofilledLocation.location.county}, `}
+                {autofilledLocation.location.state} {autofilledLocation.location.zipcode}
+              </p>
+              {autofilledLocation.coordinates && (
+                <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">
+                  Coordinates: {autofilledLocation.coordinates.lat?.toFixed(6)}, {autofilledLocation.coordinates.lng?.toFixed(6)}
+                </p>
+              )}
+            </div>
+          )}
+        </div>
       </div>
 
-      {/* Project Needs */}
-      <div>
-        <Label>Project Needs</Label>
-        <Combobox
-          multiple
-          options={PROJECT_NEEDS}
-          value={formData.project_needs}
-          onChange={(value) => setFormData({ ...formData, project_needs: value })}
-          placeholder="Select project needs..."
-          searchPlaceholder="Search project types..."
-          emptyMessage="No project type found."
-        />
+      {/* Section: Scope & Needs */}
+      <SectionHeader label="Scope & Needs" />
+      <div className="space-y-4">
+        {/* Project Needs */}
+        <div>
+          <Label>Project Needs</Label>
+          <Combobox
+            multiple
+            groups={PROJECT_TYPE_GROUPS}
+            options={PROJECT_NEEDS}
+            value={formData.project_needs}
+            onChange={(value) => setFormData({ ...formData, project_needs: value })}
+            placeholder="Select project needs..."
+            searchPlaceholder="Search project types..."
+            emptyMessage="No project type found."
+          />
+
+          {/* Collapsible selection review */}
+          {formData.project_needs.length > 0 && (
+            <div className="mt-2 border border-neutral-200 dark:border-neutral-700 rounded-lg overflow-hidden">
+              <button
+                type="button"
+                onClick={() => setShowProjectNeedsSummary(!showProjectNeedsSummary)}
+                className="flex items-center justify-between w-full px-3 py-2 text-sm text-left hover:bg-neutral-50 dark:hover:bg-neutral-800/50 transition-colors"
+                aria-expanded={showProjectNeedsSummary}
+              >
+                <span className="text-neutral-600 dark:text-neutral-400">
+                  {formData.project_needs.length} project {formData.project_needs.length === 1 ? 'need' : 'needs'} selected
+                </span>
+                <ChevronDown className={cn("h-4 w-4 text-neutral-400 transition-transform duration-200", showProjectNeedsSummary && "rotate-180")} />
+              </button>
+              {showProjectNeedsSummary && (
+                <div className="px-3 pb-3 flex flex-wrap gap-1.5 border-t border-neutral-100 dark:border-neutral-800 pt-2">
+                  {formData.project_needs.map((need) => (
+                    <span key={need} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 text-xs border border-blue-200 dark:border-blue-800">
+                      {need}
+                      <button
+                        type="button"
+                        onClick={() => setFormData({ ...formData, project_needs: formData.project_needs.filter(n => n !== need) })}
+                        className="ml-0.5 hover:text-blue-900 dark:hover:text-blue-100 focus:outline-none focus:ring-1 focus:ring-blue-500 rounded-sm p-0.5 min-w-[20px] min-h-[20px] flex items-center justify-center"
+                        aria-label={`Remove ${need}`}
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Budget */}
+        <div>
+          <Label htmlFor="budget">Budget Range</Label>
+          <Combobox
+            options={[
+              { value: 'small', label: 'Small ($50K – $500K)' },
+              { value: 'medium', label: 'Medium ($500K – $5M)' },
+              { value: 'large', label: 'Large ($5M – $50M)' },
+              { value: 'very_large', label: 'Very Large ($50M+)' },
+            ]}
+            value={formData.budget || ''}
+            onChange={(value) => setFormData({ ...formData, budget: value })}
+            placeholder="Select budget range..."
+            searchPlaceholder="Search budget tiers..."
+            emptyMessage="No budget tier found."
+          />
+        </div>
+
+        {/* DAC Status */}
+        <div className="flex items-center space-x-2">
+          <Checkbox
+            id="dac"
+            checked={formData.dac}
+            onCheckedChange={(checked) => setFormData({ ...formData, dac: checked })}
+          />
+          <Label htmlFor="dac" className="cursor-pointer">
+            Disadvantaged Community (DAC)
+          </Label>
+        </div>
       </div>
 
-      {/* Budget */}
-      <div>
-        <Label htmlFor="budget">Budget</Label>
-        <Input
-          id="budget"
-          type="number"
-          value={formData.budget || ''}
-          onChange={(e) => setFormData({ ...formData, budget: e.target.value ? parseFloat(e.target.value) : null })}
-          placeholder="Available budget (optional, e.g., 1000000)"
-          min="0"
-          step="1000"
-        />
-        <p className="text-xs text-gray-500 mt-1">
-          Enter numeric value (e.g., 1000000 for $1M). Used for budget tier categorization.
-        </p>
-      </div>
+      {/* Section: Additional Details */}
+      <SectionHeader label="Additional Details" />
+      <div className="space-y-4">
+        {/* Contact */}
+        <div>
+          <Label htmlFor="contact">Contact Information</Label>
+          <Input
+            id="contact"
+            value={formData.contact}
+            onChange={(e) => setFormData({ ...formData, contact: e.target.value })}
+            placeholder="Email or phone (optional)"
+          />
+        </div>
 
-      {/* Contact */}
-      <div>
-        <Label htmlFor="contact">Contact Information</Label>
-        <Input
-          id="contact"
-          value={formData.contact}
-          onChange={(e) => setFormData({ ...formData, contact: e.target.value })}
-          placeholder="Email or phone (optional)"
-        />
-      </div>
+        {/* Description */}
+        <div>
+          <Label htmlFor="description">Description</Label>
+          <Textarea
+            id="description"
+            value={formData.description}
+            onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+            placeholder="Additional notes about the client"
+            rows={3}
+            className="resize-y min-h-[72px] max-h-[200px]"
+          />
+        </div>
 
-      {/* Description */}
-      <div>
-        <Label htmlFor="description">Description</Label>
-        <Textarea
-          id="description"
-          value={formData.description}
-          onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-          placeholder="Additional notes about the client"
-          rows={6}
-        />
-      </div>
-
-      {/* DAC Status */}
-      <div className="flex items-center space-x-2">
-        <Checkbox
-          id="dac"
-          checked={formData.dac}
-          onCheckedChange={(checked) => setFormData({ ...formData, dac: checked })}
-        />
-        <Label htmlFor="dac" className="cursor-pointer">
-          Disadvantaged Community (DAC)
-        </Label>
-      </div>
-
-      {/* Assigned Users */}
-      <div>
-        <Label>Assigned Users</Label>
-        <Combobox
-          multiple
-          options={userOptions}
-          value={formData.assigned_users}
-          onChange={(value) => setFormData({ ...formData, assigned_users: value })}
-          placeholder="Select users to assign..."
-          searchPlaceholder="Search users..."
-          emptyMessage="No users found."
-        />
+        {/* Assigned Users */}
+        <div>
+          <Label>Assigned Users</Label>
+          <Combobox
+            multiple
+            options={userOptions}
+            value={formData.assigned_users}
+            onChange={(value) => setFormData({ ...formData, assigned_users: value })}
+            placeholder="Select users to assign..."
+            searchPlaceholder="Search users..."
+            emptyMessage="No users found."
+          />
+        </div>
       </div>
 
       {/* Buttons */}
-      <div className="flex justify-end space-x-2">
+      <div className="flex justify-end space-x-2 pt-2">
         {onCancel && (
           <Button type="button" variant="outline" onClick={onCancel}>
             Cancel
           </Button>
         )}
-        <Button type="submit" disabled={loading}>
+        <Button type="submit" disabled={loading} className="min-w-[140px]">
           {loading ? 'Saving...' : (isEdit ? 'Update Client' : 'Create Client')}
         </Button>
       </div>
     </form>
+  );
+}
+
+/** Small section header with line divider */
+function SectionHeader({ label }) {
+  return (
+    <div className="flex items-center gap-2 mt-2">
+      <span className="text-[11px] font-semibold uppercase tracking-wider text-neutral-500 dark:text-neutral-400 whitespace-nowrap">
+        {label}
+      </span>
+      <div className="flex-1 h-px bg-neutral-200 dark:bg-neutral-700" />
+    </div>
   );
 }

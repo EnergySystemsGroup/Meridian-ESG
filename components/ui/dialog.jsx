@@ -1,5 +1,6 @@
 import React from 'react';
 import { createPortal } from 'react-dom';
+import { cn } from '@/lib/utils';
 
 export function Dialog({ open, onOpenChange, children }) {
   if (!open) return null;
@@ -24,7 +25,10 @@ export function Dialog({ open, onOpenChange, children }) {
 export function DialogContent({ className = '', children, ...props }) {
   return (
     <div
-      className={`bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 w-full max-w-lg mx-4 max-h-[80vh] overflow-y-auto ${className}`}
+      className={cn(
+        'bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 w-full max-w-lg mx-4 max-h-[80vh] overflow-y-auto',
+        className
+      )}
       onClick={(e) => e.stopPropagation()}
       {...props}
     >

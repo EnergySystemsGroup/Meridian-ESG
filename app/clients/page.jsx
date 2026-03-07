@@ -151,6 +151,13 @@ function ClientsPageContent() {
 		queryClient.invalidateQueries({ queryKey: queryKeys.clientMatching.all });
 	}, [queryClient]);
 
+	const handleClientUpdated = useCallback((updatedClient) => {
+		if (updatedClient) {
+			setSelectedClient(updatedClient);
+		}
+		invalidateMatches();
+	}, [invalidateMatches]);
+
 	const handleViewProfile = (client) => {
 		setSelectedClient(client);
 		setShowProfileModal(true);
@@ -679,7 +686,7 @@ function ClientsPageContent() {
 					client={selectedClient}
 					isOpen={showProfileModal}
 					onClose={() => setShowProfileModal(false)}
-					onClientUpdate={invalidateMatches}
+					onClientUpdate={handleClientUpdated}
 				/>
 
 				<Dialog open={showAddClientModal} onOpenChange={setShowAddClientModal}>
