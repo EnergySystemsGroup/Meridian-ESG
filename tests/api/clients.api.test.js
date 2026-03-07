@@ -26,6 +26,7 @@ const clientSchema = {
   match_count: 'number|null',
   is_dac: 'boolean|null',
   budget_range: 'string|null',
+  owner_id: 'string|null',
   created_at: 'string',
   updated_at: 'string|null',
 };
@@ -98,6 +99,7 @@ describe('Clients API Contract', () => {
         match_count: 5,
         is_dac: false,
         budget_range: '$1M - $10M',
+        owner_id: 'user-abc-123',
         created_at: '2024-01-15T10:00:00Z',
         updated_at: '2024-03-01T15:30:00Z',
       };
@@ -119,6 +121,7 @@ describe('Clients API Contract', () => {
         match_count: null,
         is_dac: null,
         budget_range: null,
+        owner_id: null,
         created_at: '2024-01-15T10:00:00Z',
         updated_at: null,
       };
@@ -142,6 +145,90 @@ describe('Clients API Contract', () => {
 
       const errors = validateSchema(listItem, clientListItemSchema);
       expect(errors).toHaveLength(0);
+    });
+  });
+
+  describe('POST /api/clients - assigned_users contract', () => {
+    // Mirrors the resolution logic in POST /api/clients route.js
+    function resolveAssignedUsers(bodyAssignedUsers, ownerId) {
+      if (Array.isArray(bodyAssignedUsers) && bodyAssignedUsers.length > 0) {
+        return bodyAssignedUsers;
+      }
+      return ownerId ? [ownerId] : [];
+    }
+
+    test('accepts assigned_users array in request body', () => {
+      const body = {
+        name: 'Test Client',
+        type: 'Municipal Government',
+        address: '123 Main St',
+        assigned_users: ['user-1', 'user-2'],
+      };
+
+      expect(Array.isArray(body.assigned_users)).toBe(true);
+      expect(resolveAssignedUsers(body.assigned_users, 'owner-1')).toEqual(['user-1', 'user-2']);
+    });
+
+    test('falls back to ownerId when assigned_users absent', () => {
+      const body = {
+        name: 'Test Client',
+        type: 'Municipal Government',
+        address: '123 Main St',
+      };
+
+      expect(resolveAssignedUsers(body.assigned_users, 'owner-1')).toEqual(['owner-1']);
+    });
+  });
+
+  describe('PUT /api/clients/[id] - assigned_users contract', () => {
+    // Mirrors the sync guard in PUT /api/clients/[id] route.js
+    function shouldSyncUsers(body) {
+      return Array.isArray(body.assigned_users);
+    }
+
+    test('syncs when assigned_users is an array', () => {
+      expect(shouldSyncUsers({ assigned_users: ['u1'] })).toBe(true);
+    });
+
+    test('syncs when assigned_users is empty (clears all)', () => {
+      expect(shouldSyncUsers({ assigned_users: [] })).toBe(true);
+    });
+
+    test('skips sync when assigned_users absent (backward compat)', () => {
+      expect(shouldSyncUsers({ name: 'Updated' })).toBe(false);
+    });
+  });
+
+  describe('Filtered Client List Response', () => {
+    test('filtered response has same shape as unfiltered', () => {
+      // When user_id filtering is applied, the response shape is identical
+      const unfilteredResponse = {
+        success: true,
+        clients: [
+          { id: 'client-1', name: 'City of SF', type: 'Municipal Government' },
+          { id: 'client-2', name: 'City of LA', type: 'Municipal Government' },
+        ],
+        count: 2,
+      };
+
+      const filteredResponse = {
+        success: true,
+        clients: [
+          { id: 'client-1', name: 'City of SF', type: 'Municipal Government' },
+        ],
+        count: 1,
+      };
+
+      expect(Object.keys(filteredResponse)).toEqual(Object.keys(unfilteredResponse));
+      expect(filteredResponse.success).toBe(true);
+      expect(Array.isArray(filteredResponse.clients)).toBe(true);
+      expect(filteredResponse.count).toBe(filteredResponse.clients.length);
+    });
+
+    test('empty filtered result returns empty array with count 0', () => {
+      const response = { success: true, clients: [], count: 0 };
+      expect(response.clients).toHaveLength(0);
+      expect(response.count).toBe(0);
     });
   });
 

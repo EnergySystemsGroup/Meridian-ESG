@@ -181,6 +181,40 @@ export async function PUT(request, { params }) {
 
     console.log(`[API] ✅ Updated client: ${client.id}`);
 
+    // Sync assigned_users if provided
+    if (Array.isArray(body.assigned_users)) {
+      const { error: deleteError } = await supabase
+        .from('client_users')
+        .delete()
+        .eq('client_id', id);
+
+      if (deleteError) {
+        console.error('[API] Failed to clear client_users:', deleteError.message);
+        return NextResponse.json(
+          { success: false, error: 'Failed to update user assignments' },
+          { status: 500 }
+        );
+      }
+
+      if (body.assigned_users.length > 0) {
+        const rows = body.assigned_users.map((userId) => ({
+          client_id: id,
+          user_id: userId,
+        }));
+        const { error: insertError } = await supabase
+          .from('client_users')
+          .insert(rows);
+        if (insertError) {
+          console.error('[API] Failed to insert client_users:', insertError.message);
+          return NextResponse.json(
+            { success: false, error: 'Failed to save user assignments' },
+            { status: 500 }
+          );
+        }
+        console.log(`[API] Synced ${rows.length} client_users for client ${id}`);
+      }
+    }
+
     // Fire-and-forget: recompute matches for the updated client
     computeMatchesForClient(supabase, client.id).catch(err =>
       console.error('[API] Background match computation failed:', err.message)

@@ -24,7 +24,7 @@ export const metadata = {
 export default function RootLayout({ children }) {
 	return (
 		<html lang='en' className={`${inter.variable} ${jetbrainsMono.variable}`}>
-			<body className='antialiased min-h-screen bg-white dark:bg-neutral-950'>
+			<body className='antialiased min-h-screen bg-background text-foreground'>
 				<QueryProvider>
 					<ThemeProvider>
 						<AuthProvider>

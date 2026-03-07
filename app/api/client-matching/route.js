@@ -10,6 +10,7 @@
  */
 
 import { createClient } from '@supabase/supabase-js';
+import { getFilteredClientIds } from '@/lib/utils/clientFiltering';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -29,7 +30,8 @@ function transformMatch(row) {
     score: row.score,
     matchDetails: row.match_details,
     is_new: row.is_new,
-    first_matched_at: row.first_matched_at
+    first_matched_at: row.first_matched_at,
+    last_matched_at: row.last_matched_at
   };
 }
 
@@ -43,7 +45,10 @@ export async function GET(request) {
     if (clientId) {
       return handleSingleClient(clientId);
     }
-    return handleAllClients();
+
+    // Resolve user-based filtering for all-clients mode
+    const { clientIds } = await getFilteredClientIds(supabase, request);
+    return handleAllClients(clientIds);
   } catch (error) {
     console.error('[ClientMatching] API error:', error);
     return Response.json({
@@ -86,7 +91,7 @@ async function handleSingleClient(clientId) {
   const { data: matchRows, error: matchError } = await supabase
     .from('client_matches')
     .select(`
-      score, match_details, is_new, first_matched_at,
+      score, match_details, is_new, first_matched_at, last_matched_at,
       opportunity:funding_opportunities!inner(
         *, funding_sources(type)
       )
@@ -126,11 +131,21 @@ async function handleSingleClient(clientId) {
 /**
  * All-clients mode: returns matches grouped by client.
  */
-async function handleAllClients() {
-  // 1. Fetch all clients
-  const { data: clients, error: clientError } = await supabase
-    .from('clients')
-    .select('*');
+async function handleAllClients(clientIds = null) {
+  // 1. Fetch clients (filtered if clientIds provided)
+  if (clientIds !== null && clientIds.length === 0) {
+    return Response.json({
+      success: true,
+      results: {},
+      timestamp: new Date().toISOString()
+    });
+  }
+
+  let clientQuery = supabase.from('clients').select('*');
+  if (clientIds !== null) {
+    clientQuery = clientQuery.in('id', clientIds);
+  }
+  const { data: clients, error: clientError } = await clientQuery;
 
   if (clientError) {
     console.error('[ClientMatching] Error fetching clients:', clientError);
@@ -141,11 +156,11 @@ async function handleAllClients() {
     return Response.json({ error: 'No clients found' }, { status: 404 });
   }
 
-  // 2. Fetch all non-stale matches with opportunity details
-  const { data: matchRows, error: matchError } = await supabase
+  // 2. Fetch non-stale matches with opportunity details (filtered if applicable)
+  let matchQuery = supabase
     .from('client_matches')
     .select(`
-      client_id, score, match_details, is_new, first_matched_at,
+      client_id, score, match_details, is_new, first_matched_at, last_matched_at,
       opportunity:funding_opportunities!inner(
         *, funding_sources(type)
       )
@@ -153,16 +168,26 @@ async function handleAllClients() {
     .eq('is_stale', false)
     .limit(10000);
 
+  if (clientIds !== null) {
+    matchQuery = matchQuery.in('client_id', clientIds);
+  }
+  const { data: matchRows, error: matchError } = await matchQuery;
+
   if (matchError) {
     console.error('[ClientMatching] Error fetching matches:', matchError);
     return Response.json({ error: 'Failed to fetch matches' }, { status: 500 });
   }
 
-  // 3. Batch-fetch all hidden matches
-  const { data: allHiddenMatches, error: hiddenError } = await supabase
+  // 3. Batch-fetch hidden matches (filtered if applicable)
+  let hiddenQuery = supabase
     .from('hidden_matches')
     .select('client_id, opportunity_id')
     .limit(10000);
+
+  if (clientIds !== null) {
+    hiddenQuery = hiddenQuery.in('client_id', clientIds);
+  }
+  const { data: allHiddenMatches, error: hiddenError } = await hiddenQuery;
 
   if (hiddenError) {
     console.error('[ClientMatching] Error fetching hidden matches:', hiddenError);

@@ -29,12 +29,15 @@ import {
 } from '@/components/ui/popover';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
-import { AlertTriangle, Loader2, Search, Plus, Filter, X, ChevronDown } from 'lucide-react';
+import { AlertTriangle, Loader2, Search, Plus, Filter, X, ChevronDown, Users } from 'lucide-react';
 import ClientProfileModal from '@/components/clients/ClientProfileModal';
 import ClientForm from '@/components/clients/ClientForm';
 import Link from 'next/link';
-import { generateClientTags, formatMatchScore, getMatchScoreBgColor } from '@/lib/utils/clientMatching';
+import { generateClientTags, formatMatchScore, getMatchScoreBadgeStyles } from '@/lib/utils/clientMatching';
+import { getProjectTypeColor } from '@/lib/utils/uiHelpers';
 import { useClientMatches } from '@/lib/hooks/queries/useClients';
+import { useUsers } from '@/lib/hooks/queries/useUsers';
+import { useAuth } from '@/contexts/AuthContext';
 import { useClientsFilterStore, ITEMS_PER_PAGE } from '@/lib/stores/clientsFilterStore';
 import { queryKeys } from '@/lib/queries/queryKeys';
 
@@ -50,20 +53,41 @@ function ClientsPageContent() {
 	const searchParams = useSearchParams();
 	const router = useRouter();
 	const queryClient = useQueryClient();
-
-	// TanStack Query for data fetching
-	const { data: clientMatches = {}, isLoading: loading, error: queryError } = useClientMatches(undefined, {
-		select: (data) => data?.results || {},
-	});
-	const error = queryError?.message || null;
+	const { user } = useAuth();
 
 	// Zustand store for filter/sort state
 	const {
 		searchQuery, sortBy, filterTypes, filterStates,
-		filterHasMatches, filterDac, displayCount,
+		filterHasMatches, filterDac, filterUserId, displayCount,
 		setSearchQuery, setSortBy, setFilterTypes, setFilterStates,
-		setFilterHasMatches, setFilterDac, setDisplayCount, loadMore,
+		setFilterHasMatches, setFilterDac, setFilterUserId, setDisplayCount, loadMore,
 	} = useClientsFilterStore();
+
+	// Resolve the user_id param to send to the API
+	// null (default) = don't send param → API defaults to current user
+	// 'all' = send user_id=all → no filtering
+	// uuid = send user_id=<uuid> → specific user
+	const apiUserId = filterUserId === null ? undefined : filterUserId;
+
+	// TanStack Query for data fetching
+	const { data: clientMatches = {}, isLoading: loading, error: queryError } = useClientMatches(undefined, {
+		userId: apiUserId,
+		select: (data) => data?.results || {},
+	});
+	const error = queryError?.message || null;
+
+	// Fetch workspace users for the filter dropdown
+	const { data: usersData } = useUsers();
+	const allUsers = usersData?.users || [];
+
+	// Smart fallback: if "My Clients" returns empty, switch to "All Clients"
+	const hasAutoFallenBack = useRef(false);
+	useEffect(() => {
+		if (!loading && filterUserId === null && !hasAutoFallenBack.current && Object.keys(clientMatches).length === 0) {
+			hasAutoFallenBack.current = true;
+			setFilterUserId('all');
+		}
+	}, [loading, filterUserId, clientMatches, setFilterUserId]);
 
 	// UI-only local state
 	const [selectedClient, setSelectedClient] = useState(null);
@@ -82,6 +106,7 @@ function ClientsPageContent() {
 		const states = searchParams.get('states')?.split(',').filter(Boolean);
 		const hasMatches = searchParams.get('hasMatches');
 		const dac = searchParams.get('dac');
+		const userId = searchParams.get('userId');
 
 		if (q) setSearchQuery(q);
 		if (sort) setSortBy(sort);
@@ -89,14 +114,19 @@ function ClientsPageContent() {
 		if (states?.length) setFilterStates(states);
 		if (hasMatches) setFilterHasMatches(hasMatches);
 		if (dac) setFilterDac(dac);
-	}, [searchParams, setSearchQuery, setSortBy, setFilterTypes, setFilterStates, setFilterHasMatches, setFilterDac]);
+		if (userId) setFilterUserId(userId);
+	}, [searchParams, setSearchQuery, setSortBy, setFilterTypes, setFilterStates, setFilterHasMatches, setFilterDac, setFilterUserId]);
 
 	// Update URL when filters change
 	const updateURL = useCallback((updates) => {
 		const params = new URLSearchParams(searchParams.toString());
 
 		Object.entries(updates).forEach(([key, value]) => {
-			if (value === '' || value === 'all' || (Array.isArray(value) && value.length === 0)) {
+			// userId uses 'all' as a meaningful value (not default), so don't delete it
+			const isDefault = key === 'userId'
+				? (value === '' || value === null || value === undefined)
+				: (value === '' || value === 'all' || (Array.isArray(value) && value.length === 0));
+			if (isDefault) {
 				params.delete(key);
 			} else if (Array.isArray(value)) {
 				params.set(key, value.join(','));
@@ -120,6 +150,13 @@ function ClientsPageContent() {
 	const invalidateMatches = useCallback(() => {
 		queryClient.invalidateQueries({ queryKey: queryKeys.clientMatching.all });
 	}, [queryClient]);
+
+	const handleClientUpdated = useCallback((updatedClient) => {
+		if (updatedClient) {
+			setSelectedClient(updatedClient);
+		}
+		invalidateMatches();
+	}, [invalidateMatches]);
 
 	const handleViewProfile = (client) => {
 		setSelectedClient(client);
@@ -207,12 +244,20 @@ function ClientsPageContent() {
 	const hasMore = displayCount < filteredAndSortedClients.length;
 	const totalCount = Object.values(clientMatches).length;
 
-	// Active filter count
+	// Active filter count (user filter counted separately since it has its own UI)
 	const activeFilterCount =
 		filterTypes.length +
 		filterStates.length +
 		(filterHasMatches !== 'all' ? 1 : 0) +
 		(filterDac !== 'all' ? 1 : 0);
+
+	// Resolve user filter display label
+	const userFilterLabel = useMemo(() => {
+		if (filterUserId === null) return 'My Clients';
+		if (filterUserId === 'all') return 'All Clients';
+		const found = allUsers.find(u => u.id === filterUserId);
+		return found?.display_name || 'Unknown User';
+	}, [filterUserId, allUsers]);
 
 	const clearAllFilters = () => {
 		setFilterTypes([]);
@@ -221,6 +266,7 @@ function ClientsPageContent() {
 		setFilterDac('all');
 		setDisplayCount(ITEMS_PER_PAGE);
 		updateURL({ types: [], states: [], hasMatches: 'all', dac: 'all' });
+		// Note: user filter is not cleared by "Clear All Filters" — it's a separate scope control
 	};
 
 	const removeFilter = (type, value) => {
@@ -252,11 +298,18 @@ function ClientsPageContent() {
 			<div className='container py-10'>
 				{/* Header */}
 				<div className='flex justify-between items-center mb-6'>
-					<h1 className='text-3xl font-bold'>Client Matching</h1>
+					<div>
+						<h1 className='text-2xl font-semibold tracking-tight text-foreground'>Client Matching</h1>
+						{!loading && !error && (
+							<p className='text-sm text-muted-foreground mt-1'>
+								{totalCount} client{totalCount !== 1 ? 's' : ''} &middot; {filteredAndSortedClients.filter(c => c.matchCount > 0).length} with matches
+							</p>
+						)}
+					</div>
 					<div className='flex gap-2'>
 						<Popover>
 							<PopoverTrigger asChild>
-								<Button variant='outline' className='relative'>
+								<Button variant='outline' className='relative bg-white dark:bg-neutral-900 border-neutral-300 dark:border-neutral-600 shadow-sm' aria-label='Filter clients'>
 									<Filter className='h-4 w-4 mr-2' />
 									Filter
 									{activeFilterCount > 0 && (
@@ -269,13 +322,20 @@ function ClientsPageContent() {
 									)}
 								</Button>
 							</PopoverTrigger>
-							<PopoverContent className='w-80' align='end'>
+							<PopoverContent className='w-[340px] p-5' align='end'>
 								<div className='space-y-4'>
-									<h4 className='font-medium'>Filters</h4>
+									<div className='flex items-center justify-between pb-3 border-b border-neutral-100 dark:border-neutral-800'>
+										<span className='text-xs font-semibold uppercase tracking-wider text-neutral-500'>Filters</span>
+										{activeFilterCount > 0 && (
+											<Button variant='ghost' size='sm' onClick={clearAllFilters} className='h-6 text-xs text-muted-foreground hover:text-foreground'>
+												Clear all
+											</Button>
+										)}
+									</div>
 
 									{/* Client Type Filter */}
 									<div className='space-y-2'>
-										<label className='text-sm font-medium text-gray-700 dark:text-gray-300'>
+										<label className='text-xs font-medium uppercase tracking-wider text-neutral-500 dark:text-neutral-400'>
 											Client Type
 										</label>
 										<div className='max-h-32 overflow-y-auto space-y-1'>
@@ -304,9 +364,11 @@ function ClientsPageContent() {
 										</div>
 									</div>
 
+									<div className='h-px bg-neutral-200 dark:bg-neutral-700' />
+
 									{/* State Filter */}
 									<div className='space-y-2'>
-										<label className='text-sm font-medium text-gray-700 dark:text-gray-300'>
+										<label className='text-xs font-medium uppercase tracking-wider text-neutral-500 dark:text-neutral-400'>
 											State
 										</label>
 										<div className='max-h-32 overflow-y-auto space-y-1'>
@@ -335,9 +397,11 @@ function ClientsPageContent() {
 										</div>
 									</div>
 
+									<div className='h-px bg-neutral-200 dark:bg-neutral-700' />
+
 									{/* Has Matches Filter */}
 									<div className='space-y-2'>
-										<label className='text-sm font-medium text-gray-700 dark:text-gray-300'>
+										<label className='text-xs font-medium uppercase tracking-wider text-neutral-500 dark:text-neutral-400'>
 											Match Status
 										</label>
 										<Select
@@ -359,9 +423,11 @@ function ClientsPageContent() {
 										</Select>
 									</div>
 
+									<div className='h-px bg-neutral-200 dark:bg-neutral-700' />
+
 									{/* DAC Filter */}
 									<div className='space-y-2'>
-										<label className='text-sm font-medium text-gray-700 dark:text-gray-300'>
+										<label className='text-xs font-medium uppercase tracking-wider text-neutral-500 dark:text-neutral-400'>
 											DAC Status
 										</label>
 										<Select
@@ -383,19 +449,35 @@ function ClientsPageContent() {
 										</Select>
 									</div>
 
-									{activeFilterCount > 0 && (
-										<Button
-											variant='ghost'
-											size='sm'
-											onClick={clearAllFilters}
-											className='w-full'
-										>
-											Clear All Filters
-										</Button>
-									)}
 								</div>
 							</PopoverContent>
 						</Popover>
+						<Select
+							value={filterUserId === null ? '__me__' : filterUserId}
+							onValueChange={(value) => {
+								const newUserId = value === '__me__' ? null : value;
+								setFilterUserId(newUserId);
+								setDisplayCount(ITEMS_PER_PAGE);
+								updateURL({ userId: newUserId === null ? '' : newUserId });
+							}}
+						>
+							<SelectTrigger className='w-[160px] bg-white dark:bg-neutral-900 border-neutral-300 dark:border-neutral-600 shadow-sm' aria-label='Filter by team member'>
+								<Users className='h-4 w-4 mr-2 flex-shrink-0' />
+								<SelectValue>{userFilterLabel}</SelectValue>
+							</SelectTrigger>
+							<SelectContent>
+								<SelectItem value='__me__'>My Clients</SelectItem>
+								<SelectItem value='all'>All Clients</SelectItem>
+								{allUsers
+									.filter(u => u.id !== user?.id)
+									.map(u => (
+										<SelectItem key={u.id} value={u.id}>
+											{u.display_name}
+										</SelectItem>
+									))
+								}
+							</SelectContent>
+						</Select>
 						<Button onClick={() => setShowAddClientModal(true)}>
 							<Plus className='h-4 w-4 mr-2' />
 							Add Client
@@ -406,7 +488,7 @@ function ClientsPageContent() {
 				{/* Search and Sort Row */}
 				<div className='flex flex-col sm:flex-row gap-4 mb-4'>
 					<div className='relative flex-1 max-w-md'>
-						<Search className='absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4' />
+						<Search className='absolute left-3 top-1/2 transform -translate-y-1/2 text-neutral-400 h-4 w-4' />
 						<Input
 							type='text'
 							placeholder='Search clients, locations, project needs...'
@@ -416,11 +498,12 @@ function ClientsPageContent() {
 								setDisplayCount(ITEMS_PER_PAGE);
 								updateURL({ q: e.target.value });
 							}}
-							className='pl-10'
+							className='pl-10 bg-white dark:bg-neutral-900 border-neutral-300 dark:border-neutral-600 shadow-sm focus-visible:shadow-md transition-shadow'
+							aria-label='Search clients by name, location, or project needs'
 						/>
 					</div>
 					<div className='flex items-center gap-2'>
-						<span className='text-sm text-gray-500 whitespace-nowrap'>Sort by:</span>
+						<span className='text-xs font-medium text-muted-foreground whitespace-nowrap'>Sort by:</span>
 						<Select
 							value={sortBy}
 							onValueChange={(value) => {
@@ -428,7 +511,7 @@ function ClientsPageContent() {
 								updateURL({ sort: value });
 							}}
 						>
-							<SelectTrigger className='w-[200px]'>
+							<SelectTrigger className='w-[200px] bg-white dark:bg-neutral-900 border-neutral-300 dark:border-neutral-600 shadow-sm' aria-label='Sort clients'>
 								<SelectValue />
 							</SelectTrigger>
 							<SelectContent>
@@ -445,48 +528,60 @@ function ClientsPageContent() {
 				{/* Active Filters */}
 				{activeFilterCount > 0 && (
 					<div className='flex flex-wrap items-center gap-2 mb-4'>
-						<span className='text-sm text-gray-500'>Active filters:</span>
+						<span className='text-xs text-muted-foreground'>Active filters:</span>
 						{filterTypes.map(type => (
-							<Badge key={`type-${type}`} variant='secondary' className='gap-1'>
+							<Badge key={`type-${type}`} variant='outline' className='gap-1 pr-1 bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/30 dark:text-blue-300 dark:border-blue-800'>
 								{type}
-								<X
-									className='h-3 w-3 cursor-pointer'
+								<button
 									onClick={() => removeFilter('type', type)}
-								/>
+									className='ml-1 p-1 rounded-full hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'
+									aria-label={`Remove ${type} filter`}
+								>
+									<X className='h-3 w-3' />
+								</button>
 							</Badge>
 						))}
 						{filterStates.map(state => (
-							<Badge key={`state-${state}`} variant='secondary' className='gap-1'>
+							<Badge key={`state-${state}`} variant='outline' className='gap-1 pr-1 bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/30 dark:text-blue-300 dark:border-blue-800'>
 								{state}
-								<X
-									className='h-3 w-3 cursor-pointer'
+								<button
 									onClick={() => removeFilter('state', state)}
-								/>
+									className='ml-1 p-1 rounded-full hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'
+									aria-label={`Remove ${state} filter`}
+								>
+									<X className='h-3 w-3' />
+								</button>
 							</Badge>
 						))}
 						{filterHasMatches !== 'all' && (
-							<Badge variant='secondary' className='gap-1'>
+							<Badge variant='outline' className='gap-1 pr-1 bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/30 dark:text-blue-300 dark:border-blue-800'>
 								{filterHasMatches === 'yes' ? 'Has Matches' : 'No Matches'}
-								<X
-									className='h-3 w-3 cursor-pointer'
+								<button
 									onClick={() => removeFilter('hasMatches')}
-								/>
+									className='ml-1 p-1 rounded-full hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'
+									aria-label='Remove match status filter'
+								>
+									<X className='h-3 w-3' />
+								</button>
 							</Badge>
 						)}
 						{filterDac !== 'all' && (
-							<Badge variant='secondary' className='gap-1'>
+							<Badge variant='outline' className='gap-1 pr-1 bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/30 dark:text-blue-300 dark:border-blue-800'>
 								{filterDac === 'yes' ? 'DAC' : 'Non-DAC'}
-								<X
-									className='h-3 w-3 cursor-pointer'
+								<button
 									onClick={() => removeFilter('dac')}
-								/>
+									className='ml-1 p-1 rounded-full hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'
+									aria-label='Remove DAC filter'
+								>
+									<X className='h-3 w-3' />
+								</button>
 							</Badge>
 						)}
 						<Button
 							variant='ghost'
 							size='sm'
 							onClick={clearAllFilters}
-							className='text-gray-500 hover:text-gray-700'
+							className='text-muted-foreground hover:text-foreground'
 						>
 							Clear all
 						</Button>
@@ -495,10 +590,13 @@ function ClientsPageContent() {
 
 				{/* Results Count */}
 				{!loading && !error && (
-					<div className='text-sm text-gray-600 dark:text-gray-400 mb-4'>
+					<div className='text-xs text-muted-foreground mb-4'>
 						Showing {displayedClients.length} of {filteredAndSortedClients.length} clients
 						{filteredAndSortedClients.length !== totalCount && (
-							<span> (filtered from {totalCount} total)</span>
+							<span className='text-neutral-400 dark:text-neutral-500'> (filtered from {totalCount} total)</span>
+						)}
+						{filterUserId !== 'all' && (
+							<span className='text-neutral-400 dark:text-neutral-500'> &middot; {userFilterLabel}</span>
 						)}
 					</div>
 				)}
@@ -522,7 +620,7 @@ function ClientsPageContent() {
 
 				{!loading && !error && displayedClients.length > 0 && (
 					<>
-						<div className='grid gap-8 md:grid-cols-2 lg:grid-cols-3 mb-8'>
+						<div className='grid gap-6 md:grid-cols-2 lg:grid-cols-3 mb-8'>
 							{displayedClients.map((clientResult) => (
 								<ClientCard
 									key={clientResult.client.id}
@@ -538,7 +636,7 @@ function ClientsPageContent() {
 								<Button
 									variant='outline'
 									onClick={loadMore}
-									className='px-8'
+									className='px-8 bg-white dark:bg-neutral-900 border-neutral-300 dark:border-neutral-600 shadow-sm'
 								>
 									Load More ({filteredAndSortedClients.length - displayCount} remaining)
 									<ChevronDown className='h-4 w-4 ml-2' />
@@ -550,13 +648,14 @@ function ClientsPageContent() {
 
 				{!loading && !error && filteredAndSortedClients.length === 0 && (
 					<div className='text-center py-12'>
-						<h2 className='text-2xl font-bold mb-2'>
+						<Users className='h-10 w-10 text-blue-200 dark:text-blue-800 mb-4 mx-auto' />
+						<h2 className='text-lg font-semibold text-foreground mb-2'>
 							{searchQuery || activeFilterCount > 0 ? 'No Results Found' : 'No Clients Yet'}
 						</h2>
-						<p className='text-muted-foreground mb-6'>
+						<p className='text-sm text-muted-foreground mb-6'>
 							{searchQuery || activeFilterCount > 0
 								? 'Try adjusting your search or filters to find what you\'re looking for.'
-								: 'Get started by adding your first client. Click the "Add Client" button above.'
+								: 'Add your first client to start discovering funding matches.'
 							}
 						</p>
 						{(searchQuery || activeFilterCount > 0) ? (
@@ -587,7 +686,7 @@ function ClientsPageContent() {
 					client={selectedClient}
 					isOpen={showProfileModal}
 					onClose={() => setShowProfileModal(false)}
-					onClientUpdate={invalidateMatches}
+					onClientUpdate={handleClientUpdated}
 				/>
 
 				<Dialog open={showAddClientModal} onOpenChange={setShowAddClientModal}>
@@ -641,10 +740,11 @@ function ClientCard({ clientResult, onViewProfile }) {
 		const sevenDaysMs = 7 * 24 * 60 * 60 * 1000;
 		let newest = null;
 		for (const m of matches) {
-			if (m.is_new && m.first_matched_at) {
-				const matchDate = new Date(m.first_matched_at);
+			const ts = m.last_matched_at || m.first_matched_at;
+			if (m.is_new && ts) {
+				const matchDate = new Date(ts);
 				if (now - matchDate <= sevenDaysMs) {
-					if (!newest || matchDate > new Date(newest.first_matched_at)) {
+					if (!newest || matchDate > new Date(newest.last_matched_at || newest.first_matched_at)) {
 						newest = m;
 					}
 				}
@@ -655,28 +755,29 @@ function ClientCard({ clientResult, onViewProfile }) {
 
 	const newMatchLabel = useMemo(() => {
 		if (!newestNewMatch) return null;
-		const today = new Date();
-		const matchDate = new Date(newestNewMatch.first_matched_at);
-		today.setHours(0, 0, 0, 0);
+		const now = new Date();
+		const matchDate = new Date(newestNewMatch.last_matched_at || newestNewMatch.first_matched_at);
+		now.setHours(0, 0, 0, 0);
 		matchDate.setHours(0, 0, 0, 0);
-		const daysAgo = Math.round((today - matchDate) / (1000 * 60 * 60 * 24));
-		if (daysAgo === 0) return 'NEW MATCH • Today';
-		if (daysAgo === 1) return 'NEW MATCH • Yesterday';
-		return `NEW MATCH • ${daysAgo} days ago`;
+		const daysAgo = Math.round((now - matchDate) / (1000 * 60 * 60 * 24));
+		if (daysAgo === 0) return 'New Match · Today';
+		if (daysAgo === 1) return 'New Match · Yesterday';
+		return `New Match · ${daysAgo}d ago`;
 	}, [newestNewMatch]);
 
 	return (
-		<Card className='overflow-hidden flex flex-col h-full'>
-			{/* Blue stripe at top */}
-			<div className='h-1.5 w-full bg-blue-600' />
+		<Card className='overflow-hidden flex flex-col h-full hover:shadow-lg hover:-translate-y-0.5 transition-[transform,box-shadow] duration-200 ease-out'>
+			{/* Brand accent bar */}
+			<div className='h-1.5 w-full bg-blue-500 dark:bg-blue-400' />
 			<CardHeader className='pb-4'>
 				<div className='flex items-start justify-between gap-2'>
 					<div>
-						<CardTitle className='text-xl font-bold'>{client.name}</CardTitle>
+						<CardTitle className='text-base font-semibold leading-tight'>{client.name}</CardTitle>
 						<CardDescription className='text-sm text-muted-foreground'>{location}</CardDescription>
 					</div>
 					{newMatchLabel && (
-						<span className='text-[10px] font-semibold px-2 py-1 rounded bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 whitespace-nowrap flex-shrink-0'>
+						<span className='flex items-center gap-1.5 text-[11px] font-semibold text-blue-600 dark:text-blue-400 whitespace-nowrap flex-shrink-0'>
+							<span className='w-2 h-2 rounded-full bg-blue-500 motion-safe:animate-pulse' />
 							{newMatchLabel}
 						</span>
 					)}
@@ -684,39 +785,48 @@ function ClientCard({ clientResult, onViewProfile }) {
 			</CardHeader>
 			<CardContent className='px-6 pb-6 flex flex-col flex-1'>
 				<div className='flex-1 space-y-5'>
-					<div className='flex flex-wrap gap-1 mb-3'>
-						{tags.map((tag, index) => (
-							<span
-								key={`${client.name}-${tag}-${index}`}
-								className='text-xs bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 px-2 py-1 rounded-full'>
-								{tag}
-							</span>
-						))}
+					<div className='flex flex-wrap gap-1.5'>
+						{tags.map((tag, index) => {
+							const projectTypeName = tag.replace(/\s*\(\d+\)$/, '');
+							const typeColor = getProjectTypeColor(projectTypeName);
+							return (
+								<span
+									key={`${client.name}-${tag}-${index}`}
+									className='text-[11px] font-medium px-2 py-0.5 rounded-md border border-l-2 text-neutral-700 border-neutral-200 dark:text-neutral-300 dark:border-neutral-700'
+									style={{ backgroundColor: typeColor.bgColor, borderLeftColor: typeColor.color }}>
+									{tag}
+								</span>
+							);
+						})}
 					</div>
 
-					<div className='border-t border-gray-100 dark:border-gray-800 pt-4'>
-						<div className='text-sm font-medium mb-3'>
-							Top Opportunity Matches ({matchCount})
+					<div className='border-t border-neutral-100 dark:border-neutral-800 pt-3'>
+						<div className='flex items-center justify-between mb-3'>
+							<span className='text-xs font-semibold uppercase tracking-wider text-neutral-400 dark:text-neutral-500'>Top Matches</span>
+							<span className='text-sm font-bold tabular-nums text-neutral-700 dark:text-neutral-300'>{matchCount}</span>
 						</div>
 						{topMatches && topMatches.length > 0 ? (
 							<ul className='space-y-2'>
 								{topMatches.map((match, index) => (
 									<li
 										key={`${client.name}-${match.id}-${index}`}
-										className='text-sm border-l-2 border-blue-500 pl-3 py-1 hover:bg-blue-50 dark:hover:bg-blue-900/10 transition-colors duration-200 cursor-pointer rounded-r'>
+										className='text-sm border-l-2 border-blue-500 pl-3 py-1.5 hover:bg-blue-50 dark:hover:bg-blue-900/10 transition-colors duration-200 cursor-pointer rounded-r'>
 										<div className='font-medium truncate pr-12'>
 											{match.is_new && (
-												<span className='text-[10px] font-semibold px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 mr-1.5 inline-block'>
-													NEW
+												<span className='inline-flex items-center gap-1 text-[10px] font-medium text-blue-600 dark:text-blue-400 mr-1.5'>
+													<span className='w-1.5 h-1.5 rounded-full bg-blue-500' />
+													New
 												</span>
 											)}
 											{match.title}
 										</div>
 										<div className='flex justify-between items-center'>
-											<span className='text-xs text-gray-500 dark:text-gray-400 truncate flex-1 pr-2'>
+											<span className='text-[11px] text-neutral-400 dark:text-neutral-500 truncate flex-1 pr-2'>
 												{match.agency_name || 'Unknown Agency'}
 											</span>
-											<span className={`text-xs font-medium px-2 py-0.5 rounded transition-all duration-200 hover:scale-105 flex-shrink-0 ${getMatchScoreBgColor(match.score)}`}>
+											<span
+												className='text-xs font-medium px-2 py-0.5 rounded-full flex-shrink-0'
+												style={getMatchScoreBadgeStyles(match.score)}>
 												{formatMatchScore(match.score)}
 											</span>
 										</div>
@@ -724,28 +834,28 @@ function ClientCard({ clientResult, onViewProfile }) {
 								))}
 							</ul>
 						) : (
-							<p className='text-sm text-gray-500 italic'>No matches found</p>
+							<p className='text-sm text-neutral-500 italic'>No matches found</p>
 						)}
 					</div>
 				</div>
 
-				<div className='flex gap-2 mt-5'>
+				<div className='flex gap-2 mt-4 border-t border-neutral-100 dark:border-neutral-800 pt-4'>
 					<Button
 						className='w-full'
-						size='sm'
-						onClick={() => onViewProfile(client)}
-					>
-						View Profile
-					</Button>
-					<Button
-						className='w-full'
-						variant='outline'
 						size='sm'
 						asChild
 					>
 						<Link href={`/clients/${client.id}/matches`}>
 							View Matches
 						</Link>
+					</Button>
+					<Button
+						className='w-full'
+						variant='ghost'
+						size='sm'
+						onClick={() => onViewProfile(client)}
+					>
+						View Profile
 					</Button>
 				</div>
 			</CardContent>

@@ -6,9 +6,11 @@
  */
 
 import { createClient } from '@supabase/supabase-js';
+import { requireAuth } from '@/utils/supabase/api';
 import { geocodeAddress } from '@/lib/services/geocoder';
 import { NextResponse } from 'next/server';
 import { computeMatchesForClient } from '@/lib/matching/computeMatches';
+import { getFilteredClientIds } from '@/lib/utils/clientFiltering';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -21,10 +23,22 @@ const supabase = createClient(
  */
 export async function GET(request) {
   try {
-    const { data: clients, error } = await supabase
+    // Resolve user-based filtering (defaults to current user's clients)
+    const { clientIds } = await getFilteredClientIds(supabase, request);
+
+    let query = supabase
       .from('clients')
       .select('*')
       .order('created_at', { ascending: false });
+
+    if (clientIds !== null) {
+      if (clientIds.length === 0) {
+        return NextResponse.json({ success: true, clients: [], count: 0 });
+      }
+      query = query.in('id', clientIds);
+    }
+
+    const { data: clients, error } = await query;
 
     if (error) throw error;
 
@@ -181,6 +195,18 @@ export async function POST(request) {
       );
     }
 
+    // Attempt to identify authenticated user (soft auth — doesn't block if not found)
+    let ownerId = null;
+    try {
+      const { user } = await requireAuth(request);
+      if (user?.id) {
+        ownerId = user.id;
+        console.log(`[API] Authenticated user: ${user.id}`);
+      }
+    } catch (authErr) {
+      console.log('[API] No authenticated user session (proceeding without owner_id)');
+    }
+
     const clientData = {
       name,
       type,
@@ -196,7 +222,8 @@ export async function POST(request) {
       contact: body.contact || null,
       description: body.description || null,
       dac: body.dac || false,
-      salesforce_id: body.salesforce_id || null
+      salesforce_id: body.salesforce_id || null,
+      owner_id: ownerId
     };
 
     // Log the data being inserted
@@ -247,6 +274,27 @@ export async function POST(request) {
     }
 
     console.log(`[API] ✅ Created client: ${client.id}`);
+
+    // Create client_users associations
+    const assignedUsers = Array.isArray(body.assigned_users) && body.assigned_users.length > 0
+      ? body.assigned_users
+      : (ownerId ? [ownerId] : []);
+
+    if (assignedUsers.length > 0) {
+      const rows = assignedUsers.map((userId) => ({
+        client_id: client.id,
+        user_id: userId,
+      }));
+      const { error: assocError } = await supabase
+        .from('client_users')
+        .insert(rows);
+
+      if (assocError) {
+        console.error('[API] Failed to create client_users associations:', assocError.message);
+      } else {
+        console.log(`[API] Created ${rows.length} client_users association(s)`);
+      }
+    }
 
     // Fire-and-forget: compute matches for the new client
     computeMatchesForClient(supabase, client.id, { trigger: 'client_created' }).catch(err =>
