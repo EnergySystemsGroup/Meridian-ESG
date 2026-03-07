@@ -30,7 +30,8 @@ function transformMatch(row) {
     score: row.score,
     matchDetails: row.match_details,
     is_new: row.is_new,
-    first_matched_at: row.first_matched_at
+    first_matched_at: row.first_matched_at,
+    last_matched_at: row.last_matched_at
   };
 }
 
@@ -90,7 +91,7 @@ async function handleSingleClient(clientId) {
   const { data: matchRows, error: matchError } = await supabase
     .from('client_matches')
     .select(`
-      score, match_details, is_new, first_matched_at,
+      score, match_details, is_new, first_matched_at, last_matched_at,
       opportunity:funding_opportunities!inner(
         *, funding_sources(type)
       )
@@ -159,7 +160,7 @@ async function handleAllClients(clientIds = null) {
   let matchQuery = supabase
     .from('client_matches')
     .select(`
-      client_id, score, match_details, is_new, first_matched_at,
+      client_id, score, match_details, is_new, first_matched_at, last_matched_at,
       opportunity:funding_opportunities!inner(
         *, funding_sources(type)
       )

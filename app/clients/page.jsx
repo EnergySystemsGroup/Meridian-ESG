@@ -740,10 +740,11 @@ function ClientCard({ clientResult, onViewProfile }) {
 		const sevenDaysMs = 7 * 24 * 60 * 60 * 1000;
 		let newest = null;
 		for (const m of matches) {
-			if (m.is_new && m.first_matched_at) {
-				const matchDate = new Date(m.first_matched_at);
+			const ts = m.last_matched_at || m.first_matched_at;
+			if (m.is_new && ts) {
+				const matchDate = new Date(ts);
 				if (now - matchDate <= sevenDaysMs) {
-					if (!newest || matchDate > new Date(newest.first_matched_at)) {
+					if (!newest || matchDate > new Date(newest.last_matched_at || newest.first_matched_at)) {
 						newest = m;
 					}
 				}
@@ -754,11 +755,11 @@ function ClientCard({ clientResult, onViewProfile }) {
 
 	const newMatchLabel = useMemo(() => {
 		if (!newestNewMatch) return null;
-		const today = new Date();
-		const matchDate = new Date(newestNewMatch.first_matched_at);
-		today.setHours(0, 0, 0, 0);
+		const now = new Date();
+		const matchDate = new Date(newestNewMatch.last_matched_at || newestNewMatch.first_matched_at);
+		now.setHours(0, 0, 0, 0);
 		matchDate.setHours(0, 0, 0, 0);
-		const daysAgo = Math.round((today - matchDate) / (1000 * 60 * 60 * 24));
+		const daysAgo = Math.round((now - matchDate) / (1000 * 60 * 60 * 24));
 		if (daysAgo === 0) return 'New Match · Today';
 		if (daysAgo === 1) return 'New Match · Yesterday';
 		return `New Match · ${daysAgo}d ago`;

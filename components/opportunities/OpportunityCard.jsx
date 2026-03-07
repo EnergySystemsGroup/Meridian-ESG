@@ -138,11 +138,11 @@ const OpportunityCard = ({ opportunity, badgeOverride }) => {
 
 	const getDaysAgo = (dateStr) => {
 		if (!dateStr) return null;
-		const today = new Date();
+		const now = new Date();
 		const date = new Date(dateStr);
-		today.setHours(0, 0, 0, 0);
+		now.setHours(0, 0, 0, 0);
 		date.setHours(0, 0, 0, 0);
-		return Math.round((today - date) / (1000 * 60 * 60 * 24));
+		return Math.round((now - date) / (1000 * 60 * 60 * 24));
 	};
 
 	const addedDaysAgo = isNew ? getDaysAgo(opportunity.created_at) : null;
@@ -151,13 +151,14 @@ const OpportunityCard = ({ opportunity, badgeOverride }) => {
 	const formatDaysAgo = (days) =>
 		days === 0 ? 'Today' : days === 1 ? 'Yesterday' : `${days}d ago`;
 
-	// New match detection (from client matching)
+	// New match detection (from client matching) — use last_matched_at for recency
+	const matchTimestamp = opportunity.last_matched_at || opportunity.first_matched_at;
 	const isNewMatch =
 		opportunity.is_new === true &&
-		opportunity.first_matched_at &&
-		(new Date() - new Date(opportunity.first_matched_at)) / (1000 * 60 * 60 * 24) <= 7;
+		matchTimestamp &&
+		(new Date() - new Date(matchTimestamp)) / (1000 * 60 * 60 * 24) <= 7;
 
-	const matchedDaysAgo = isNewMatch ? getDaysAgo(opportunity.first_matched_at) : null;
+	const matchedDaysAgo = isNewMatch ? getDaysAgo(matchTimestamp) : null;
 
 	// Relevance score
 	const relevanceScore =

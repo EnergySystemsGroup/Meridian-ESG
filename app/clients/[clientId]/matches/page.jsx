@@ -284,7 +284,7 @@ export default function ClientMatchesPage() {
 															/>
 														</div>
 														{/* Card — border/radius nullified, internal accent bars hidden (outer wrapper provides them) */}
-														<div className='[&>a>div]:border-0 [&>a>div]:rounded-none [&>a]:rounded-none [&_.bg-blue-500]:hidden [&_.dark\:bg-blue-400]:hidden flex-grow'>
+														<div className='[&>a>div]:border-0 [&>a>div]:rounded-none [&>a]:rounded-none [&_.h-1\.5.w-full.bg-blue-500]:hidden [&_.h-1\.5.w-full.dark\:bg-blue-400]:hidden flex-grow'>
 															<OpportunityCard opportunity={match} />
 														</div>
 														{/* Bottom accent bar */}
