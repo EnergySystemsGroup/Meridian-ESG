@@ -6,6 +6,7 @@
  * - No NaN or undefined values
  * - Deterministic results for same inputs
  * - Monotonic relationships where expected
+ * - Activity multiplier calibration (weak=0.15x)
  *
  * NOTE: These tests use property-based patterns to catch edge cases.
  */
@@ -74,6 +75,24 @@ function calculateRelevanceScore(opp) {
   const activity = calculateActivityScore(opp.eligible_project_types);
   return Math.round((tier * 0.4 + funding * 0.3 + activity * 0.3) * 10) / 10;
 }
+
+/**
+ * Taxonomy-based activity multiplier (mirrors production - calibrated values)
+ */
+function calculateActivityMultiplier(activities, taxonomy) {
+  if (!activities || activities.length === 0) return 0.15;
+  if (activities.some(a => taxonomy.hot.includes(a))) return 1.0;
+  if (activities.some(a => taxonomy.strong.includes(a))) return 0.75;
+  if (activities.some(a => taxonomy.mild.includes(a))) return 0.5;
+  return 0.15;
+}
+
+const ACTIVITIES_TAXONOMY = {
+  hot: ['New Construction', 'Renovation', 'Installation', 'Replacement', 'Upgrade', 'Repair', 'Modernization'],
+  strong: ['Design', 'Engineering', 'Planning', 'Feasibility Studies'],
+  mild: ['Equipment Purchase', 'Materials Purchase', 'Land Acquisition'],
+  weak: ['Training', 'Education', 'Technical Assistance', 'Capacity Building', 'Research', 'Program Administration'],
+};
 
 /**
  * Generate random test data
@@ -352,6 +371,56 @@ describe('Pipeline: Score Invariants', () => {
       // tier: 3 (default), funding: 2 ($1k), activity: 4 (unknown non-empty)
       // (3 * 0.4) + (2 * 0.3) + (4 * 0.3) = 3
       expect(calculateRelevanceScore(minimal)).toBe(3);
+    });
+  });
+
+  describe('Activity Multiplier Invariants (Calibrated)', () => {
+    test('multiplier is always in valid range [0.15, 1.0]', () => {
+      const testCases = [
+        ['New Construction'],
+        ['Design'],
+        ['Equipment Purchase'],
+        ['Training'],
+        ['Research'],
+        [],
+        null,
+      ];
+
+      testCases.forEach(activities => {
+        const mult = calculateActivityMultiplier(activities, ACTIVITIES_TAXONOMY);
+        expect(typeof mult).toBe('number');
+        expect(isNaN(mult)).toBe(false);
+        expect(mult).toBeGreaterThanOrEqual(0.15);
+        expect(mult).toBeLessThanOrEqual(1.0);
+      });
+    });
+
+    test('construction always beats non-construction', () => {
+      const hotMult = calculateActivityMultiplier(['Installation'], ACTIVITIES_TAXONOMY);
+      const weakMult = calculateActivityMultiplier(['Training'], ACTIVITIES_TAXONOMY);
+      expect(hotMult).toBeGreaterThan(weakMult);
+    });
+
+    test('highest tier wins when mixed', () => {
+      const mixed = calculateActivityMultiplier(['Training', 'Installation'], ACTIVITIES_TAXONOMY);
+      expect(mixed).toBe(1.0); // Installation (hot) wins
+    });
+
+    test('weak multiplier is 0.15 (calibrated from 0.25)', () => {
+      expect(calculateActivityMultiplier(['Training'], ACTIVITIES_TAXONOMY)).toBe(0.15);
+      expect(calculateActivityMultiplier(['Research'], ACTIVITIES_TAXONOMY)).toBe(0.15);
+      expect(calculateActivityMultiplier([], ACTIVITIES_TAXONOMY)).toBe(0.15);
+    });
+
+    test('tier ordering is preserved: hot > strong > mild > weak', () => {
+      const hot = calculateActivityMultiplier(['Installation'], ACTIVITIES_TAXONOMY);
+      const strong = calculateActivityMultiplier(['Design'], ACTIVITIES_TAXONOMY);
+      const mild = calculateActivityMultiplier(['Equipment Purchase'], ACTIVITIES_TAXONOMY);
+      const weak = calculateActivityMultiplier(['Training'], ACTIVITIES_TAXONOMY);
+
+      expect(hot).toBeGreaterThan(strong);
+      expect(strong).toBeGreaterThan(mild);
+      expect(mild).toBeGreaterThan(weak);
     });
   });
 });

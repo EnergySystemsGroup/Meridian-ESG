@@ -6,8 +6,15 @@
  * - Funding scoring based on amounts
  * - Activity scoring based on project types
  * - Combined relevance scoring
+ * - Activity multiplier with calibrated tiers
  *
  * NOTE: Scoring is 100% deterministic and should have exhaustive coverage.
+ *
+ * Calibration reference: docs/scoring-calibration/calibration-study.md
+ * - 23-opportunity blind review against human business judgment
+ * - Activity multiplier weak tier: 0.25 → 0.15 (training/research programs score <2)
+ * - Project types: Parks/Green Spaces demoted strong→mild, Landscaping strong→weak
+ * - Activities: soft/operational (Training, Education, TA, etc.) demoted mild→weak
  */
 
 import { describe, test, expect } from 'vitest';
@@ -136,6 +143,45 @@ function calculateRelevanceScore(opportunity) {
 
   return Math.round(weighted * 10) / 10; // Round to 1 decimal
 }
+
+/**
+ * Taxonomy-based tier scoring (mirrors production scoringAnalyzer.js)
+ * Returns score based on highest matching tier: 3=hot, 2=strong, 1=mild, 0=weak/none
+ */
+function calculateTaxonomyTierScore(values, taxonomy) {
+  if (!values || values.length === 0) return 0;
+  if (values.some(v => taxonomy.hot.includes(v))) return 3;
+  if (values.some(v => taxonomy.strong.includes(v))) return 2;
+  if (values.some(v => taxonomy.mild.includes(v))) return 1;
+  return 0;
+}
+
+/**
+ * Activity multiplier (mirrors production scoringAnalyzer.js)
+ * Calibrated values: hot=1.0, strong=0.75, mild=0.5, weak=0.15
+ */
+function calculateActivityMultiplier(activities, taxonomy) {
+  if (!activities || activities.length === 0) return 0.15;
+  if (activities.some(a => taxonomy.hot.includes(a))) return 1.0;
+  if (activities.some(a => taxonomy.strong.includes(a))) return 0.75;
+  if (activities.some(a => taxonomy.mild.includes(a))) return 0.5;
+  return 0.15;
+}
+
+// Simplified taxonomy subsets for testing the taxonomy-based scoring
+const ACTIVITIES_TAXONOMY = {
+  hot: ['New Construction', 'Renovation', 'Installation', 'Replacement', 'Upgrade', 'Repair', 'Modernization', 'Infrastructure Development'],
+  strong: ['Design', 'Architecture', 'Engineering', 'Planning', 'Feasibility Studies', 'Project Management'],
+  mild: ['Equipment Purchase', 'Materials Purchase', 'Land Acquisition'],
+  weak: ['Training', 'Education', 'Technical Assistance', 'Capacity Building', 'Community Outreach', 'Research', 'Program Administration', 'Staffing', 'Personnel', 'Program Operations', 'Service Delivery'],
+};
+
+const PROJECT_TYPES_TAXONOMY = {
+  hot: ['HVAC Systems', 'Lighting Systems', 'Electrical Systems', 'Solar Panels', 'Insulation', 'Weatherization', 'EV Charging Stations'],
+  strong: ['Water Treatment Plants', 'Classrooms', 'Playgrounds', 'Athletic Fields', 'Community Centers', 'Libraries', 'Museums'],
+  mild: ['Parks', 'Green Spaces', 'Roads', 'Bridges', 'Street Lighting', 'Air Filtration Systems'],
+  weak: ['Landscaping', 'Medical Equipment', 'Affordable Housing Units', 'Wetland Restoration', 'Wildlife Habitat'],
+};
 
 describe('Pipeline: Analysis Scoring', () => {
 
@@ -508,6 +554,90 @@ describe('Pipeline: Analysis Scoring', () => {
         expect(score).toBeGreaterThanOrEqual(0);
         expect(score).toBeLessThanOrEqual(10);
       });
+    });
+  });
+
+  // New tests: Taxonomy-based scoring (mirrors production scoringAnalyzer.js)
+  describe('Taxonomy Tier Scoring', () => {
+    test('hot project type returns 3', () => {
+      expect(calculateTaxonomyTierScore(['HVAC Systems'], PROJECT_TYPES_TAXONOMY)).toBe(3);
+      expect(calculateTaxonomyTierScore(['Solar Panels'], PROJECT_TYPES_TAXONOMY)).toBe(3);
+    });
+
+    test('strong project type returns 2', () => {
+      expect(calculateTaxonomyTierScore(['Community Centers'], PROJECT_TYPES_TAXONOMY)).toBe(2);
+      expect(calculateTaxonomyTierScore(['Playgrounds'], PROJECT_TYPES_TAXONOMY)).toBe(2);
+      expect(calculateTaxonomyTierScore(['Athletic Fields'], PROJECT_TYPES_TAXONOMY)).toBe(2);
+    });
+
+    test('Parks and Green Spaces are now mild (score=1), not strong', () => {
+      // Calibration finding: Parks scored 4.5 by human vs algo 8.0 (#15 GCA G26)
+      expect(calculateTaxonomyTierScore(['Parks'], PROJECT_TYPES_TAXONOMY)).toBe(1);
+      expect(calculateTaxonomyTierScore(['Green Spaces'], PROJECT_TYPES_TAXONOMY)).toBe(1);
+    });
+
+    test('Landscaping is now weak (score=0)', () => {
+      expect(calculateTaxonomyTierScore(['Landscaping'], PROJECT_TYPES_TAXONOMY)).toBe(0);
+    });
+
+    test('highest match wins — HVAC + Parks → 3 (hot)', () => {
+      expect(calculateTaxonomyTierScore(['Parks', 'HVAC Systems'], PROJECT_TYPES_TAXONOMY)).toBe(3);
+    });
+
+    test('empty array returns 0', () => {
+      expect(calculateTaxonomyTierScore([], PROJECT_TYPES_TAXONOMY)).toBe(0);
+    });
+  });
+
+  describe('Activity Multiplier (Calibrated)', () => {
+    test('construction activities get 1.0x', () => {
+      expect(calculateActivityMultiplier(['Installation', 'Renovation'], ACTIVITIES_TAXONOMY)).toBe(1.0);
+      expect(calculateActivityMultiplier(['New Construction'], ACTIVITIES_TAXONOMY)).toBe(1.0);
+      expect(calculateActivityMultiplier(['Modernization'], ACTIVITIES_TAXONOMY)).toBe(1.0);
+    });
+
+    test('design/engineering activities get 0.75x', () => {
+      expect(calculateActivityMultiplier(['Design', 'Engineering'], ACTIVITIES_TAXONOMY)).toBe(0.75);
+      expect(calculateActivityMultiplier(['Planning'], ACTIVITIES_TAXONOMY)).toBe(0.75);
+    });
+
+    test('equipment/procurement activities get 0.5x', () => {
+      expect(calculateActivityMultiplier(['Equipment Purchase'], ACTIVITIES_TAXONOMY)).toBe(0.5);
+      expect(calculateActivityMultiplier(['Land Acquisition'], ACTIVITIES_TAXONOMY)).toBe(0.5);
+    });
+
+    test('training/soft activities get 0.15x (was 0.5x before calibration)', () => {
+      // Calibration: Arts Ed Partnership scored 5.0 (should be ~1), human gave 1.0
+      // With 0.15x: base 10 × 0.15 = 1.5 (much closer to human score)
+      expect(calculateActivityMultiplier(['Training'], ACTIVITIES_TAXONOMY)).toBe(0.15);
+      expect(calculateActivityMultiplier(['Education'], ACTIVITIES_TAXONOMY)).toBe(0.15);
+      expect(calculateActivityMultiplier(['Technical Assistance'], ACTIVITIES_TAXONOMY)).toBe(0.15);
+      expect(calculateActivityMultiplier(['Capacity Building'], ACTIVITIES_TAXONOMY)).toBe(0.15);
+      expect(calculateActivityMultiplier(['Community Outreach'], ACTIVITIES_TAXONOMY)).toBe(0.15);
+    });
+
+    test('research/admin activities get 0.15x', () => {
+      expect(calculateActivityMultiplier(['Research'], ACTIVITIES_TAXONOMY)).toBe(0.15);
+      expect(calculateActivityMultiplier(['Program Administration'], ACTIVITIES_TAXONOMY)).toBe(0.15);
+    });
+
+    test('highest match wins — Training + Installation → 1.0x (hot)', () => {
+      // Confirmed: user said "it doesn't matter if it includes research if it also funds HVAC installation"
+      expect(calculateActivityMultiplier(['Training', 'Installation'], ACTIVITIES_TAXONOMY)).toBe(1.0);
+    });
+
+    test('empty/null activities default to 0.15x', () => {
+      expect(calculateActivityMultiplier([], ACTIVITIES_TAXONOMY)).toBe(0.15);
+      expect(calculateActivityMultiplier(null, ACTIVITIES_TAXONOMY)).toBe(0.15);
+    });
+
+    test('training-only program with perfect base score falls below filter', () => {
+      // Base score of 10 × 0.15 = 1.5, which is below the <2 filter threshold
+      const baseScore = 10;
+      const multiplier = calculateActivityMultiplier(['Training'], ACTIVITIES_TAXONOMY);
+      const finalScore = Math.round(baseScore * multiplier * 10) / 10;
+      expect(finalScore).toBe(1.5);
+      expect(finalScore).toBeLessThan(2); // Below filter threshold
     });
   });
 });
