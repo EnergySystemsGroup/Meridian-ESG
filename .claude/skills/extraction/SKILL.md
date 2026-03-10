@@ -23,7 +23,7 @@ You need all five taxonomy categories memorized:
 | `ELIGIBLE_PROJECT_TYPES` | What gets funded — equipment, systems, infrastructure (tiered) |
 | `ELIGIBLE_ACTIVITIES` | What actions the money pays for — installation, design, etc. (tiered) |
 | `CATEGORIES` | Broad domain — Energy, Infrastructure, Education, etc. (tiered) |
-| `FUNDING_TYPES` | Grant, Rebate, Tax Credit, Loan, etc. (tiered) |
+| `FUNDING_TYPES` | Grant, Incentive, Tax Credit, Loan, etc. (tiered) |
 
 **Rules**:
 - Use ONLY values from the taxonomy file — no invented values
@@ -252,8 +252,19 @@ application process, contact info. Be thorough — this is the primary content
 field used for matching and display.
 
 **`fundingType`** (string, nullable):
-Map to FUNDING_TYPES taxonomy: Grant, Rebate, Tax Credit, Loan, etc.
+Map to FUNDING_TYPES taxonomy: Grant, Incentive, Tax Credit, Loan, etc.
 Use the closest match from the taxonomy.
+
+**`incentiveStructure`** (string, nullable):
+How funding flows to the applicant. Use one of:
+- `prescriptive` — published $/unit or $/measure tables (contractor can calculate rebate)
+- `deemed_calculated` — formula-based: $/kWh saved, $/therm saved
+- `custom_performance` — funder reviews specific proposal and decides amount
+- `make_ready` — applicant hires contractor, gets reimbursed after work
+- `direct_install` — funder performs the work themselves
+- `financing` — OBF, PACE, revolving loan fund
+- `audit_assessment` — energy audits or assessments only
+- `null` — not applicable (most grants, tax credits)
 
 **`funding_source`** (object, REQUIRED):
 Populate from the source JOIN data AND page content:
@@ -366,6 +377,7 @@ The complete schema for the `extraction_data` JSONB column:
   "title": "Program Name",
   "description": "Full combined description...",
   "fundingType": "Grant",
+  "incentiveStructure": null,
   "funding_source": {
     "name": "Oregon Housing and Community Services",
     "type": "State",
@@ -420,7 +432,7 @@ These must always be populated (never null):
 ### Optional Fields
 
 These may be null if not found on the page:
-- `fundingType`, `totalFundingAvailable`, `minimumAward`, `maximumAward`, `notes`
+- `fundingType`, `incentiveStructure`, `totalFundingAvailable`, `minimumAward`, `maximumAward`, `notes`
 - `openDate`, `closeDate`
 - `eligibleLocations`, `matchingPercentage`
 - `disbursementType`, `awardProcess`

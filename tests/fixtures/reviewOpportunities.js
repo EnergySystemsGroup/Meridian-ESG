@@ -28,7 +28,7 @@ export const reviewOpportunities = {
   pendingLowScore: {
     ...opportunities.californiaStateGrant,
     id: 'review-pending-002',
-    funding_type: 'Rebate',
+    funding_type: 'Incentive',
     open_date: '2026-02-01T00:00:00Z',
     url: 'https://example.com/rebate-002',
     program_id: 'prog-002',

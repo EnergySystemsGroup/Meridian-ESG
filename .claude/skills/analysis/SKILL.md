@@ -27,7 +27,7 @@ Read `lib/constants/taxonomies.js` — you need all five tiered taxonomy categor
 | `ELIGIBLE_PROJECT_TYPES` | What gets funded (tiered) | `projectTypeRelevance` (0-3) |
 | `ELIGIBLE_ACTIVITIES` | What actions the money pays for (tiered) | `activityMultiplier` (0.15-1.0) |
 | `CATEGORIES` | Broad domain — Energy, Infrastructure, etc. (tiered) | Reference only |
-| `FUNDING_TYPES` | Grant, Rebate, Tax Credit, etc. (tiered) | `fundingType` (0-1) |
+| `FUNDING_TYPES` | Grant, Incentive, Tax Credit, etc. (tiered) | `fundingType` (0-1) |
 
 ### V2 Analysis Reference Files (MUST read before analyzing)
 
@@ -195,6 +195,16 @@ flowing through our scope, generic labels hiding non-construction work, funding 
 too thin, niche qualifiers, opaque incentive structures, or program status issues. Use 0
 if the deterministic score is already right.
 
+**Incentive Structure Signal**: If `incentiveStructure` is present in extraction_data,
+factor it into your adjustment:
+- `prescriptive` (published $/unit tables) → upward pressure (+1 to +2)
+- `deemed_calculated` (formula-based) → slight upward (+0.5 to +1)
+- `custom_performance` (apply and find out) → neutral to slight down (-0.5 to 0)
+- `make_ready` (customer hires contractor) → downward (-1 to -2)
+- `direct_install` (funder does work) → strong downward (-2 to -3)
+- `financing` (OBF/PACE) → neutral, depends on terms
+- `audit_assessment` (audits only) → downward (-1 to -2)
+
 **8. `adjustmentReasoning`** (string, 3-5 sentences)
 
 Concise business judgment from ESCO/GC perspective. Include the final adjusted score.
@@ -232,7 +242,7 @@ Scoring is NOT done by LLM. Replicate the exact functions from `scoringAnalyzer.
 - **Key nuance**: "unknown" (score=1) only applies when BOTH `totalFundingAvailable` and `maximumAward` are null/0. If one is known and below thresholds, score is 0.
 
 **4. `fundingType`** (0-1): `calculateFundingTypeScore(fundingType, TAXONOMIES.FUNDING_TYPES)`
-- 1: hot or strong tier (e.g., Grant, Rebate)
+- 1: hot or strong tier (e.g., Grant, Incentive)
 - 0.5: mild tier
 - 0: weak tier or unknown
 - Case-insensitive matching

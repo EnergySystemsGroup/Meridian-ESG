@@ -100,6 +100,7 @@ Text fields can be 500-2000+ characters — this is EXPECTED and CORRECT.
 | `isNational` | sanitizeBoolean | `is_national` |
 | `matchingPercentage` | sanitizePercentage (clamp 0-100) | `cost_share_percentage` |
 | `fundingType` | direct copy | `funding_type` |
+| `incentiveStructure` | direct copy | `incentive_structure` |
 | `disbursementType` | direct copy | `disbursement_type` |
 | `awardProcess` | direct copy | `award_process` |
 | `notes` | sanitizeDescription | `notes` |
@@ -170,7 +171,7 @@ INSERT INTO funding_opportunities (
   eligible_applicants, eligible_project_types, eligible_locations,
   eligible_activities, categories, tags,
   cost_share_required, is_national, cost_share_percentage,
-  funding_type, disbursement_type, award_process, notes,
+  funding_type, incentive_structure, disbursement_type, award_process, notes,
   enhanced_description, actionable_summary,
   program_overview, program_use_cases, application_summary, program_insights,
   relevance_reasoning, relevance_score, scoring,
@@ -198,6 +199,7 @@ INSERT INTO funding_opportunities (
   <is_national>,           -- boolean or NULL
   <cost_share_percentage>, -- numeric or NULL
   $STOR$<funding_type>$STOR$,
+  $STOR$<incentive_structure>$STOR$,
   $STOR$<disbursement_type>$STOR$,
   $STOR$<award_process>$STOR$,
   $STOR$<notes>$STOR$,
@@ -240,6 +242,7 @@ DO UPDATE SET
   is_national = EXCLUDED.is_national,
   cost_share_percentage = EXCLUDED.cost_share_percentage,
   funding_type = EXCLUDED.funding_type,
+  incentive_structure = EXCLUDED.incentive_structure,
   disbursement_type = EXCLUDED.disbursement_type,
   award_process = EXCLUDED.award_process,
   notes = EXCLUDED.notes,

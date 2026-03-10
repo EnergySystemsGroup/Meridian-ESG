@@ -406,7 +406,7 @@ describe('Pipeline: Extraction Schema Compliance', () => {
         maximum_award: 100000,
         eligible_applicant_types: ['Commercial Entity'],
         eligible_project_types: ['Solar'],
-        funding_types: ['Rebate'],
+        funding_types: ['Incentive'],
       };
 
       const result = validateOpportunitySchema(opp);

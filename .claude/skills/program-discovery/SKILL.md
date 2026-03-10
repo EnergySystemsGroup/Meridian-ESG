@@ -146,7 +146,7 @@ of programs found.
 | `source_name` | Yes | For reporting |
 | `pdf_urls[]` | If present | Any PDF links (application guides, fact sheets) |
 | `brief_description` | Yes | 1-2 sentence summary |
-| `funding_type` | If identifiable | Grant, Rebate, Loan, Tax Credit, etc. |
+| `funding_type` | If identifiable | Grant, Incentive, Loan, Tax Credit, etc. |
 
 6. **Note PDF URLs** with `type: "pdf"` label — extractors handle PDFs later
 7. **Skip login-gated pages** — flag them instead: "Requires login, could not crawl"
@@ -217,7 +217,7 @@ structured data for database storage.
 | Eligible applicants | `eligible_applicants` | Yes | TEXT[] — who can apply |
 | Eligible project types | `eligible_project_types` | Recommended | TEXT[] — what projects qualify |
 | Eligible activities | `eligible_activities` | Yes | TEXT[] from ELIGIBLE_ACTIVITIES taxonomy (hot/strong/mild only) |
-| Funding type | `funding_type` | If identifiable | Single value: Grant, Rebate, Loan, etc. |
+| Funding type | `funding_type` | If identifiable | Single value: Grant, Incentive, Loan, etc. |
 | Status | `status` | Yes | Set to `'active'` on insert |
 | Recurrence | `recurrence` | Recommended | one-time, recurring, continuous, unknown |
 | Program URLs | `program_urls` | Yes | JSONB array of URL objects |
@@ -378,7 +378,7 @@ INSERT INTO funding_programs (
   ARRAY['Commercial', 'Residential']::TEXT[],
   ARRAY['HVAC', 'Lighting']::TEXT[],
   ARRAY['Installation', 'Replacement', 'Upgrade']::TEXT[],
-  'Rebate',
+  'Incentive',
   'active',
   'recurring',
   NOW(),
@@ -432,7 +432,7 @@ Programs found: Y
 
 Programs:
 1. [Program Name] -- [program_url]
-   Type: Rebate | Description: Brief summary
+   Type: Incentive | Description: Brief summary
    PDFs: [pdf_url1], [pdf_url2]
 2. [Program Name] -- [program_url]
    Type: Grant | Description: Brief summary
@@ -455,7 +455,7 @@ Programs processed: X
   Skipped: W (dedup match, no changes)
 
 Programs:
-1. [Program Name] -- status: active -- funding_type: Rebate
+1. [Program Name] -- status: active -- funding_type: Incentive
    Categories: [Energy, Sustainability]
    Applicants: [Commercial, Residential]
 2. ...
@@ -604,7 +604,7 @@ source_id="abc-123", catalog_urls=["https://sustainability.alachuacounty.us/prog
       PDFs: none
    b. Energy Audit Program
       URL: https://sustainability.alachuacounty.us/programs/energy-audit
-      Type: Rebate
+      Type: Incentive
       PDFs: none
    c. Tree Planting Grants
       URL: https://sustainability.alachuacounty.us/programs/tree-grants
@@ -614,7 +614,7 @@ source_id="abc-123", catalog_urls=["https://sustainability.alachuacounty.us/prog
 3. Report to team lead:
    "Found 3 programs for Alachua County Office of Sustainability:
     1. Green Business Program -- /programs/green-business -- Technical Assistance
-    2. Energy Audit Program -- /programs/energy-audit -- Rebate
+    2. Energy Audit Program -- /programs/energy-audit -- Incentive
     3. Tree Planting Grants -- /programs/tree-grants -- Grant (has PDF)"
 ```
 

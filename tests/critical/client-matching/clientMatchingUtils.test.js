@@ -595,9 +595,9 @@ const FUNDING_TYPE_GROUPS = [
   },
   {
     key: 'incentives',
-    label: 'Rebates & Incentives',
+    label: 'Incentives',
     description: 'Utility Incentives',
-    types: ['Rebate', 'Direct Payment', 'Voucher'],
+    types: ['Incentive', 'Direct Payment', 'Voucher'],
   },
   {
     key: 'other',
@@ -757,7 +757,7 @@ describe('groupMatchesByFundingType', () => {
 
   test('groups rebates/incentives correctly', () => {
     const matches = [
-      { funding_type: 'Rebate', relevance_score: 7 },
+      { funding_type: 'Incentive', relevance_score: 7 },
       { funding_type: 'Direct Payment', relevance_score: 5 },
     ];
     const groups = groupMatchesByFundingType(matches);
@@ -801,7 +801,7 @@ describe('groupMatchesByFundingType', () => {
       { funding_type: 'Tax Credit', relevance_score: 7 },
       { funding_type: 'Grant', relevance_score: 9 },
       { funding_type: 'Loan', relevance_score: 5 },
-      { funding_type: 'Rebate', relevance_score: 4 },
+      { funding_type: 'Incentive', relevance_score: 4 },
     ];
     const groups = groupMatchesByFundingType(matches);
     expect(groups).toHaveLength(4);
