@@ -78,7 +78,7 @@ Use `mcp__postgres__query` (read-only):
 ```sql
 SELECT mfos.id, mfos.title, mfos.url, mfos.extraction_data, mfos.source_id,
        mfos.program_id,
-       fs.name as source_name, fs.funder_type, fs.state_code
+       fs.name as source_name, fs.type, fs.state_code
 FROM manual_funding_opportunities_staging mfos
 JOIN funding_sources fs ON fs.id = mfos.source_id
 WHERE mfos.extraction_status = 'complete'
@@ -481,7 +481,7 @@ flipped to `filtered` by the orchestrator AFTER this report.
 | Table | Columns Used |
 |-------|-------------|
 | `manual_funding_opportunities_staging` | id, title, url, extraction_data, source_id, program_id, extraction_status, analysis_status |
-| `funding_sources` | id, name, funder_type, state_code |
+| `funding_sources` | id, name, type, state_code |
 
 ### Tables Written (via `psql "$ENV_VAR"`)
 

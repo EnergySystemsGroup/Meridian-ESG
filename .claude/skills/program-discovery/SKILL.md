@@ -97,7 +97,7 @@ spawns extractors with deduplicated program assignments.
 **Inputs** (provided by the orchestrator):
 - `source_id(s)` — UUID(s) of funding sources to process
 - `catalog_urls` — from `source_program_urls` table
-- `funder_type` — for taxonomy guidance
+- `type` — for taxonomy guidance
 - `state_code` — for search queries
 - `mode` — "scout" or "extractor" (detected from prompt)
 
@@ -335,17 +335,17 @@ Types: `main`, `application`, `pdf`, `faq`, `eligibility`, `contact`
 
 ```sql
 -- Run via mcp__postgres__query
-SELECT fs.id, fs.name, fs.website, fs.funder_type, fs.state_code,
+SELECT fs.id, fs.name, fs.website, fs.type, fs.state_code,
   (SELECT json_agg(json_build_object('id', spu.id, 'url', spu.url, 'label', spu.label))
    FROM source_program_urls spu WHERE spu.source_id = fs.id) as catalog_urls
 FROM funding_sources fs
-WHERE fs.state_code = 'FL' AND fs.funder_type = 'County'
+WHERE fs.state_code = 'FL' AND fs.type = 'County'
 AND (fs.programs_last_searched_at IS NULL
      OR fs.programs_last_searched_at < NOW() - INTERVAL '90 days')
 ORDER BY fs.created_at;
 ```
 
-Substitute actual `state_code` and `funder_type`. Use `mcp__postgres__query` for
+Substitute actual `state_code` and `type`. Use `mcp__postgres__query` for
 this read (raw SQL strings, not psql bind syntax).
 
 ### Dedup Check
@@ -560,11 +560,11 @@ SELECT
 FROM funding_programs
 WHERE source_id IN (
   SELECT id FROM funding_sources
-  WHERE state_code = 'FL' AND funder_type = 'County'
+  WHERE state_code = 'FL' AND type = 'County'
 );
 ```
 
-Substitute actual `state_code` and `funder_type`. Compare against your processing counts.
+Substitute actual `state_code` and `type`. Compare against your processing counts.
 
 ### Success Criteria Checklist
 

@@ -125,14 +125,14 @@ allowing them to be checked for new rounds.
 -- Run via mcp__postgres__query
 SELECT fp.id, fp.name, fp.description, fp.program_urls,
        fp.status as program_status, fp.next_check_at, fp.last_checked_at,
-       fp.source_id, fs.name as source_name, fs.state_code, fs.funder_type
+       fp.source_id, fs.name as source_name, fs.state_code, fs.type
 FROM funding_programs fp
 JOIN funding_sources fs ON fs.id = fp.source_id
 WHERE fp.status IN ('active', 'unknown')
   AND fp.next_check_at <= NOW()
   -- Scope filter: replace or remove these as needed
   -- AND fs.state_code = 'AZ'
-  -- AND fs.funder_type = 'Utility'
+  -- AND fs.type = 'Utility'
   -- AND fs.id = 'specific-source-uuid'
   AND NOT EXISTS (
     SELECT 1 FROM funding_opportunities fo

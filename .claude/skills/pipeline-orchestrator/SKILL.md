@@ -81,20 +81,20 @@ Parse the user's request to determine starting phase and auto-chain behavior:
 
 ### Scope Parsing
 
-Extract state_code, funder_type(s), or source name from the request:
+Extract state_code, type(s), or source name from the request:
 
 **Clear scope** — proceed without asking:
-- "Arizona utilities" → `state_code='AZ'`, `funder_type='Utility'`
+- "Arizona utilities" → `state_code='AZ'`, `type='Utility'`
 - "PG&E" → lookup `funding_sources` by name
-- "California county grants" → `state_code='CA'`, `funder_type='County'`
+- "California county grants" → `state_code='CA'`, `type='County'`
 - "all delinquent sources" → `programs_last_searched_at IS NULL OR < 90 days`
 
-**Broad scope — funder_type not specified** — determine applicable types:
+**Broad scope — type not specified** — determine applicable types:
 - "Find all sources in Nevada" → NV, all applicable funder types (see Section 3.5)
 - "Everything in Clark County area" → NV, focus on County + Municipality
 - "Sources relevant to energy and housing in Arizona" → AZ, all types that fund energy/housing
 
-**Common natural language → funder_type mapping** (use as guidance, not strict rules):
+**Common natural language → type mapping** (use as guidance, not strict rules):
 - "utilities", "electric companies", "power companies" → Utility
 - "counties", "county government", "local government" → County
 - "cities", "municipal", "local" → Municipality (or County + Municipality if ambiguous)
@@ -103,7 +103,7 @@ Extract state_code, funder_type(s), or source name from the request:
 - "tribal", "tribal authorities" → Tribal
 - "federal", "federal agencies" → Federal
 
-**When funder_type is not specified or is broad**, the orchestrator determines which
+**When type is not specified or is broad**, the orchestrator determines which
 types are relevant and spawns one team per type (see Section 3.5 and Section 6).
 
 ### Ask When Uncertain
@@ -118,7 +118,7 @@ on every request — only when there is genuine ambiguity that could lead to was
 - The user references something that doesn't exist in the database and you're unsure what they mean
 
 **DO NOT ask when:**
-- You can reasonably infer funder_type from context (e.g., "local and county" → County + Municipality)
+- You can reasonably infer type from context (e.g., "local and county" → County + Municipality)
 - The scope is broad but actionable (e.g., "all sources in Nevada" → spawn agents for each type)
 - Minor ambiguity that won't affect results (e.g., "utilities" clearly means electric/gas utilities)
 
@@ -193,23 +193,23 @@ with raw SQL — substitute actual values (no bind variables).
 
 ```sql
 -- Check 1: Sources exist for this scope?
--- Example for Arizona utilities (substitute actual state_code and funder_type):
+-- Example for Arizona utilities (substitute actual state_code and type):
 SELECT COUNT(*) as source_count
 FROM funding_sources
-WHERE state_code = 'AZ' AND funder_type = 'Utility';
+WHERE state_code = 'AZ' AND type = 'Utility';
 
 -- Check 2a: Catalog URLs exist for these sources? (Phase 2 prerequisite)
 SELECT COUNT(*) as url_count,
   COUNT(DISTINCT spu.source_id) as sources_with_urls
 FROM source_program_urls spu
 JOIN funding_sources fs ON fs.id = spu.source_id
-WHERE fs.state_code = 'AZ' AND fs.funder_type = 'Utility';
+WHERE fs.state_code = 'AZ' AND fs.type = 'Utility';
 
 -- Check 2b: Programs exist for these sources?
 SELECT COUNT(*) as program_count
 FROM funding_programs fp
 JOIN funding_sources fs ON fs.id = fp.source_id
-WHERE fs.state_code = 'AZ' AND fs.funder_type = 'Utility';
+WHERE fs.state_code = 'AZ' AND fs.type = 'Utility';
 
 -- Check 3: Programs due for checking? (smart schedule)
 SELECT COUNT(*) as due_count
@@ -418,10 +418,10 @@ User: "Find county and state sources in Florida"
 TeamCreate(team_name="source-discovery-FL", description="Phase 1: FL County + State sources")
 
 Spawn all teammates in parallel (one message):
-  → county-direct    (strategies 1+5+7, funder_type=County)     ┐ County pair
-  → county-aggregator (strategy 4, funder_type=County)           ┘ cross-checks
-  → state-direct     (strategies 5+7, funder_type=State)        ┐ State pair
-  → state-aggregator  (strategy 4, funder_type=State)            ┘ cross-checks
+  → county-direct    (strategies 1+5+7, type=County)     ┐ County pair
+  → county-aggregator (strategy 4, type=County)           ┘ cross-checks
+  → state-direct     (strategies 5+7, type=State)        ┐ State pair
+  → state-aggregator  (strategy 4, type=State)            ┘ cross-checks
   = 4 teammates, all searching in parallel
 ```
 
@@ -472,7 +472,7 @@ county-aggregator's findings when county-direct had already shut down).
 Follow the Concrete Tool Call Pattern above. Key points:
 - Each teammate gets `subagent_type="source-registry-agent"` (loads the source-registry skill)
 - Include strategy group name AND numbers in the prompt
-- Include state_code, funder_type, database env var, and batch_id in the prompt
+- Include state_code, type, database env var, and batch_id in the prompt
 - Teammates write to DB independently, then cross-check for completeness
 
 ### Phase 2 — Program Discovery Teams (Two-Round Pattern)
@@ -500,10 +500,10 @@ extractors handle the heavy extraction work with focused assignments.
 ```
 STEP 0: Query sources + catalog URL counts for the scope
 ─────────────────────────
-SELECT fs.id, fs.name, fs.funder_type,
+SELECT fs.id, fs.name, fs.type,
   (SELECT COUNT(*) FROM source_program_urls spu WHERE spu.source_id = fs.id) as url_count
 FROM funding_sources fs
-WHERE fs.state_code = 'FL' AND fs.funder_type = 'County'
+WHERE fs.state_code = 'FL' AND fs.type = 'County'
 AND (fs.programs_last_searched_at IS NULL
      OR fs.programs_last_searched_at < NOW() - INTERVAL '90 days')
 ORDER BY fs.created_at;
@@ -705,13 +705,13 @@ STEP 0: Pre-flight (orchestrator runs directly — NOT delegated to teammates)
 mcp__postgres__query:
 SELECT fp.id, fp.name, fp.description, fp.program_urls,
        fp.status as program_status, fp.source_id,
-       fs.name as source_name, fs.state_code, fs.funder_type
+       fs.name as source_name, fs.state_code, fs.type
 FROM funding_programs fp
 JOIN funding_sources fs ON fs.id = fp.source_id
 WHERE fp.status IN ('active', 'unknown')
   AND fp.next_check_at <= NOW()
   -- Scope filter (substitute actual values):
-  AND fs.state_code = 'AZ' AND fs.funder_type = 'Utility'
+  AND fs.state_code = 'AZ' AND fs.type = 'Utility'
   AND NOT EXISTS (
     SELECT 1 FROM funding_opportunities fo
     WHERE fo.status = 'Open'

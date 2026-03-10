@@ -123,7 +123,7 @@ Use `mcp__postgres__query` to fetch the next batch:
 ```sql
 SELECT mfos.id, mfos.title, mfos.url, mfos.program_urls, mfos.content_type,
        mfos.source_id, mfos.program_id,
-       fs.name as source_name, fs.funder_type, fs.website as source_website,
+       fs.name as source_name, fs.type, fs.website as source_website,
        fs.state_code
 FROM manual_funding_opportunities_staging mfos
 JOIN funding_sources fs ON fs.id = mfos.source_id
@@ -258,7 +258,7 @@ Use the closest match from the taxonomy.
 **`funding_source`** (object, REQUIRED):
 Populate from the source JOIN data AND page content:
 - `name`: Use `fs.name` from the query (the registered source name)
-- `type`: Use `fs.funder_type` from the query (Utility, State, County, etc.)
+- `type`: Use `fs.type` from the query (Utility, State, County, etc.)
 - `website`: Use `fs.website` OR extract from page content
 - `contact_email`: Extract from page content if available
 - `contact_phone`: Extract from page content if available
@@ -576,7 +576,7 @@ of `complete`, `skipped`, or `error`.
 ### Tables Read (via mcp__postgres__query)
 
 - `manual_funding_opportunities_staging` — pending records to extract
-- `funding_sources` — source metadata (name, funder_type, website, state_code)
+- `funding_sources` — source metadata (name, type, website, state_code)
 
 ### Tables Written (via psql)
 
