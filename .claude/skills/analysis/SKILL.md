@@ -1,11 +1,12 @@
 ---
 name: analysis
 description: >
-  Phase 5 of the manual funding pipeline. Performs LLM content enhancement
-  (6 fields) and deterministic scoring on extracted staging records. Merges
-  results into analysis_data JSONB. Source-type agnostic — the energy services
-  GC framing applies to all source types. Orchestrator handles post-batch
-  filtering (finalScore < 2 = filtered).
+  Phase 5 of the manual funding pipeline. Sequential flow: deterministic scoring
+  first, then LLM content enhancement (6 fields + scoring adjustment). LLM adjusts
+  the deterministic score ±3 with business reasoning. Merges results into
+  analysis_data JSONB. Source-type agnostic — energy services GC framing applies
+  to all source types. Orchestrator handles post-batch filtering
+  (adjustedScore < 2 = filtered).
 ---
 
 # Content Analysis & Scoring — Phase 5
@@ -24,7 +25,7 @@ Read `lib/constants/taxonomies.js` — you need all five tiered taxonomy categor
 |----------|----------|-------------|
 | `ELIGIBLE_APPLICANTS` | Who can apply (tiered: hot/strong/mild/weak) | `clientRelevance` (0-3) |
 | `ELIGIBLE_PROJECT_TYPES` | What gets funded (tiered) | `projectTypeRelevance` (0-3) |
-| `ELIGIBLE_ACTIVITIES` | What actions the money pays for (tiered) | `activityMultiplier` (0.25-1.0) |
+| `ELIGIBLE_ACTIVITIES` | What actions the money pays for (tiered) | `activityMultiplier` (0.15-1.0) |
 | `CATEGORIES` | Broad domain — Energy, Infrastructure, etc. (tiered) | Reference only |
 | `FUNDING_TYPES` | Grant, Rebate, Tax Credit, etc. (tiered) | `fundingType` (0-1) |
 
@@ -32,13 +33,16 @@ Read `lib/constants/taxonomies.js` — you need all five tiered taxonomy categor
 
 | File | What It Provides | Key Lines |
 |------|-----------------|-----------|
-| `lib/agents-v2/core/analysisAgent/contentEnhancer.js` | LLM prompt for 6 content fields | Lines 23-85: full prompt template |
+| `lib/agents-v2/core/analysisAgent/contentEnhancer.js` | LLM prompt for 6 content fields + scoring adjustment | Full prompt template with scoring context |
 | `lib/agents-v2/core/analysisAgent/scoringAnalyzer.js` | Deterministic scoring functions | Lines 13-95: tier calculations; Lines 102-143: reasoning; Lines 151-175: concerns |
-| `lib/agents-v2/core/analysisAgent/parallelCoordinator.js` | Merge pattern | Lines 54-106: `mergeAnalysisResults()` |
+| `lib/agents-v2/core/analysisAgent/parallelCoordinator.js` | Sequential coordinator + merge | `executeParallelAnalysis()`: deterministic first → LLM with scoring context; `mergeAnalysisResults()`: computes adjustedScore |
 
 **Rules**:
 - Read ALL files above before processing any records
-- Scoring is DETERMINISTIC — replicate the JS functions, do NOT use LLM for scoring
+- **Sequential flow**: Deterministic scoring FIRST, then LLM content enhancement WITH scoring context
+- Base scoring is DETERMINISTIC — replicate the JS functions
+- LLM adjusts the deterministic score ±3 with business reasoning (`scoreAdjustment`, `adjustmentReasoning`)
+- `adjustedScore = clamp(finalScore + llmAdjustment, 0, 10)`
 - Content enhancement uses LLM — follow the contentEnhancer.js prompt structure
 - All taxonomy values must come from `lib/constants/taxonomies.js`
 
@@ -106,20 +110,27 @@ If the query returns zero rows, report "No pending analysis records" and stop.
 
 ---
 
-## 3. Content Enhancement (LLM)
+## 3. Content Enhancement + Scoring Adjustment (LLM)
 
-Generate 6 strategic content fields using the extraction_data from Phase 4.
+Generate 6 strategic content fields + 2 scoring adjustment fields using extraction_data
+from Phase 4 AND the deterministic scoring results from Section 4.
+
+**Execution order**: Deterministic scoring (Section 4) runs FIRST. The LLM receives the
+deterministic score as context and can adjust it ±3.
 
 ### 3a. Prompt Structure
 
-Read `lib/agents-v2/core/analysisAgent/contentEnhancer.js` (lines 23-85) for the
-full prompt structure. The V2 prompt includes:
+Read `lib/agents-v2/core/analysisAgent/contentEnhancer.js` for the full prompt structure.
+The V2 prompt includes:
 - Business context: energy services company, primary clients from taxonomy hot tier
 - Emphasis on "our role as the service provider executing work FOR clients"
 - Instruction to analyze INDEPENDENTLY per opportunity
+- Deterministic scoring context per opportunity (injected from Section 4 results)
 
 Follow the V2 prompt for fields 1, 3-6 EXACTLY as written. For field 2
-(`actionableSummary`), use the repurposed "How to Win" prompt below.
+(`actionableSummary`), use the VERDICT + IDEAL CANDIDATE format below.
+For fields 7-8 (`scoreAdjustment`, `adjustmentReasoning`), follow the scoring
+adjustment instructions below.
 
 ### 3b. Six Content Fields
 
@@ -128,32 +139,31 @@ Follow the V2 prompt for fields 1, 3-6 EXACTLY as written. For field 2
 - Detailed strategic description: what it is, who qualifies, what projects qualify
 - Include 2-3 use case examples showing how WE help clients by executing work FOR them
 
-**2. `actionableSummary`** — **"How to Win This Grant"** (REPURPOSED)
+**2. `actionableSummary`** — **Structured Quick-Scan Summary** (REPURPOSED)
 
-This field is repurposed from the V2 "general sales brief" to a strategic winning guide.
-Use this prompt instead of the V2 prompt for field #2:
+This field answers: "What do I need to do to get this money?" using labeled sections.
+Keep each section to 1-2 lines max.
 
-> Write a strategic "How to Win" brief for this funding opportunity. Answer the question:
-> "What do I need to do to maximize my chances of winning this grant?"
->
-> Focus on the 3-5 most impactful things that would make the difference between a funded
-> and unfunded application. Be specific to THIS program — no generic advice.
->
-> Cover as applicable:
-> - **Narrative**: What story or angle should the application tell? What resonates with
->   this program's goals? (e.g., "Emphasize community impact and equity outcomes")
-> - **Evaluation priorities**: What do reviewers score highest? What gets bonus points?
->   (e.g., "50%+ cost match scores significantly higher", "Disadvantaged community
->   projects get automatic priority")
-> - **Pitfalls**: What non-obvious requirements or restrictions could sink an application?
->   (e.g., "Must have pre-approval before purchasing equipment", "Letters of support
->   from 3+ community organizations required")
-> - **Competitive actions**: What concrete steps should the applicant take?
->   (e.g., "Build relationship with the regional coordinator before applying",
->   "Focus on projects that demonstrate measurable energy savings")
->
-> Write in direct, actionable language: "You should...", "Focus on...", "Make sure to..."
-> Keep to 3-5 key points. Each point should be a substantive insight, not a checkbox.
+```
+VERDICT: [adjusted score]/10 — [one-line: what this funds, amounts, who applies]
+WHO: [eligible applicant types]
+WHAT: [prevailing project types + activities — name the action + system, not just categories]
+MONEY: [expected award per applicant + funding structure quirks]
+PROCESS: [competitive vs first-come, rolling vs deadline, turnaround, mechanics]
+CRITERIA: [specific make-or-break qualifying criteria — what tells you in 10 seconds to pursue or pass]
+FLAGS: [gotchas, restrictions, reminders — always include at least one]
+```
+
+Example:
+```
+VERDICT: 8.5/10 — $10M federal grant for K-12 HVAC retrofits. Rolling applications.
+WHO: School districts, public K-12 facilities
+WHAT: Retrofits and replacement of HVAC systems during planned renovations
+MONEY: $500K-$2M per project. Reimbursement after completion, no cost share required.
+PROCESS: Rolling applications, formula-based allocation. No competitive scoring.
+CRITERIA: Must be in a Title I census tract. Energy audit within 3 years required.
+FLAGS: Reimbursement-based — district must front project costs. Prevailing wage applies.
+```
 
 **3. `programOverview`** (<75 words)
 - Follow V2 contentEnhancer.js field #3 exactly
@@ -173,7 +183,23 @@ Use this prompt instead of the V2 prompt for field #2:
 - Follow V2 contentEnhancer.js field #6 exactly
 - Non-obvious details that impact decisions: restrictions, scoring bonuses, tech assistance
 
-### 3c. Quality Standards
+### 3c. Scoring Adjustment Fields (LLM)
+
+**7. `scoreAdjustment`** (integer, -3 to +3)
+
+The deterministic algorithm already handles client type weighting via taxonomy tiers —
+do NOT adjust for client type. Only adjust for things taxonomy can't capture: money not
+flowing through our scope, generic labels hiding non-construction work, funding dispersed
+too thin, niche qualifiers, opaque incentive structures, or program status issues. Use 0
+if the deterministic score is already right.
+
+**8. `adjustmentReasoning`** (string, 3-5 sentences)
+
+Concise business judgment from ESCO/GC perspective. Include the final adjusted score.
+Example: "Scores 6.0 (det. 9.0, adj. -3). HVAC in residential housing = window units,
+not commercial chillers. $3M across 500 units = $6K each."
+
+### 3d. Quality Standards
 
 - Use cases MUST be specific and realistic:
   - Good: "School district retrofitting 500 classrooms with LED lighting qualifies for $25,000"
@@ -209,11 +235,11 @@ Scoring is NOT done by LLM. Replicate the exact functions from `scoringAnalyzer.
 - 0: weak tier or unknown
 - Case-insensitive matching
 
-**5. `activityMultiplier`** (0.25-1.0): `calculateActivityMultiplier(eligibleActivities, TAXONOMIES.ELIGIBLE_ACTIVITIES)`
+**5. `activityMultiplier`** (0.15-1.0): `calculateActivityMultiplier(eligibleActivities, TAXONOMIES.ELIGIBLE_ACTIVITIES)`
 - 1.0: hot tier activities (e.g., Installation, Equipment Purchase)
 - 0.75: strong tier
 - 0.5: mild tier
-- 0.25: weak tier or no activities specified
+- 0.15: weak tier or no activities specified
 
 ### 4b. Score Calculation
 
@@ -265,13 +291,17 @@ Follow `identifyBasicConcerns()` from scoringAnalyzer.js (lines 151-175):
 ```sql
 UPDATE manual_funding_opportunities_staging
 SET analysis_status = 'filtered',
-    analysis_error = 'Filtered: finalScore ' ||
-      (analysis_data->'scoring'->>'finalScore') || ' below threshold 2'
+    analysis_error = 'Filtered: adjustedScore ' ||
+      COALESCE(analysis_data->'scoring'->>'adjustedScore',
+               analysis_data->'scoring'->>'finalScore') || ' below threshold 2'
 WHERE analysis_status = 'complete'
-  AND (analysis_data->'scoring'->>'finalScore')::numeric < 2;
+  AND COALESCE(
+    (analysis_data->'scoring'->>'adjustedScore')::numeric,
+    (analysis_data->'scoring'->>'finalScore')::numeric
+  ) < 2;
 ```
 
-**Threshold**: `finalScore < 2` (matches V2 `filterFunction.js`)
+**Threshold**: `adjustedScore < 2` (with fallback to `finalScore`, matches V2 `filterFunction.js`)
 
 **Effect**: Phase 6 queries `WHERE analysis_status = 'complete'` — filtered records
 are naturally excluded. Full `analysis_data` remains on filtered records for review.
@@ -323,7 +353,7 @@ fields PLUS ALL analysis fields:
   "applicationSummary": "...",
   "programInsights": "...",
 
-  // ===== SCORING (DETERMINISTIC from scoringAnalyzer.js) =====
+  // ===== SCORING (DETERMINISTIC + LLM ADJUSTMENT) =====
   "scoring": {
     "clientRelevance": 2,
     "projectTypeRelevance": 2,
@@ -331,9 +361,11 @@ fields PLUS ALL analysis fields:
     "fundingType": 1,
     "activityMultiplier": 1.0,
     "baseScore": 5,
-    "finalScore": 5.0
+    "finalScore": 5.0,
+    "llmAdjustment": -1,
+    "adjustedScore": 4.0
   },
-  "relevanceReasoning": "CLIENT RELEVANCE (2/3): ... → Tier: Strong → Score: 2\n\n...",
+  "relevanceReasoning": "Scores 4.0 (det. 5.0, adj. -1). ...",
   "concerns": []
 }
 ```
@@ -341,7 +373,7 @@ fields PLUS ALL analysis fields:
 **CRITICAL**: The storage agent expects `analysis_data` to contain EVERYTHING needed
 for `funding_opportunities` table insertion. Do NOT omit any extraction fields.
 
-**Merge rule**: `analysis_data = { ...extraction_data, ...contentEnhancement, scoring, relevanceReasoning, concerns }`
+**Merge rule**: `analysis_data = { ...extraction_data, ...contentEnhancement, scoring: { ...deterministicScoring, llmAdjustment, adjustedScore }, relevanceReasoning: adjustmentReasoning, concerns }`
 
 ---
 
@@ -403,22 +435,22 @@ Records processed: X of Y pending
   Complete:  A (analysis_data populated)
   Errors:    B
 
-Score distribution:
+Score distribution (adjustedScore):
   High (8-10):              H records
   Medium (5-7.9):           M records
   Low (2-4.9):              L records
   Below threshold (<2):     F records
-  Average finalScore:       N.N
+  Average adjustedScore:    N.N
 
 Details:
-  [uuid] "Title" → complete (finalScore: 7.2)
-  [uuid] "Title" → complete (finalScore: 1.5)  ← will be filtered by orchestrator
+  [uuid] "Title" → complete (det: 7.5, adj: -1, final: 6.5)
+  [uuid] "Title" → complete (det: 3.0, adj: -2, final: 1.0)  ← will be filtered
   [uuid] "Title" → error (Missing extraction_data)
 
 Remaining pending: Z records
 ```
 
-**Note**: The report includes ALL scored records. Records with `finalScore < 2` will be
+**Note**: The report includes ALL scored records. Records with `adjustedScore < 2` will be
 flipped to `filtered` by the orchestrator AFTER this report.
 
 ---

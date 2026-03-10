@@ -640,4 +640,111 @@ describe('Pipeline: Analysis Scoring', () => {
       expect(finalScore).toBeLessThan(2); // Below filter threshold
     });
   });
+
+  describe('LLM Scoring Adjustment', () => {
+    /**
+     * Compute adjustedScore from finalScore + llmAdjustment, clamped to [0, 10]
+     * Mirrors parallelCoordinator.js mergeAnalysisResults()
+     */
+    function computeAdjustedScore(finalScore, llmAdjustment) {
+      const adj = llmAdjustment || 0;
+      return Math.round(
+        Math.max(0, Math.min(10, finalScore + adj)) * 10
+      ) / 10;
+    }
+
+    test('zero adjustment returns finalScore unchanged', () => {
+      expect(computeAdjustedScore(7.5, 0)).toBe(7.5);
+      expect(computeAdjustedScore(3.0, 0)).toBe(3.0);
+      expect(computeAdjustedScore(10.0, 0)).toBe(10.0);
+    });
+
+    test('positive adjustment increases score', () => {
+      expect(computeAdjustedScore(5.0, 2)).toBe(7.0);
+      expect(computeAdjustedScore(7.0, 3)).toBe(10.0);
+    });
+
+    test('negative adjustment decreases score', () => {
+      expect(computeAdjustedScore(9.0, -3)).toBe(6.0);
+      expect(computeAdjustedScore(7.5, -2)).toBe(5.5);
+    });
+
+    test('adjustedScore is clamped to 0 (no negative scores)', () => {
+      expect(computeAdjustedScore(1.0, -3)).toBe(0);
+      expect(computeAdjustedScore(0.5, -2)).toBe(0);
+      expect(computeAdjustedScore(0, -1)).toBe(0);
+    });
+
+    test('adjustedScore is clamped to 10 (no scores above 10)', () => {
+      expect(computeAdjustedScore(9.0, 3)).toBe(10.0);
+      expect(computeAdjustedScore(10.0, 2)).toBe(10.0);
+      expect(computeAdjustedScore(8.5, 3)).toBe(10.0);
+    });
+
+    test('null/undefined adjustment treated as 0', () => {
+      expect(computeAdjustedScore(7.5, null)).toBe(7.5);
+      expect(computeAdjustedScore(7.5, undefined)).toBe(7.5);
+    });
+
+    test('preserves decimal precision after adjustment', () => {
+      expect(computeAdjustedScore(5.5, 1)).toBe(6.5);
+      expect(computeAdjustedScore(3.3, -1)).toBe(2.3);
+    });
+
+    test('Bucket B calibration cases produce expected scores', () => {
+      // #1 Charge Ready: det 7.5, adj -3 → 4.5 (human: 5.0)
+      expect(computeAdjustedScore(7.5, -3)).toBe(4.5);
+
+      // #17 Capital Improvements PHAs: det 7.5, adj -2 → 5.5 (human: 5.0)
+      expect(computeAdjustedScore(7.5, -2)).toBe(5.5);
+
+      // #21 Charge Ready Transport: det 7.5, adj -3 → 4.5 (human: 5.0)
+      expect(computeAdjustedScore(7.5, -3)).toBe(4.5);
+
+      // #23 Community Noise Mitigation: det 10.0, adj -3 → 7.0 (human: 6.0)
+      expect(computeAdjustedScore(10.0, -3)).toBe(7.0);
+    });
+
+    test('filter uses adjustedScore with fallback to finalScore', () => {
+      /**
+       * Mirrors filterFunction.js: scoring.adjustedScore ?? scoring.finalScore ?? 0
+       */
+      function getFilterScore(scoring) {
+        return scoring.adjustedScore ?? scoring.finalScore ?? 0;
+      }
+
+      // New format: uses adjustedScore
+      expect(getFilterScore({ adjustedScore: 4.5, finalScore: 7.5 })).toBe(4.5);
+
+      // adjustedScore of 0 must NOT fall through to finalScore
+      expect(getFilterScore({ adjustedScore: 0, finalScore: 7.5 })).toBe(0);
+
+      // Legacy format: falls back to finalScore
+      expect(getFilterScore({ finalScore: 7.5 })).toBe(7.5);
+
+      // Missing both: returns 0
+      expect(getFilterScore({})).toBe(0);
+    });
+
+    test('dataSanitizer uses adjustedScore for relevance_score', () => {
+      /**
+       * Mirrors dataSanitizer.js: scoring.adjustedScore ?? scoring.finalScore ?? scoring.overallScore
+       */
+      function getRelevanceScore(scoring) {
+        return scoring.adjustedScore ?? scoring.finalScore ?? scoring.overallScore;
+      }
+
+      // New format
+      expect(getRelevanceScore({ adjustedScore: 6.0, finalScore: 9.0 })).toBe(6.0);
+
+      // adjustedScore of 0 must NOT fall through
+      expect(getRelevanceScore({ adjustedScore: 0, finalScore: 9.0 })).toBe(0);
+
+      // Legacy format
+      expect(getRelevanceScore({ finalScore: 9.0, overallScore: 8.0 })).toBe(9.0);
+
+      // Very old format
+      expect(getRelevanceScore({ overallScore: 8.0 })).toBe(8.0);
+    });
+  });
 });
