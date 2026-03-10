@@ -61,8 +61,9 @@ ready for storage.
 
 **Source-type agnostic**: The V2 content enhancement prompt is written from Meridian's
 perspective as an energy services general contractor. This framing applies to ALL source
-types — utilities, state agencies, counties, municipalities, foundations, federal. The
-question is always "is this relevant to OUR clients (school districts, municipalities)?"
+types — utilities, state agencies, counties, municipalities, foundations, federal. We
+serve clients across public and private sectors — client type relevance is already
+weighted by taxonomy tiers in deterministic scoring. Do NOT apply additional bias.
 
 **Processing model**: Task tool, batches of 20, sequential within batch.
 
@@ -122,7 +123,8 @@ deterministic score as context and can adjust it ±3.
 
 Read `lib/agents-v2/core/analysisAgent/contentEnhancer.js` for the full prompt structure.
 The V2 prompt includes:
-- Business context: energy services company, primary clients from taxonomy hot tier
+- Business context: energy services GC serving clients across public and private sectors
+- Client type relevance is already handled by taxonomy tiers — do NOT re-penalize
 - Emphasis on "our role as the service provider executing work FOR clients"
 - Instruction to analyze INDEPENDENTLY per opportunity
 - Deterministic scoring context per opportunity (injected from Section 4 results)
