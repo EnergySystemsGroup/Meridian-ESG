@@ -157,26 +157,17 @@ export async function POST(request) {
     console.log(`[API] Found ${coverageAreaIds.length} coverage areas`);
 
     // Step 3: Insert client into database
-    // Parse budget as numeric value (or null if not provided)
+    // Validate budget tier string (or null if not provided)
+    const VALID_BUDGET_TIERS = ['small', 'medium', 'large', 'very_large'];
     let budget = null;
     if (body.budget !== null && body.budget !== undefined && body.budget !== '') {
-      budget = typeof body.budget === 'number' ? body.budget : parseFloat(body.budget);
-      if (isNaN(budget)) {
-        console.error('[API] Invalid budget value:', body.budget);
+      budget = String(body.budget);
+      if (!VALID_BUDGET_TIERS.includes(budget)) {
+        console.error('[API] Invalid budget tier:', body.budget);
         return NextResponse.json(
           {
             success: false,
-            error: `Invalid budget value: ${body.budget}. Please enter a valid number.`
-          },
-          { status: 400 }
-        );
-      }
-      if (budget < 0) {
-        console.error('[API] Negative budget value:', budget);
-        return NextResponse.json(
-          {
-            success: false,
-            error: 'Budget cannot be negative'
+            error: `Invalid budget tier: ${body.budget}. Must be one of: ${VALID_BUDGET_TIERS.join(', ')}`
           },
           { status: 400 }
         );
