@@ -89,11 +89,12 @@ export async function PUT(request, { params }) {
       throw fetchError;
     }
 
-    // Parse budget as numeric value (or null if not provided)
+    // Validate budget tier string (or null if not provided)
+    const VALID_BUDGET_TIERS = ['small', 'medium', 'large', 'very_large'];
     let budget = null;
     if (body.budget !== null && body.budget !== undefined && body.budget !== '') {
-      budget = typeof body.budget === 'number' ? body.budget : parseFloat(body.budget);
-      if (isNaN(budget)) {
+      budget = String(body.budget);
+      if (!VALID_BUDGET_TIERS.includes(budget)) {
         budget = null;
       }
     }
