@@ -2,15 +2,6 @@ import { createServerClient } from '@supabase/ssr';
 import { NextResponse } from 'next/server';
 
 export async function middleware(request) {
-	// In development mode, bypass authentication for easier testing
-	if (process.env.NODE_ENV === 'development') {
-		return NextResponse.next({
-			request: {
-				headers: request.headers,
-			},
-		});
-	}
-
 	// Create a response object to modify
 	let supabaseResponse = NextResponse.next({
 		request: {
@@ -36,6 +27,28 @@ export async function middleware(request) {
 			},
 		}
 	);
+
+	// In development mode, auto-authenticate as dev admin user.
+	// This creates a real session so all auth code (requireRole, getUser, etc.)
+	// works through the normal code path — no special dev bypasses needed.
+	if (process.env.NODE_ENV === 'development') {
+		const { data: { user } } = await supabase.auth.getUser();
+
+		if (!user) {
+			// No session yet — sign in as the seeded dev admin
+			const { error: signInError } = await supabase.auth.signInWithPassword({
+				email: process.env.DEV_ADMIN_EMAIL,
+				password: process.env.DEV_ADMIN_PASSWORD,
+			});
+
+			if (signInError) {
+				// Dev user may not exist (fresh DB) — fall through without auth
+				console.warn('[Dev Auth] Auto sign-in failed:', signInError.message);
+			}
+		}
+
+		return supabaseResponse;
+	}
 
 	// IMPORTANT: Do not run code between createServerClient and
 	// supabase.auth.getUser(). A simple mistake could make it very
