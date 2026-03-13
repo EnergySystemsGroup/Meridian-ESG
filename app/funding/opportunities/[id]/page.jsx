@@ -1041,6 +1041,11 @@ export default function OpportunityDetailPage() {
 											<div className='text-neutral-700 dark:text-neutral-300 mt-0.5'>
 												{opportunity.funding_type}
 											</div>
+											{opportunity.incentive_structure && (
+												<div className='text-sm text-neutral-500 dark:text-neutral-400 mt-1'>
+													{opportunity.incentive_structure.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}
+												</div>
+											)}
 										</div>
 									</div>
 								)}

@@ -29,6 +29,11 @@ function simulateGetFundingDynamicSort(opportunities, params = {}) {
 
   let result = [...opportunities];
 
+  // Promotion status gate: only show promoted or legacy (NULL) records
+  result = result.filter(o =>
+    o.promotion_status === null || o.promotion_status === undefined || o.promotion_status === 'promoted'
+  );
+
   // Apply status filter
   if (status_filter && status_filter !== 'all') {
     result = result.filter(o => o.status === status_filter);
@@ -107,6 +112,7 @@ const testOpportunities = [
     maximum_award: 5000000,
     created_at: '2024-01-15T10:00:00Z',
     program_overview: 'Federal funding for clean energy projects',
+    promotion_status: null, // legacy record, visible
   },
   {
     id: 'opp-2',
@@ -120,6 +126,7 @@ const testOpportunities = [
     maximum_award: 2000000,
     created_at: '2024-02-01T10:00:00Z',
     program_overview: 'State climate funding',
+    promotion_status: 'promoted', // approved, visible
   },
   {
     id: 'opp-3',
@@ -133,6 +140,7 @@ const testOpportunities = [
     maximum_award: 500000,
     created_at: '2024-03-01T10:00:00Z',
     program_overview: 'Texas efficiency funding',
+    promotion_status: null, // legacy record, visible
   },
   {
     id: 'opp-4',
@@ -146,6 +154,7 @@ const testOpportunities = [
     maximum_award: null,
     created_at: '2024-04-01T10:00:00Z',
     program_overview: 'Ongoing utility rebates',
+    promotion_status: null, // legacy record, visible
   },
   {
     id: 'opp-5',
@@ -159,6 +168,35 @@ const testOpportunities = [
     maximum_award: 10000000,
     created_at: '2023-12-01T10:00:00Z',
     program_overview: 'Expired federal grant',
+    promotion_status: null, // legacy record, visible
+  },
+  {
+    id: 'opp-6',
+    title: 'Arizona Utility Rebate Program',
+    agency_name: 'APS',
+    status: 'open',
+    close_date: '2026-12-31T23:59:59Z',
+    is_national: false,
+    coverage_state_codes: ['AZ'],
+    relevance_score: 6.5,
+    maximum_award: 100000,
+    created_at: '2026-03-10T10:00:00Z',
+    program_overview: 'Arizona utility rebate',
+    promotion_status: 'pending_review', // awaiting admin approval, NOT visible
+  },
+  {
+    id: 'opp-7',
+    title: 'Rejected Solar Program',
+    agency_name: 'SRP',
+    status: 'open',
+    close_date: '2026-09-30T23:59:59Z',
+    is_national: false,
+    coverage_state_codes: ['AZ'],
+    relevance_score: 3.0,
+    maximum_award: 50000,
+    created_at: '2026-03-10T10:00:00Z',
+    program_overview: 'Rejected solar program',
+    promotion_status: 'rejected', // rejected by admin, NOT visible
   },
 ];
 
@@ -274,12 +312,12 @@ describe('RPC: get_funding_dynamic_sort', () => {
       expect(result.total).toBe(1);
     });
 
-    test('all status returns everything', () => {
+    test('all status returns all visible records', () => {
       const result = simulateGetFundingDynamicSort(testOpportunities, {
         status_filter: 'all',
       });
 
-      expect(result.total).toBe(5);
+      expect(result.total).toBe(5); // 5 visible (excludes pending_review + rejected)
     });
   });
 
@@ -346,7 +384,7 @@ describe('RPC: get_funding_dynamic_sort', () => {
         page_size: 2,
       });
 
-      expect(result.total_pages).toBe(Math.ceil(5 / 2));
+      expect(result.total_pages).toBe(Math.ceil(result.total / 2));
     });
 
     test('has_more indicates more pages', () => {
@@ -414,6 +452,55 @@ describe('RPC: get_funding_dynamic_sort', () => {
 
       expect(result.data.length).toBeLessThanOrEqual(1);
       expect(result.total).toBeGreaterThan(0);
+    });
+  });
+
+  describe('Promotion Status Gate', () => {
+    test('pending_review records are excluded from results', () => {
+      const result = simulateGetFundingDynamicSort(testOpportunities);
+
+      const ids = result.data.map(o => o.id);
+      expect(ids).not.toContain('opp-6'); // pending_review
+    });
+
+    test('rejected records are excluded from results', () => {
+      const result = simulateGetFundingDynamicSort(testOpportunities);
+
+      const ids = result.data.map(o => o.id);
+      expect(ids).not.toContain('opp-7'); // rejected
+    });
+
+    test('promoted records are included', () => {
+      const result = simulateGetFundingDynamicSort(testOpportunities);
+
+      const ids = result.data.map(o => o.id);
+      expect(ids).toContain('opp-2'); // promoted
+    });
+
+    test('null promotion_status (legacy) records are included', () => {
+      const result = simulateGetFundingDynamicSort(testOpportunities);
+
+      const ids = result.data.map(o => o.id);
+      expect(ids).toContain('opp-1'); // null promotion_status
+    });
+
+    test('total count excludes pending_review and rejected', () => {
+      const result = simulateGetFundingDynamicSort(testOpportunities);
+
+      // 7 total records, but 2 are pending_review/rejected = 5 visible
+      expect(result.total).toBe(5);
+    });
+
+    test('promotion_status filter applies before other filters', () => {
+      const result = simulateGetFundingDynamicSort(testOpportunities, {
+        state_filter: 'AZ',
+      });
+
+      // opp-6 (AZ, pending_review) and opp-7 (AZ, rejected) should both be excluded
+      // No AZ-specific visible records, only nationals
+      const ids = result.data.map(o => o.id);
+      expect(ids).not.toContain('opp-6');
+      expect(ids).not.toContain('opp-7');
     });
   });
 

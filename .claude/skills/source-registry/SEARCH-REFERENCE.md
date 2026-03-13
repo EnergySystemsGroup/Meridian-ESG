@@ -106,8 +106,8 @@ Same approach as counties. Register the **department or office**, not "City of L
 
 **Step 3 — Register each qualifying department as its own source.**
 
-**Key distinction**: A city may have a municipal utility (register as funder_type='Utility')
-AND a sustainability office (register as funder_type='Municipality'). These are different
+**Key distinction**: A city may have a municipal utility (register as type='Utility')
+AND a sustainability office (register as type='Municipality'). These are different
 entities — register both.
 
 ---
@@ -249,7 +249,7 @@ Phase 2 (Program Discovery) will determine which have active programs.
 - Some states use "Division" or "Bureau" or "Commission"
 - Search broadly first: `"[State] government energy grants"` then narrow
 
-### For Federal Agencies (when funder_type = 'Federal'):
+### For Federal Agencies (when type = 'Federal'):
 
 | Agency | Abbreviation | What They Fund |
 |--------|-------------|----------------|
@@ -338,9 +338,9 @@ For each search result, identify the **administering entity** — the department
 or organization that runs the program. That entity is the funding source to register.
 
 Example: Searching "Nevada water conservation rebates" might surface:
-- Southern Nevada Water Authority (a special district — register as funder_type='Other')
-- Las Vegas Valley Water District (register as funder_type='Utility')
-- Truckee Meadows Water Authority (register as funder_type='Utility')
+- Southern Nevada Water Authority (a special district — register as type='Other')
+- Las Vegas Valley Water District (register as type='Utility')
+- Truckee Meadows Water Authority (register as type='Utility')
 These wouldn't necessarily show up in a "Nevada county government" search.
 
 ### When to Use

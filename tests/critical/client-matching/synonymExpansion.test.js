@@ -179,7 +179,7 @@ describe('Client Type Synonym Expansion', () => {
       expect(expanded).toContain('Public Agencies');           // Also a parent for city gov
     });
 
-    test('Hospitals gets synonyms and parent', () => {
+    test('Hospitals gets synonyms, parent, and cross-category', () => {
       const expanded = getExpandedClientTypes('Hospitals');
 
       expect(expanded).toContain('Hospitals');
@@ -187,34 +187,36 @@ describe('Client Type Synonym Expansion', () => {
       expect(expanded).toContain('FQHCs');                     // Synonym
       expect(expanded).toContain('Community Health Centers');  // Synonym
       expect(expanded).toContain('Healthcare Facilities');     // Parent
+      expect(expanded).toContain('Nonprofit Organizations 501(c)(3)'); // Cross-category
     });
 
-    test('Community Colleges gets synonyms and parent', () => {
+    test('Community Colleges gets synonyms, parent, and cross-categories', () => {
       const expanded = getExpandedClientTypes('Community Colleges');
 
       expect(expanded).toContain('Community Colleges');
       expect(expanded).toContain('Technical Colleges');        // Synonym
       expect(expanded).toContain('Institutions of Higher Education'); // Parent
+      expect(expanded).toContain('Nonprofit Organizations 501(c)(3)'); // Cross-category
+      expect(expanded).toContain('Local Governments');         // Cross-category
     });
   });
 
-  describe('Standalone Types (No Expansion)', () => {
-    test('standalone types (non-K-12) only include self and any parent', () => {
-      // Non-K-12 standalone types should always contain themselves.
-      // Some (e.g. Tribal Governments, Federal Agencies) have a parent in the
-      // hierarchy — but they should NOT pick up unrelated synonyms.
-      const nonK12Standalones = TAXONOMIES.STANDALONE_CLIENT_TYPES.filter(
-        t => !t.includes('K-12')
-      );
-
-      nonK12Standalones.forEach(type => {
+  describe('Standalone Types', () => {
+    test('standalone types always include self', () => {
+      TAXONOMIES.STANDALONE_CLIENT_TYPES.forEach(type => {
         const expanded = getExpandedClientTypes(type);
-
-        // Must always contain itself
         expect(expanded).toContain(type);
+      });
+    });
 
-        // Must NOT contain types from unrelated synonym groups
-        // (City Government synonyms, college synonyms, healthcare synonyms)
+    test('standalone types do not pick up unrelated synonym groups', () => {
+      // Types without synonym groups should not contain types from other groups
+      const noSynonymStandalones = ['Tribal Governments', 'Federal Agencies',
+        'State Governments', 'Public Utilities', 'Private Utilities',
+        'Transportation Authorities', 'Port Authorities', 'Airport Authorities'];
+
+      noSynonymStandalones.forEach(type => {
+        const expanded = getExpandedClientTypes(type);
         expect(expanded).not.toContain('City Government');
         expect(expanded).not.toContain('Colleges');
         expect(expanded).not.toContain('Hospitals');
@@ -241,6 +243,49 @@ describe('Client Type Synonym Expansion', () => {
 
       expect(expanded).toContain('State Governments');
       expect(expanded).toContain('Public Agencies');
+    });
+  });
+
+  describe('Cross-Category Expansion (Lateral)', () => {
+    test('Colleges expands to Nonprofit Organizations', () => {
+      const expanded = getExpandedClientTypes('Colleges');
+
+      expect(expanded).toContain('Nonprofit Organizations 501(c)(3)');
+    });
+
+    test('Universities expands to Nonprofit Organizations', () => {
+      const expanded = getExpandedClientTypes('Universities');
+
+      expect(expanded).toContain('Nonprofit Organizations 501(c)(3)');
+    });
+
+    test('K-12 School Districts expands to Local Governments and Special Districts', () => {
+      const expanded = getExpandedClientTypes('K-12 School Districts');
+
+      expect(expanded).toContain('Local Governments');
+      expect(expanded).toContain('Special Districts');
+    });
+
+    test('Libraries expands to Local Governments and Nonprofit Organizations', () => {
+      const expanded = getExpandedClientTypes('Libraries');
+
+      expect(expanded).toContain('Local Governments');
+      expect(expanded).toContain('Nonprofit Organizations 501(c)(3)');
+    });
+
+    test('Electric Cooperatives expands to Nonprofit Organizations', () => {
+      const expanded = getExpandedClientTypes('Electric Cooperatives');
+
+      expect(expanded).toContain('Nonprofit Organizations 501(c)(3)');
+    });
+
+    test('Colleges full expansion includes all three dimensions', () => {
+      const expanded = getExpandedClientTypes('Colleges');
+
+      expect(expanded).toContain('Colleges');                              // Self
+      expect(expanded).toContain('Universities');                          // Synonym
+      expect(expanded).toContain('Institutions of Higher Education');      // Hierarchy parent
+      expect(expanded).toContain('Nonprofit Organizations 501(c)(3)');    // Cross-category
     });
   });
 

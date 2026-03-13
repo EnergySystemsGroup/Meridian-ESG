@@ -556,8 +556,7 @@ function getRandomFundingType() {
 		'Grant',
 		'Loan Program',
 		'Tax Credit',
-		'Rebate',
-		'Incentive Program',
+		'Incentive',
 	];
 	return types[Math.floor(Math.random() * types.length)];
 }

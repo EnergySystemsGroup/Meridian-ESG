@@ -34,8 +34,9 @@ function validateClient(data) {
   }
 
   if (data.budget !== undefined && data.budget !== null) {
-    if (typeof data.budget !== 'number' || data.budget < 0) {
-      errors.push({ field: 'budget', message: 'Budget must be a positive number' });
+    const VALID_BUDGET_TIERS = ['small', 'medium', 'large', 'very_large'];
+    if (typeof data.budget !== 'string' || !VALID_BUDGET_TIERS.includes(data.budget)) {
+      errors.push({ field: 'budget', message: 'Budget must be a valid tier: small, medium, large, very_large' });
     }
   }
 
@@ -141,24 +142,34 @@ describe('Client CRUD', () => {
       );
     });
 
-    test('negative budget produces error', () => {
+    test('valid budget tier produces no error', () => {
       const errors = validateClient({
         name: 'Test',
         type: 'Test',
         state_code: 'CA',
-        budget: -1000,
+        budget: 'medium',
+      });
+      expect(errors.filter(e => e.field === 'budget')).toHaveLength(0);
+    });
+
+    test('invalid budget tier produces error', () => {
+      const errors = validateClient({
+        name: 'Test',
+        type: 'Test',
+        state_code: 'CA',
+        budget: 'extra_large',
       });
       expect(errors).toContainEqual(
         expect.objectContaining({ field: 'budget' })
       );
     });
 
-    test('string budget produces error', () => {
+    test('numeric budget produces error', () => {
       const errors = validateClient({
         name: 'Test',
         type: 'Test',
         state_code: 'CA',
-        budget: '5000',
+        budget: 5000,
       });
       expect(errors).toContainEqual(
         expect.objectContaining({ field: 'budget' })

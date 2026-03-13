@@ -24,9 +24,12 @@ When working with agents:
 - Migration naming: `YYYYMMDD_description.sql`
 - **CRITICAL: Migration Workflow**:
   - **Local dev**: Always use `supabase migration up` to apply migrations. This runs the SQL AND records it in the tracking table.
-  - **NEVER use `psql -f migration.sql`** — this applies schema changes but skips tracking, causing `supabase migration list` to show migrations as unapplied.
   - **Staging/Production**: Automatic via GitHub Actions (`supabase db push`) when the branch merges.
   - **NEVER do database resets** during migrations — use `supabase migration up` only.
+  - **If `supabase migration up` fails**: The error IS the signal. Diagnose and fix the root cause (timestamp collision, tracking mismatch, etc.). Do NOT work around it.
+- **Banned commands for migrations**:
+  - **NEVER use `psql -f <migration>.sql`** — bypasses ordering validation and migration tracking. This is how timestamp collisions go undetected until CI fails post-merge.
+  - `psql -c` for ad-hoc queries is fine. The ban is specifically on `-f` with migration files.
 
 ## API Routes
 

@@ -18,7 +18,7 @@ our sales team — thoroughness is non-negotiable.
 
 **Inputs** (provided by the orchestrator or user):
 - `state_code` — two-letter abbreviation (e.g., `AZ`, `CA`). NULL for federal/national.
-- `funder_type` — one of: `Utility`, `State`, `Federal`, `Foundation`, `County`, `Municipality`, `Tribal`, `Other`
+- `type` — one of: `Utility`, `State`, `Federal`, `Foundation`, `County`, `Municipality`, `Other`
 
 **Outputs**:
 - Registered entities in `funding_sources`
@@ -58,7 +58,7 @@ read `.claude/skills/source-registry/SEARCH-REFERENCE.md`.**
 | Foundation | 4, 6, 7 |
 | County | 1 (county variant), 5, 7 |
 | Municipality | 1 (city variant), 5, 7 |
-| Tribal | 1 (tribal variant), 4, 5 |
+| Tribal | Use `Other` for tribal authorities |
 
 ### For Each Entity Found, Capture:
 
@@ -66,7 +66,7 @@ read `.claude/skills/source-registry/SEARCH-REFERENCE.md`.**
 |-------|--------|----------|-------|
 | Entity name | `name` | Yes | Official full legal name (see naming rules below) |
 | Website URL | `website` | Yes | Main website, e.g., `https://www.aps.com` |
-| Funder type | `funder_type` | Yes | Must match input parameter |
+| Funder type | `type` | Yes | Must match input parameter |
 | Sectors | `sectors` | Recommended | TEXT[] — use values from `TAXONOMIES.CATEGORIES` (see below) |
 | State code | `state_code` | Yes (if not federal) | Two-letter code matching input |
 | Description | `description` | If available | Brief: what they fund, service territory, customer count |
@@ -162,7 +162,7 @@ For each entity from Step 1, check against existing `funding_sources` before wri
 
 ```sql
 -- Run via mcp__postgres__query (raw SQL, no bind variables)
-SELECT id, name, website, funder_type, state_code, sectors, pipeline
+SELECT id, name, website, type, state_code, sectors, pipeline
 FROM funding_sources
 WHERE (
   name ILIKE '%Arizona Public Service%'
@@ -187,7 +187,7 @@ Use `mcp__postgres__query` for this read (raw SQL strings, not psql bind syntax)
 
 ```sql
 -- Run via: psql "$PROD_CLAUDE_URL" -c "..."
-INSERT INTO funding_sources (name, website, funder_type, sectors, state_code, pipeline, description)
+INSERT INTO funding_sources (name, website, type, sectors, state_code, pipeline, description)
 VALUES (
   'Arizona Public Service Company',
   'https://www.aps.com',
@@ -209,7 +209,7 @@ Only update NULL fields — never overwrite existing data:
 -- Run via: psql "$PROD_CLAUDE_URL" -c "..."
 UPDATE funding_sources SET
   website = COALESCE(website, 'https://www.aps.com'),
-  funder_type = COALESCE(funder_type, 'Utility'),
+  type = COALESCE(type, 'Utility'),
   sectors = COALESCE(sectors, ARRAY['Energy', 'Sustainability']::TEXT[]),
   state_code = COALESCE(state_code, 'AZ'),
   description = COALESCE(description, 'Known as APS. Largest electric utility in Arizona.')
@@ -331,7 +331,7 @@ via message. If running standalone via Task tool, return it as the task result.
 
 | Table | Operation | Columns |
 |-------|-----------|---------|
-| `funding_sources` | INSERT / UPDATE | name, website, funder_type, sectors, state_code, pipeline, description |
+| `funding_sources` | INSERT / UPDATE | name, website, type, sectors, state_code, pipeline, description |
 | `source_program_urls` | INSERT (ON CONFLICT DO NOTHING) | source_id, url, label |
 
 ### Connection
@@ -394,10 +394,10 @@ SELECT
     WHERE id IN (SELECT source_id FROM source_program_urls)
   ) as sources_with_catalog_urls
 FROM funding_sources
-WHERE state_code = 'AZ' AND funder_type = 'Utility';
+WHERE state_code = 'AZ' AND type = 'Utility';
 ```
 
-Substitute actual state_code and funder_type. Compare against your registration counts.
+Substitute actual state_code and type. Compare against your registration counts.
 
 ### Success Criteria Checklist
 
@@ -419,7 +419,7 @@ Before reporting completion, verify:
 ## 9. Example Execution Flow
 
 ```
-Assignment: state_code='AZ', funder_type='Utility', strategy_group='regulatory'
+Assignment: state_code='AZ', type='Utility', strategy_group='regulatory'
 
 1. Read SEARCH-REFERENCE.md
 

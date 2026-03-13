@@ -32,7 +32,7 @@ This adds one meaningful layer (programs) between sources and opportunities, cha
 
 ```
 funding_sources (enhanced)          ← WHO: "Arizona Public Service"
-  │  + funder_type, sectors[], state_code
+  │  + type, sectors[], state_code
   │  + programs_last_searched_at
   │
   ├── source_program_urls (NEW)     ← WHERE TO LOOK: catalog/rebate/portal URLs
@@ -112,16 +112,10 @@ local→production transfer step. The approval gate for manual pipeline records 
 **Schema changes**:
 
 ```sql
--- 1. Replace both agency_type (ENUM) and type (TEXT) with a single field
-ALTER TABLE funding_sources ADD COLUMN IF NOT EXISTS funder_type TEXT;
-  -- Values: 'Federal', 'State', 'Utility', 'Foundation', 'Other'
-  -- Replaces the confusing dual agency_type/type columns
-  -- TEXT (not ENUM) for flexibility — no migration needed to add new types
-
--- Migrate existing data before dropping old columns:
--- UPDATE funding_sources SET funder_type = agency_type::TEXT WHERE agency_type IS NOT NULL;
--- UPDATE funding_sources SET funder_type = type WHERE funder_type IS NULL AND type IS NOT NULL;
--- Then DROP agency_type and type columns
+-- NOTE: As of March 2026, we consolidated on the `type` column (agency_type ENUM).
+-- The funder_type TEXT column was added temporarily and has been dropped.
+-- Values: 'Federal', 'State', 'Utility', 'Foundation', 'County', 'Municipality', 'Other'
+-- See migration: 20260310000001_consolidate_type_drop_funder_type.sql
 
 -- 2. Add sector classification (what domain does this source focus on?)
 ALTER TABLE funding_sources ADD COLUMN IF NOT EXISTS sectors TEXT[];
@@ -150,8 +144,8 @@ ALTER TABLE funding_sources ADD COLUMN IF NOT EXISTS programs_last_searched_at T
   -- Delinquency threshold: ~90 days (configurable)
 
 -- Indexes for common queries
-CREATE INDEX idx_funding_sources_state_funder_type
-  ON funding_sources(state_code, funder_type) WHERE state_code IS NOT NULL;
+CREATE INDEX idx_funding_sources_state_type
+  ON funding_sources(state_code, type) WHERE state_code IS NOT NULL;
 CREATE INDEX idx_funding_sources_sectors
   ON funding_sources USING GIN(sectors);
 CREATE INDEX idx_funding_sources_delinquent
@@ -164,7 +158,7 @@ CREATE INDEX idx_funding_sources_delinquent
 ```sql
 -- "Give me all utility sources in Arizona"
 SELECT * FROM funding_sources
-WHERE funder_type = 'Utility' AND state_code = 'AZ';
+WHERE type = 'Utility' AND state_code = 'AZ';
 
 -- "Which sources in California focus on energy?"
 SELECT * FROM funding_sources
@@ -177,7 +171,7 @@ WHERE programs_last_searched_at IS NULL
 
 -- "Delinquent California utilities specifically"
 SELECT * FROM funding_sources
-WHERE state_code = 'CA' AND funder_type = 'Utility'
+WHERE state_code = 'CA' AND type = 'Utility'
 AND (programs_last_searched_at IS NULL
      OR programs_last_searched_at < NOW() - INTERVAL '90 days');
 ```
@@ -506,7 +500,7 @@ with their program catalog URLs in `source_program_urls`.
 
 **Input parameters**:
 - `state_code` (CHAR 2) — e.g., 'CA', 'AZ'. NULL for national/federal.
-- `funder_type` (TEXT) — e.g., 'Utility', 'State', 'Foundation', 'Federal'
+- `type` (ENUM agency_type) — e.g., 'Utility', 'State', 'Foundation', 'Federal'
 
 **Process**:
 
@@ -525,14 +519,14 @@ multiple complementary search strategies in parallel:
 | State agencies | "[State] energy office", "[State] commerce department grants" | Direct agency searches |
 | Foundation databases | "[State] environmental foundation grants" | Foundation-specific searches |
 
-For each entity found, capture: **name, website URL, funder_type, sectors[], state_code**
+For each entity found, capture: **name, website URL, type, sectors[], state_code**
 
 **Step 2 — Deduplication and registration:**
 
 For each entity found:
 1. Check against existing `funding_sources` by name (fuzzy match to handle variations like "APS" vs "Arizona Public Service")
 2. If NEW: INSERT into `funding_sources` with all captured metadata
-3. If EXISTS but incomplete: UPDATE missing fields (website, sectors, funder_type, state_code)
+3. If EXISTS but incomplete: UPDATE missing fields (website, sectors, type, state_code)
    - This handles the "enrichment" case — sources auto-created by the API pipeline that lack website/sectors
 
 **Step 3 — Program catalog URL discovery:**
@@ -552,7 +546,7 @@ For each registered source that has a website:
 - Populated `source_program_urls` with program catalog entry points
 - Summary report: X new sources, Y enriched, Z catalog URLs found
 
-**Cadence**: Quarterly or on-demand per state/funder_type.
+**Cadence**: Quarterly or on-demand per state/type.
 
 **Tools used by this skill**:
 - `WebSearch` — multi-query parallel searches for entity discovery
@@ -593,7 +587,7 @@ points for Skill 3 (opportunity checking).
 
 **Delinquency-aware**: The skill queries `funding_sources.programs_last_searched_at`
 to identify sources that haven't been searched in 90+ days. The user can scope the
-run to any combination of state, funder_type, or specific source name.
+run to any combination of state, type, or specific source name.
 
 **Process**:
 
@@ -603,7 +597,7 @@ run to any combination of state, funder_type, or specific source name.
 SELECT fs.*, array_agg(spu.url) as catalog_urls
 FROM funding_sources fs
 LEFT JOIN source_program_urls spu ON spu.source_id = fs.id
-WHERE fs.state_code = 'CA' AND fs.funder_type = 'Utility'
+WHERE fs.state_code = 'CA' AND fs.type = 'Utility'
 AND (fs.programs_last_searched_at IS NULL
      OR fs.programs_last_searched_at < NOW() - INTERVAL '90 days')
 GROUP BY fs.id;
@@ -1042,7 +1036,7 @@ The record stays in the table for audit but disappears from the frontend VIEW.
   │  (writes directly to PRODUCTION)
   ▼
 funding_sources: APS, SRP, TEP registered/enriched
-  (state_code='AZ', funder_type='Utility', sectors=['energy','electricity'])
+  (state_code='AZ', type='Utility', sectors=['energy','electricity'])
 source_program_urls: catalog URLs per source
   (APS → main rebates page, commercial page, implementer portal)
   │
@@ -1166,7 +1160,7 @@ GROUP BY fs.id, fp.id;
 
 | Decision | Choice | Rationale |
 |----------|--------|-----------|
-| Source type field | Single `funder_type` TEXT replacing both `agency_type` and `type` | Eliminates confusing dual-column. TEXT over ENUM for flexibility. |
+| Source type field | Single `type` column (agency_type ENUM) | Consolidated from dual-column (agency_type + type) in Nov 2025. funder_type TEXT was temporary — dropped Mar 2026. ENUM enforces data quality. |
 | Sector classification | `sectors TEXT[]` on funding_sources | Array allows multi-sector sources. Enables "all energy sources in CA" queries. |
 | Source catalog URLs | Separate `source_program_urls` table | Per-URL crawl tracking (last_crawled_at). Cleaner than JSONB for querying. |
 | Delinquency tracking | `programs_last_searched_at` on funding_sources | 90-day threshold. Drives program discovery scheduling. |

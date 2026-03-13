@@ -6,6 +6,7 @@
  * - No NaN or undefined values
  * - Deterministic results for same inputs
  * - Monotonic relationships where expected
+ * - Activity multiplier calibration (weak=0.15x)
  *
  * NOTE: These tests use property-based patterns to catch edge cases.
  */
@@ -74,6 +75,24 @@ function calculateRelevanceScore(opp) {
   const activity = calculateActivityScore(opp.eligible_project_types);
   return Math.round((tier * 0.4 + funding * 0.3 + activity * 0.3) * 10) / 10;
 }
+
+/**
+ * Taxonomy-based activity multiplier (mirrors production - calibrated values)
+ */
+function calculateActivityMultiplier(activities, taxonomy) {
+  if (!activities || activities.length === 0) return 0.15;
+  if (activities.some(a => taxonomy.hot.includes(a))) return 1.0;
+  if (activities.some(a => taxonomy.strong.includes(a))) return 0.75;
+  if (activities.some(a => taxonomy.mild.includes(a))) return 0.5;
+  return 0.15;
+}
+
+const ACTIVITIES_TAXONOMY = {
+  hot: ['New Construction', 'Renovation', 'Installation', 'Replacement', 'Upgrade', 'Repair', 'Modernization'],
+  strong: ['Design', 'Engineering', 'Planning', 'Feasibility Studies'],
+  mild: ['Equipment Purchase', 'Materials Purchase', 'Land Acquisition'],
+  weak: ['Training', 'Education', 'Technical Assistance', 'Capacity Building', 'Research', 'Program Administration'],
+};
 
 /**
  * Generate random test data
@@ -352,6 +371,124 @@ describe('Pipeline: Score Invariants', () => {
       // tier: 3 (default), funding: 2 ($1k), activity: 4 (unknown non-empty)
       // (3 * 0.4) + (2 * 0.3) + (4 * 0.3) = 3
       expect(calculateRelevanceScore(minimal)).toBe(3);
+    });
+  });
+
+  describe('Activity Multiplier Invariants (Calibrated)', () => {
+    test('multiplier is always in valid range [0.15, 1.0]', () => {
+      const testCases = [
+        ['New Construction'],
+        ['Design'],
+        ['Equipment Purchase'],
+        ['Training'],
+        ['Research'],
+        [],
+        null,
+      ];
+
+      testCases.forEach(activities => {
+        const mult = calculateActivityMultiplier(activities, ACTIVITIES_TAXONOMY);
+        expect(typeof mult).toBe('number');
+        expect(isNaN(mult)).toBe(false);
+        expect(mult).toBeGreaterThanOrEqual(0.15);
+        expect(mult).toBeLessThanOrEqual(1.0);
+      });
+    });
+
+    test('construction always beats non-construction', () => {
+      const hotMult = calculateActivityMultiplier(['Installation'], ACTIVITIES_TAXONOMY);
+      const weakMult = calculateActivityMultiplier(['Training'], ACTIVITIES_TAXONOMY);
+      expect(hotMult).toBeGreaterThan(weakMult);
+    });
+
+    test('highest tier wins when mixed', () => {
+      const mixed = calculateActivityMultiplier(['Training', 'Installation'], ACTIVITIES_TAXONOMY);
+      expect(mixed).toBe(1.0); // Installation (hot) wins
+    });
+
+    test('weak multiplier is 0.15 (calibrated from 0.25)', () => {
+      expect(calculateActivityMultiplier(['Training'], ACTIVITIES_TAXONOMY)).toBe(0.15);
+      expect(calculateActivityMultiplier(['Research'], ACTIVITIES_TAXONOMY)).toBe(0.15);
+      expect(calculateActivityMultiplier([], ACTIVITIES_TAXONOMY)).toBe(0.15);
+    });
+
+    test('tier ordering is preserved: hot > strong > mild > weak', () => {
+      const hot = calculateActivityMultiplier(['Installation'], ACTIVITIES_TAXONOMY);
+      const strong = calculateActivityMultiplier(['Design'], ACTIVITIES_TAXONOMY);
+      const mild = calculateActivityMultiplier(['Equipment Purchase'], ACTIVITIES_TAXONOMY);
+      const weak = calculateActivityMultiplier(['Training'], ACTIVITIES_TAXONOMY);
+
+      expect(hot).toBeGreaterThan(strong);
+      expect(strong).toBeGreaterThan(mild);
+      expect(mild).toBeGreaterThan(weak);
+    });
+  });
+
+  describe('LLM Adjusted Score Invariants', () => {
+    /**
+     * Mirrors parallelCoordinator.js mergeAnalysisResults() adjustedScore computation
+     */
+    function computeAdjustedScore(finalScore, llmAdjustment) {
+      const adj = llmAdjustment || 0;
+      return Math.round(
+        Math.max(0, Math.min(10, finalScore + adj)) * 10
+      ) / 10;
+    }
+
+    test('adjustedScore is always in range [0, 10] for any valid inputs', () => {
+      const finalScores = [0, 1, 2.5, 5, 7.5, 10];
+      const adjustments = [-3, -2, -1, 0, 1, 2, 3];
+
+      for (const fs of finalScores) {
+        for (const adj of adjustments) {
+          const result = computeAdjustedScore(fs, adj);
+          expect(typeof result).toBe('number');
+          expect(isNaN(result)).toBe(false);
+          expect(result).toBeGreaterThanOrEqual(0);
+          expect(result).toBeLessThanOrEqual(10);
+        }
+      }
+    });
+
+    test('adjustedScore is always in range [0, 10] even with extreme inputs', () => {
+      // finalScore already at bounds + max adjustment
+      expect(computeAdjustedScore(0, -3)).toBe(0);
+      expect(computeAdjustedScore(0, 3)).toBe(3);
+      expect(computeAdjustedScore(10, -3)).toBe(7);
+      expect(computeAdjustedScore(10, 3)).toBe(10);
+    });
+
+    test('adjustedScore is deterministic', () => {
+      const results = Array(10).fill(0).map(() => computeAdjustedScore(7.5, -2));
+      expect(new Set(results).size).toBe(1);
+    });
+
+    test('zero adjustment preserves finalScore exactly', () => {
+      const scores = [0, 1.5, 3.3, 5.0, 7.5, 10.0];
+      for (const score of scores) {
+        expect(computeAdjustedScore(score, 0)).toBe(score);
+      }
+    });
+
+    test('null/undefined adjustment treated as zero', () => {
+      expect(computeAdjustedScore(7.5, null)).toBe(7.5);
+      expect(computeAdjustedScore(7.5, undefined)).toBe(7.5);
+    });
+
+    test('adjustment direction is correct: positive increases, negative decreases', () => {
+      const base = 5.0;
+      expect(computeAdjustedScore(base, 2)).toBeGreaterThan(base);
+      expect(computeAdjustedScore(base, -2)).toBeLessThan(base);
+    });
+
+    test('clamping works at both bounds', () => {
+      // Lower bound
+      expect(computeAdjustedScore(1, -3)).toBe(0);
+      expect(computeAdjustedScore(0, -1)).toBe(0);
+
+      // Upper bound
+      expect(computeAdjustedScore(9, 3)).toBe(10);
+      expect(computeAdjustedScore(10, 1)).toBe(10);
     });
   });
 });

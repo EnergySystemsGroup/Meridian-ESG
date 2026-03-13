@@ -63,6 +63,7 @@ describe('Table: funding_opportunities', () => {
       'application_summary', 'program_insights',
       'program_id',
       'promotion_status', 'reviewed_by', 'reviewed_at', 'review_notes',
+      'incentive_structure',
     ];
 
     const missing = EXPECTED_COLUMNS.filter(col => !result.columns.has(col));
@@ -282,7 +283,7 @@ describe('Table: funding_sources', () => {
     const EXPECTED_COLUMNS = [
       'id', 'name', 'type', 'description', 'website',
       'contact_email', 'contact_phone', 'created_at', 'updated_at',
-      'funder_type', 'sectors', 'state_code', 'pipeline',
+      'sectors', 'state_code', 'pipeline',
       'programs_last_searched_at',
     ];
 

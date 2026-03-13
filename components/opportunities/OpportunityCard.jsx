@@ -92,6 +92,7 @@ const OpportunityCard = ({ opportunity, badgeOverride }) => {
 	// Derived data
 	const title = opportunity.title;
 	const fundingType = opportunity.funding_type || null;
+	const incentiveStructure = opportunity.incentive_structure || null;
 
 	const amount =
 		opportunity.minimum_award && opportunity.maximum_award
@@ -205,6 +206,11 @@ const OpportunityCard = ({ opportunity, badgeOverride }) => {
 					{fundingType && (
 						<span className='text-[11px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded border border-neutral-300 text-neutral-700 bg-neutral-50 dark:border-neutral-600 dark:text-neutral-300 dark:bg-neutral-800/50'>
 							{fundingType}
+						</span>
+					)}
+					{incentiveStructure && (
+						<span className='text-[10px] font-medium px-1.5 py-0.5 rounded border border-purple-200 text-purple-700 bg-purple-50 dark:border-purple-700 dark:text-purple-300 dark:bg-purple-900/30'>
+							{incentiveStructure.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}
 						</span>
 					)}
 					{isNew && (
