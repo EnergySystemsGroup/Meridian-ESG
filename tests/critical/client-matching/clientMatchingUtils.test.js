@@ -623,13 +623,14 @@ function groupMatchesByFundingType(matches) {
 
   const typeToGroup = new Map();
   FUNDING_TYPE_GROUPS.forEach((group, index) => {
-    group.types.forEach(type => typeToGroup.set(type, index));
+    group.types.forEach(type => typeToGroup.set(type.toLowerCase(), index));
   });
+  typeToGroup.set('rebate', typeToGroup.get('incentive'));
 
   const groups = FUNDING_TYPE_GROUPS.map(g => ({ ...g, matches: [] }));
 
   matches.forEach(match => {
-    const fundingType = match.funding_type || '';
+    const fundingType = (match.funding_type || '').toLowerCase();
     const groupIndex = typeToGroup.has(fundingType) ? typeToGroup.get(fundingType) : groups.length - 1;
     groups[groupIndex].matches.push(match);
   });
@@ -844,6 +845,54 @@ describe('groupMatchesByFundingType', () => {
     const matches = [{ relevance_score: 5 }];
     const groups = groupMatchesByFundingType(matches);
     expect(groups[0].key).toBe('other');
+  });
+
+  test('lowercase "grant" goes to grants group (case-insensitive)', () => {
+    const matches = [{ funding_type: 'grant', relevance_score: 7 }];
+    const groups = groupMatchesByFundingType(matches);
+    expect(groups).toHaveLength(1);
+    expect(groups[0].key).toBe('grants');
+  });
+
+  test('lowercase "loan" goes to loans group (case-insensitive)', () => {
+    const matches = [{ funding_type: 'loan', relevance_score: 5 }];
+    const groups = groupMatchesByFundingType(matches);
+    expect(groups).toHaveLength(1);
+    expect(groups[0].key).toBe('loans');
+  });
+
+  test('uppercase "GRANT" goes to grants group (case-insensitive)', () => {
+    const matches = [{ funding_type: 'GRANT', relevance_score: 6 }];
+    const groups = groupMatchesByFundingType(matches);
+    expect(groups).toHaveLength(1);
+    expect(groups[0].key).toBe('grants');
+  });
+
+  test('stale "Rebate" value is aliased to incentives group', () => {
+    const matches = [{ funding_type: 'Rebate', relevance_score: 5 }];
+    const groups = groupMatchesByFundingType(matches);
+    expect(groups).toHaveLength(1);
+    expect(groups[0].key).toBe('incentives');
+  });
+
+  test('mixed casing across multiple types groups correctly', () => {
+    const matches = [
+      { funding_type: 'grant', relevance_score: 8 },
+      { funding_type: 'Grant', relevance_score: 7 },
+      { funding_type: 'LOAN', relevance_score: 5 },
+      { funding_type: 'Rebate', relevance_score: 4 },
+      { funding_type: 'Technical Assistance', relevance_score: 3 },
+    ];
+    const groups = groupMatchesByFundingType(matches);
+    expect(groups).toHaveLength(4);
+    expect(groups[0].key).toBe('grants');
+    expect(groups[0].matches).toHaveLength(2);
+    expect(groups[1].key).toBe('loans');
+    expect(groups[1].matches).toHaveLength(1);
+    expect(groups[2].key).toBe('incentives');
+    expect(groups[2].matches).toHaveLength(1);
+    expect(groups[3].key).toBe('other');
+    expect(groups[3].matches).toHaveLength(1);
   });
 });
 
