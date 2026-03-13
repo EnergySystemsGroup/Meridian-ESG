@@ -161,6 +161,19 @@ already populated on the source.
 
 ## Section 5: UPSERT to funding_opportunities
 
+### 5.0 Pre-UPSERT Status Check
+
+Before each UPSERT, check if the target record already exists with `status = 'Open'`. If so, **skip the UPSERT** — the manual pipeline must not overwrite an actively-tracked open opportunity.
+
+```sql
+SELECT id, status FROM funding_opportunities
+WHERE funding_source_id = '<funding_source_id>'::uuid
+  AND title = $STOR$<title>$STOR$
+  AND status = 'Open';
+```
+
+If this returns a row, log a skip message and move to the next record. Only proceed with the UPSERT if no Open record exists for this (funding_source_id, title) pair.
+
 ### 5.1 SQL Template
 
 ```sql
@@ -221,7 +234,7 @@ INSERT INTO funding_opportunities (
   NOW(),
   NOW()
 )
-ON CONFLICT (funding_source_id, title) WHERE api_source_id IS NULL
+ON CONFLICT (funding_source_id, title)
 DO UPDATE SET
   description = EXCLUDED.description,
   url = EXCLUDED.url,
@@ -283,7 +296,7 @@ Then delete the temp file.
 ### 5.3 Key Points
 
 - **Dollar-quote text fields** with `$STOR$...$STOR$` to avoid SQL injection from quotes in content
-- **UPSERT conflict key**: `(funding_source_id, title) WHERE api_source_id IS NULL` — the partial unique index only applies to manual pipeline records
+- **UPSERT conflict key**: `(funding_source_id, title)` — unified constraint covers both API and manual pipeline records
 - **DO UPDATE SET**: All fields except `id` and `created_at` — newer analysis always wins
 - **RETURNING id**: Capture the UUID for coverage area linking in the next step
 - **Single temp file per batch**: Build all UPSERTs, execute once with `psql -f`, delete file
