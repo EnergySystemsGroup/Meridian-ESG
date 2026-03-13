@@ -56,6 +56,21 @@ const CLIENT_TYPE_HIERARCHY = {
 		'Public Housing Authorities',
 		'Tribal Governments',
 	],
+	'Institutions of Higher Education': [
+		'Colleges',
+		'Universities',
+		'Community Colleges',
+		'Technical Colleges',
+	],
+};
+
+const CLIENT_TYPE_CROSS_CATEGORIES = {
+	'Colleges': ['Nonprofit Organizations 501(c)(3)'],
+	'Universities': ['Nonprofit Organizations 501(c)(3)'],
+	'Community Colleges': ['Nonprofit Organizations 501(c)(3)', 'Local Governments'],
+	'Technical Colleges': ['Nonprofit Organizations 501(c)(3)'],
+	'K-12 School Districts': ['Local Governments', 'Special Districts'],
+	'K-12 Schools': ['Local Governments'],
 };
 
 function getExpandedClientTypes(clientType) {
@@ -74,6 +89,14 @@ function getExpandedClientTypes(clientType) {
 			if (children.some(c => c.toLowerCase() === type.toLowerCase())) {
 				expanded.add(parent);
 			}
+		}
+	}
+
+	// Step 3: cross-category (lateral expansion)
+	for (const type of [...expanded]) {
+		const crossCategories = CLIENT_TYPE_CROSS_CATEGORIES[type];
+		if (crossCategories) {
+			crossCategories.forEach(cat => expanded.add(cat));
 		}
 	}
 

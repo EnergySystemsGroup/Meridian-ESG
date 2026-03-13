@@ -95,14 +95,33 @@ export const STANDALONE_CLIENT_TYPES = [
   'K-12 School Districts',
 ];
 
+export const CLIENT_TYPE_CROSS_CATEGORIES = {
+  'Colleges': ['Nonprofit Organizations 501(c)(3)'],
+  'Universities': ['Nonprofit Organizations 501(c)(3)'],
+  'Community Colleges': ['Nonprofit Organizations 501(c)(3)', 'Local Governments'],
+  'Technical Colleges': ['Nonprofit Organizations 501(c)(3)'],
+  'K-12 School Districts': ['Local Governments', 'Special Districts'],
+  'K-12 Schools': ['Local Governments'],
+  'Hospitals': ['Nonprofit Organizations 501(c)(3)'],
+  'Health Centers': ['Nonprofit Organizations 501(c)(3)'],
+  'FQHCs': ['Nonprofit Organizations 501(c)(3)'],
+  'Community Health Centers': ['Nonprofit Organizations 501(c)(3)'],
+  'Libraries': ['Local Governments', 'Nonprofit Organizations 501(c)(3)'],
+  'Museums': ['Nonprofit Organizations 501(c)(3)'],
+  'Research Institutions': ['Nonprofit Organizations 501(c)(3)'],
+  'Electric Cooperatives': ['Nonprofit Organizations 501(c)(3)'],
+};
+
 export const TAXONOMIES = {
   CLIENT_TYPE_SYNONYMS,
   CLIENT_TYPE_HIERARCHY,
+  CLIENT_TYPE_CROSS_CATEGORIES,
   STANDALONE_CLIENT_TYPES,
 };
 
 /**
- * Expand a client type via synonyms (horizontal) and hierarchy (vertical).
+ * Expand a client type via synonyms (horizontal), hierarchy (vertical),
+ * and cross-categories (lateral).
  * Mirrors lib/constants/taxonomies.js getExpandedClientTypes.
  */
 export function getExpandedClientTypes(clientType) {
@@ -121,6 +140,14 @@ export function getExpandedClientTypes(clientType) {
       if (children.some((c) => c.toLowerCase() === type.toLowerCase())) {
         expanded.add(parent);
       }
+    }
+  }
+
+  // Step 3: cross-category expansions (lateral expansion)
+  for (const type of [...expanded]) {
+    const crossCategories = CLIENT_TYPE_CROSS_CATEGORIES[type];
+    if (crossCategories) {
+      crossCategories.forEach((cat) => expanded.add(cat));
     }
   }
 
