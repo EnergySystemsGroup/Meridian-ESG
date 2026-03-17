@@ -42,7 +42,8 @@ Use this decision tree for ALL URL fetching.
 
 ```bash
 # Pipe directly — zero temp files
-curl -sL "PDF_URL" | python3 -c "
+# ALWAYS include User-Agent header (many gov sites block bare curl)
+curl -sL -H "User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36" "PDF_URL" | python3 -c "
 import sys, fitz
 doc = fitz.open(stream=sys.stdin.buffer.read(), filetype='pdf')
 for page in doc: print(page.get_text())
@@ -50,10 +51,12 @@ for page in doc: print(page.get_text())
 ```
 
 **Guards**:
+- **ALWAYS include the User-Agent header** on every curl request — many government sites (agri.nv.gov, dot.nv.gov, etc.) return bot-check HTML instead of the PDF without it. This is not a retry step; it is the default.
 - Check `Content-Length` header first. Skip if > 10MB (flag for manual review)
 - For PDFs > 50 pages, extract first 20 pages only (add `if page.number < 20` guard)
-- If curl gets a 403: retry with `curl -sL -H "User-Agent: Mozilla/5.0" "URL"`
+- If curl still gets a 403 after User-Agent: try downloading to a temp file with `curl -sL -o /tmp/doc.pdf -H "User-Agent: ..." "URL"` then `python3 -c "import fitz; doc = fitz.open('/tmp/doc.pdf'); ..."`. If still blocked, use Playwright as final fallback.
 - If PDF is password-protected or encrypted: flag and skip
+- **CRITICAL**: After curl, verify the downloaded content is actually a PDF (check `file` output or first bytes). If you get HTML instead of a PDF, the bot-check blocked you — retry with the temp file approach or Playwright.
 
 ### Login-Gated Pages (~5%)
 
@@ -208,17 +211,49 @@ On each fetched page, look for:
 - **Guidelines URL** (program handbook, NOFA, RFP document)
 - **Funding amount** (if visible: per-project, total pool)
 
-### Step 3c — Follow Application Links (1-2 Levels Deep)
+### Step 3c — Follow Application Links AND Open PDFs (1-2 Levels Deep)
 
 Don't stop at the program page. Follow links that suggest application info:
 - Links containing: "Apply", "Application", "Current Opportunities", "Guidelines",
   "NOFA", "RFP", "Request for Proposals", "Funding Available", "How to Apply"
-- PDF links (application guides, program handbooks, NOFAs)
+- **PDF links** (application guides, program handbooks, NOFAs, RFPs, QAPs)
 - Links to application portals or submission systems
+
+**CRITICAL — PDF Requirement**: Government agencies frequently publish deadlines,
+application windows, and program details ONLY inside PDF documents (RFPs, NOFOs,
+application handbooks, QAPs), not on the HTML page. You **MUST**:
+
+1. **Identify ALL PDF links** on the program page (look for `.pdf` in URLs, or links
+   labeled "RFP", "NOFO", "Application", "Guidelines", "Handbook", "RFA")
+2. **Open at least the most recent/relevant PDF** using the Content Retrieval Standard
+   (Section 0a). Prioritize PDFs with current-year dates in the filename or label
+   (e.g., "2026 RFP", "FY2026 Application", "FY26 NOFO")
+3. **Extract dates from the PDF** — look for: deadline dates, application periods,
+   "due by", "submit by", "LOI due", "full application due", "open date", "close date"
+4. **If the HTML page says "nothing found" but a linked PDF contains dates**, the PDF
+   takes precedence — create a staging record based on the PDF content
+
+**Do NOT report "nothing found" if you haven't checked linked PDFs.** A program page
+that links to an RFP/NOFO PDF that you didn't open is an incomplete check. The only
+acceptable skip is when there are genuinely no PDF links on the page, or all PDFs are
+from prior years with no current-year document available.
 
 **Depth limit**: 2 levels from the program page. Flag anything deeper.
 
-### Step 3d — Supplementary Web Search (If URLs Insufficient)
+### Step 3d — Completeness Check (Before Moving On)
+
+Before concluding "nothing found" for a program, verify you have completed ALL of these:
+
+- [ ] Fetched the main program page HTML
+- [ ] Checked for open/upcoming indicators in the HTML text
+- [ ] Identified any linked PDFs (RFP, NOFO, application, guidelines, handbook)
+- [ ] **Opened the most recent PDF** and checked for dates/deadlines inside it
+- [ ] Followed "Apply" / "Application" links to check portals or sub-pages
+
+If you skipped any of these steps, go back. The most common miss is skipping the PDF
+check — government grant deadlines live inside PDFs more often than on HTML pages.
+
+### Step 3e — Supplementary Web Search (If URLs Insufficient)
 
 If program URLs don't clearly indicate application status:
 
@@ -233,7 +268,7 @@ Look for:
 - Press releases about new funding rounds
 - Third-party sites reporting on open opportunities
 
-### Step 3e — URL Failure Cascade
+### Step 3f — URL Failure Cascade
 
 If a program URL returns 404, timeout, or unusable content:
 

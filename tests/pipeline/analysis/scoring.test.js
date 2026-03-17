@@ -178,7 +178,7 @@ const ACTIVITIES_TAXONOMY = {
 
 const PROJECT_TYPES_TAXONOMY = {
   hot: ['HVAC Systems', 'Lighting Systems', 'Electrical Systems', 'Solar Panels', 'Insulation', 'Weatherization', 'EV Charging Stations'],
-  strong: ['Water Treatment Plants', 'Classrooms', 'Playgrounds', 'Athletic Fields', 'Community Centers', 'Libraries', 'Museums'],
+  strong: ['Water Treatment Plants', 'Classroom Facilities', 'Playgrounds', 'Athletic Fields', 'Community Center Facilities', 'Library Facilities', 'Museum Facilities'],
   mild: ['Parks', 'Green Spaces', 'Roads', 'Bridges', 'Street Lighting', 'Air Filtration Systems'],
   weak: ['Landscaping', 'Medical Equipment', 'Affordable Housing Units', 'Wetland Restoration', 'Wildlife Habitat'],
 };
@@ -565,7 +565,7 @@ describe('Pipeline: Analysis Scoring', () => {
     });
 
     test('strong project type returns 2', () => {
-      expect(calculateTaxonomyTierScore(['Community Centers'], PROJECT_TYPES_TAXONOMY)).toBe(2);
+      expect(calculateTaxonomyTierScore(['Community Center Facilities'], PROJECT_TYPES_TAXONOMY)).toBe(2);
       expect(calculateTaxonomyTierScore(['Playgrounds'], PROJECT_TYPES_TAXONOMY)).toBe(2);
       expect(calculateTaxonomyTierScore(['Athletic Fields'], PROJECT_TYPES_TAXONOMY)).toBe(2);
     });

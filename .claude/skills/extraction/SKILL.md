@@ -54,7 +54,8 @@ Use this decision tree for ALL URL fetching.
 
 ```bash
 # Pipe directly — zero temp files
-curl -sL "PDF_URL" | python3 -c "
+# ALWAYS include User-Agent header (many gov sites block bare curl)
+curl -sL -H "User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36" "PDF_URL" | python3 -c "
 import sys, fitz
 doc = fitz.open(stream=sys.stdin.buffer.read(), filetype='pdf')
 for page in doc: print(page.get_text())
@@ -62,10 +63,12 @@ for page in doc: print(page.get_text())
 ```
 
 **Guards**:
+- **ALWAYS include the User-Agent header** on every curl request — many government sites (agri.nv.gov, dot.nv.gov, etc.) return bot-check HTML instead of the PDF without it. This is not a retry step; it is the default.
 - Check `Content-Length` header first. Skip if > 10MB (flag for manual review)
 - For PDFs > 50 pages, extract first 20 pages only (add `if page.number < 20` guard)
-- If curl gets a 403: retry with `curl -sL -H "User-Agent: Mozilla/5.0" "URL"`
+- If curl still gets a 403 after User-Agent: try downloading to a temp file with `curl -sL -o /tmp/doc.pdf -H "User-Agent: ..." "URL"` then `python3 -c "import fitz; doc = fitz.open('/tmp/doc.pdf'); ..."`. If still blocked, use Playwright as final fallback.
 - If PDF is password-protected or encrypted: flag and skip
+- **CRITICAL**: After curl, verify the downloaded content is actually a PDF (check `file` output or first bytes). If you get HTML instead of a PDF, the bot-check blocked you — retry with the temp file approach or Playwright.
 
 ### Login-Gated Pages (~5%)
 

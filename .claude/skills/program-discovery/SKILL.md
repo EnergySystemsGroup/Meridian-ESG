@@ -184,21 +184,25 @@ After all scouts report, the team lead compares program lists. Scouts should fla
 
 ## 3. Extractor Mode Instructions
 
-> **CRITICAL: Two Filter Gates (both must pass before INSERT)**
+> **CRITICAL: Three Filter Gates (ALL must pass before INSERT)**
 >
-> **Gate 1 — Applicant Type**: Our clients are commercial, institutional, and government
-> entities — not individual homeowners or residential consumers. If a program serves
-> **only** individual/residential applicants (homeowners, renters, individual consumers),
-> **DO NOT INSERT**. If it serves **any** type of organization, business, institution,
-> or government entity — even alongside residential applicants — it passes.
+> All field values MUST come from `TAXONOMIES` in `lib/constants/taxonomies.js`.
+> Do NOT use freeform values — map to the closest taxonomy match.
 >
-> **Gate 2 — Activity Type**: Map program to `ELIGIBLE_ACTIVITIES` from
-> `lib/constants/taxonomies.js` (hot/strong/mild tiers only). If ZERO match →
-> **DO NOT INSERT**.
+> **Gate 1 — Applicant Type**: At least one `hot`, `strong`, or `mild` tier match
+> in `ELIGIBLE_APPLICANTS`. If only `weak` tier matches (Individuals, Homeowners,
+> Renters, etc.) → **DO NOT INSERT**.
 >
-> Both gates must pass. Log all filtered programs under **"Filtered Out"** with the
-> reason (which gate failed). Your report MUST include both **"Inserted"** and
-> **"Filtered Out"** sections.
+> **Gate 2 — Activity Type**: At least one `hot`, `strong`, or `mild` tier match
+> in `ELIGIBLE_ACTIVITIES`. If only `weak` tier matches (Training, Education,
+> Program Operations, etc.) → **DO NOT INSERT**.
+>
+> **Gate 3 — Project Type**: At least one match in `ELIGIBLE_PROJECT_TYPES` from
+> **any tier** (hot, strong, mild, OR weak). This confirms the program funds a
+> recognizable project. If you cannot map the program to ANY project type in the
+> taxonomy → **DO NOT INSERT**.
+>
+> All three gates must pass. Log filtered programs with which gate(s) failed.
 
 Extractors receive program assignments from the orchestrator and extract
 structured data for database storage.
@@ -215,7 +219,7 @@ structured data for database storage.
 | Description | `description` | Yes | What the program funds, who it helps, how to apply |
 | Categories | `categories` | Yes | TEXT[] from TAXONOMIES.CATEGORIES (see below) |
 | Eligible applicants | `eligible_applicants` | Yes | TEXT[] — who can apply |
-| Eligible project types | `eligible_project_types` | Recommended | TEXT[] — what projects qualify |
+| Eligible project types | `eligible_project_types` | Yes (Gate 3) | TEXT[] from ELIGIBLE_PROJECT_TYPES taxonomy (any tier) |
 | Eligible activities | `eligible_activities` | Yes | TEXT[] from ELIGIBLE_ACTIVITIES taxonomy (hot/strong/mild only) |
 | Funding type | `funding_type` | If identifiable | Single value: Grant, Incentive, Loan, etc. |
 | Status | `status` | Yes | Set to `'active'` on insert |
@@ -229,9 +233,10 @@ structured data for database storage.
 The `categories` field is a TEXT[] array. Use values from `TAXONOMIES.CATEGORIES`
 (`lib/constants/taxonomies.js`):
 
-**Primary**: Energy, Infrastructure, Facilities & Buildings, Education, Sustainability
-**Secondary**: Water, Wastewater, Healthcare, Recreation & Parks, Climate, Transportation, Public Safety, Emergency Services, Environment
-**Tertiary**: Community Development, Economic Development, Workforce Development, Science & Technology, Agriculture, Food Systems, Housing, Human Services, Arts & Culture, Conservation
+**Hot**: Energy, Infrastructure, Facilities & Buildings, Sustainability
+**Strong**: Water, Wastewater, Healthcare, Recreation & Parks, Climate, Transportation, Public Safety, Emergency Services, Environment
+**Mild**: Community Development, Economic Development, Workforce Development, Science & Technology
+**Weak**: Education, Agriculture, Food Systems, Housing, Human Services, Arts & Culture, Disaster Recovery, Conservation
 
 Assign ALL categories that apply to a program. A weatherization rebate might get:
 `ARRAY['Energy', 'Sustainability', 'Housing']`
@@ -241,60 +246,38 @@ An EV charging incentive might get:
 
 Do NOT invent category names outside this vocabulary — map to the closest match.
 
-### Eligible Applicants — Common Values
+### Eligible Applicants — Use Taxonomy Values
 
-Use these standard values (not an exhaustive list):
-- Commercial
-- Residential
-- Municipal
-- Industrial
-- Non-Profit
-- Government
-- Agricultural
-- Tribal
-- Low-Income
-- Small Business
-- Institutional (schools, hospitals)
-- Multi-Family
+Use EXACT values from `TAXONOMIES.ELIGIBLE_APPLICANTS` in `taxonomies.js`.
+Do NOT use freeform terms like "Commercial" or "Municipal" — use the specific
+taxonomy values like `For-Profit Businesses`, `Municipal Government`, etc.
 
-### Eligible Project Types — Common Values
+**Gate 1 check**: If all matched applicant types are in the `weak` tier only → filter out.
 
-Use these standard values where applicable:
-- HVAC
-- Lighting
-- Solar
-- EV Charging
-- Weatherization
-- Water Heater
-- Insulation
-- Windows
-- Appliances
-- New Construction
-- Building Envelope
-- Energy Audit
-- Renewable Energy
-- Battery Storage
-- Smart Thermostat
-- Pool Equipment
-- Landscaping / Water Conservation
+### Eligible Project Types — Use Taxonomy Values
 
-### Eligible Activities — Relevance Filter
+Use EXACT values from `TAXONOMIES.ELIGIBLE_PROJECT_TYPES` in `taxonomies.js`.
 
-The `eligible_activities` field is a TEXT[] array. Use values from `TAXONOMIES.ELIGIBLE_ACTIVITIES`
-in `lib/constants/taxonomies.js`. **Use ONLY values from the `hot`, `strong`, and `mild` tiers.**
-Any activity not in those tiers must be excluded.
+**How to identify the project type**: Determine what is **physically being built,
+installed, or procured** — not where it happens. Ask: "What is the deliverable?"
 
-Assign ALL matching activities from those tiers.
+- "Classroom HVAC upgrades" → project types: `HVAC Systems`, `Classroom Facilities`
+- "School solar installation" → project type: `Solar Panels` or `Solar Arrays`
+- "Buying science kits for K-5" → no valid project type → fails Gate 3
+- "Data center construction" → project type: `Data Centers`
+- "Water treatment plant renovation" → project type: `Water Treatment Plants`
 
-**FILTER GATE**: If a program maps to zero hot/strong/mild activities, **DO NOT INSERT IT**.
-Skip the program and log it in your report under "Filtered Out" with the reason
-(e.g., "only funds Research, Data Collection — no hot/strong/mild match").
+Use facility-level types (e.g., `Classroom Facilities`, `Gymnasium Facilities`) only
+when the program broadly funds facility work and you can't identify specific systems.
 
-Your final report MUST include both lists:
-- **Inserted**: programs that passed the filter (with their eligible_activities)
-- **Filtered Out**: programs that were skipped (with the reason)
+**Gate 3 check**: If zero taxonomy project types match from any tier → filter out.
 
-Do NOT invent activity names outside the taxonomy — map to the closest match from hot/strong/mild.
+### Eligible Activities — Use Taxonomy Values
+
+Use EXACT values from `TAXONOMIES.ELIGIBLE_ACTIVITIES` (hot/strong/mild tiers ONLY).
+Do NOT assign weak-tier activities.
+
+**Gate 2 check**: If zero hot/strong/mild activities match → filter out.
 
 ### Program URLs — JSONB Format
 
@@ -315,13 +298,12 @@ Types: `main`, `application`, `pdf`, `faq`, `eligibility`, `contact`
    it returns garbled binary. Extract key info: eligibility criteria, funding
    amounts, application dates, program details.
 5. **Dedup check before writing** (see Section 4 for query)
-6. **Applicant filter gate**: Review `eligible_applicants` — if the program serves
-   ONLY individual/residential applicants (homeowners, renters, individual consumers)
-   and no organizations, businesses, institutions, or government entities, **SKIP
-   this program**. Log it as filtered out (reason: "residential/individual only").
-7. **Activity filter gate**: Evaluate `eligible_activities` — if zero hot/strong/mild
-   activities match, **SKIP this program** (do not INSERT). Log it as filtered out.
-8. **INSERT or UPDATE** into `funding_programs` (see Section 4 for templates)
+6. **Run three filter gates** (all must pass):
+   - **Gate 1 (Applicant)**: ≥1 hot/strong/mild `ELIGIBLE_APPLICANTS` match
+   - **Gate 2 (Activity)**: ≥1 hot/strong/mild `ELIGIBLE_ACTIVITIES` match
+   - **Gate 3 (Project Type)**: ≥1 `ELIGIBLE_PROJECT_TYPES` match from any tier
+   If any gate fails → SKIP and log which gate(s) failed.
+7. **INSERT or UPDATE** into `funding_programs` (see Section 4 for templates)
 9. **Set `next_check_at = NOW()`** for new programs (immediate Phase 3 eligibility)
 10. **After processing all programs for a source**, update timestamps:
    - `funding_sources.programs_last_searched_at = NOW()`

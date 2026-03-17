@@ -9,7 +9,7 @@
         "HVAC Systems",
         "Solar Panels",
         "Building Automation Systems",
-        "Classrooms",
+        "Classroom Facilities",
         "Energy Management Systems"
       ],
       "budget": "large",
@@ -26,7 +26,7 @@
         "Solar Arrays",
         "Lighting Systems",
         "Computer Labs",
-        "Gymnasiums",
+        "Gymnasium Facilities",
         "Security Systems"
       ],
       "budget": "large",
@@ -41,7 +41,7 @@
       "location": "California",
       "projectNeeds": [
         "EV Charging Stations",
-        "Community Centers",
+        "Community Center Facilities",
         "Water Treatment Plants",
         "Fire Stations",
         "Street Lighting"
@@ -91,7 +91,7 @@
       "type": "K-12 School Districts",
       "location": "California",
       "projectNeeds": [
-        "Cafeterias",
+        "Cafeteria Facilities",
         "Athletic Fields",
         "Playgrounds",
         "Parking Lots",
@@ -162,7 +162,6 @@
         "Parking Structures",
         "Geothermal Systems",
         "Telecommunications Equipment",
-        "Office Equipment",
         "Networks"
       ],
       "budget": "medium",
@@ -197,7 +196,7 @@
         "Fire Suppression Systems",
         "Media Centers",
         "CTE Facilities",
-        "Auditoriums"
+        "Auditorium Facilities"
       ],
       "budget": "medium",
       "contact": "facilities@egusd.net",
@@ -261,11 +260,9 @@
       "type": "Universities",
       "location": "California",
       "projectNeeds": [
-        "Software Systems",
-        "Computers",
-        "Tablets",
+        "IT Infrastructure",
         "Athletic Courts",
-        "Theaters"
+        "Theater Facilities"
       ],
       "budget": "medium",
       "contact": "facilities@sdsu.edu",
@@ -297,7 +294,7 @@
       "projectNeeds": [
         "Water Reservoirs",
         "Stormwater Management Systems",
-        "Museums",
+        "Museum Facilities",
         "Shelters",
         "Water Meters"
       ],

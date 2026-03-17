@@ -161,18 +161,65 @@ already populated on the source.
 
 ## Section 5: UPSERT to funding_opportunities
 
-### 5.0 Pre-UPSERT Status Check
+### 5.0 Pre-UPSERT Fuzzy Dedup Check
 
-Before each UPSERT, check if the target record already exists with `status = 'Open'`. If so, **skip the UPSERT** — the manual pipeline must not overwrite an actively-tracked open opportunity.
+Before each UPSERT, check for **existing records with similar titles** for the same
+funding source. The UPSERT conflict key `(funding_source_id, title)` only catches
+exact matches — fuzzy variants like "PG&E Government and K-12 Energy Efficiency Program"
+vs "Government and K-12 Energy Efficiency Program (GK12)" will slip through as duplicates.
+
+**Step 1 — Fuzzy title search:**
 
 ```sql
-SELECT id, status FROM funding_opportunities
+SELECT id, title, status, promotion_status
+FROM funding_opportunities
 WHERE funding_source_id = '<funding_source_id>'::uuid
-  AND title = $STOR$<title>$STOR$
-  AND status = 'Open';
+  AND (
+    -- Exact match
+    title = $STOR$<new_title>$STOR$
+    -- Fuzzy: new title contains old title or vice versa
+    OR title ILIKE '%' || $STOR$<core_name>$STOR$ || '%'
+    OR $STOR$<new_title>$STOR$ ILIKE '%' || LEFT(title, 40) || '%'
+    -- Program-id match (strongest signal — same program = same opportunity)
+    OR (program_id = '<program_id>'::uuid AND program_id IS NOT NULL)
+  );
 ```
 
-If this returns a row, log a skip message and move to the next record. Only proceed with the UPSERT if no Open record exists for this (funding_source_id, title) pair.
+Where `<core_name>` is the title stripped of prefixes/suffixes like "PG&E", source name,
+parenthetical abbreviations, and year/round markers. Extract the semantic core:
+- "PG&E Government and K-12 Energy Efficiency Program" → `"Government and K-12 Energy Efficiency"`
+- "Government and K-12 Energy Efficiency Program (GK12)" → `"Government and K-12 Energy Efficiency"`
+
+**Step 2 — Decide action based on match:**
+
+| Match Found? | Status | Action |
+|-------------|--------|--------|
+| No match | — | Proceed with INSERT (Section 5.1) |
+| Match, `status = 'Open'` | Any | **SKIP** — do not overwrite active opportunity. Log skip. |
+| Match, `status != 'Open'` | Any | **UPDATE** the existing record by its `id` instead of UPSERT. This preserves the existing UUID, coverage area links, and any admin notes. |
+
+**Step 3 — UPDATE template (when fuzzy match found, not Open):**
+
+```sql
+UPDATE funding_opportunities SET
+  title = $STOR$<new_title>$STOR$,
+  description = $STOR$<description>$STOR$,
+  url = $STOR$<url>$STOR$,
+  status = '<status>',
+  -- ... all other fields from Section 5.1 DO UPDATE SET clause ...
+  program_id = COALESCE(program_id, '<program_id>'::uuid),
+  promotion_status = 'pending_review',
+  updated_at = NOW()
+WHERE id = '<matched_id>'::uuid
+RETURNING id;
+```
+
+Use `COALESCE(program_id, ...)` so existing program_id is preserved if already set.
+The RETURNING id feeds into coverage area linking (Section 6) as usual.
+
+**Why program_id match is the strongest signal**: Two records with the same `program_id`
+and `funding_source_id` are almost certainly the same opportunity, regardless of title
+differences. The program link was set in Phase 3 and is authoritative.
 
 ### 5.1 SQL Template
 
