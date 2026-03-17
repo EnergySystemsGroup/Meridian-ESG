@@ -28,6 +28,10 @@ import {
 	Target,
 	Info,
 	Star,
+	Wrench,
+	ClipboardList,
+	CheckCircle2,
+	AlertTriangle,
 } from 'lucide-react';
 import { calculateDaysLeft, determineStatus } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
@@ -56,6 +60,52 @@ import {
 	getCategoryColor,
 	formatCategoryForDisplay,
 } from '@/lib/utils/uiHelpers';
+
+function parseActionableSummary(text) {
+	if (!text || !text.startsWith('VERDICT:')) return null;
+
+	const sections = {};
+	const labels = ['VERDICT', 'WHO', 'WHAT', 'MONEY', 'PROCESS', 'CRITERIA', 'FLAGS'];
+
+	for (let i = 0; i < labels.length; i++) {
+		const label = labels[i];
+		const nextLabel = labels[i + 1];
+		const startPattern = `${label}:`;
+		const startIdx = text.indexOf(startPattern);
+		if (startIdx === -1) continue;
+
+		const contentStart = startIdx + startPattern.length;
+		const endIdx = nextLabel
+			? text.indexOf(`\n${nextLabel}:`, contentStart)
+			: text.length;
+		const content = text.slice(contentStart, endIdx === -1 ? text.length : endIdx).trim();
+
+		if (label === 'VERDICT') {
+			const scoreMatch = content.match(/^([\d.]+)\/10\s*[—–-]\s*(.*)/s);
+			sections.verdict = scoreMatch
+				? { score: parseFloat(scoreMatch[1]), description: scoreMatch[2].trim() }
+				: { score: null, description: content };
+		} else {
+			sections[label.toLowerCase()] = content;
+		}
+	}
+	return sections;
+}
+
+function getScoreColor(score) {
+	if (score >= 7) return { bg: 'bg-emerald-100 dark:bg-emerald-900/30', text: 'text-emerald-700 dark:text-emerald-400', border: 'border-emerald-200 dark:border-emerald-800' };
+	if (score >= 4) return { bg: 'bg-amber-100 dark:bg-amber-900/30', text: 'text-amber-700 dark:text-amber-400', border: 'border-amber-200 dark:border-amber-800' };
+	return { bg: 'bg-red-100 dark:bg-red-900/30', text: 'text-red-700 dark:text-red-400', border: 'border-red-200 dark:border-red-800' };
+}
+
+const SUMMARY_SECTIONS = [
+	{ key: 'who', label: 'Who', icon: Users, color: 'text-blue-600 dark:text-blue-400', bg: 'bg-blue-50 dark:bg-blue-900/20' },
+	{ key: 'what', label: 'What', icon: Wrench, color: 'text-indigo-600 dark:text-indigo-400', bg: 'bg-indigo-50 dark:bg-indigo-900/20' },
+	{ key: 'money', label: 'Money', icon: DollarSign, color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-50 dark:bg-emerald-900/20' },
+	{ key: 'process', label: 'Process', icon: ClipboardList, color: 'text-violet-600 dark:text-violet-400', bg: 'bg-violet-50 dark:bg-violet-900/20' },
+	{ key: 'criteria', label: 'Criteria', icon: CheckCircle2, color: 'text-teal-600 dark:text-teal-400', bg: 'bg-teal-50 dark:bg-teal-900/20' },
+	{ key: 'flags', label: 'Flags', icon: AlertTriangle, color: 'text-amber-600 dark:text-amber-400', bg: 'bg-amber-50 dark:bg-amber-900/20' },
+];
 
 export default function OpportunityDetailPage() {
 	const params = useParams();
@@ -263,11 +313,11 @@ export default function OpportunityDetailPage() {
 								</div>
 							</CardHeader>
 							<CardContent className='px-6 pt-2 pb-6'>
-								<Tabs defaultValue='overview' className='w-full'>
+								<Tabs defaultValue='summary' className='w-full'>
 									<TabsList className='mb-6 bg-neutral-100/70 dark:bg-neutral-900/30 p-1 rounded-lg'>
 										{(isAdmin
-										? ['overview', 'eligibility', 'relevance', 'admin']
-										: ['overview', 'eligibility']
+										? ['summary', 'narrative', 'eligibility', 'relevance', 'admin']
+										: ['summary', 'narrative', 'eligibility']
 									).map((tab) => (
 											<TabsTrigger
 												key={tab}
@@ -279,7 +329,72 @@ export default function OpportunityDetailPage() {
 									</TabsList>
 
 									<TabsContent
-										value='overview'
+										value='summary'
+										className='animate-in fade-in-50 duration-300'>
+										{(() => {
+											const parsed = parseActionableSummary(opportunity.actionable_summary);
+											if (!parsed) {
+												return (
+													<div className='bg-neutral-50 dark:bg-neutral-900/30 p-6 rounded-lg border border-neutral-200 dark:border-neutral-800'>
+														<p className='text-neutral-500 dark:text-neutral-400 text-sm'>
+															{opportunity.actionable_summary || 'No summary available for this opportunity.'}
+														</p>
+													</div>
+												);
+											}
+											const scoreColor = parsed.verdict.score !== null ? getScoreColor(parsed.verdict.score) : null;
+											return (
+												<div className='space-y-4'>
+													{/* VERDICT Hero */}
+													<div className='flex items-start gap-4 p-5 rounded-lg bg-gradient-to-br from-neutral-50 to-white dark:from-neutral-900/40 dark:to-neutral-900/20 border border-neutral-200/70 dark:border-neutral-800/50 shadow-sm'>
+														{scoreColor && parsed.verdict.score !== null && (
+															<div className={`flex-shrink-0 w-14 h-14 rounded-xl ${scoreColor.bg} ${scoreColor.border} border flex items-center justify-center shadow-sm`}>
+																<span className={`text-xl font-bold ${scoreColor.text}`}>
+																	{parsed.verdict.score}
+																</span>
+															</div>
+														)}
+														<p className='text-neutral-800 dark:text-neutral-200 text-base leading-relaxed pt-1'>
+															{parsed.verdict.description}
+														</p>
+													</div>
+
+													{/* Detail Sections */}
+													<div className='grid gap-3'>
+														{SUMMARY_SECTIONS.map(({ key, label, icon: Icon, color, bg }) => {
+															const content = parsed[key];
+															if (!content) return null;
+															const isFlags = key === 'flags';
+															return (
+																<div
+																	key={key}
+																	className={`flex items-start gap-3 p-4 rounded-lg border shadow-sm ${
+																		isFlags
+																			? 'bg-gradient-to-br from-amber-50 to-amber-50/30 dark:from-amber-900/20 dark:to-amber-900/5 border-amber-200/70 dark:border-amber-800/30'
+																			: 'bg-white dark:bg-neutral-900/30 border-neutral-200/70 dark:border-neutral-800/30'
+																	}`}>
+																	<div className={`flex-shrink-0 p-1.5 rounded-lg ${bg}`}>
+																		<Icon className={`h-4 w-4 ${color}`} />
+																	</div>
+																	<div className='min-w-0'>
+																		<span className={`text-xs font-semibold uppercase tracking-wider ${isFlags ? 'text-amber-700 dark:text-amber-400' : 'text-neutral-500 dark:text-neutral-400'}`}>
+																			{label}
+																		</span>
+																		<p className={`text-sm leading-relaxed mt-0.5 ${isFlags ? 'text-amber-900 dark:text-amber-300' : 'text-neutral-700 dark:text-neutral-300'}`}>
+																			{content}
+																		</p>
+																	</div>
+																</div>
+															);
+														})}
+													</div>
+												</div>
+											);
+										})()}
+									</TabsContent>
+
+									<TabsContent
+										value='narrative'
 										className='animate-in fade-in-50 duration-300'>
 										{/* 1. Program Overview */}
 										{opportunity.program_overview && (
@@ -298,19 +413,19 @@ export default function OpportunityDetailPage() {
 											</div>
 										)}
 
-										{/* 2. Application Summary */}
-										{opportunity.application_summary && (
-											<div className='mb-6 bg-gradient-to-br from-green-50 to-green-50/50 dark:from-green-900/20 dark:to-green-900/5 p-5 rounded-lg border border-green-200/70 dark:border-green-800/30 shadow-sm'>
+										{/* 2. Program Use Cases */}
+										{opportunity.program_use_cases && (
+											<div className='mb-6 bg-gradient-to-br from-amber-50 to-amber-50/50 dark:from-amber-900/20 dark:to-amber-900/5 p-5 rounded-lg border border-amber-200/70 dark:border-amber-800/30 shadow-sm'>
 												<div className='flex items-start mb-2'>
-													<div className='mr-3 p-1.5 rounded-full bg-gradient-to-br from-green-100 to-green-50 dark:from-green-800/30 dark:to-green-700/20 shadow-sm'>
-														<FileText className='h-5 w-5 text-green-600 dark:text-green-400' />
+													<div className='mr-3 p-1.5 rounded-full bg-gradient-to-br from-amber-100 to-amber-50 dark:from-amber-800/30 dark:to-amber-700/20 shadow-sm'>
+														<Target className='h-5 w-5 text-amber-600 dark:text-amber-400' />
 													</div>
-													<h3 className='text-lg font-medium text-green-800 dark:text-green-400'>
-														Application Summary
+													<h3 className='text-lg font-medium text-amber-800 dark:text-amber-400'>
+														Program Use Cases
 													</h3>
 												</div>
-												<p className='text-green-900 dark:text-green-300 pl-10 whitespace-pre-line leading-relaxed'>
-													{opportunity.application_summary}
+												<p className='text-amber-900 dark:text-amber-300 pl-10 whitespace-pre-line leading-relaxed'>
+													{opportunity.program_use_cases}
 												</p>
 											</div>
 										)}
@@ -332,19 +447,19 @@ export default function OpportunityDetailPage() {
 											</div>
 										)}
 
-										{/* 4. Program Use Cases */}
-										{opportunity.program_use_cases && (
-											<div className='mb-6 bg-gradient-to-br from-amber-50 to-amber-50/50 dark:from-amber-900/20 dark:to-amber-900/5 p-5 rounded-lg border border-amber-200/70 dark:border-amber-800/30 shadow-sm'>
+										{/* 4. Application Summary */}
+										{opportunity.application_summary && (
+											<div className='mb-6 bg-gradient-to-br from-green-50 to-green-50/50 dark:from-green-900/20 dark:to-green-900/5 p-5 rounded-lg border border-green-200/70 dark:border-green-800/30 shadow-sm'>
 												<div className='flex items-start mb-2'>
-													<div className='mr-3 p-1.5 rounded-full bg-gradient-to-br from-amber-100 to-amber-50 dark:from-amber-800/30 dark:to-amber-700/20 shadow-sm'>
-														<Target className='h-5 w-5 text-amber-600 dark:text-amber-400' />
+													<div className='mr-3 p-1.5 rounded-full bg-gradient-to-br from-green-100 to-green-50 dark:from-green-800/30 dark:to-green-700/20 shadow-sm'>
+														<FileText className='h-5 w-5 text-green-600 dark:text-green-400' />
 													</div>
-													<h3 className='text-lg font-medium text-amber-800 dark:text-amber-400'>
-														Program Use Cases
+													<h3 className='text-lg font-medium text-green-800 dark:text-green-400'>
+														Application Summary
 													</h3>
 												</div>
-												<p className='text-amber-900 dark:text-amber-300 pl-10 whitespace-pre-line leading-relaxed'>
-													{opportunity.program_use_cases}
+												<p className='text-green-900 dark:text-green-300 pl-10 whitespace-pre-line leading-relaxed'>
+													{opportunity.application_summary}
 												</p>
 											</div>
 										)}
