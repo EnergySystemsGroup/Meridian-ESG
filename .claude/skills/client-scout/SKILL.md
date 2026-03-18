@@ -207,68 +207,60 @@ After each wave completes:
 
 ---
 
-## 5. Phase 2.5 — Three-Gate Filter + Dedup
+## 5. Phase 2.5 — Dedup + Source Backfill
 
-**CRITICAL**: Before presenting findings to the user, every finding must pass the
-same three filter gates used by Phase 2 (Program Discovery) of the pipeline.
-Search agents cast a wide net — this step narrows to programs that fit our platform.
+After search waves complete, prepare findings for Phase 2 extractor processing.
 
-**Read `lib/constants/taxonomies.js` before applying gates.** Use exact taxonomy values.
+**Do NOT apply three-gate filters manually here.** The Phase 2 program-discovery
+extractor agents visit actual program URLs and apply the gates with real page
+content — far more accurate than classifying from search summaries. Let them
+handle the filtering.
 
-### 5.1 Three Filter Gates (ALL must pass)
+### 5.1 Cross-Wave Deduplication
 
-For each finding, evaluate against the taxonomies:
-
-**Gate 1 — Applicant Type**: Does the program accept at least one `hot`, `strong`,
-or `mild` tier applicant type from `ELIGIBLE_APPLICANTS`? If only `weak` tier
-matches (Individuals, Homeowners, Renters) → **FILTER OUT**.
-
-**Gate 2 — Activity Type**: Does the program fund at least one `hot`, `strong`,
-or `mild` tier activity from `ELIGIBLE_ACTIVITIES`?
-- Hot: New Construction, Renovation, Modernization, Installation, Replacement, Upgrade, Repair, Infrastructure Development
-- Strong: Site Preparation, Maintenance, Demolition, Design, Architecture, Engineering, Planning, etc.
-- Mild: Inspection, Equipment Purchase, Materials Purchase, etc.
-- If only `weak` tier (Training, Education, Program Operations, Research, etc.) → **FILTER OUT**
-
-**Gate 3 — Project Type**: Does the program fund at least one recognizable project
-type from `ELIGIBLE_PROJECT_TYPES` (any tier)? If you cannot map the program to ANY
-project type in the taxonomy → **FILTER OUT**.
-
-**Examples of findings that would be filtered:**
-- Garden grants funding only education/curriculum → Gate 2 fails (Education = weak)
-- Cybersecurity grants → Gate 3 fails (no physical project type)
-- Pure financing programs (loans with no equipment) → Gate 2 may fail
-- Tech assistance only (audits, surveys) → Gate 2 passes if Design/Planning (strong), fails if only Consulting
-- Workforce training grants → Gate 2 fails (Training = weak)
-
-**Log every filtered finding** with which gate(s) failed. Present filtered
-programs separately in the report so the user can see what was excluded and why.
+Multiple waves may find the same program. Deduplicate by URL first, then by
+similar titles (allow for naming variations).
 
 ### 5.2 Dedup Against Existing Programs
 
-For each finding that passes the three gates, check against `funding_programs`:
+For each finding, check against `funding_programs` and `funding_opportunities`:
 
 ```sql
 SELECT id, name, source_id FROM funding_programs
 WHERE name ILIKE '%[program_name]%'
    OR name ILIKE '%[alternate_name]%';
-```
 
-Also check against `funding_opportunities`:
-
-```sql
 SELECT id, title FROM funding_opportunities
 WHERE title ILIKE '%[program_name]%'
   AND (promotion_status IS NULL OR promotion_status != 'rejected');
 ```
 
-If a match is found in either table, move the finding to the "Already in DB"
-category. If it's in the DB but not matching the client, flag as a matching anomaly.
+If a match is found, move to "Already in DB" category. If in DB but not matching
+the client, flag as a matching anomaly.
 
-### 5.3 Cross-Wave Deduplication
+### 5.3 Source Backfill
 
-Multiple waves may find the same program. Deduplicate by URL first, then by
-similar titles (allow for naming variations).
+For each unique source in the surviving findings, check `funding_sources`:
+
+```sql
+SELECT id, name FROM funding_sources WHERE name ILIKE '%[source_name]%';
+```
+
+Create missing sources via psql (batch INSERT with `ON CONFLICT DO NOTHING`).
+This ensures Phase 2 extractors can look up `source_id` for each program.
+
+### 5.4 Hand Off to Phase 2 Extractors
+
+Spawn `program-discovery-agent` instances in extractor mode with the deduped
+findings grouped into batches of ~20. The extractors will:
+1. Visit each program URL
+2. Extract structured fields using taxonomy values
+3. Apply the three filter gates (applicant, activity, project type)
+4. Dedup check against `funding_programs`
+5. INSERT passing programs
+
+Programs that fail the gates are filtered out at this step — with real page
+content, not search summaries. This is the authoritative filter.
 
 ---
 
