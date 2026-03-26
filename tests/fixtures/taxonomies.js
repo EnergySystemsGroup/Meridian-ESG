@@ -9,15 +9,12 @@ export const HOT_ACTIVITIES = [
   'New Construction',
   'Renovation',
   'Modernization',
-  'Demolition',
-  'Removal',
   'Installation',
   'Replacement',
   'Upgrade',
   'Repair',
-  'Maintenance',
-  'Site Preparation',
-  'Infrastructure Development',
+  'Retrofit',
+  'Energy Audits',
 ];
 
 export const CLIENT_TYPE_SYNONYMS = {

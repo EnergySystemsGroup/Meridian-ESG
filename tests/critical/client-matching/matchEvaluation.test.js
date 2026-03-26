@@ -17,15 +17,12 @@ const HOT_ACTIVITIES = [
 	'New Construction',
 	'Renovation',
 	'Modernization',
-	'Demolition',
-	'Removal',
 	'Installation',
 	'Replacement',
 	'Upgrade',
 	'Repair',
-	'Maintenance',
-	'Site Preparation',
-	'Infrastructure Development',
+	'Retrofit',
+	'Energy Audits',
 ];
 
 /**
@@ -118,6 +115,22 @@ function normalizeType(type) {
 }
 
 /**
+ * Word-boundary aware term matching.
+ * Mirrors: lib/matching/evaluateMatch.js matchTerms()
+ */
+function matchTerms(a, b) {
+	const aLower = a.toLowerCase().trim();
+	const bLower = b.toLowerCase().trim();
+	if (!aLower || !bLower) return false;
+	if (aLower === bLower) return true;
+	const shorter = aLower.length <= bLower.length ? aLower : bLower;
+	const longer = aLower.length <= bLower.length ? bLower : aLower;
+	const escaped = shorter.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+	const regex = new RegExp(`\\b${escaped}\\b`);
+	return regex.test(longer);
+}
+
+/**
  * Full 4-criteria evaluateMatch (boolean version).
  * Mirrors: lib/matching/evaluateMatch.js (shared module)
  * Now includes normalizeType for applicant type matching (consistent across all routes).
@@ -167,9 +180,7 @@ function evaluateMatch(client, opportunity) {
 	) {
 		for (const need of client.project_needs) {
 			const hasMatch = opportunity.eligible_project_types.some(
-				projectType =>
-					projectType.toLowerCase().includes(need.toLowerCase()) ||
-					need.toLowerCase().includes(projectType.toLowerCase())
+				projectType => matchTerms(projectType, need)
 			);
 			if (hasMatch) {
 				projectNeedsMatch = true;
@@ -179,15 +190,11 @@ function evaluateMatch(client, opportunity) {
 	}
 	if (!projectNeedsMatch) return false;
 
-	// 4. Activities Match
+	// 4. Activities Match (word-boundary aware)
 	let activitiesMatch = false;
 	if (opportunity.eligible_activities && Array.isArray(opportunity.eligible_activities)) {
 		activitiesMatch = opportunity.eligible_activities.some(activity =>
-			HOT_ACTIVITIES.some(
-				hotActivity =>
-					activity.toLowerCase().includes(hotActivity.toLowerCase()) ||
-					hotActivity.toLowerCase().includes(activity.toLowerCase())
-			)
+			HOT_ACTIVITIES.some(hotActivity => matchTerms(activity, hotActivity))
 		);
 	}
 

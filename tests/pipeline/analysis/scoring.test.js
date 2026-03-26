@@ -13,8 +13,8 @@
  * Calibration reference: docs/scoring-calibration/calibration-study.md
  * - 23-opportunity blind review against human business judgment
  * - Activity multiplier weak tier: 0.25 → 0.15 (training/research programs score <2)
- * - Project types: Parks/Green Spaces demoted strong→mild, Landscaping strong→weak
- * - Activities: soft/operational (Training, Education, TA, etc.) demoted mild→weak
+ * - Project types: taxonomy overhauled (see docs/taxonomy-review/scratchpad.md)
+ * - Activities: soft/operational (Training, TA, etc.) in weak tier
  */
 
 import { describe, test, expect } from 'vitest';
@@ -170,17 +170,17 @@ function calculateActivityMultiplier(activities, taxonomy) {
 
 // Simplified taxonomy subsets for testing the taxonomy-based scoring
 const ACTIVITIES_TAXONOMY = {
-  hot: ['New Construction', 'Renovation', 'Installation', 'Replacement', 'Upgrade', 'Repair', 'Modernization', 'Infrastructure Development'],
+  hot: ['New Construction', 'Renovation', 'Installation', 'Replacement', 'Upgrade', 'Repair', 'Modernization', 'Retrofit', 'Energy Audits'],
   strong: ['Design', 'Architecture', 'Engineering', 'Planning', 'Feasibility Studies', 'Project Management'],
-  mild: ['Equipment Purchase', 'Materials Purchase', 'Land Acquisition'],
-  weak: ['Training', 'Education', 'Technical Assistance', 'Capacity Building', 'Community Outreach', 'Research', 'Program Administration', 'Staffing', 'Personnel', 'Program Operations', 'Service Delivery'],
+  mild: ['Equipment Purchase', 'Inspection', 'Testing'],
+  weak: ['Training', 'Technical Assistance', 'Community Outreach', 'Research', 'Program Administration', 'Staffing', 'Program Operations', 'Service Delivery', 'Land Acquisition'],
 };
 
 const PROJECT_TYPES_TAXONOMY = {
-  hot: ['HVAC Systems', 'Lighting Systems', 'Electrical Systems', 'Solar Panels', 'Insulation', 'Weatherization', 'EV Charging Stations'],
-  strong: ['Water Treatment Plants', 'Classroom Facilities', 'Playgrounds', 'Athletic Fields', 'Community Center Facilities', 'Library Facilities', 'Museum Facilities'],
-  mild: ['Parks', 'Green Spaces', 'Roads', 'Bridges', 'Street Lighting', 'Air Filtration Systems'],
-  weak: ['Landscaping', 'Medical Equipment', 'Affordable Housing Units', 'Wetland Restoration', 'Wildlife Habitat'],
+  hot: ['HVAC Systems', 'Lighting Systems', 'Electrical Systems', 'Solar Panel Systems', 'Insulation', 'Weatherization', 'EV Charging Stations', 'Building Controls', 'Heat Pump Systems'],
+  strong: ['Drinking Water Infrastructure', 'Classroom Facilities', 'Playgrounds', 'Athletic Fields', 'Community Center Facilities', 'Library Facilities', 'Healthcare Facilities'],
+  mild: ['Recreational Park Facilities', 'Roads', 'Bridges', 'Street Lighting', 'Building IT Infrastructure'],
+  weak: ['Kitchen Equipment', 'Brownfield Remediation', 'Industrial Parks'],
 };
 
 describe('Pipeline: Analysis Scoring', () => {
@@ -561,7 +561,7 @@ describe('Pipeline: Analysis Scoring', () => {
   describe('Taxonomy Tier Scoring', () => {
     test('hot project type returns 3', () => {
       expect(calculateTaxonomyTierScore(['HVAC Systems'], PROJECT_TYPES_TAXONOMY)).toBe(3);
-      expect(calculateTaxonomyTierScore(['Solar Panels'], PROJECT_TYPES_TAXONOMY)).toBe(3);
+      expect(calculateTaxonomyTierScore(['Solar Panel Systems'], PROJECT_TYPES_TAXONOMY)).toBe(3);
     });
 
     test('strong project type returns 2', () => {
@@ -570,18 +570,16 @@ describe('Pipeline: Analysis Scoring', () => {
       expect(calculateTaxonomyTierScore(['Athletic Fields'], PROJECT_TYPES_TAXONOMY)).toBe(2);
     });
 
-    test('Parks and Green Spaces are now mild (score=1), not strong', () => {
-      // Calibration finding: Parks scored 4.5 by human vs algo 8.0 (#15 GCA G26)
-      expect(calculateTaxonomyTierScore(['Parks'], PROJECT_TYPES_TAXONOMY)).toBe(1);
-      expect(calculateTaxonomyTierScore(['Green Spaces'], PROJECT_TYPES_TAXONOMY)).toBe(1);
+    test('Recreational Park Facilities are mild (score=1)', () => {
+      expect(calculateTaxonomyTierScore(['Recreational Park Facilities'], PROJECT_TYPES_TAXONOMY)).toBe(1);
     });
 
-    test('Landscaping is now weak (score=0)', () => {
-      expect(calculateTaxonomyTierScore(['Landscaping'], PROJECT_TYPES_TAXONOMY)).toBe(0);
+    test('Kitchen Equipment is weak (score=0)', () => {
+      expect(calculateTaxonomyTierScore(['Kitchen Equipment'], PROJECT_TYPES_TAXONOMY)).toBe(0);
     });
 
-    test('highest match wins — HVAC + Parks → 3 (hot)', () => {
-      expect(calculateTaxonomyTierScore(['Parks', 'HVAC Systems'], PROJECT_TYPES_TAXONOMY)).toBe(3);
+    test('highest match wins — HVAC + Recreational Park Facilities → 3 (hot)', () => {
+      expect(calculateTaxonomyTierScore(['Recreational Park Facilities', 'HVAC Systems'], PROJECT_TYPES_TAXONOMY)).toBe(3);
     });
 
     test('empty array returns 0', () => {
@@ -603,17 +601,16 @@ describe('Pipeline: Analysis Scoring', () => {
 
     test('equipment/procurement activities get 0.5x', () => {
       expect(calculateActivityMultiplier(['Equipment Purchase'], ACTIVITIES_TAXONOMY)).toBe(0.5);
-      expect(calculateActivityMultiplier(['Land Acquisition'], ACTIVITIES_TAXONOMY)).toBe(0.5);
+      expect(calculateActivityMultiplier(['Inspection'], ACTIVITIES_TAXONOMY)).toBe(0.5);
     });
 
     test('training/soft activities get 0.15x (was 0.5x before calibration)', () => {
       // Calibration: Arts Ed Partnership scored 5.0 (should be ~1), human gave 1.0
       // With 0.15x: base 10 × 0.15 = 1.5 (much closer to human score)
       expect(calculateActivityMultiplier(['Training'], ACTIVITIES_TAXONOMY)).toBe(0.15);
-      expect(calculateActivityMultiplier(['Education'], ACTIVITIES_TAXONOMY)).toBe(0.15);
       expect(calculateActivityMultiplier(['Technical Assistance'], ACTIVITIES_TAXONOMY)).toBe(0.15);
-      expect(calculateActivityMultiplier(['Capacity Building'], ACTIVITIES_TAXONOMY)).toBe(0.15);
       expect(calculateActivityMultiplier(['Community Outreach'], ACTIVITIES_TAXONOMY)).toBe(0.15);
+      expect(calculateActivityMultiplier(['Land Acquisition'], ACTIVITIES_TAXONOMY)).toBe(0.15);
     });
 
     test('research/admin activities get 0.15x', () => {
