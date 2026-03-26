@@ -320,7 +320,7 @@ Source-type agnostic mapping guide:
 
 **`eligibleProjectTypes`** (array of strings, REQUIRED):
 Map to ELIGIBLE_PROJECT_TYPES taxonomy. These are the physical things being
-funded: HVAC Systems, Solar Panels, Weatherization, etc.
+funded: HVAC Systems, Solar Panel Systems, Weatherization, etc.
 
 **`eligibleActivities`** (array of strings, REQUIRED):
 Map to ELIGIBLE_ACTIVITIES taxonomy. These are the actions: Installation,

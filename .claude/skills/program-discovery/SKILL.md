@@ -262,10 +262,10 @@ Use EXACT values from `TAXONOMIES.ELIGIBLE_PROJECT_TYPES` in `taxonomies.js`.
 installed, or procured** — not where it happens. Ask: "What is the deliverable?"
 
 - "Classroom HVAC upgrades" → project types: `HVAC Systems`, `Classroom Facilities`
-- "School solar installation" → project type: `Solar Panels` or `Solar Arrays`
+- "School solar installation" → project type: `Solar Panel Systems`
 - "Buying science kits for K-5" → no valid project type → fails Gate 3
 - "Data center construction" → project type: `Data Centers`
-- "Water treatment plant renovation" → project type: `Water Treatment Plants`
+- "Water treatment plant renovation" → project type: `Drinking Water Infrastructure`
 
 Use facility-level types (e.g., `Classroom Facilities`, `Gymnasium Facilities`) only
 when the program broadly funds facility work and you can't identify specific systems.
