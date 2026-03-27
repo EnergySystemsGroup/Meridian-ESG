@@ -4,7 +4,7 @@
  * Tests the 4 mandatory matching criteria:
  * 1. Location Match (coverage_area_ids intersection or is_national)
  * 2. Applicant Type Match (synonym + hierarchy expansion)
- * 3. Project Needs Match (substring matching)
+ * 3. Project Needs Match (word-boundary matching)
  * 4. Activities Match (must include hot activities)
  *
  * ALL 4 criteria must be true for a match.
@@ -14,7 +14,7 @@ import { describe, test, expect, vi, beforeEach, afterEach } from 'vitest';
 import { clients } from '../../fixtures/clients.js';
 import { opportunities } from '../../fixtures/opportunities.js';
 import { matchScenarios } from '../../fixtures/matchScenarios.js';
-import { HOT_ACTIVITIES, CLIENT_TYPE_SYNONYMS, getExpandedClientTypes } from '../../fixtures/taxonomies.js';
+import { HOT_ACTIVITIES, CLIENT_TYPE_SYNONYMS, getExpandedClientTypes, getExpandedProjectTypes } from '../../fixtures/taxonomies.js';
 
 /**
  * Normalize a type string for matching comparison.
@@ -28,6 +28,21 @@ function normalizeType(type) {
     .replace(/ies$/, 'y')           // agencies → agency, utilities → utility
     .replace(/(ch|sh|ss|x|z)es$/, '$1')  // churches → church, businesses → business
     .replace(/s$/, '');             // hospitals → hospital, colleges → college
+}
+
+/**
+ * Word-boundary aware term matching — mirrors lib/matching/evaluateMatch.js
+ */
+function matchTerms(a, b) {
+  const aLower = a.toLowerCase().trim();
+  const bLower = b.toLowerCase().trim();
+  if (!aLower || !bLower) return false;
+  if (aLower === bLower) return true;
+  const shorter = aLower.length <= bLower.length ? aLower : bLower;
+  const longer = aLower.length <= bLower.length ? bLower : aLower;
+  const escaped = shorter.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const regex = new RegExp(`\\b${escaped}\\b`);
+  return regex.test(longer);
 }
 
 /**
@@ -70,13 +85,13 @@ function evaluateMatch(client, opportunity) {
     });
   }
 
-  // 3. Project Needs Match
+  // 3. Project Needs Match (with hierarchy expansion + word-boundary matching)
   if (opportunity.eligible_project_types && Array.isArray(opportunity.eligible_project_types) &&
       client.project_needs && Array.isArray(client.project_needs)) {
     for (const need of client.project_needs) {
+      const expandedNeeds = getExpandedProjectTypes(need);
       const hasMatch = opportunity.eligible_project_types.some(projectType =>
-        projectType.toLowerCase().includes(need.toLowerCase()) ||
-        need.toLowerCase().includes(projectType.toLowerCase())
+        expandedNeeds.some(expandedNeed => matchTerms(projectType, expandedNeed))
       );
       if (hasMatch) {
         details.matchedProjectNeeds.push(need);
@@ -85,12 +100,11 @@ function evaluateMatch(client, opportunity) {
     details.projectNeedsMatch = details.matchedProjectNeeds.length > 0;
   }
 
-  // 4. Activities Match
+  // 4. Activities Match (word-boundary aware)
   if (opportunity.eligible_activities && Array.isArray(opportunity.eligible_activities)) {
     details.activitiesMatch = opportunity.eligible_activities.some(activity =>
       HOT_ACTIVITIES.some(hotActivity =>
-        activity.toLowerCase().includes(hotActivity.toLowerCase()) ||
-        hotActivity.toLowerCase().includes(activity.toLowerCase())
+        matchTerms(activity, hotActivity)
       )
     );
   }
@@ -257,7 +271,7 @@ describe('Client-Opportunity Matching: Match Criteria', () => {
       expect(result.details.matchedProjectNeeds).toContain('Solar');
     });
 
-    test('substring match (need contained in project type)', () => {
+    test('word-boundary match (need is a word within project type)', () => {
       const client = { ...clients.pgeBayAreaClient, project_needs: ['EV'] };
       const opp = { ...opportunities.nationalGrant, eligible_project_types: ['EV Charging Stations'] };
 
@@ -266,7 +280,7 @@ describe('Client-Opportunity Matching: Match Criteria', () => {
       expect(result.details.projectNeedsMatch).toBe(true);
     });
 
-    test('substring match (project type contained in need)', () => {
+    test('word-boundary match (project type is a word within need)', () => {
       const client = { ...clients.pgeBayAreaClient, project_needs: ['Solar Panel Installation'] };
       const opp = { ...opportunities.nationalGrant, eligible_project_types: ['Solar'] };
 
@@ -294,6 +308,43 @@ describe('Client-Opportunity Matching: Match Criteria', () => {
     test('no overlapping needs results in no match', () => {
       const client = { ...clients.pgeBayAreaClient, project_needs: ['Nuclear Power'] };
       const opp = { ...opportunities.nationalGrant, eligible_project_types: ['Solar', 'Wind'] };
+
+      const result = evaluateMatch(client, opp);
+
+      expect(result.details.projectNeedsMatch).toBe(false);
+    });
+
+    test('parent need matches opportunity with child project type (downward expansion)', () => {
+      const client = { ...clients.pgeBayAreaClient, project_needs: ['HVAC Systems'] };
+      const opp = { ...opportunities.nationalGrant, eligible_project_types: ['Heat Pump Systems'] };
+
+      const result = evaluateMatch(client, opp);
+
+      expect(result.details.projectNeedsMatch).toBe(true);
+      expect(result.details.matchedProjectNeeds).toContain('HVAC Systems');
+    });
+
+    test('child need does NOT match opportunity with only parent project type (no upward expansion)', () => {
+      const client = { ...clients.pgeBayAreaClient, project_needs: ['Heat Pump Systems'] };
+      const opp = { ...opportunities.nationalGrant, eligible_project_types: ['HVAC Systems'] };
+
+      const result = evaluateMatch(client, opp);
+
+      expect(result.details.projectNeedsMatch).toBe(false);
+    });
+
+    test('parent Electrical Systems matches opportunity with EV Charging Stations', () => {
+      const client = { ...clients.pgeBayAreaClient, project_needs: ['Electrical Systems'] };
+      const opp = { ...opportunities.nationalGrant, eligible_project_types: ['EV Charging Stations'] };
+
+      const result = evaluateMatch(client, opp);
+
+      expect(result.details.projectNeedsMatch).toBe(true);
+    });
+
+    test('non-parent term stays as-is (no expansion)', () => {
+      const client = { ...clients.pgeBayAreaClient, project_needs: ['Plumbing Systems'] };
+      const opp = { ...opportunities.nationalGrant, eligible_project_types: ['Heat Pump Systems'] };
 
       const result = evaluateMatch(client, opp);
 

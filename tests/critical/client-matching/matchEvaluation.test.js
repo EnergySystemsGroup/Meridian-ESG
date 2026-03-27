@@ -17,15 +17,12 @@ const HOT_ACTIVITIES = [
 	'New Construction',
 	'Renovation',
 	'Modernization',
-	'Demolition',
-	'Removal',
 	'Installation',
 	'Replacement',
 	'Upgrade',
 	'Repair',
-	'Maintenance',
-	'Site Preparation',
-	'Infrastructure Development',
+	'Retrofit',
+	'Energy Audits',
 ];
 
 /**
@@ -118,6 +115,45 @@ function normalizeType(type) {
 }
 
 /**
+ * Expand a project type via hierarchy (downward only).
+ * Mirrors: lib/constants/taxonomies.js getExpandedProjectTypes()
+ */
+const PROJECT_TYPE_HIERARCHY = {
+	'HVAC Systems': ['Heat Pump Systems', 'Boiler Systems', 'Chiller Systems', 'Building Air Filtration Systems'],
+	'Lighting Systems': ['LED Lighting Upgrades', 'Street Lighting'],
+	'Electrical Systems': ['EV Charging Stations', 'Electrical Panel Upgrades'],
+	'Landscaping': ['Landscape Irrigation Systems'],
+	'Drinking Water Infrastructure': ['Water Metering Systems', 'Water Storage Tanks'],
+	'Wastewater Infrastructure': ['Sewer Systems'],
+	'Heat Resilience Infrastructure': ['Cooling Centers'],
+};
+
+function getExpandedProjectTypes(projectNeed) {
+	const expanded = new Set([projectNeed]);
+	const children = PROJECT_TYPE_HIERARCHY[projectNeed];
+	if (children) {
+		children.forEach((child) => expanded.add(child));
+	}
+	return Array.from(expanded);
+}
+
+/**
+ * Word-boundary aware term matching.
+ * Mirrors: lib/matching/evaluateMatch.js matchTerms()
+ */
+function matchTerms(a, b) {
+	const aLower = a.toLowerCase().trim();
+	const bLower = b.toLowerCase().trim();
+	if (!aLower || !bLower) return false;
+	if (aLower === bLower) return true;
+	const shorter = aLower.length <= bLower.length ? aLower : bLower;
+	const longer = aLower.length <= bLower.length ? bLower : aLower;
+	const escaped = shorter.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+	const regex = new RegExp(`\\b${escaped}\\b`);
+	return regex.test(longer);
+}
+
+/**
  * Full 4-criteria evaluateMatch (boolean version).
  * Mirrors: lib/matching/evaluateMatch.js (shared module)
  * Now includes normalizeType for applicant type matching (consistent across all routes).
@@ -157,7 +193,7 @@ function evaluateMatch(client, opportunity) {
 	}
 	if (!applicantTypeMatch) return false;
 
-	// 3. Project Needs Match
+	// 3. Project Needs Match (with hierarchy expansion)
 	let projectNeedsMatch = false;
 	if (
 		opportunity.eligible_project_types &&
@@ -166,10 +202,9 @@ function evaluateMatch(client, opportunity) {
 		Array.isArray(client.project_needs)
 	) {
 		for (const need of client.project_needs) {
+			const expandedNeeds = getExpandedProjectTypes(need);
 			const hasMatch = opportunity.eligible_project_types.some(
-				projectType =>
-					projectType.toLowerCase().includes(need.toLowerCase()) ||
-					need.toLowerCase().includes(projectType.toLowerCase())
+				projectType => expandedNeeds.some(expandedNeed => matchTerms(projectType, expandedNeed))
 			);
 			if (hasMatch) {
 				projectNeedsMatch = true;
@@ -179,15 +214,11 @@ function evaluateMatch(client, opportunity) {
 	}
 	if (!projectNeedsMatch) return false;
 
-	// 4. Activities Match
+	// 4. Activities Match (word-boundary aware)
 	let activitiesMatch = false;
 	if (opportunity.eligible_activities && Array.isArray(opportunity.eligible_activities)) {
 		activitiesMatch = opportunity.eligible_activities.some(activity =>
-			HOT_ACTIVITIES.some(
-				hotActivity =>
-					activity.toLowerCase().includes(hotActivity.toLowerCase()) ||
-					hotActivity.toLowerCase().includes(activity.toLowerCase())
-			)
+			HOT_ACTIVITIES.some(hotActivity => matchTerms(activity, hotActivity))
 		);
 	}
 

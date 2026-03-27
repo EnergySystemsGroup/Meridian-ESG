@@ -382,7 +382,35 @@ WHERE ca.kind = 'utility'
 ON CONFLICT DO NOTHING;
 ```
 
-### 6.2 Location Type Detection
+### 6.2 Coverage Area Rules
+
+**CRITICAL — No Overlap, Respect Extraction Granularity:**
+
+The extraction phase (Phase 4) already resolved geographic granularity. The storage
+phase must respect it exactly. Two rules:
+
+**Rule 1 — Link ONLY what `eligible_locations` says.** Each entry in the array maps to
+exactly one coverage area row. Do NOT "helpfully" add parent or child geographies.
+If `eligible_locations = ["PG&E service territory"]`, link ONLY the PG&E utility row.
+Do NOT also add "California" because PG&E is in California. If `eligible_locations =
+["California"]`, link ONLY the California state row. Do NOT also add PG&E or any other
+utility within California.
+
+**Rule 2 — No overlapping coverage areas on a single opportunity.** Coverage areas form
+a hierarchy: national > state > county/utility > city. An opportunity must not have
+coverage areas at multiple levels of this hierarchy because the broader level subsumes
+the narrower ones:
+- Multiple utilities → fine (same level)
+- Multiple counties → fine (same level)
+- Multiple states → fine (same level)
+- Utility + its parent state → WRONG (state subsumes utility)
+- Counties + their parent state → WRONG (state subsumes counties)
+- Multiple states + national → WRONG (national subsumes states)
+
+If the extraction produced overlapping levels (it shouldn't, but if it did), keep only
+the most specific level and drop the broader ones.
+
+### 6.3 Location Type Detection
 
 Parse each location string to determine kind:
 - Contains "county" → `kind = 'county'`
@@ -390,7 +418,7 @@ Parse each location string to determine kind:
 - Contains "national", "nationwide", "all states" → set `is_national = TRUE` on opportunity
 - Otherwise → try utility match first, then county, then state (most specific first)
 
-### 6.3 Batch Coverage Linking
+### 6.4 Batch Coverage Linking
 
 Include coverage area operations in the same temp `.sql` file as the UPSERTs.
 For each record, append DELETE + INSERT statements after its UPSERT:
@@ -407,7 +435,7 @@ SELECT '<id>', ca.id FROM coverage_areas ca WHERE ... ON CONFLICT DO NOTHING;
 -- ...
 ```
 
-### 6.4 Failure Handling
+### 6.5 Failure Handling
 
 If coverage area linking fails for a record:
 - Log a warning (not an error)
