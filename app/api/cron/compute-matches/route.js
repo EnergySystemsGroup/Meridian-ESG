@@ -27,17 +27,14 @@ function verifyAuth(request) {
   // Allow in dev mode
   if (process.env.NODE_ENV !== 'production') return null;
 
-  // Verify CRON_SECRET — Vercel automatically includes it as Bearer token for cron jobs
+  // Soft auth: only check if CRON_SECRET is set (matches process-jobs pattern)
   const expectedAuth = process.env.CRON_SECRET;
-  if (!expectedAuth) {
-    console.error('[ComputeMatchesCron] CRON_SECRET is not set');
-    return Response.json({ error: 'Server misconfigured' }, { status: 500 });
-  }
-
-  const authHeader = request.headers.get('authorization');
-  if (authHeader !== `Bearer ${expectedAuth}`) {
-    console.warn('[ComputeMatchesCron] Unauthorized request');
-    return Response.json({ error: 'Unauthorized' }, { status: 401 });
+  if (expectedAuth) {
+    const authHeader = request.headers.get('authorization');
+    if (authHeader !== `Bearer ${expectedAuth}`) {
+      console.warn('[ComputeMatchesCron] Unauthorized request');
+      return Response.json({ error: 'Unauthorized' }, { status: 401 });
+    }
   }
 
   return null;
