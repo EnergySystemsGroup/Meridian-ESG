@@ -14,7 +14,7 @@ import { describe, test, expect, vi, beforeEach, afterEach } from 'vitest';
 import { clients } from '../../fixtures/clients.js';
 import { opportunities } from '../../fixtures/opportunities.js';
 import { matchScenarios } from '../../fixtures/matchScenarios.js';
-import { HOT_ACTIVITIES, CLIENT_TYPE_SYNONYMS, getExpandedClientTypes } from '../../fixtures/taxonomies.js';
+import { HOT_ACTIVITIES, CLIENT_TYPE_SYNONYMS, getExpandedClientTypes, getExpandedProjectTypes } from '../../fixtures/taxonomies.js';
 
 /**
  * Normalize a type string for matching comparison.
@@ -85,12 +85,13 @@ function evaluateMatch(client, opportunity) {
     });
   }
 
-  // 3. Project Needs Match (word-boundary aware)
+  // 3. Project Needs Match (with hierarchy expansion + word-boundary matching)
   if (opportunity.eligible_project_types && Array.isArray(opportunity.eligible_project_types) &&
       client.project_needs && Array.isArray(client.project_needs)) {
     for (const need of client.project_needs) {
+      const expandedNeeds = getExpandedProjectTypes(need);
       const hasMatch = opportunity.eligible_project_types.some(projectType =>
-        matchTerms(projectType, need)
+        expandedNeeds.some(expandedNeed => matchTerms(projectType, expandedNeed))
       );
       if (hasMatch) {
         details.matchedProjectNeeds.push(need);
@@ -307,6 +308,43 @@ describe('Client-Opportunity Matching: Match Criteria', () => {
     test('no overlapping needs results in no match', () => {
       const client = { ...clients.pgeBayAreaClient, project_needs: ['Nuclear Power'] };
       const opp = { ...opportunities.nationalGrant, eligible_project_types: ['Solar', 'Wind'] };
+
+      const result = evaluateMatch(client, opp);
+
+      expect(result.details.projectNeedsMatch).toBe(false);
+    });
+
+    test('parent need matches opportunity with child project type (downward expansion)', () => {
+      const client = { ...clients.pgeBayAreaClient, project_needs: ['HVAC Systems'] };
+      const opp = { ...opportunities.nationalGrant, eligible_project_types: ['Heat Pump Systems'] };
+
+      const result = evaluateMatch(client, opp);
+
+      expect(result.details.projectNeedsMatch).toBe(true);
+      expect(result.details.matchedProjectNeeds).toContain('HVAC Systems');
+    });
+
+    test('child need does NOT match opportunity with only parent project type (no upward expansion)', () => {
+      const client = { ...clients.pgeBayAreaClient, project_needs: ['Heat Pump Systems'] };
+      const opp = { ...opportunities.nationalGrant, eligible_project_types: ['HVAC Systems'] };
+
+      const result = evaluateMatch(client, opp);
+
+      expect(result.details.projectNeedsMatch).toBe(false);
+    });
+
+    test('parent Electrical Systems matches opportunity with EV Charging Stations', () => {
+      const client = { ...clients.pgeBayAreaClient, project_needs: ['Electrical Systems'] };
+      const opp = { ...opportunities.nationalGrant, eligible_project_types: ['EV Charging Stations'] };
+
+      const result = evaluateMatch(client, opp);
+
+      expect(result.details.projectNeedsMatch).toBe(true);
+    });
+
+    test('non-parent term stays as-is (no expansion)', () => {
+      const client = { ...clients.pgeBayAreaClient, project_needs: ['Plumbing Systems'] };
+      const opp = { ...opportunities.nationalGrant, eligible_project_types: ['Heat Pump Systems'] };
 
       const result = evaluateMatch(client, opp);
 

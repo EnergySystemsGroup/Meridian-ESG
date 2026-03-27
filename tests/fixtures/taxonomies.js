@@ -109,11 +109,22 @@ export const CLIENT_TYPE_CROSS_CATEGORIES = {
   'Electric Cooperatives': ['Nonprofit Organizations 501(c)(3)'],
 };
 
+export const PROJECT_TYPE_HIERARCHY = {
+  'HVAC Systems': ['Heat Pump Systems', 'Boiler Systems', 'Chiller Systems', 'Building Air Filtration Systems'],
+  'Lighting Systems': ['LED Lighting Upgrades', 'Street Lighting'],
+  'Electrical Systems': ['EV Charging Stations', 'Electrical Panel Upgrades'],
+  'Landscaping': ['Landscape Irrigation Systems'],
+  'Drinking Water Infrastructure': ['Water Metering Systems', 'Water Storage Tanks'],
+  'Wastewater Infrastructure': ['Sewer Systems'],
+  'Heat Resilience Infrastructure': ['Cooling Centers'],
+};
+
 export const TAXONOMIES = {
   CLIENT_TYPE_SYNONYMS,
   CLIENT_TYPE_HIERARCHY,
   CLIENT_TYPE_CROSS_CATEGORIES,
   STANDALONE_CLIENT_TYPES,
+  PROJECT_TYPE_HIERARCHY,
 };
 
 /**
@@ -148,5 +159,18 @@ export function getExpandedClientTypes(clientType) {
     }
   }
 
+  return Array.from(expanded);
+}
+
+/**
+ * Expand a project type via hierarchy (downward only).
+ * Mirrors lib/constants/taxonomies.js getExpandedProjectTypes.
+ */
+export function getExpandedProjectTypes(projectNeed) {
+  const expanded = new Set([projectNeed]);
+  const children = PROJECT_TYPE_HIERARCHY[projectNeed];
+  if (children) {
+    children.forEach((child) => expanded.add(child));
+  }
   return Array.from(expanded);
 }
