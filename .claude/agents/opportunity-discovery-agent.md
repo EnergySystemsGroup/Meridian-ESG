@@ -6,7 +6,7 @@ description: >
   creates staging records for opportunities found, and updates program
   scheduling (next_check_at). Use as Agent Team teammate or standalone
   via Task tool.
-model: opus
+model: sonnet
 skills:
   - opportunity-discovery
 ---

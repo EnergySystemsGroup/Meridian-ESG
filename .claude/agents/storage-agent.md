@@ -4,7 +4,7 @@ description: >
   Phase 6 storage agent for the manual funding pipeline. Sanitizes analysis_data,
   UPSERTs to funding_opportunities with promotion_status='pending_review',
   links coverage areas, and updates staging status.
-model: opus
+model: sonnet
 skills:
   - storage
 ---

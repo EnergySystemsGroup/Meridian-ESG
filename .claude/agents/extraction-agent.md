@@ -6,7 +6,7 @@ description: >
   JSONB, stores raw_content, computes source_hash, and updates extraction_status.
   Source-type agnostic — handles utilities, state agencies, counties,
   municipalities, foundations, and federal sources.
-model: opus
+model: sonnet
 skills:
   - extraction
 ---

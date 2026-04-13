@@ -6,7 +6,7 @@ description: >
   extracts structured program data, and registers programs in funding_programs.
   Operates in two modes: Scout (find programs) or Extractor (extract + store).
   Use as Agent Team teammate or standalone via Task tool.
-model: opus
+model: sonnet
 skills:
   - program-discovery
 ---
