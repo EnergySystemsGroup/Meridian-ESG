@@ -2,9 +2,10 @@
 name: opportunity-discovery
 description: >
   Phase 3 of the manual funding pipeline. Crawls program URLs to check
-  for open or upcoming application windows. Creates staging records for
-  opportunities found and updates smart scheduling on funding_programs.
-  Designed to be run by Agent Team teammates or standalone via Task tool.
+  for open or upcoming application windows. REPORTS findings to the
+  orchestrator (single-writer pattern — checkers do NOT write to the
+  database). The orchestrator validates and creates staging records.
+  Designed to be run by Agent Team teammates.
 ---
 
 # Opportunity Discovery — Phase 3
@@ -14,10 +15,22 @@ description: >
 Read this entire skill file before doing any work. Understand:
 1. **The Decision Tree** (Section 4) — it determines every action you take
 2. **Content Retrieval Standard** (Section 0a) — how to fetch pages and PDFs
-3. **SQL Templates** (Section 5) — exact INSERT/UPDATE patterns
+3. **Funding Status Assessment** (Section 3g) — REQUIRED for every program
+4. **Report Format** (Section 7) — what the orchestrator needs from you
 
 Unlike Phase 2, you do NOT need to read the taxonomy file. Phase 3 does not
 assign categories or activities — those already exist on the program from Phase 2.
+
+## CRITICAL: DO NOT WRITE TO THE DATABASE
+
+You are a **reporter**, not a writer. Your job is to crawl program URLs, assess
+application status, assess funding status, and report findings to the orchestrator
+via SendMessage. The orchestrator validates and creates staging records.
+
+- **DO NOT** run INSERT statements against `manual_funding_opportunities_staging`
+- **DO NOT** run UPDATE statements on `funding_programs` scheduling fields
+- **DO** use `mcp__postgres__query` for READ-ONLY queries (pre-flight, URL lookups)
+- **DO** send your complete findings to the team lead via SendMessage
 
 ---
 
@@ -25,24 +38,41 @@ assign categories or activities — those already exist on the program from Phas
 
 Use this decision tree for ALL URL fetching.
 
-### HTML Pages (~70% of URLs)
+### HTML Pages — Detection-Based Routing
 
 ```
-1. WebFetch(url)
-   → If content looks complete (has program details, not just nav/headers) → DONE
-2. If WebFetch returns empty/minimal/garbled content (JS-rendered page):
-   → Playwright: mcp__playwright__browser_navigate(url) + browser_snapshot()
-3. If Playwright also fails:
-   → FLAG as "JS-rendered, could not extract" — never silently skip
+1. Try WebFetch(url)
+
+2. Read the response. Route based on what you see:
+
+   a) Content looks complete (body text > 500 chars, has program details)
+      → DONE. Use this content.
+
+   b) HTTP 403, or response contains "Access Denied" / "edgesuite" / "Akamai"
+      → Akamai bot protection. Try:
+        curl -sL -H "User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)
+             AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+             -H "Accept: text/html" -H "Accept-Language: en-US,en" --compressed "URL"
+        If curl also returns 403 → use Playwright:
+          mcp__playwright__browser_navigate(url) + browser_snapshot()
+
+   c) Response is small (< 500 chars body) with <script> tags referencing
+      CMS frameworks ("civicplus", "requirejs", "vision-cms", "granicus")
+      → JS-rendered CMS. Try curl with User-Agent header (same as above).
+        If curl returns same thin content → use Playwright.
+
+   d) Response contains "Just a moment" / "Checking your browser" / "cf-"
+      → Cloudflare challenge. Skip curl, go directly to Playwright.
+
+   e) curl with headers also returns 403 AND Playwright also fails
+      → FLAG as unreachable. Never silently skip.
 ```
 
-### PDF Documents (~10% of URLs)
+### PDF Documents
 
-**Do NOT use WebFetch for PDFs** — it returns garbled binary.
+**Never use WebFetch for PDFs.** Always use curl piped to PyMuPDF:
 
 ```bash
-# Pipe directly — zero temp files
-# ALWAYS include User-Agent header (many gov sites block bare curl)
 curl -sL -H "User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36" "PDF_URL" | python3 -c "
 import sys, fitz
 doc = fitz.open(stream=sys.stdin.buffer.read(), filetype='pdf')
@@ -50,34 +80,19 @@ for page in doc: print(page.get_text())
 "
 ```
 
-**Guards**:
-- **ALWAYS include the User-Agent header** on every curl request — many government sites (agri.nv.gov, dot.nv.gov, etc.) return bot-check HTML instead of the PDF without it. This is not a retry step; it is the default.
-- Check `Content-Length` header first. Skip if > 10MB (flag for manual review)
-- For PDFs > 50 pages, extract first 20 pages only (add `if page.number < 20` guard)
-- If curl still gets a 403 after User-Agent: try downloading to a temp file with `curl -sL -o /tmp/doc.pdf -H "User-Agent: ..." "URL"` then `python3 -c "import fitz; doc = fitz.open('/tmp/doc.pdf'); ..."`. If still blocked, use Playwright as final fallback.
-- If PDF is password-protected or encrypted: flag and skip
-- **CRITICAL**: After curl, verify the downloaded content is actually a PDF (check `file` output or first bytes). If you get HTML instead of a PDF, the bot-check blocked you — retry with the temp file approach or Playwright.
+**Guards**: Always include User-Agent. Skip > 10MB. First 20 pages for > 50 page PDFs.
+If 403 even with UA, try temp file download then process. Verify output is PDF not HTML.
 
-### Login-Gated Pages (~5%)
+### Login-Gated Pages
 
-Flag as "Requires login, could not crawl" — skip entirely. Do not guess content.
+Flag as "Requires login, could not crawl" — skip entirely.
 
 ### Crawling Depth
 
-Each "level" is a separate WebFetch call. Agents must identify links in returned
-content and fetch them individually:
 - **Level 0**: Fetch the program URL from `program_urls`
-- **Level 1**: Follow links containing "Apply", "Application", "NOFA", "RFP", "Guidelines"
-- **Level 2**: If a Level 1 page references sub-pages with dates/deadlines, fetch those
+- **Level 1**: Follow "Apply", "Application", "NOFA", "RFP", "Guidelines" links
+- **Level 2**: Sub-pages with dates/deadlines
 - **MAX 2 levels**. Flag deeper content for manual review.
-
-### Fallback Chain (All Modes)
-
-When the primary method fails, try in order — never silently skip:
-```
-WebFetch → Playwright (headless) → FLAG for manual review
-```
-Always log what failed and why in your report.
 
 ---
 
@@ -268,7 +283,76 @@ Look for:
 - Press releases about new funding rounds
 - Third-party sites reporting on open opportunities
 
-### Step 3f — URL Failure Cascade
+### Step 3f — Funding Status Assessment (REQUIRED)
+
+For EVERY program you check — whether Open, Upcoming, or Nothing — you MUST assess
+the funding status. This is not optional. The orchestrator needs this to set the
+`funding_status` and `funding_note` fields on the opportunity.
+
+**Scan the page for these signals:**
+
+**VERIFIED_ACTIVE** — explicit evidence the program is currently funded and accepting:
+- "Apply Now" / "Submit Application" buttons with current-year dates
+- "Applications are being accepted" with current fiscal year reference
+- Active application portal (Formstack, ZoomGrants, eCivis) that loads
+- Recently posted NOFA/RFP with current dates
+
+**PRESUMED_ACTIVE** — default when nothing concerning is found:
+- Program is listed on the source's catalog/grants page
+- No closure, exhaustion, or waitlist language found
+- Page hasn't been updated recently but nothing says "closed"
+
+**LIMITED_FUNDING** — known finite pool that could exhaust:
+- Mentions a specific dollar pool ("$1.8M WIFA grant", "$5M program")
+- "First-come, first-served" / "until funds are exhausted"
+- "Limited funding available" / "subject to availability"
+
+**OVERSUBSCRIBED** — demand signals suggest funding is tight:
+- "Waitlist" / "applications processed as funding allows"
+- "Not accepting new applications at this time" (without permanent closure)
+- "Program is currently paused" / "check back for next cycle"
+- "High demand" / "oversubscribed" language
+
+**EXHAUSTED** — ONLY set when DEFINITIVE (do not speculate):
+- "All funds awarded for this cycle"
+- "Program closed" / "no longer accepting applications"
+- "Funding has been fully allocated"
+- Application portal explicitly disabled with closure message
+
+**Your report MUST include for each program:**
+```
+  funding_status: verified_active / presumed_active / limited_funding / oversubscribed / exhausted
+  funding_note: "[one sentence, max 150 chars, with evidence from the page]"
+```
+
+If you cannot determine the funding status because the page was unreachable,
+say: `funding_status: presumed_active` / `funding_note: "Page unreachable — status unverified"`
+
+### Step 3f-2 — Application Window Type Assessment (REQUIRED)
+
+Also assess the application window type for each program:
+
+**DATED** — has specific open and close dates:
+- "Applications open January 15, close March 31"
+- A published NOFA with explicit deadline
+
+**ROLLING** — perpetual, no application window:
+- "Applications accepted on a rolling basis"
+- "Open until funds are exhausted"
+- "Apply anytime" / no deadline mentioned anywhere
+- Rebate programs with no cycle (first-come-first-served)
+
+**CYCLE_BASED** — has known recurring cycles but specific dates may not be captured:
+- "Annual application cycle" / "FY2027 round expected fall 2026"
+- "Applications typically open in October"
+- Program has a history of annual/biennial rounds
+
+**Your report MUST include:**
+```
+  window_type: dated / rolling / cycle_based
+```
+
+### Step 3g — URL Failure Cascade
 
 If a program URL returns 404, timeout, or unusable content:
 
@@ -354,106 +438,94 @@ When `next_check_at` arrives for a Row 3 program (upcoming with date):
 
 ---
 
-## 5. SQL Templates
+## 5. Report Format (What the Orchestrator Needs)
 
-### INSERT Staging Record
+Since you are a reporter (not a writer), your output is a structured report
+sent via SendMessage to the team lead. The orchestrator uses this to write
+staging records and update program scheduling.
 
-```sql
--- Run via psql
-INSERT INTO manual_funding_opportunities_staging (
-  id,
-  program_id,
-  source_id,
-  title,
-  url,
-  program_urls,
-  content_type,
-  discovery_method,
-  discovered_by,
-  extraction_status,
-  analysis_status,
-  storage_status
-) VALUES (
-  gen_random_uuid(),
-  'PROGRAM_UUID',
-  'SOURCE_UUID',
-  'OPPORTUNITY_TITLE',
-  'PRIMARY_APPLICATION_URL',
-  'PROGRAM_URLS_JSONB'::JSONB,
-  'opportunity',
-  'phase3_crawl',
-  'opportunity-discovery-agent',
-  'pending',
-  'pending',
-  'pending'
-);
+### Per-Program Report Fields (ALL REQUIRED)
+
+```
+PROGRAM: [Program Name]
+  program_id: [UUID]
+  source_id: [UUID]
+  source_name: [Name]
+
+  status: Open / Upcoming / Nothing
+  window_type: dated / rolling / cycle_based
+  open_date: [YYYY-MM-DD or null]
+  close_date: [YYYY-MM-DD or null]
+  application_url: [URL of the actual apply page, if different from program page]
+
+  funding_status: verified_active / presumed_active / limited_funding / oversubscribed / exhausted
+  funding_note: "[max 150 chars — evidence from the page for your funding_status call]"
+
+  has_details: true / false  (does the page have substantive program details or just an announcement?)
+  guidelines_url: [URL of NOFA/RFP/guidelines PDF, if found]
+
+  suggested_next_check: [YYYY-MM-DD]
+  next_check_reason: "[why this date]"
+
+  new_urls_found: [list of any new URLs discovered that should be added to program_urls]
+  flags: [any concerns, unreachable URLs, stale content, etc.]
 ```
 
-**Field notes**:
-- `title`: Use format "[Program Name] - [Year/Round]" if round info available,
-  otherwise just the program name
-- `url`: The most specific application-related URL found (application page > program page)
-- `program_urls`: Copy of `funding_programs.program_urls` at discovery time — carry
-  through pipeline so downstream agents have URL context
-- `content_type`: Always `'opportunity'` for Phase 3 records
-- `discovery_method`: Always `'phase3_crawl'`
-- All status fields start as `'pending'` — Phase 4/5/6 will process them
-- **No ON CONFLICT** — staging is a pure processing inbox. Each check round creates
-  a new record. Smart scheduling prevents duplicate checks for the same window.
+### Suggested Recheck Schedule (for `suggested_next_check`)
 
-### UPDATE Program Scheduling
+| Situation | Suggested Date | Reason |
+|---|---|---|
+| Open, dated (has close date) | close_date | Check for next round after this one closes |
+| Open, rolling | NOW + 90 days | Recheck funding status periodically |
+| Upcoming, details available | open_date - 7 days | Final confirmation before it opens |
+| Upcoming, NO details yet | NOW + 30 days | Monthly check until NOFA/details published |
+| Cycle-based, know typical month | typical_month - 60 days | Check 2 months early for NOFA |
+| Nothing found | NOW + 30 days | Try again next month |
+| All URLs failed | NULL (mark inactive) | Stop checking until manually re-enabled |
 
-```sql
--- Run via psql
-UPDATE funding_programs
-SET last_checked_at = NOW(),
-    next_check_at = 'CALCULATED_DATE'::TIMESTAMPTZ
-WHERE id = 'PROGRAM_UUID';
-```
+**Key principle for upcoming programs:** We want the details as early as possible,
+not just before the window opens. If we discover in January that a program opens
+in August but has no NOFA yet, check monthly until the NOFA appears. Once the NOFA
+is published, stage it immediately — don't wait until August.
 
-Replace `CALCULATED_DATE` per the Decision Tree (Section 4):
-- Row 1: The opportunity's close date
-- Row 2: `NOW() + INTERVAL '180 days'`
-- Row 3: The opportunity's open date minus 30 days
-- Row 4-6: `NOW() + INTERVAL '30 days'`
+### What the Orchestrator Does With Your Report
 
-### UPDATE Program URLs (When New URL Found)
-
-```sql
--- Run via psql
-UPDATE funding_programs
-SET program_urls = program_urls || '[{"url": "NEW_URL", "type": "application", "notes": "Found by Phase 3 crawl"}]'::JSONB
-WHERE id = 'PROGRAM_UUID';
-```
-
-### Mark Program Inactive (All URLs Failed)
-
-```sql
--- Run via psql
-UPDATE funding_programs
-SET status = 'inactive',
-    last_checked_at = NOW(),
-    next_check_at = NULL
-WHERE id = 'PROGRAM_UUID';
-```
+The orchestrator (not you) will:
+1. **Dedup check**: Does a staging record or funding_opportunity already exist for this program_id?
+   - If a rolling opportunity already exists with the same source_hash → skip (just update verified_at)
+   - If dated and the dates are different → new round, create staging record
+2. **INSERT staging record** with your reported fields + the new funding status fields
+3. **UPDATE program scheduling** (last_checked_at, next_check_at)
+4. **Log** to claude_change_log
 
 ---
 
 ## 6. Program Scheduling Updates
 
-EVERY program checked gets scheduling updates, regardless of outcome:
+The orchestrator handles scheduling updates based on your report. Include your
+`suggested_next_check` and `next_check_reason` in every per-program report.
 
-| Outcome | `last_checked_at` | `next_check_at` |
-|---------|-------------------|-----------------|
-| Open, has close date | `NOW()` | `close_date` |
-| Open, perpetual | `NOW()` | `NOW() + 180 days` |
-| Upcoming, with date | `NOW()` | `open_date - 30 days` |
-| Upcoming, no date | `NOW()` | `NOW() + 30 days` |
-| Nothing found | `NOW()` | `NOW() + 30 days` |
-| All URLs failed | `NOW()` | `NULL` (inactive) |
+Reference table for suggested dates:
 
-**Always update `last_checked_at`** — even for skipped programs. This provides
-an audit trail of when each program was last reviewed.
+| Outcome | Suggested `next_check_at` | Reason |
+|---------|---------------------------|--------|
+| Open, dated (has close date) | `close_date` | Check for next round after this one closes |
+| Open, rolling | `NOW() + 90 days` | Periodic funding status recheck |
+| Upcoming, details available | `open_date - 7 days` | Final confirmation before window opens |
+| Upcoming, NO details yet | `NOW() + 30 days` | Monthly check until NOFA/details published |
+| Cycle-based, know typical month | `typical_month - 60 days` | Early check for NOFA publication |
+| Nothing found | `NOW() + 30 days` | Try again next month |
+| All URLs failed | `NULL` (mark inactive) | Stop checking |
+
+**Key principle:** We want opportunity details as early as possible. If we learn
+in January that a program opens in August but has no NOFA yet, suggest monthly
+rechecks (not a single check 7 days before August). Once the NOFA is published,
+the orchestrator stages it immediately.
+
+**For rolling programs:** The orchestrator will check whether a funding_opportunity
+already exists for this program_id before creating a new staging record. If one
+exists with the same source_hash, it just updates `funding_verified_at` without
+re-staging.
 
 ---
 

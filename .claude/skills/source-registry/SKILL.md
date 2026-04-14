@@ -2,28 +2,43 @@
 name: source-registry
 description: >
   Phase 1 of the manual funding pipeline. Discovers funding entities
-  (utilities, state agencies, foundations, counties) via multi-strategy
-  web search, registers them in funding_sources, and discovers their
-  program catalog URLs in source_program_urls. Designed to be run by
-  Agent Team teammates or standalone via the Task tool.
+  (utilities, state agencies, foundations, counties, COGs) via multi-strategy
+  web search and PROPOSES them to the orchestrator for validation and
+  registration. Teammates DO NOT write to the database — the orchestrator
+  is the single writer. Designed to be run by Agent Team teammates.
 ---
 
 # Source Registry — Phase 1
 
 ## 1. Mission
 
-Find and register every funding entity for a given state and funder type.
-A missed source means all its programs and opportunities are invisible to
-our sales team — thoroughness is non-negotiable.
+Find every funding entity for a given state and funder type. A missed source
+means all its programs and opportunities are invisible to our sales team —
+thoroughness is non-negotiable.
 
-**Inputs** (provided by the orchestrator or user):
+**Inputs** (provided by the orchestrator):
 - `state_code` — two-letter abbreviation (e.g., `AZ`, `CA`). NULL for federal/national.
-- `type` — one of: `Utility`, `State`, `Federal`, `Foundation`, `County`, `Municipality`, `Other`
+- `type` — the SINGLE type you are searching for (e.g., `County`). Only propose
+  entities of this type. If you find entities that belong to a different type,
+  note them as "out-of-scope" in your report — do NOT propose them as your type.
+- `batch_id` — for audit logging
 
 **Outputs**:
-- Registered entities in `funding_sources`
-- Program catalog URLs in `source_program_urls`
-- Summary report: X new sources, Y enriched, Z catalog URLs found
+- **Proposed entity list** sent to orchestrator via SendMessage (NOT database writes)
+- Each proposal includes: name, website, type, description, catalog URLs, confidence, name_source
+- Summary report: X entities proposed, Y out-of-scope flagged
+
+## ⚠️ CRITICAL: DO NOT WRITE TO THE DATABASE
+
+You are a **proposer**, not a writer. Your job is to search, verify, and propose.
+The orchestrator validates (dedup, type check, name verification) and performs
+all INSERTs. This ensures zero duplicates and zero bad data in production.
+
+- **DO NOT** run INSERT statements against `funding_sources` or `source_program_urls`
+- **DO NOT** run UPDATE statements on existing rows
+- **DO** use `mcp__postgres__query` for READ-ONLY dedup checks (to avoid proposing
+  entities that already exist)
+- **DO** send your proposals to the team lead via SendMessage
 
 ---
 
@@ -154,11 +169,12 @@ Never stop searching because you hit a "target number."
 
 ---
 
-## 3. Step 2 — Deduplication and Registration
+## 3. Step 2 — Deduplication and Proposal
 
-For each entity from Step 1, check against existing `funding_sources` before writing.
+For each entity from Step 1, check against existing `funding_sources` before proposing.
+This pre-check avoids wasting the orchestrator's time on entities that already exist.
 
-### Dedup Query
+### Pre-Proposal Dedup Query (READ-ONLY)
 
 ```sql
 -- Run via mcp__postgres__query (raw SQL, no bind variables)
@@ -169,7 +185,8 @@ WHERE (
   OR name ILIKE '%APS%'
   OR website ILIKE '%aps.com%'
 )
-AND (state_code = 'AZ' OR state_code IS NULL);
+AND (state_code = 'AZ' OR state_code IS NULL)
+AND name NOT LIKE '[DEPRECATED-%';
 ```
 
 Substitute the actual entity name, abbreviation, and domain for each lookup.
@@ -179,27 +196,71 @@ Use `mcp__postgres__query` for this read (raw SQL strings, not psql bind syntax)
 
 | Scenario | Action |
 |----------|--------|
-| **No match found** | INSERT new source |
-| **Match found, has NULL fields** | UPDATE to enrich (fill NULL columns only) |
+| **No match found** | PROPOSE to orchestrator as new entity |
+| **Match found, has NULL fields** | PROPOSE as enrichment (note which fields to fill) |
 | **Match found, all fields populated** | SKIP — log as "already exists" |
 
-### INSERT Template
+### Proposal Format (sent via SendMessage to team-lead)
 
-```sql
--- Run via: psql "$PROD_CLAUDE_URL" -c "..."
-INSERT INTO funding_sources (name, website, type, sectors, state_code, pipeline, description)
-VALUES (
-  'Arizona Public Service Company',
-  'https://www.aps.com',
-  'Utility',
-  ARRAY['Energy', 'Sustainability']::TEXT[],
-  'AZ',
-  'manual',
-  'Known as APS. Largest electric utility in Arizona. Serves ~1.3M customers in central Arizona.'
-);
+For each proposed entity, include ALL of the following fields:
+
+```
+PROPOSED ENTITY:
+  name: "Arizona Public Service Company"
+  website: "https://www.aps.com"
+  type: Utility
+  state_code: AZ
+  sectors: [Energy, Sustainability]
+  description: "Known as APS. Largest electric utility in Arizona. Serves ~1.3M customers."
+  confidence: HIGH
+  name_source: "from website footer" (or "from About Us page", "from breadcrumb", "from search result only")
+  catalog_urls:
+    - https://www.aps.com/en/Residential/Save-Money-and-Energy/Rebates-and-Incentives
+    - https://www.aps.com/en/Business/Save-Money-and-Energy
+  dedup_check: "No match found in funding_sources for APS / aps.com / AZ"
 ```
 
-Adjust the ARRAY size to match actual sectors — can be 1 to 10+ values.
+**Name source field**: This tells the orchestrator whether to spot-check the name.
+- "from website footer" / "from About Us page" / "from breadcrumb" = verified, no spot-check needed
+- "from search result only" = orchestrator will verify via WebFetch before INSERT
+
+### DO NOT INSERT — the orchestrator handles all writes
+
+## 4. Step 3 — Catalog URL Validation
+
+Before including a catalog URL in your proposal, **verify it actually contains
+funding program content.** Do NOT propose URLs you haven't checked.
+
+### Validation Steps
+
+For each candidate catalog URL:
+1. Fetch the page (use the Content Retrieval Standard from program-discovery SKILL.md
+   Section 0a — WebFetch first, then curl-with-headers, then Playwright if needed)
+2. Check the page content for funding-program indicators:
+   - Look for: "Apply", "Grant Application", "Funding Opportunity", "RFP", "NOFA",
+     "Rebate", "Incentive", "Program Guidelines", specific dollar amounts
+   - Look for links to individual program pages (not just department navigation)
+3. Classify the URL:
+
+| What You See | Action |
+|---|---|
+| Page lists programs with "Apply" links or dollar amounts | **INCLUDE** — this is a real catalog URL |
+| Page is a department homepage with navigation links but no programs | **GO DEEPER** — follow the most promising link one level and check that page instead |
+| Page is a generic info page with no program content | **EXCLUDE** — do not propose this URL |
+| Page returns 404 or redirects to a generic landing page | **EXCLUDE** — dead URL |
+| Page is on a different domain or department than expected | **FLAG** — note the misattribution in your report |
+
+4. Include only validated catalog URLs in your proposal. Note any excluded URLs
+   and why in your report.
+
+### Why This Matters
+
+Bad catalog URLs waste Phase 2 scout time. A scout assigned a navigation hub or
+dead URL will crawl it, find nothing, and have to fall back to web search — losing
+10-20 minutes. Validating upfront takes ~5 seconds per URL and prevents junk data
+in `source_program_urls`.
+
+---
 
 ### UPDATE Template (enrich existing source)
 

@@ -5,7 +5,7 @@ description: >
   Discovers and registers funding entities (utilities, state agencies,
   foundations, counties, tribal authorities) via multi-strategy web search.
   Use as Agent Team teammate or standalone via Task tool for source registration.
-model: opus
+model: sonnet
 skills:
   - source-registry
 ---

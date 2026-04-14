@@ -29,24 +29,47 @@ If unsure about a value, map to the closest taxonomy match. Never fabricate cate
 
 Use this decision tree for ALL URL fetching in both scout and extractor modes.
 
-### HTML Pages (~70% of URLs)
+### HTML Pages — Detection-Based Routing
 
 ```
-1. WebFetch(url)
-   → If content looks complete (has program details, not just nav/headers) → DONE
-2. If WebFetch returns empty/minimal/garbled content (JS-rendered page):
-   → Playwright: mcp__playwright__browser_navigate(url) + browser_snapshot()
-3. If Playwright also fails:
-   → FLAG as "JS-rendered, could not extract" — never silently skip
+1. Try WebFetch(url)
+
+2. Read the response. Route based on what you see:
+
+   a) Content looks complete (body text > 500 chars, has program details)
+      → DONE. Use this content.
+
+   b) HTTP 403, or response contains "Access Denied" / "edgesuite" / "Akamai"
+      → Akamai bot protection. Try:
+        curl -sL -H "User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)
+             AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+             -H "Accept: text/html" -H "Accept-Language: en-US,en" --compressed "URL"
+        If curl also returns 403 → use Playwright:
+          mcp__playwright__browser_navigate(url) + browser_snapshot()
+
+   c) Response is small (< 500 chars body) with <script> tags referencing
+      CMS frameworks ("civicplus", "requirejs", "vision-cms", "granicus")
+      → JS-rendered CMS. Try curl with User-Agent header (same as above).
+        If curl returns same thin content → use Playwright.
+
+   d) Response contains "Just a moment" / "Checking your browser" / "cf-"
+      → Cloudflare challenge. Skip curl, go directly to Playwright.
+
+   e) curl with headers also returns 403 AND Playwright also fails
+      → FLAG as unreachable: "Content retrieval failed after WebFetch +
+        curl + Playwright. Needs manual review." Never silently skip.
 ```
 
-### PDF Documents (~10% of URLs)
+No per-site lookup tables needed. The agent reads the rejection signal and adapts.
 
-**Do NOT use WebFetch for PDFs** — it returns garbled binary.
+### PDF Documents
+
+**Never use WebFetch for PDFs** — it returns garbled binary. Always use curl piped
+to PyMuPDF:
 
 ```bash
-# Pipe directly — zero temp files
-curl -sL "PDF_URL" | python3 -c "
+# Always include User-Agent header — many gov sites block bare curl
+curl -sL -H "User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36" "PDF_URL" | python3 -c "
 import sys, fitz
 doc = fitz.open(stream=sys.stdin.buffer.read(), filetype='pdf')
 for page in doc: print(page.get_text())
@@ -56,29 +79,29 @@ for page in doc: print(page.get_text())
 **Guards**:
 - Check `Content-Length` header first. Skip if > 10MB (flag for manual review)
 - For PDFs > 50 pages, extract first 20 pages only (add `if page.number < 20` guard)
-- If curl gets a 403: retry with `curl -sL -H "User-Agent: Mozilla/5.0" "URL"`
+- If curl gets a 403 even with User-Agent: try downloading to temp file first, then
+  process. If still blocked, use Playwright to navigate to the PDF URL (some sites
+  serve PDFs through their bot-protection layer).
 - If PDF is password-protected or encrypted: flag and skip
+- **CRITICAL**: After curl, verify the content is actually a PDF (check first bytes).
+  If you get HTML instead, the bot protection intercepted you — retry with Playwright.
 
-### Login-Gated Pages (~5%)
+### Login-Gated Pages
 
 Flag as "Requires login, could not crawl" — skip entirely. Do not guess content.
 
 ### Crawling Depth (Scouts)
 
-Each "level" is a separate WebFetch call. Agents must identify links in returned
-content and fetch them individually:
+Each "level" is a separate fetch call (using the routing above). Agents must
+identify links in returned content and fetch them individually:
 - **Level 0**: Fetch the assigned catalog URL
-- **Level 1**: Parse content for program links, WebFetch each one
-- **Level 2**: If a Level 1 page references sub-pages, fetch those too
+- **Level 1**: Parse content for program links, fetch each one
+- **Level 2**: If a Level 1 page references sub-pages with eligibility/amounts, fetch those
 - **MAX 2 levels**. Flag deeper content for manual review.
 
-### Fallback Chain (All Modes)
-
-When the primary method fails, try in order — never silently skip:
-```
-WebFetch → Playwright (headless) → FLAG for manual review
-```
-Always log what failed and why in your report.
+**Note for County/Municipality sources:** Government CMS sites often use navigation
+hubs as catalog landing pages. Real program content is frequently 2 clicks deep.
+Always attempt Level 2 for these source types.
 
 ---
 
@@ -105,6 +128,50 @@ spawns extractors with deduplicated program assignments.
 - Scout mode: list of discovered programs with URLs, types, and confidence levels
 - Extractor mode: programs written to `funding_programs` table with all fields populated
 - Summary report: counts of new, updated, skipped programs and any flags
+
+### Program Granularity Rule
+
+When a single program page lists multiple sub-rebates or sub-grants under one
+umbrella (e.g., a "Home Weatherization" page with 7 different rebate types at
+different dollar amounts), register as **ONE program record**. Capture the
+sub-types in the `description` and `eligible_project_types` array.
+
+Only split into separate records when sub-programs have:
+- Independent application processes (different forms, different portals)
+- Different eligibility requirements (different applicant types)
+- Different funding sources (one is CDBG, another is General Fund)
+
+If they share one application, one eligibility set, and one funding source,
+they are one program with multiple components.
+
+### Cross-Source Attribution Rule
+
+When a catalog page lists a program that is administered by a **different entity**
+than the source being scouted:
+
+1. Check who actually administers the program — look for "administered by",
+   contact info, application portal domain
+2. If administered by the catalog owner → register normally
+3. If administered by a different entity → **DO NOT register** under the
+   catalog owner. Note it in your report: "Cross-listed program found:
+   [program name], actual administrator: [entity name]"
+4. The orchestrator will find that program when the correct source is scouted
+
+**Signs a program belongs to someone else:**
+- Program URL is on a different domain than the source's website
+- Contact email uses a different organization's domain
+- Page text says "administered by [other entity]" or "funded by [other entity]"
+- The page is clearly a referral/directory listing, not a program detail page
+
+### Business Context
+
+Meridian is a GC/ESCO (general contractor / energy services company). Our clients
+are **commercial entities**: municipalities, school districts, hospitals, businesses,
+government agencies. We find funding that lets these clients hire us for
+construction and installation projects. Programs that only serve individual
+homeowners or residents are NOT relevant to our business — they should still be
+discovered (for completeness) but will be filtered out by the 3-gate system in
+the extractor.
 
 ---
 

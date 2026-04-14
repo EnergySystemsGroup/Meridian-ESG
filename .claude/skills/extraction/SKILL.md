@@ -37,24 +37,46 @@ You need all five taxonomy categories memorized:
 
 Use this decision tree for ALL URL fetching.
 
-### HTML Pages (~70% of URLs)
+### HTML Pages — Detection-Based Routing
 
 ```
-1. WebFetch(url)
-   → If content looks complete (has program details, not just nav/headers) → DONE
-2. If WebFetch returns empty/minimal/garbled content (JS-rendered page):
-   → Playwright: mcp__playwright__browser_navigate(url) + browser_snapshot()
-3. If Playwright also fails:
-   → FLAG as "JS-rendered, could not extract" — never silently skip
+1. Try WebFetch(url)
+
+2. Read the response. Route based on what you see:
+
+   a) Content looks complete (body text > 500 chars, has program details)
+      → DONE. Use this content.
+
+   b) HTTP 403, or response contains "Access Denied" / "edgesuite" / "Akamai"
+      → Akamai bot protection. Try:
+        curl -sL -H "User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)
+             AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+             -H "Accept: text/html" -H "Accept-Language: en-US,en" --compressed "URL"
+        If curl also returns 403 → use Playwright:
+          mcp__playwright__browser_navigate(url) + browser_snapshot()
+
+   c) Response is small (< 500 chars body) with <script> tags referencing
+      CMS frameworks ("civicplus", "requirejs", "vision-cms", "granicus")
+      → JS-rendered CMS. Try curl with User-Agent header (same as above).
+        If curl returns same thin content → use Playwright.
+
+   d) Response contains "Just a moment" / "Checking your browser" / "cf-"
+      → Cloudflare challenge. Skip curl, go directly to Playwright.
+
+   e) curl with headers also returns 403 AND Playwright also fails
+      → FLAG as unreachable: "Content retrieval failed after WebFetch +
+        curl + Playwright. Needs manual review." Never silently skip.
 ```
 
-### PDF Documents (~10% of URLs)
+No per-site lookup tables needed. The agent reads the rejection signal and adapts.
 
-**Do NOT use WebFetch for PDFs** — it returns garbled binary.
+### PDF Documents
+
+**Never use WebFetch for PDFs** — it returns garbled binary. Always use curl piped
+to PyMuPDF:
 
 ```bash
-# Pipe directly — zero temp files
-# ALWAYS include User-Agent header (many gov sites block bare curl)
+# Always include User-Agent header — many gov sites block bare curl
 curl -sL -H "User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36" "PDF_URL" | python3 -c "
 import sys, fitz
 doc = fitz.open(stream=sys.stdin.buffer.read(), filetype='pdf')
@@ -63,11 +85,14 @@ for page in doc: print(page.get_text())
 ```
 
 **Guards**:
-- **ALWAYS include the User-Agent header** on every curl request — many government sites (agri.nv.gov, dot.nv.gov, etc.) return bot-check HTML instead of the PDF without it. This is not a retry step; it is the default.
+- **ALWAYS include the User-Agent header** on every curl request — this is the default, not a retry step
 - Check `Content-Length` header first. Skip if > 10MB (flag for manual review)
 - For PDFs > 50 pages, extract first 20 pages only (add `if page.number < 20` guard)
-- If curl still gets a 403 after User-Agent: try downloading to a temp file with `curl -sL -o /tmp/doc.pdf -H "User-Agent: ..." "URL"` then `python3 -c "import fitz; doc = fitz.open('/tmp/doc.pdf'); ..."`. If still blocked, use Playwright as final fallback.
+- If curl gets a 403 even with User-Agent: try downloading to temp file first, then
+  process. If still blocked, use Playwright as final fallback.
 - If PDF is password-protected or encrypted: flag and skip
+- **CRITICAL**: After curl, verify the content is actually a PDF (check first bytes).
+  If you get HTML instead, the bot protection intercepted you — retry with Playwright.
 - **CRITICAL**: After curl, verify the downloaded content is actually a PDF (check `file` output or first bytes). If you get HTML instead of a PDF, the bot-check blocked you — retry with the temp file approach or Playwright.
 
 ### Login-Gated Pages (~5%)
@@ -83,13 +108,11 @@ content and fetch them individually:
 - **Level 2**: If a Level 1 page references sub-pages with eligibility/amounts, fetch those
 - **MAX 2 levels**. Flag deeper content for manual review.
 
-### Fallback Chain (All Modes)
+### Fallback Summary
 
-When the primary method fails, try in order — never silently skip:
-```
-WebFetch → Playwright (headless) → FLAG for manual review
-```
-Always log what failed and why in your report.
+The detection-based routing above IS the fallback chain. The agent reads the
+rejection signal and routes to the right method. Never silently skip a URL —
+always FLAG if all methods fail, and log what you tried in your report.
 
 ---
 
@@ -419,7 +442,10 @@ The complete schema for the `extraction_data` JSONB column:
   "status": "open",
   "isNational": false,
   "disbursementType": "reimbursement",
-  "awardProcess": "competitive"
+  "awardProcess": "competitive",
+  "applicationWindowType": "dated",
+  "fundingStatus": "verified_active",
+  "fundingNote": "Page shows Apply Now with FY2026 dates as of 4/13/2026"
 }
 ```
 
@@ -431,6 +457,9 @@ These must always be populated (never null):
 - `categories`, `tags`
 - `status`, `isNational`, `matchingRequired`
 - `url`
+- `applicationWindowType` — one of: `dated`, `rolling`, `cycle_based`
+- `fundingStatus` — one of: `verified_active`, `presumed_active`, `limited_funding`, `oversubscribed`, `exhausted`
+- `fundingNote` — max 150 chars, evidence for the funding status assessment
 
 ### Optional Fields
 
@@ -439,6 +468,23 @@ These may be null if not found on the page:
 - `openDate`, `closeDate`
 - `eligibleLocations`, `matchingPercentage`
 - `disbursementType`, `awardProcess`
+
+### Application Window Type Guide
+
+- `dated` — program has specific open and close dates (e.g., "Jan 15 - Mar 31, 2026")
+- `rolling` — perpetual, no application window, first-come-first-served or year-round
+- `cycle_based` — has recurring cycles (annual, biennial) but specific dates may not be on this page
+
+### Funding Status Guide
+
+Assess from the page content. This is REQUIRED — do not skip:
+- `verified_active` — explicit "Apply Now" with current dates, live portal
+- `presumed_active` — page looks normal, no red flags (default if unsure)
+- `limited_funding` — mentions specific $ pool with first-come-first-served language
+- `oversubscribed` — waitlist, "limited availability", paused, high demand
+- `exhausted` — definitively "all funds awarded" or "program closed"
+
+`fundingNote` must contain your evidence in ≤150 chars.
 
 The `funding_source` object is always populated (from the source JOIN data at minimum).
 
