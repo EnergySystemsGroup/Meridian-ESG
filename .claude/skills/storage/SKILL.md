@@ -133,6 +133,10 @@ These fields mark the record as coming from the manual pipeline:
 | `api_opportunity_id` | `'manual'` | Literal string, identifies CC pipeline |
 | `program_id` | `staging.program_id` | FK to funding_programs (from Phase 3) |
 | `promotion_status` | `'pending_review'` | Hidden from dashboard until admin promotes |
+| `application_window_type` | From `extraction_data.applicationWindowType` or staging | `dated`, `rolling`, or `cycle_based` |
+| `funding_status` | From `extraction_data.fundingStatus` or staging | `verified_active`, `presumed_active`, `limited_funding`, `oversubscribed`, `exhausted` |
+| `funding_note` | From `extraction_data.fundingNote` or staging | Max 150 chars — evidence for funding status |
+| `funding_verified_at` | `NOW()` | Timestamp of when funding status was assessed |
 
 ---
 
@@ -237,6 +241,7 @@ INSERT INTO funding_opportunities (
   relevance_reasoning, relevance_score, scoring,
   agency_name, funding_source_id,
   api_source_id, api_opportunity_id, program_id, promotion_status,
+  application_window_type, funding_status, funding_note, funding_verified_at,
   created_at, updated_at
 ) VALUES (
   $STOR$<title>$STOR$,
@@ -277,6 +282,10 @@ INSERT INTO funding_opportunities (
   NULL,                    -- api_source_id (not from API)
   'manual',                -- api_opportunity_id
   '<program_id>'::uuid,    -- from staging
+  '<application_window_type>'::application_window_type,  -- dated/rolling/cycle_based
+  '<funding_status>'::funding_status_type,                -- verified_active/presumed_active/limited_funding/oversubscribed/exhausted
+  $STOR$<funding_note>$STOR$,                             -- max 150 chars evidence
+  NOW(),                   -- funding_verified_at
   'pending_review',        -- hidden until admin promotes
   NOW(),
   NOW()

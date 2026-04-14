@@ -62,6 +62,9 @@ each source maps to one department's programs.
 - Search: `"[County Name] county government departments"`, `"[County Name] county grants programs"`
 - Navigate to the county government website → find the department directory
 - Identify departments that administer funding programs (not just regulatory ones)
+- **IMPORTANT: Verify it's a funder, not just a regulator.** Look for "Apply", "Grant
+  Application", "Funding Opportunity", "RFP", "NOFA" on the department's pages. If NONE
+  of these terms appear, the department is likely regulatory-only — do NOT propose it.
 
 **Step 2 — For each taxonomy category, search for the responsible department:**
 - `"[County Name] county sustainability department"` → Sustainability/Environment dept
@@ -77,6 +80,37 @@ each source maps to one department's programs.
 - Website: the department's specific page/section, not the county homepage
 - Sectors: only the taxonomy categories relevant to that department
 - Description: what programs this department administers
+
+### For Councils of Governments (COGs) — Register as type='Other'
+
+**What COGs are:** Regional intergovernmental partnerships of cities, towns, and counties.
+They act as the middleman between federal/state government and small local governments
+that are too small to receive HUD CDBG/HOME funding directly ("non-entitlement communities").
+
+**Why they matter:** In most states, the majority of rural counties and small cities get
+their CDBG/HOME money through a COG, not directly from HUD. The COG decides which projects
+get funded and awards the grants. If you only register county departments, you miss the
+actual decision-maker for rural areas.
+
+**How to find them:**
+- Search: `"[State] council of governments"`, `"[State] regional planning organizations"`
+- Search: `"[State] CDBG non-entitlement" council of governments`
+- Check: National Association of Regional Councils (NARC) member directory
+- Check: HUD's list of state CDBG program contacts → they often list the COGs
+- Each state typically has 3-15 COGs covering different geographic regions
+
+**When searching for County type, ALSO search for COGs in the same state.**
+Propose them as `type='Other'` with a description noting:
+- Which counties/cities they serve
+- What federal pass-through programs they administer (CDBG, HOME, WIOA, etc.)
+- Their official website
+
+**Example COGs (Arizona):**
+- NACOG — Northern Arizona Council of Governments (Apache, Coconino, Navajo, Yavapai)
+- CAG — Central Arizona Governments (Gila, Pinal)
+- SEAGO — Southeastern Arizona Governments Organization (Cochise, Graham, Greenlee, Santa Cruz)
+- WACOG — Western Arizona Council of Governments (La Paz, Mohave, Yuma)
+- MAG — Maricopa Association of Governments (Maricopa County metro area)
 
 **Common department types that run programs:**
 | Department | Typical Programs | Taxonomy Categories |
@@ -219,9 +253,41 @@ Phase 2 (Program Discovery) will determine which have active programs.
 2. ACEEE tracks which utilities run energy efficiency programs and ranks states
 3. Their state scorecards list the major utilities running EE programs
 
+### Aggregator Strengths and Weaknesses by Funder Type
+
+**IMPORTANT:** DSIRE, ACEEE, and EnergySage are built around utility and state-level
+energy policy. They have **thin coverage of county and municipal programs** in most states.
+Do NOT rely on them as primary sources for County or Municipality funder types.
+
+| Funder Type | Best Aggregator Sources (priority order) | Notes |
+|-------------|----------------------------------------|-------|
+| **Utility** | DSIRE (primary), EIA/PUC (validation), ACEEE, EnergySage | Strong coverage — DSIRE is comprehensive for utility incentives |
+| **State** | DSIRE (Implementing Sector=State), state energy office sites | Good coverage for energy/environment programs |
+| **County** | **HUD CDBG/HOME entitlement lists** (hudexchange.info), state housing agency recipient lists, Instrumentl county pages, National Association of Counties | DSIRE is weak for county programs — lead with HUD lists |
+| **Municipality** | **League of Cities/Towns** (state chapter), regional water association directories (AMWUA, etc.), city-wide grants index pages, Instrumentl city pages | DSIRE is weak for municipal programs — lead with association directories |
+| **Foundation** | Candid/GuideStar, GrantWatch, Instrumentl, state community foundation directories | Foundation databases are the strongest aggregators for this type |
+| **Other (COGs)** | HUD state CDBG contacts list, NARC member directory, state COG associations | No single aggregator covers COGs well — use HUD + direct search |
+
+### Key Aggregator Sources for County/Municipality (often missed)
+
+1. **HUD Exchange** (hudexchange.info) — the definitive source for who gets CDBG/HOME
+   money directly from HUD. Search: `"hudexchange" CDBG entitlement communities [State]`
+2. **State Housing Agency** grant recipient lists — most states publish who received
+   CDBG/HOME/ESG/HOPWA allocations. Search: `"[State] department of housing" grant recipients`
+3. **Regional water association directories** — in water-heavy states (AZ, NV, NM, CA, TX),
+   these list city water conservation offices with rebate programs. Example: AMWUA for
+   Arizona yielded 13 water conservation offices in one search.
+4. **League of Cities/Towns state chapters** — most states have one. They often maintain
+   grant/funding resource directories for their member cities.
+5. **Instrumentl** county/city landing pages — better than DSIRE for local government
+   programs. Search: `site:instrumentl.com "[County Name]" grants`
+
 ### How to Use Aggregator Data:
 - Cross-reference: if an entity appears in DSIRE but NOT in your PUC/EIA lists,
   investigate — it might be a co-op, tribal utility, or non-traditional funding source
+- For County/Municipality: **start with HUD entitlement lists and association directories**,
+  then cross-reference with DSIRE/Instrumentl. Do NOT start with DSIRE alone — you'll
+  miss the majority of local government funders.
 - Aggregators are especially valuable for non-utility funder types (foundations, state
   agencies) where there's no equivalent of the EIA database
 

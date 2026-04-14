@@ -20,6 +20,28 @@ don't have APIs — utilities, county governments, state agencies, foundations.
 **Goal**: Find EVERY relevant opportunity with complete specs. Thoroughness is
 non-negotiable — a missed source means missed opportunities for our sales team.
 
+**Business context**: Meridian is a GC/ESCO (general contractor / energy services
+company). Our clients are commercial entities: municipalities, school districts,
+hospitals, businesses, government agencies. We find funding that lets these clients
+hire us for construction and installation projects.
+
+### Model Selection Rule
+
+**All spawned agents MUST use `model: "sonnet"` EXCEPT the analysis-agent.**
+
+| Agent Type | Model | Why |
+|---|---|---|
+| source-registry-agent | **sonnet** | Web search + propose — doesn't need deep reasoning |
+| program-discovery-agent | **sonnet** | URL crawl + extract — pattern matching, not analysis |
+| opportunity-discovery-agent | **sonnet** | Status check + staging insert — straightforward |
+| extraction-agent | **sonnet** | Field mapping from page content — structured work |
+| **analysis-agent** | **opus** | Content enhancement + scoring adjustment needs deep reasoning |
+| storage-agent | **sonnet** | Data sanitization + UPSERT — mechanical |
+
+Include `model: "sonnet"` (or `model: "opus"` for analysis) in every `Agent()` or
+`Task()` call. If omitted, the agent inherits the orchestrator's model (opus),
+which wastes tokens on work that doesn't need it.
+
 **Three-tier data model**: Sources → Programs → Opportunities
 - **Sources** = who funds things (utilities, agencies, foundations) → `funding_sources`
 - **Programs** = what they fund (persistent entities with URLs) → `funding_programs`
@@ -303,9 +325,14 @@ parallel and validate each other's findings — this is how we ensure thoroughne
 > "Am I about to call `TeamCreate`? If not, STOP. I must use TeamCreate."
 > If I'm about to call `Task(subagent_type=...)` without a `team_name`, I am doing it wrong.
 
-### Concrete Tool Call Pattern
+### Concrete Tool Call Pattern — Single-Writer (Orchestrator Writes)
 
-Here is the EXACT sequence of tool calls for spawning a discovery team.
+**CRITICAL: Teammates are PROPOSERS, not writers.** Teammates search the web and
+propose entities via SendMessage to the orchestrator. The orchestrator validates,
+deduplicates, and performs all database writes. This ensures zero bad data enters
+the database.
+
+Here is the EXACT sequence of tool calls for spawning a Phase 1 discovery team.
 **Follow this pattern literally — do not improvise an alternative.**
 
 ```
@@ -316,79 +343,124 @@ TeamCreate(
   description="Phase 1: Discover FL County + State funding sources"
 )
 
-STEP 2: Create shared tasks for the team
+STEP 2: Spawn ALL teammates IN PARALLEL (one message, all Task calls together)
 ─────────────────────────
-TaskCreate(subject="Search via regulatory strategies (2+3)", ...)
-TaskCreate(subject="Search via aggregator strategies (4+6)", ...)
-TaskCreate(subject="Search via direct strategies (1+5)", ...)
-TaskCreate(subject="Cross-check and deduplicate findings", ...)
-
-STEP 3: Spawn ALL teammates IN PARALLEL (one message, all Task calls together)
-─────────────────────────
+// IMPORTANT: model: "sonnet" for ALL Phase 1 teammates (not opus)
 // County pair:
 Task(
   subagent_type="source-registry-agent",
+  model="sonnet",
   team_name="source-discovery-FL",
   name="county-direct",
   prompt="You are the COUNTY-DIRECT teammate. Execute strategies 1+5+7.
-          State: FL, Funder type: County.
+          State: FL
+
+          ## SCOPE
+          You are searching for type='County' sources ONLY.
+          If you find an entity that should be a different type (Utility, Municipality,
+          State, etc.), DO NOT propose it. Note it in your report as 'out-of-scope
+          entity found: [name], suggested type: [X]' and the orchestrator will decide.
+          Also search for regional Councils of Governments (COGs) that administer
+          CDBG/HOME on behalf of small counties — propose these as type='Other'.
+
           Read SEARCH-REFERENCE.md for detailed instructions.
-          DB writes: source .env.local && psql \"$DEV_CLAUDE_URL\"
-          When done, broadcast your entity list to the team.
+
+          ## CRITICAL: DO NOT WRITE TO THE DATABASE
+          You are a PROPOSER, not a writer. Search, verify, and propose entities.
+          Send your proposed entity list to team-lead via SendMessage.
+          The orchestrator will validate and INSERT.
+
+          When done, broadcast your entity list to the team for cross-checking.
           Cross-check with county-aggregator's findings."
 )
 
 Task(
   subagent_type="source-registry-agent",
+  model="sonnet",
   team_name="source-discovery-FL",
   name="county-aggregator",
   prompt="You are the COUNTY-AGGREGATOR teammate. Execute strategy 4.
-          State: FL, Funder type: County.
-          Read SEARCH-REFERENCE.md for detailed instructions.
-          DB writes: source .env.local && psql \"$DEV_CLAUDE_URL\"
-          When done, broadcast your entity list to the team.
+          State: FL
+
+          ## SCOPE
+          You are searching for type='County' sources ONLY.
+          [same scope block as above]
+
+          ## CRITICAL: DO NOT WRITE TO THE DATABASE
+          [same no-write block as above]
+
           Cross-check with county-direct's findings."
 )
 
-// State pair:
+// State pair (same pattern with type='State' in SCOPE block):
 Task(
   subagent_type="source-registry-agent",
+  model="sonnet",
   team_name="source-discovery-FL",
   name="state-direct",
-  prompt="You are the STATE-DIRECT teammate. Execute strategies 5+7.
-          State: FL, Funder type: State.
-          Read SEARCH-REFERENCE.md for detailed instructions.
-          DB writes: source .env.local && psql \"$DEV_CLAUDE_URL\"
-          When done, broadcast your entity list to the team.
-          Cross-check with state-aggregator's findings."
+  prompt="... [same pattern, SCOPE says type='State' ONLY] ..."
 )
 
 Task(
   subagent_type="source-registry-agent",
+  model="sonnet",
   team_name="source-discovery-FL",
   name="state-aggregator",
-  prompt="You are the STATE-AGGREGATOR teammate. Execute strategy 4.
-          State: FL, Funder type: State.
-          Read SEARCH-REFERENCE.md for detailed instructions.
-          DB writes: source .env.local && psql \"$DEV_CLAUDE_URL\"
-          When done, broadcast your entity list to the team.
-          Cross-check with state-direct's findings."
+  prompt="... [same pattern, SCOPE says type='State' ONLY] ..."
 )
 
-STEP 4: Wait for teammates to complete and cross-check
+STEP 3: Wait for teammates to search and cross-check
 ─────────────────────────
 Teammates will:
-  a) Execute their assigned strategies
-  b) Broadcast their entity list to the team via SendMessage
-  c) Cross-check other teammates' lists
-  d) Converge on a master deduplicated list
+  a) Execute their assigned search strategies (the slow part — 10-15 min)
+  b) Broadcast their proposed entity list to the team via SendMessage
+  c) Cross-check other teammates' proposals (flag overlaps, stale entities, type issues)
+  d) Send FINAL PROPOSED LIST to team-lead with confidence levels
 
-STEP 5: Collect results and clean up
+Each proposed entity includes:
+  - name (official name from the entity's own website)
+  - website URL
+  - type
+  - description
+  - proposed catalog URLs (for source_program_urls)
+  - confidence (HIGH/MEDIUM/LOW)
+  - name_source ("from footer", "from About Us page", "from breadcrumb", "from search result only")
+
+STEP 4: Orchestrator validates and writes (the fast part — 3-5 min)
 ─────────────────────────
-- Orchestrator collects the final validated entity list
-- Sends shutdown_request to all teammates
+For each proposed entity, the orchestrator:
+
+  a) DEDUP CHECK — by URL AND normalized name:
+     SELECT id, name, website FROM funding_sources
+     WHERE state_code = $1
+       AND (website ILIKE '%' || $domain || '%'
+            OR LOWER(name) ILIKE '%' || $normalized_name || '%')
+       AND name NOT LIKE '[DEPRECATED-%';
+     Also check source_program_urls for URL matches.
+
+  b) TYPE VALIDATION — does the proposed type match the run scope? If a teammate
+     proposed type='Utility' in a County-scoped run, the orchestrator flags it as
+     out-of-scope (log it, don't insert).
+
+  c) NAME SPOT-CHECK — for any entity where name_source is "from search result only"
+     (not verified against official website), do a quick WebFetch of the website URL
+     and check page title / breadcrumb / footer for the official name. Correct if needed.
+
+  d) INSERT — if passes all checks:
+     INSERT INTO funding_sources (name, website, type, sectors, state_code, pipeline, description)
+     VALUES (..., 'manual', ...);
+     INSERT INTO source_program_urls (source_id, url) VALUES (...);
+
+  e) LOG — write to claude_change_log:
+     INSERT INTO claude_change_log (table_name, operation, pipeline_phase, batch_id, record_count, change_reason)
+     VALUES ('funding_sources', 'INSERT', 'source_registry', $batch_id, 1, 'Registered: [name]');
+
+STEP 5: Clean up
+─────────────────────────
+- Send shutdown_request to all teammates
 - TeamDelete to clean up
-- Proceeds to next phase or reports summary
+- Report: "Phase 1 complete: X sources registered, Y catalog URLs, Z out-of-scope flagged"
+- Proceed to Phase 2
 ```
 
 ### Team Sizing Per Funder Type
@@ -470,10 +542,12 @@ county-aggregator's findings when county-direct had already shut down).
 ### Phase 1 — Source Registry Teams
 
 Follow the Concrete Tool Call Pattern above. Key points:
-- Each teammate gets `subagent_type="source-registry-agent"` (loads the source-registry skill)
+- Each teammate gets `subagent_type="source-registry-agent"`, `model="sonnet"`
 - Include strategy group name AND numbers in the prompt
-- Include state_code, type, database env var, and batch_id in the prompt
-- Teammates write to DB independently, then cross-check for completeness
+- Include state_code and the SCOPE block (what type IS in scope) in every prompt
+- **Teammates DO NOT write to DB** — they propose entities via SendMessage
+- **Orchestrator validates and writes** — dedup by URL+name, type validation, name spot-check
+- Include `## CRITICAL: DO NOT WRITE TO THE DATABASE` block in every teammate prompt
 
 ### Phase 2 — Program Discovery Teams (Two-Round Pattern)
 
@@ -690,17 +764,17 @@ Task(subagent_type="program-discovery-agent",
 ```
 Extractors are deterministic — they don't need cross-checking, so standalone mode is fine.
 
-### Phase 3 — Opportunity Discovery Teams
+### Phase 3 — Opportunity Discovery Teams (Single-Writer Pattern)
+
+**Checkers are REPORTERS, not writers.** They crawl URLs, assess status and funding,
+and send structured reports to the orchestrator. The orchestrator validates, deduplicates,
+and performs all database writes.
 
 Team name: `opportunity-check-[SCOPE]` (e.g., `opportunity-check-AZ-utility`)
 
 ```
-STEP 0: Pre-flight (orchestrator runs directly — NOT delegated to teammates)
+STEP 0: Pre-flight (orchestrator runs directly)
 ─────────────────────────
-// NOTE: Auto-close is handled by pg_cron daily job (update_opportunity_statuses())
-// running at 00:05 UTC. No manual auto-close needed here.
-// The view also has a calculated_status column for real-time display.
-
 // Smart scheduling query — get eligible programs
 mcp__postgres__query:
 SELECT fp.id, fp.name, fp.description, fp.program_urls,
@@ -722,68 +796,87 @@ WHERE fp.status IN ('active', 'unknown')
   )
 ORDER BY fp.source_id, fp.name;
 
-// Report: "Pre-flight: auto-closed X opportunities. Y programs eligible for checking."
-// If zero eligible, report and stop.
+// Report count and stop if zero eligible.
 
-STEP 1: Create team
+STEP 1: Create team + spawn checkers (model: "sonnet")
 ─────────────────────────
-TeamCreate(
-  team_name="opportunity-check-AZ-utility",
-  description="Phase 3: Check AZ utility programs for open/upcoming opportunities"
-)
+TeamCreate(team_name="opportunity-check-AZ-utility", ...)
 
-STEP 2: Spawn opportunity-discovery-agent teammates
-─────────────────────────
-// Group programs by source (~10-15 programs per teammate)
-// Each teammate gets all programs from one or more sources
-
+// Group programs by source (~10-15 per checker)
 Task(
   subagent_type="opportunity-discovery-agent",
+  model="sonnet",
   team_name="opportunity-check-AZ-utility",
   name="checker-aps",
-  prompt="You are an opportunity discovery teammate.
-          Read your skill file: .claude/skills/opportunity-discovery/SKILL.md
+  prompt="You are an opportunity discovery REPORTER (not a writer).
+          Read: .claude/skills/opportunity-discovery/SKILL.md
 
-          Your assigned programs (APS — Arizona Public Service):
-          1. Program Name (id: UUID, urls: [...])
-          2. Program Name (id: UUID, urls: [...])
-          ... (all APS programs from the query)
+          ## CRITICAL: DO NOT WRITE TO THE DATABASE
+          Report your findings via SendMessage. The orchestrator writes.
 
-          For each program:
-          - Crawl program_urls per Content Retrieval Standard
-          - Follow application links 1-2 levels deep
-          - Apply Decision Tree (Skill Section 4)
-          - INSERT staging records for Open/Upcoming findings
-          - UPDATE last_checked_at and next_check_at on each program
+          Your assigned programs: [list with IDs, URLs]
 
-          Database writes: psql \"$DEV_CLAUDE_URL\" -c \"...\"
-          Report results when done."
+          For each program, report ALL of these fields:
+            status, window_type, open_date, close_date, application_url,
+            funding_status, funding_note, has_details, guidelines_url,
+            suggested_next_check, next_check_reason, new_urls_found, flags
+
+          Send your complete report to team-lead when done."
 )
 
-Task(
-  subagent_type="opportunity-discovery-agent",
-  team_name="opportunity-check-AZ-utility",
-  name="checker-tep",
-  prompt="... (same pattern, TEP programs)"
-)
-
-// = 1 teammate per source (or per ~10-15 programs if source is very large)
-
-STEP 3: Collect results
+STEP 2: Collect checker reports
 ─────────────────────────
-Teammates will:
+Checkers will:
   a) Crawl each program's URLs
-  b) Determine Open/Upcoming/Nothing status
-  c) INSERT staging records for Open/Upcoming findings
-  d) UPDATE program scheduling (last_checked_at, next_check_at)
-  e) Report results to team lead
+  b) Assess application status (Open / Upcoming / Nothing)
+  c) Assess funding status (verified_active / presumed_active / limited_funding /
+     oversubscribed / exhausted)
+  d) Assess window type (dated / rolling / cycle_based)
+  e) Report ALL findings to team lead via SendMessage (NO DB writes)
+
+STEP 3: Orchestrator validates and writes (the critical step)
+─────────────────────────
+For each program in the checker reports, the orchestrator applies this logic:
+
+  === RULE: Open + exhausted should NEVER coexist on a stored opportunity ===
+
+  IF checker reports funding_status=exhausted:
+    → Check: does an Open opportunity exist for this program_id?
+    → IF YES: UPDATE it to status='Closed', funding_status='exhausted',
+      funding_note=[evidence], funding_verified_at=NOW()
+    → IF NO: do nothing (no staging record — money is gone)
+    → Set next_check_at = NOW() + 30 days (short cycle to catch refunding)
+    → Log: "Closed [title] due to funding exhaustion"
+    → Do NOT compare hashes — the page changed (exhaustion language appeared),
+      but we don't want to re-stage it, we want to close it.
+
+  IF checker reports status=Open AND funding_status != exhausted:
+    → Check: does an Open opportunity already exist for this program_id?
+    → IF YES AND window_type=rolling: compare source_hash.
+      - Hash UNCHANGED: just UPDATE funding_verified_at=NOW() and
+        funding_status=[checker's assessment]. No new staging record.
+      - Hash CHANGED: content was updated (new amounts, new eligibility, etc.)
+        — create a new staging record to re-extract the updated content.
+    → IF YES AND window_type=dated with different dates: new round — create staging record
+    → IF NO existing opportunity: create new staging record with all fields
+    → Set next_check_at per the scheduling table in opportunity-discovery SKILL.md
+
+  IF checker reports status=Upcoming:
+    → IF has_details=true: create staging record (capture the details early)
+    → IF has_details=false: do NOT create staging record, just set
+      next_check_at = NOW() + 30 days (check monthly until details appear)
+
+  IF checker reports status=Nothing:
+    → Do NOT create staging record
+    → Set next_check_at per checker's suggestion
+
+  For ALL programs: UPDATE funding_programs.last_checked_at = NOW()
+  For ALL programs: UPDATE funding_programs.next_check_at = [from report]
 
 STEP 4: Clean up and chain
 ─────────────────────────
-- Collect all teammate reports
-- Send shutdown_request to all teammates
-- TeamDelete to clean up
-- Report: "Phase 3 complete: X open, Y upcoming, Z skipped across N programs"
+- Shutdown all checkers, TeamDelete
+- Report: "Phase 3 complete: X staged, Y closed-exhausted, Z unchanged, W nothing-found"
 - If auto-chaining to Phase 4: check staging counts and proceed
 ```
 
