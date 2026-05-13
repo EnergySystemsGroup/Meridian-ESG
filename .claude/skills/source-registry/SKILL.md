@@ -42,6 +42,42 @@ all INSERTs. This ensures zero duplicates and zero bad data in production.
 
 ---
 
+## ⚠️ CRITICAL: UUID Copy-Fidelity Rule
+
+When echoing UUIDs (source IDs, program IDs, batch IDs) into your proposals,
+SendMessage payloads, or DB lookups, you MUST copy them VERBATIM from your
+input. **NEVER retype, abbreviate, reconstruct, or echo a UUID from memory.**
+
+**Why this rule exists**: LLMs reliably hallucinate UUIDs — typically keeping
+the first 8 characters (the distinctive "fingerprint") but inventing the tail.
+Example observed in production:
+- Real: `50deced6-8b10-49ae-b8f8-de87faf29224`
+- Hallucinated: `50deced6-4b8f-4c3d-9b8a-8d6f89ab4df1`
+
+This has caused silent data loss in prior runs. The orchestrator now validates
+every UUID you emit, but every hallucination costs a recovery cycle and may
+result in your finding being skipped if recovery fails.
+
+**Rules**:
+
+1. **Copy, don't transcribe.** When the UUID is in your input prompt or in a
+   file you read, treat it as an opaque token. Copy-paste the exact string
+   into your output — do NOT retype character by character.
+2. **Never invent placeholder UUIDs.** Strings like `calfire-source-id`,
+   `csfa-source-id`, or `tbd-uuid` are INVALID. If you don't have a UUID for
+   a field, output `null` and note why in your report. The orchestrator can
+   resolve by name; it cannot resolve a fabricated placeholder.
+3. **Need a UUID you weren't given?** Query the DB:
+   ```sql
+   SELECT id FROM funding_sources WHERE name = 'exact name here';
+   ```
+   Use the returned value verbatim in your output.
+4. **SendMessage payloads follow the same rule.** Every UUID in a message
+   body must have been copied from a trusted source (input prompt, DB query
+   result, or prior tool output), not regenerated from memory.
+
+---
+
 ## 2. Step 1 — Multi-Strategy Web Search
 
 Run multiple complementary search strategies. When running as an Agent Team
@@ -172,33 +208,105 @@ Never stop searching because you hit a "target number."
 ## 3. Step 2 — Deduplication and Proposal
 
 For each entity from Step 1, check against existing `funding_sources` before proposing.
-This pre-check avoids wasting the orchestrator's time on entities that already exist.
+This pre-check avoids wasting the orchestrator's time on entities that already exist
+AND prevents creating new variants of agencies that are already in the DB under slightly
+different names.
 
-### Pre-Proposal Dedup Query (READ-ONLY)
+### Why This Matters
+
+The DB has historical duplicates from earlier API ingests where naming wasn't
+normalized — e.g., CalRecycle exists as 4 rows: `California Department of Resources
+Recycling and Recovery`, `California Department of Resources Recycling and Recovery
+(CalRecycle)`, `Department of Resources Recycling and Recovery`, `Department of
+Resources Recycling and Recovery (CalRecycle)`. Naive exact-name dedup misses these.
+Your job is to use the **strict fuzzy match below** so we don't add a 5th variant.
+
+### Pre-Proposal Dedup Query (READ-ONLY) — REQUIRED Pattern
+
+Run this normalized-name match FIRST. It strips parentheticals and non-alphanumeric
+characters so common variants collapse to the same canonical string.
 
 ```sql
+-- Primary check: normalized name match (catches parenthetical and punctuation variants)
 -- Run via mcp__postgres__query (raw SQL, no bind variables)
 SELECT id, name, website, type, state_code, sectors, pipeline
 FROM funding_sources
+WHERE LOWER(REGEXP_REPLACE(
+        REGEXP_REPLACE(name, '\s*\([^)]*\)', '', 'g'),   -- strip "(CalRecycle)" etc.
+        '[^a-z0-9]', '', 'g'                              -- strip punctuation/whitespace
+      ))
+    = LOWER(REGEXP_REPLACE(
+        REGEXP_REPLACE('California Department of Resources Recycling and Recovery', '\s*\([^)]*\)', '', 'g'),
+        '[^a-z0-9]', '', 'g'
+      ))
+  AND type = 'State'
+  AND (state_code = 'CA' OR state_code IS NULL)
+  AND name NOT LIKE '[DEPRECATED-%';
+```
+
+Substitute the actual entity name and `type`/`state_code` per lookup. This catches:
+- `Foo Bar Agency` ↔ `Foo Bar Agency (FBA)`
+- `Department of Foo` ↔ `Department  of  Foo` (whitespace variation)
+- `Smith-Jones LLC` ↔ `Smith Jones LLC` (punctuation variation)
+
+### Secondary Checks (Run if Primary Returns No Match)
+
+If the normalized match returns zero rows, also try these BEFORE proposing as new:
+
+```sql
+-- Check 2: website domain match (most reliable signal that two rows are the same entity)
+SELECT id, name, website FROM funding_sources
+WHERE website ILIKE '%calrecycle.ca.gov%'   -- substitute actual domain
+  AND type = 'State'
+  AND name NOT LIKE '[DEPRECATED-%';
+
+-- Check 3: substring match (catches "California" prefix variants like CDFW)
+-- "California Department of Fish and Wildlife" vs "Department of Fish and Wildlife"
+SELECT id, name FROM funding_sources
 WHERE (
-  name ILIKE '%Arizona Public Service%'
-  OR name ILIKE '%APS%'
-  OR website ILIKE '%aps.com%'
+  name ILIKE '%Department of Fish and Wildlife%'  -- core distinctive phrase
+  OR name ILIKE '%CDFW%'                          -- known abbreviation
 )
-AND (state_code = 'AZ' OR state_code IS NULL)
+AND type = 'State'
+AND (state_code = 'CA' OR state_code IS NULL)
 AND name NOT LIKE '[DEPRECATED-%';
 ```
 
-Substitute the actual entity name, abbreviation, and domain for each lookup.
-Use `mcp__postgres__query` for this read (raw SQL strings, not psql bind syntax).
+Use the **most distinctive phrase** in your substring search — the part of the name
+that uniquely identifies this agency. Strip generic prefixes like "California" or
+"Department of" from your search pattern; they appear in dozens of agencies.
 
 ### Decision Logic
 
 | Scenario | Action |
 |----------|--------|
-| **No match found** | PROPOSE to orchestrator as new entity |
+| **No match found AND ≥1 validated catalog URL** | PROPOSE to orchestrator as new entity |
+| **No match found AND zero validated catalog URLs** | **SKIP — log as "out-of-scope: no funding activity found"** (see § 4 hard gate) |
 | **Match found, has NULL fields** | PROPOSE as enrichment (note which fields to fill) |
 | **Match found, all fields populated** | SKIP — log as "already exists" |
+
+### Funding-Evidence Hard Gate (REQUIRED before proposing a NEW entity)
+
+An entity is only a funding "source" if it actually administers grants, rebates,
+incentives, loans, or other funding programs. Regulatory bodies, permitting
+agencies, policy commissions, enforcement agencies, training boards, and cultural
+commissions are NOT sources even when they appear on aggregator lists or in agency
+directories.
+
+**Rule**: Before proposing a NEW entity, you MUST have located at least ONE
+**validated catalog URL** (a page on the agency's own domain that lists
+funding programs, grants, RFPs, NOFAs, rebates, or incentives — see § 4 for the
+validation procedure). The homepage, About page, mission statement, or contact
+page do NOT count.
+
+If you cannot find such a URL after reasonable search:
+- Do NOT propose the entity
+- Log it in your report as: `OUT-OF-SCOPE: <name> — no funding activity found at <domain>`
+- Note the entity type if relevant (e.g., "regulatory commission", "permitting body")
+
+This gate applies to NEW entities only. Enrichments to existing sources (rows
+already in `funding_sources`) do not require fresh catalog URL discovery —
+existing sources keep their state regardless of whether you find new URLs.
 
 ### Proposal Format (sent via SendMessage to team-lead)
 
@@ -230,6 +338,13 @@ PROPOSED ENTITY:
 
 Before including a catalog URL in your proposal, **verify it actually contains
 funding program content.** Do NOT propose URLs you haven't checked.
+
+**This step is the funding-evidence hard gate from § 3.** If zero catalog URLs
+survive validation for a NEW entity, that entity is NOT a source and MUST NOT
+be proposed. Log it as out-of-scope and move on. Common offenders that fail this
+gate: regulatory bodies, permitting agencies, policy commissions, enforcement
+agencies, training boards, cultural commissions — they have websites but no
+grants/funding pages.
 
 ### Validation Steps
 

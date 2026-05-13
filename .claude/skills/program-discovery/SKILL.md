@@ -105,6 +105,56 @@ Always attempt Level 2 for these source types.
 
 ---
 
+## 0b. UUID Copy-Fidelity Rule (IRON CLAD)
+
+When echoing UUIDs (`source_id`, `program_id`, batch IDs, staging IDs) into
+scout output files, extractor SQL, SendMessage payloads, or DB queries, you
+MUST copy them VERBATIM from your input. **NEVER retype, abbreviate,
+reconstruct, or echo a UUID from memory.**
+
+**Why this rule exists**: LLMs reliably hallucinate UUIDs — typically
+keeping the first 8 characters (the distinctive "fingerprint") but inventing
+the tail. Example observed in production:
+- Real: `50deced6-8b10-49ae-b8f8-de87faf29224`
+- Hallucinated: `50deced6-4b8f-4c3d-9b8a-8d6f89ab4df1`
+
+This has caused data loss in prior runs (5 programs lost in Phase 2 Scout 0).
+The orchestrator now validates every UUID you emit, but every hallucination
+costs a recovery cycle and may result in your record being skipped if recovery
+fails.
+
+**Rules**:
+
+1. **Copy, don't transcribe.** When the UUID is in your input JSON or prompt,
+   treat it as an opaque token. Copy-paste the exact string into your output
+   — do NOT retype it character by character from memory. Use tool output
+   when emitting UUIDs into files:
+   ```bash
+   # Good: pipe UUID from input file directly
+   jq -c 'map({source_id, program_name, ...})' /tmp/input.json > /tmp/output.json
+   ```
+2. **Never invent placeholder UUIDs.** Strings like `calfire-source-id`,
+   `sjvapcd-source-id`, or `tbd-uuid` are INVALID and will be rejected by
+   the orchestrator. If you lack a UUID for a field, emit `null` and note
+   why. The orchestrator can resolve by name; it cannot resolve a fabricated
+   placeholder.
+3. **Need a UUID you weren't given?** Query the DB:
+   ```sql
+   SELECT id FROM funding_sources WHERE name = 'exact name here';
+   SELECT source_id FROM funding_programs WHERE id = '<known-program-uuid>';
+   ```
+   Use the returned value verbatim.
+4. **Scout output files**: when writing `scout-N-results.json`, every
+   `source_id` must match the exact string from `sources.json`. Extractors
+   depend on these IDs being correct — a mangled `source_id` means a foreign-
+   key violation and a lost program.
+5. **Extractor SQL**: in your INSERT/UPDATE statements, quote UUIDs from
+   trusted sources only (input prompt, DB query result). If you catch
+   yourself typing 36 hex characters by hand, stop — you are about to
+   hallucinate. Re-read the input and copy-paste.
+
+---
+
 ## 1. Mission
 
 Discover every funding program offered by registered sources. A missed program
@@ -217,6 +267,18 @@ of programs found.
 
 6. **Note PDF URLs** with `type: "pdf"` label — extractors handle PDFs later
 7. **Skip login-gated pages** — flag them instead: "Requires login, could not crawl"
+8. **Capture stale catalog URLs with replacements**: When an assigned catalog URL
+   returns 404, has moved, or points to a dead domain, AND you discover the
+   correct replacement via WebSearch or WebFetch redirect, record both URLs in
+   your `stale_urls` output (see Section 5). Do NOT write to `source_program_urls`
+   yourself — the orchestrator validates and updates. Examples of what to capture:
+   - Domain migration: `co.shasta.ca.us/air-quality` → `shastacounty.gov/air-quality`
+   - CivicPlus renumbering: `/grants/` (404) → `/1737/` (active)
+   - Slug change: `/programs-resources/` → `/community/grants.php`
+   - Dead domain: `tehamacountyair.com` → `tehcoapcd.net`
+   Include a `confidence` rating (`high` if you verified the replacement is a real
+   catalog page for the same source; `medium` if it's your best guess). If you
+   cannot find a replacement, record the stale URL with `replacement_url: null`.
 
 ### Searcher Variant (Supplementary Web Search)
 
@@ -268,6 +330,14 @@ After all scouts report, the team lead compares program lists. Scouts should fla
 > **any tier** (hot, strong, mild, OR weak). This confirms the program funds a
 > recognizable project. If you cannot map the program to ANY project type in the
 > taxonomy → **DO NOT INSERT**.
+>
+> **Residential housing exclusion**: If a program funds residential housing
+> construction — including affordable multifamily (HCD MHP, Homekey, LHTF,
+> PLHA, CalHFA Mixed-Income, etc.) — filter it out at Gate 3 even if the client
+> (city, PHA, county) is a Meridian client type. Residential is intentionally
+> excluded from the taxonomy because the construction scope is too small for
+> Meridian's book of business. Do NOT map these to `Student Housing` as a
+> workaround — that's dorms for higher ed, not residential housing.
 >
 > All three gates must pass. Log filtered programs with which gate(s) failed.
 
@@ -487,11 +557,39 @@ Programs:
    Type: Grant | Description: Brief summary
 ...
 
+Stale URLs:
+- stale_url: https://tehamacountyair.com/grants/
+  replacement_url: https://tehcoapcd.net/grants/
+  source_id: <uuid>
+  confidence: high
+  reason: domain dead; verified replacement via WebSearch + fetched
+- stale_url: https://old.example.ca.gov/grants/
+  replacement_url: null
+  source_id: <uuid>
+  confidence: n/a
+  reason: 404; could not find replacement
+
 Flags:
 - [any login-gated pages]
-- [any 404 or unreachable URLs]
 - [any low-confidence finds]
 ```
+
+**Stale URL schema** (when writing JSON output `scout-N-results.json`):
+```json
+"stale_urls": [
+  {
+    "stale_url": "<url that was 404/dead/moved>",
+    "replacement_url": "<verified working URL, or null>",
+    "source_id": "<uuid, copied verbatim from input>",
+    "confidence": "high | medium | low | n/a",
+    "reason": "brief explanation"
+  }
+]
+```
+
+Include this `stale_urls` array even if empty. The orchestrator consumes it
+during Phase 2 Round 1 post-processing to UPDATE `source_program_urls` entries
+(see pipeline-orchestrator skill § 6, Phase 2 validation + URL repair step).
 
 ### Extractor Report Format
 

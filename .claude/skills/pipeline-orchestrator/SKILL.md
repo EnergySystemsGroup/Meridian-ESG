@@ -681,10 +681,75 @@ Extractors write source_id as the FK on `funding_programs`.
 
 After all scout batches complete:
 1. Merge program lists from all batches
-2. Dedup by URL (exact match) and by name+source (fuzzy match)
-3. Count total unique programs
-4. Plan extractor assignments: ~10 programs per extractor
-5. Report to user: "Round 1 complete: X programs found across Y sources. Starting extraction."
+2. **Apply stale URL repairs to `source_program_urls`** (see below)
+3. Dedup programs by URL (exact match) and by name+source (fuzzy match)
+4. Count total unique programs
+5. Plan extractor assignments: ~10 programs per extractor
+6. Report to user: "Round 1 complete: X programs found across Y sources. Starting extraction. Stale URLs repaired: N."
+
+##### Stale URL Repair (Step 2)
+
+Each scout emits a `stale_urls` array in its output JSON (see program-discovery
+skill § 5 for the schema). Collect these across all scouts and apply repairs
+to `source_program_urls`:
+
+**Step A — Collect and dedup stale_urls reports**:
+```python
+import json
+stale_reports = []
+for n in range(NUM_SCOUTS):
+    d = json.load(open(f'/tmp/meridian-phase2/scout-{n}-results.json'))
+    stale_reports.extend(d.get('stale_urls', []))
+
+# Dedup by stale_url (multiple scouts may report the same stale URL)
+seen = {}
+for r in stale_reports:
+    key = r['stale_url']
+    if key not in seen or r.get('confidence') == 'high':
+        seen[key] = r  # prefer high-confidence over lower
+unique_reports = list(seen.values())
+```
+
+**Step B — Apply UUID validation** (per § 7.5). Every `source_id` in a stale
+report must validate against `funding_sources` or be dropped.
+
+**Step C — Validate the replacement URL** before applying:
+For each report with a `replacement_url`:
+1. Confirm the replacement URL is reachable (WebFetch or curl). If not, skip
+   the repair — don't overwrite a stale URL with a broken one.
+2. Confirm the replacement page is a catalog page for the SAME source (spot
+   check content mentions the source name or matching grant topics). This
+   prevents cross-source URL contamination.
+
+**Step D — Apply the UPDATE**:
+```sql
+UPDATE source_program_urls
+SET url = '<replacement_url>',
+    last_crawled_at = NOW()
+WHERE source_id = '<validated-source-uuid>'
+  AND url = '<stale_url>';
+```
+
+**Step E — Handle no-replacement cases** (`replacement_url IS NULL`):
+When a scout reports a stale URL but could not find a replacement, flag
+it for review rather than updating. Options:
+- Leave the row in place (next scout run may find a replacement)
+- If the source has OTHER catalog URLs that are working, the next scout
+  run will still function — the stale row just wastes one WebFetch per run
+- Log the flag in `claude_change_log` so a human can review and manually remove
+
+**Step F — Log to audit table**:
+```sql
+INSERT INTO claude_change_log
+  (table_name, operation, pipeline_phase, batch_id, record_count, change_reason)
+VALUES
+  ('source_program_urls', 'UPDATE', 'stale_url_repair', '<batch_id>', <N>,
+   'Repaired N stale catalog URLs based on scout discoveries');
+```
+
+**Step G — Report to user**:
+Include in the Round 1 summary: `Stale URLs repaired: N (M unrepairable — flagged).`
+For each repair, show before → after in the detailed report.
 
 #### Round 2 — Extractor Team (Extract + Store)
 
@@ -1042,6 +1107,113 @@ WHERE analysis_status = 'complete' AND storage_status = 'pending';
   After each agent completes, re-check count. If more pending, spawn another.
   Report: "Stored X records (Y new, Z updated). Coverage areas linked: N."
 - If count == 0: skip, report "No pending storage records"
+
+---
+
+## 7.5. Agent Output UUID Validation (REQUIRED)
+
+Every UUID that comes back from an agent — in a report, a JSON file, or a
+SendMessage payload — **MUST be validated against the database before it
+becomes part of any INSERT/UPDATE**. This is non-negotiable and applies to
+every phase that writes results from agent output (Phase 1 Source Registry,
+Phase 2 Round 1 scouts → Round 2 extractors, Phase 3 opportunity checkers).
+
+### Known Failure Mode
+
+LLM agents (including Sonnet-class models used in this pipeline) reliably
+hallucinate UUIDs when echoing them from input to output. Two patterns:
+
+1. **Tail invention**: agent keeps the first 8 characters of a real UUID
+   (the distinctive fingerprint it can "remember") and fabricates the
+   remaining 28 characters. Example observed in `run-20260414-ca-state-full`:
+   - Real: `50deced6-8b10-49ae-b8f8-de87faf29224`
+   - Hallucinated: `50deced6-4b8f-4c3d-9b8a-8d6f89ab4df1`
+2. **Semantic placeholders**: agent outputs strings like `calfire-source-id`,
+   `csfa-source-id`, or `tbd-uuid` when it doesn't have a concrete identifier.
+
+Both patterns caused data loss in the CA State run (5 programs in Phase 2,
+9 findings in Phase 3) until the orchestrator added post-hoc validation.
+Every future run MUST validate up front.
+
+### Validation Procedure
+
+Before any staging INSERT, program UPDATE, or FK-bearing write that uses an
+agent-supplied UUID, run this five-step gate:
+
+**Step 1 — Regex format check**:
+```python
+import re
+UUID_RE = re.compile(r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$')
+# Reject if no match — this catches placeholders like "calfire-source-id"
+```
+
+**Step 2 — DB existence check**:
+```sql
+-- Run via mcp__postgres__query (or env-appropriate MCP)
+SELECT id FROM funding_sources WHERE id = '<uuid>';
+SELECT id FROM funding_programs WHERE id = '<uuid>';
+```
+If regex passes but no row returned → hallucinated UUID (correct format,
+wrong value). Proceed to recovery.
+
+**Step 3 — Name-based recovery**:
+If the agent supplied a name alongside the invalid UUID, look it up by
+normalized name:
+```sql
+SELECT id FROM funding_sources
+WHERE LOWER(REGEXP_REPLACE(name, '[^a-z0-9]', '', 'g'))
+    = LOWER(REGEXP_REPLACE('<agent-supplied-name>', '[^a-z0-9]', '', 'g'))
+  AND state_code = '<scope-state-code>'
+  AND type = '<scope-type>';
+```
+If exactly one match → use that UUID. If zero or multiple → proceed to Step 4.
+
+**Step 4 — Cross-reference via related IDs**:
+If the agent supplied a valid program_id but invalid source_id, derive source_id:
+```sql
+SELECT source_id FROM funding_programs WHERE id = '<valid-program-id>';
+```
+Equivalent patterns exist for opportunity → program, coverage → opportunity.
+
+**Step 5 — Fail loudly when unrecoverable**:
+If no UUID AND no usable name, DO NOT invent a fallback and DO NOT silently
+skip. Record the failure explicitly:
+```sql
+INSERT INTO claude_change_log
+  (table_name, operation, pipeline_phase, batch_id, record_count, change_reason)
+VALUES
+  ('<target_table>', 'validation_failed', '<phase>', '<batch_id>', 1,
+   'UUID validation failed: could not resolve agent-supplied identifier. Details: ...');
+```
+Then skip that record and surface the skip to the user in your phase report.
+
+### Practical Implementation
+
+The orchestrator should run validation once per batch of agent output, not
+per individual record, to avoid chatty DB queries. Typical pattern:
+
+1. Collect the full set of agent findings into one JSON file
+2. Pull the trusted UUID set for the current scope from the DB (one query)
+3. Build in-memory maps: `known_source_ids`, `known_program_ids`,
+   `program_to_source`, `name_to_id`
+4. Iterate findings, apply Steps 1-5 using the maps
+5. Write only validated records; log every recovery and every skip
+
+A reference implementation was used for `run-20260414-ca-state-full`:
+see `/tmp/meridian-phase3/retry_bad_uuids.py` (Name-based recovery map) and
+`/tmp/meridian-phase3/generate_sql.py` (Regex + DB existence + program_id →
+source_id cross-ref). Both use `claude_writer`-compatible SQL.
+
+### Reporting Requirements
+
+At end of phase, every validation pass MUST report:
+- Records with valid UUIDs (wrote directly): N
+- Records recovered via name lookup: N — list each with before/after
+- Records recovered via ID cross-reference: N
+- Records skipped due to unrecoverable UUID: N — list each with reason
+
+Silent drops are forbidden. If the orchestrator cannot reach 100% accounted-for,
+that is a pipeline failure and must be surfaced to the user.
 
 ---
 

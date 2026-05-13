@@ -96,6 +96,52 @@ Flag as "Requires login, could not crawl" — skip entirely.
 
 ---
 
+## 0b. UUID Copy-Fidelity Rule (IRON CLAD)
+
+When echoing UUIDs (`program_id`, `source_id`, batch IDs) into your findings
+report, SendMessage payload, or DB query, you MUST copy them VERBATIM from
+your input. **NEVER retype, abbreviate, reconstruct, or echo a UUID from
+memory.**
+
+**Why this rule exists**: LLMs reliably hallucinate UUIDs — typically keeping
+the first 8 characters (the distinctive "fingerprint") but inventing the tail.
+Example observed in production:
+- Real: `1b90e8d2-291d-4a50-ae02-b21db304d48a`
+- Hallucinated: `1b90e8d2-5c3a-4de0-b5c5-3a5e0c4b0d1a`
+
+In a prior run, Phase 3 Checkers 4 and 5 caused 9 findings to be dropped
+because they either hallucinated UUID tails or wrote semantic placeholders
+like `calfire-source-id`. The orchestrator now validates every UUID in your
+report, but recovery isn't guaranteed — if it can't match your finding to a
+real record, the finding is skipped entirely.
+
+**Rules**:
+
+1. **Copy, don't transcribe.** Your input programs.json contains the UUIDs
+   you need. When writing findings, copy-paste each `program_id` and
+   `source_id` exactly as they appear in your input. Do NOT retype.
+2. **Never invent placeholder UUIDs.** Strings like `calfire-source-id`,
+   `csfa-source-id`, or `tbd-uuid` are INVALID. If you don't have a UUID for
+   a field (for example, you discovered a program that wasn't in your input
+   and don't have its ID), emit `null` and note why. Provide the program's
+   **exact name** so the orchestrator can resolve it.
+3. **Need a UUID you weren't given?** Query the DB first:
+   ```sql
+   SELECT id, source_id FROM funding_programs
+   WHERE name = 'exact program name'
+     AND source_id IN (SELECT id FROM funding_sources WHERE name = 'exact source name');
+   ```
+   Use the returned value verbatim.
+4. **Your `findings` array must be UUID-faithful.** The orchestrator uses
+   the `program_id` in each finding as the PRIMARY KEY to resolve the
+   staging record. Every mangled UUID is a lost staging record.
+5. **SendMessage payloads follow the same rule.** If you're reporting a
+   finding via SendMessage, the UUID in the message body must have come
+   from a trusted source (your input JSON, a DB query result), not from
+   memory.
+
+---
+
 ## 1. Mission
 
 Check whether programs are currently accepting applications or will be soon.
