@@ -840,7 +840,20 @@ Team name: `opportunity-check-[SCOPE]` (e.g., `opportunity-check-AZ-utility`)
 ```
 STEP 0: Pre-flight (orchestrator runs directly)
 ─────────────────────────
-// Smart scheduling query — get eligible programs
+// Smart scheduling query — get eligible programs.
+//
+// The NOT EXISTS clause uses ONLY the clean FK match (fo.program_id = fp.id) — this
+// catches manual-pipeline self-duplication efficiently (if our last run created an
+// Open dated opportunity for this program, skip it now). The cross-pipeline dedup
+// (vs API-ingested rows that have program_id IS NULL, or rows with naming variance)
+// happens in STEP 0.5 below via LLM judgment, not here.
+//
+// Why not a fuzzy SQL fallback here?
+//   Previous version had: OR (fo.funding_source_id = fp.source_id AND fo.title ILIKE
+//   '%' || fp.name || '%'). It caught ~1 of 120 cross-pipeline duplicates in the CA
+//   State run because (a) API rows have program_id IS NULL so the FK fires never,
+//   (b) title variance breaks the substring match, (c) source_id often differs
+//   across pipelines for the same agency. The LLM step replaces it.
 mcp__postgres__query:
 SELECT fp.id, fp.name, fp.description, fp.program_urls,
        fp.status as program_status, fp.source_id,
@@ -855,13 +868,169 @@ WHERE fp.status IN ('active', 'unknown')
     SELECT 1 FROM funding_opportunities fo
     WHERE fo.status = 'Open'
     AND fo.close_date IS NOT NULL
-    AND (fo.program_id = fp.id
-      OR (fo.funding_source_id = fp.source_id
-          AND fo.title ILIKE '%' || fp.name || '%'))
+    AND fo.program_id = fp.id
   )
 ORDER BY fp.source_id, fp.name;
 
 // Report count and stop if zero eligible.
+
+STEP 0.5: Cross-Pipeline LLM Dedup Pre-Check (REQUIRED)
+─────────────────────────
+For each due program returned by STEP 0, check whether an existing approved Open
+opportunity (manual OR API-ingested) is already covering it. This catches the
+case the SQL NOT EXISTS misses: the API pipeline doesn't populate program_id, so
+its opportunities are FK-orphaned. Title variance and cross-source attribution
+(e.g., SOMAH registered under CPUC by us, under PG&E by the API) also defeat
+naive SQL matching.
+
+Drop programs that match an existing approved Open opportunity BEFORE assigning
+them to checkers. Saves Phase 3 crawl + Phase 4 extraction + Phase 5 analysis on
+records that would just be rejected at Phase 6 storage anyway.
+
+#### STEP 0.5a — Candidate Query (per program)
+
+For each due program `fp`, pull plausible duplicate candidates from
+funding_opportunities. Cast a wide net; the LLM filters precisely.
+
+```sql
+-- Run via mcp__postgres__query
+-- Requires pg_trgm extension (CREATE EXTENSION IF NOT EXISTS pg_trgm)
+-- similarity() returns 0.0–1.0; threshold 0.2 is intentionally loose
+SELECT fo.id,
+       fo.title,
+       fo.url,
+       fo.status,
+       fo.close_date,
+       fo.funding_source_id,
+       fs.name AS source_name,
+       similarity(fo.title, '<fp.name>') AS title_sim,
+       CASE
+         WHEN fo.promotion_status = 'promoted' THEN 'promoted'
+         WHEN fo.promotion_status IS NULL AND fo.api_source_id IS NOT NULL THEN 'API-ingested'
+         ELSE 'other'
+       END AS approved_state
+FROM funding_opportunities fo
+LEFT JOIN funding_sources fs ON fs.id = fo.funding_source_id
+WHERE fo.status = 'Open'
+  AND (
+    fo.promotion_status = 'promoted'
+    OR (fo.promotion_status IS NULL AND fo.api_source_id IS NOT NULL)
+  )
+  AND (
+    similarity(fo.title, '<fp.name>') > 0.2          -- primary signal: fuzzy title
+    OR fo.funding_source_id = '<fp.source_id>'        -- bonus: same source
+    OR (
+      '<fp.program_urls>' IS NOT NULL                 -- bonus: same URL domain
+      AND fo.url IS NOT NULL
+      AND split_part(replace(replace(fo.url, 'https://', ''), 'http://', ''), '/', 1)
+        = split_part(replace(replace('<fp.first_url>', 'https://', ''), 'http://', ''), '/', 1)
+    )
+  )
+ORDER BY title_sim DESC
+LIMIT 20;
+```
+
+Notes on the candidate query:
+- **Title trigram similarity is the load-bearing signal.** It catches duplicates
+  even when source_id differs (different agency attribution) and when URLs differ
+  (different agency landing pages). All 8 confirmed cross-pipeline duplicates in
+  the CA State run had recognizable title similarity above 0.2.
+- The `funding_source_id` and URL-domain branches are bonus catches for edge
+  cases (heavily abbreviated titles, programs known by acronym only).
+- Threshold 0.2 is intentionally loose. Better to send the LLM a few extra
+  candidates than to miss a real duplicate. The LLM filters precisely.
+- If zero candidates → no dedup question to answer → proceed with the program.
+
+#### STEP 0.5b — LLM Judgment Call (per program with candidates)
+
+Send the LLM (Sonnet) this structured query:
+
+```
+You are evaluating whether a funding program is essentially the same as one of
+several existing opportunities already in our database.
+
+CANDIDATE PROGRAM (we're about to check for current openings):
+  Name: <fp.name>
+  Description: <fp.description>
+  Source: <fp.source_name>
+  Source type: <fp.type>
+  URLs: <fp.program_urls>
+
+EXISTING APPROVED OPEN OPPORTUNITIES (potential matches):
+  1. id=<opp_id>, title=<title>, url=<url>, source=<source_name>,
+     state=<approved_state>, title_similarity=<title_sim>
+  2. ...
+  (up to 20)
+
+Determine: is the candidate program essentially the SAME funding mechanism as
+any of these opportunities? Same = same underlying program, possibly different
+rounds/years/regional variants/naming conventions. Different = distinct
+programs even if titles or sources are similar.
+
+Examples of what SHOULD match (same program, different wording):
+  - "SOMAH" ↔ "Solar on Multifamily Affordable Housing (SOMAH) Program"
+  - "Charter School Facilities Program (CSFP)" ↔ "Charter School Facility Grant Program – (SB740)"
+  - "Modernization Funding for Schools" ↔ "School Facility Program (SFP) Modernization (Proposition 2)"
+  - "SS4A" ↔ "Safe Streets and Roads for All Funding Opportunity"
+
+Examples of what should NOT match (different programs at same source/URL):
+  - "Cannabis Restoration Grant Program" vs "Cannabis Research and Innovation
+    Funding Opportunity (RIFO)" — both CDFW cannabis, but one is habitat
+    restoration, the other is research grants
+  - "Wildfire Prevention Grant Program" vs "Forest Health Grants" — both CAL
+    FIRE, but distinct programs
+  - "Proposition 1 Watershed Restoration" vs "Proposition 68 Watershed
+    Restoration" — different bond cycles, may be distinct programs
+
+Return strict JSON:
+{
+  "is_duplicate": true | false,
+  "matched_opp_id": "<uuid>" | null,
+  "confidence": "high" | "medium" | "low",
+  "reasoning": "<one sentence — what made you decide>"
+}
+```
+
+#### STEP 0.5c — Decision Rule
+
+| LLM response | Action |
+|---|---|
+| `is_duplicate=true, confidence=high` | **Skip the program.** Log to claude_change_log. Update program scheduling so we don't re-check soon. |
+| `is_duplicate=true, confidence=medium` | **Skip the program.** Log + flag in user summary for spot-check. |
+| `is_duplicate=true, confidence=low` | **Proceed with check.** Phase 6 storage UPSERT acts as backstop. Log the near-miss for monitoring. |
+| `is_duplicate=false` | **Proceed with check.** Normal Phase 3 flow. |
+| Zero candidates from STEP 0.5a | **Proceed with check.** No dedup question to answer. |
+
+#### STEP 0.5d — Apply Skip Actions
+
+For each program flagged as a duplicate (confidence ≥ medium), the orchestrator:
+
+1. Updates `funding_programs.last_checked_at = NOW()` (we did check, via the LLM,
+   even though we didn't crawl)
+2. Updates `funding_programs.next_check_at` per the scheduling table in
+   opportunity-discovery SKILL.md (treat as "Open, rolling" → NOW + 180 days,
+   since we trust the existing approved opportunity covers it)
+3. Logs to `claude_change_log`:
+   ```sql
+   INSERT INTO claude_change_log
+     (table_name, operation, pipeline_phase, batch_id, record_count, change_reason)
+   VALUES
+     ('funding_programs', 'dedup_skip', 'phase3_preflight', '<batch_id>', 1,
+      'Skipped Phase 3 check for program <fp.id> (<fp.name>): LLM matched to existing approved opportunity <opp_id> with <confidence> confidence. Reasoning: <reasoning>');
+   ```
+4. Removes the program from the checker assignment list
+
+#### STEP 0.5e — Reporting Requirements
+
+Before STEP 1 (team spawn), the orchestrator MUST report:
+- Programs evaluated by LLM dedup: N
+- Programs skipped (high confidence duplicate): N — list each with matched_opp_id
+- Programs skipped (medium confidence duplicate): N — list each with matched_opp_id (flag for spot-check)
+- Programs near-miss (low confidence, proceeding anyway): N — list for monitoring
+- Programs proceeding to Phase 3 checkers: N
+
+If skip count is unusually high (>30% of due programs), pause and surface to user
+— could indicate LLM is too aggressive or the candidate query is misconfigured.
 
 STEP 1: Create team + spawn checkers (model: "sonnet")
 ─────────────────────────
