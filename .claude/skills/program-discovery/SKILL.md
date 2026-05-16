@@ -181,18 +181,32 @@ spawns extractors with deduplicated program assignments.
 
 ### Program Granularity Rule
 
-When a single program page lists multiple sub-rebates or sub-grants under one
-umbrella (e.g., a "Home Weatherization" page with 7 different rebate types at
-different dollar amounts), register as **ONE program record**. Capture the
-sub-types in the `description` and `eligible_project_types` array.
+A program is something a real applicant can independently apply to in its own
+right — not a category, theme, or sub-tier within something larger that they
+actually apply to.
 
-Only split into separate records when sub-programs have:
-- Independent application processes (different forms, different portals)
-- Different eligibility requirements (different applicant types)
-- Different funding sources (one is CDBG, another is General Fund)
+Before adding any candidate to your report, do this thought experiment:
+**If a real applicant walked up and said "I want to apply to X," what would
+they actually do?** If they'd submit a unique application that exists for X
+alone, you've found a program. If they'd file an application to a parent
+program and just select X as a category — then X is a sub-category, not a
+program. Roll it up.
 
-If they share one application, one eligibility set, and one funding source,
-they are one program with multiple components.
+The trap to avoid: agency websites often have "services" or "what we fund"
+sections that present every sub-category as if it were a separate program —
+its own page, its own description, its own funding write-up. They look like
+programs. They're not. They're marketing presentations of categories within
+one program.
+
+Use whatever signals help you tell the difference — URL structure, page
+framing, whether the application path is unique or shared with siblings,
+whether it has its own filing rounds / program manager / funding pool, how
+the agency talks about it. No checklist. Just answer the thought experiment
+honestly.
+
+**When in doubt, prefer fewer programs over more.** Register the parent
+once; capture sub-categories as metadata in `description` and
+`eligible_project_types`.
 
 ### Cross-Source Attribution Rule
 
@@ -253,7 +267,10 @@ of programs found.
    - Infrastructure: building upgrades, weatherization
    - Housing: home improvement, low-income assistance
    - Transportation: EV rebates, fleet conversion programs
-5. **For each program found, capture**:
+5. **For each candidate program, apply the Program Granularity Rule (§1) before
+   including it in your report.** Roll up sub-categories to their parent program
+   rather than reporting them separately.
+6. **For each program found, capture**:
 
 | Field | Required | Notes |
 |-------|----------|-------|
@@ -265,9 +282,9 @@ of programs found.
 | `brief_description` | Yes | 1-2 sentence summary |
 | `funding_type` | If identifiable | Grant, Incentive, Loan, Tax Credit, etc. |
 
-6. **Note PDF URLs** with `type: "pdf"` label — extractors handle PDFs later
-7. **Skip login-gated pages** — flag them instead: "Requires login, could not crawl"
-8. **Capture stale catalog URLs with replacements**: When an assigned catalog URL
+7. **Note PDF URLs** with `type: "pdf"` label — extractors handle PDFs later
+8. **Skip login-gated pages** — flag them instead: "Requires login, could not crawl"
+9. **Capture stale catalog URLs with replacements**: When an assigned catalog URL
    returns 404, has moved, or points to a dead domain, AND you discover the
    correct replacement via WebSearch or WebFetch redirect, record both URLs in
    your `stale_urls` output (see Section 5). Do NOT write to `source_program_urls`

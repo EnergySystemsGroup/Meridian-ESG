@@ -465,6 +465,56 @@ or a one-line announcement.
 March 1, 2026"). Vague timeframes like "summer 2026" or "Q3" are NOT considered
 known dates — treat as "date not known" (Row 4).
 
+### Ambiguous Page Tiebreaker (Row 2 vs Row 6)
+
+Some pages do not fit cleanly into Open or Nothing — they have a program name and
+description but **no dates, no "Apply Now", no "rolling basis" language, and no
+"closed" language either**. The decision tree alone can send checker A to Row 2
+(stage as rolling) and checker B to Row 6 (skip), which is inconsistent.
+
+**Use this single test to break the tie: is there an application mechanism on the
+page?**
+
+An application mechanism is any concrete way a real applicant could act today:
+
+- A live application portal link (Formstack, ZoomGrants, eCivis, Submittable, etc.)
+- A downloadable application PDF, RFP, NOFO, RFA, or fillable form
+- An "Apply" / "How to Apply" / "Submit" section with instructions
+- An application contact email or phone number explicitly for applicants
+- A program coordinator listed with contact info inviting inquiries
+
+**Decision:**
+
+| Application mechanism present? | Action | Row |
+|---|---|---|
+| **Yes** — applicant can act | INSERT staging, `window_type=rolling` | Row 2 |
+| **No** — page is informational only | SKIP, recheck in 30 days | Row 6 |
+
+**When you go Row 2 on an ambiguous page, the `funding_note` MUST carry the
+evidence trail.** This is the case where the agent is making a judgment call,
+so the note is what lets a downstream reviewer audit it. Examples:
+
+- ✅ "Program description page, contact email provided for applications, no closure
+  language found — presumed active."
+- ✅ "Downloadable RFA on page, no current-year date but document looks current —
+  presumed active pending verification."
+- ❌ "Open program." (no evidence — fails the audit trail)
+- ❌ "Looks active." (no evidence)
+
+**Tie the `funding_status` call back to §3f signals.** The ambiguous page almost
+always lands on `presumed_active` (the default-when-nothing-concerning bucket),
+but check first whether any §3f signals are actually present:
+
+- Funding pool dollar amount mentioned → `limited_funding`
+- "Limited availability" / "subject to funding" language → `limited_funding`
+- "Waitlist" / "currently paused" language → `oversubscribed`
+- Any "all funds awarded" / "program closed" language → `exhausted` (and don't
+  stage — see Row 6 / Step 3 exhausted logic in pipeline-orchestrator)
+- None of the above → `presumed_active`
+
+The funding_status is the agent's best read of program health; the funding_note
+is the evidence. Both are required on every report regardless of which row.
+
 ### Re-Check Scenarios
 
 When `next_check_at` arrives for a Row 3 program (upcoming with date):
