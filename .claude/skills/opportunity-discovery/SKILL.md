@@ -38,6 +38,11 @@ via SendMessage. The orchestrator validates and creates staging records.
 
 Use this decision tree for ALL URL fetching.
 
+**Browser automation always runs headless.** When falling back to Playwright
+(`mcp__playwright__browser_navigate`), do not open visible browser windows.
+The Playwright MCP server should be configured for headless mode at the server
+level; agents should never request a headed session.
+
 ### HTML Pages — Detection-Based Routing
 
 ```
@@ -201,7 +206,8 @@ WHERE fp.status IN ('active', 'unknown')
   AND NOT EXISTS (
     SELECT 1 FROM funding_opportunities fo
     WHERE fo.status = 'Open'
-    AND fo.close_date IS NOT NULL              -- perpetual (no close_date) stays recheckable
+    AND fo.close_date IS NOT NULL              -- perpetual (no close_date) stays recheckable every 90 days
+    AND fo.promotion_status IS DISTINCT FROM 'rejected'  -- rejected opps do NOT count as covering
     AND (
       fo.program_id = fp.id                    -- manual pipeline (has program_id)
       OR (fo.funding_source_id = fp.source_id  -- API pipeline (no program_id)
@@ -214,10 +220,15 @@ ORDER BY fp.source_id, fp.name;
 **Key logic**:
 - `status IN ('active', 'unknown')` — check both. `unknown` is treated as active.
 - `next_check_at <= NOW()` — only check programs that are due
-- `NOT EXISTS ... status = 'Open' AND close_date IS NOT NULL` — skip programs that already
-  have a dated open opportunity (from either manual or API pipeline). Perpetual opportunities
-  (no close_date) do NOT block re-checking — they get rechecked every 180 days.
-  Closed/Upcoming don't block re-checking.
+- `NOT EXISTS ... status = 'Open' AND close_date IS NOT NULL AND promotion_status IS DISTINCT FROM 'rejected'`
+  — skip programs that already have a **surfaceable** dated open opportunity (from either
+  manual or API pipeline). A "surfaceable" opportunity is one whose `promotion_status` is
+  `promoted`, `pending_review`, or `NULL` (API-pipeline default). Rejected opportunities do
+  NOT count as covering — if an admin rejected the only opportunity for a program, that
+  program returns to the recheck queue at its natural cadence and we look for a fresh
+  opportunity. Perpetual opportunities (no close_date) also do NOT block re-checking —
+  they get rechecked every 90 days for funding-status verification. Closed/Upcoming
+  opportunities don't block re-checking either.
 
 ### Step 2c — Report Pre-Flight Results
 
@@ -438,7 +449,7 @@ After crawling, apply this decision tree for EACH program:
 | # | Finding | Has Guidelines? | Date Known? | Action | `next_check_at` |
 |---|---------|----------------|-------------|--------|-----------------|
 | 1 | **Open**, has close date | n/a | Yes | INSERT staging | `close_date` |
-| 2 | **Open**, perpetual (no close date) | n/a | n/a | INSERT staging | `NOW() + 180 days` |
+| 2 | **Open**, perpetual (no close date) | n/a | n/a | INSERT staging | `NOW() + 90 days` |
 | 3 | **Upcoming**, substantive guidelines | n/a | Yes (open date known) | INSERT staging | `open_date - 30 days` |
 | 4 | **Upcoming**, substantive guidelines | Yes | No (no open date) | SKIP | `NOW() + 30 days` |
 | 5 | **Upcoming**, no/thin guidelines | Either | Either | SKIP | `NOW() + 30 days` |
@@ -530,7 +541,7 @@ When `next_check_at` arrives for a Row 3 program (upcoming with date):
 - **Row 4-5**: Without a date or without real guidelines, there's nothing
   actionable. Check again next month.
 - **Row 6**: Nothing found doesn't mean nothing exists — just check again later.
-- **Perpetual = 180 days**: These don't change often; 6-month check is sufficient.
+- **Perpetual = 90 days**: Quarterly check catches funding-status changes (depletion, oversubscription, pause) before they go stale. Funding can shift inside a 6-month window for limited-pool programs (SGIP-class), so we don't rely on the "structurally always open" assumption alone.
 
 ---
 
@@ -601,17 +612,9 @@ The orchestrator (not you) will:
 The orchestrator handles scheduling updates based on your report. Include your
 `suggested_next_check` and `next_check_reason` in every per-program report.
 
-Reference table for suggested dates:
-
-| Outcome | Suggested `next_check_at` | Reason |
-|---------|---------------------------|--------|
-| Open, dated (has close date) | `close_date` | Check for next round after this one closes |
-| Open, rolling | `NOW() + 90 days` | Periodic funding status recheck |
-| Upcoming, details available | `open_date - 7 days` | Final confirmation before window opens |
-| Upcoming, NO details yet | `NOW() + 30 days` | Monthly check until NOFA/details published |
-| Cycle-based, know typical month | `typical_month - 60 days` | Early check for NOFA publication |
-| Nothing found | `NOW() + 30 days` | Try again next month |
-| All URLs failed | `NULL` (mark inactive) | Stop checking |
+**Use the canonical schedule from §5 (Suggested Recheck Schedule).** That table
+is the single source of truth — do not maintain a parallel copy here, or the
+two will drift.
 
 **Key principle:** We want opportunity details as early as possible. If we learn
 in January that a program opens in August but has no NOFA yet, suggest monthly

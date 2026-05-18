@@ -29,6 +29,11 @@ If unsure about a value, map to the closest taxonomy match. Never fabricate cate
 
 Use this decision tree for ALL URL fetching in both scout and extractor modes.
 
+**Browser automation always runs headless.** When falling back to Playwright
+(`mcp__playwright__browser_navigate`), do not open visible browser windows.
+The Playwright MCP server should be configured for headless mode at the server
+level; agents should never request a headed session.
+
 ### HTML Pages — Detection-Based Routing
 
 ```
