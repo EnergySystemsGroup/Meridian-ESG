@@ -35,6 +35,11 @@ You need all five taxonomy categories memorized:
 
 ## 0a. Content Retrieval Standard
 
+**Browser automation always runs headless.** When falling back to Playwright
+(`mcp__playwright__browser_navigate`), do not open visible browser windows.
+The Playwright MCP server should be configured for headless mode at the server
+level; agents should never request a headed session.
+
 Use this decision tree for ALL URL fetching.
 
 ### HTML Pages — Detection-Based Routing

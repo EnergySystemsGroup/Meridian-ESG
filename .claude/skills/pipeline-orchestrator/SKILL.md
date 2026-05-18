@@ -244,6 +244,7 @@ WHERE fs.state_code = 'AZ'
     SELECT 1 FROM funding_opportunities fo
     WHERE fo.status = 'Open'
     AND fo.close_date IS NOT NULL
+    AND fo.promotion_status IS DISTINCT FROM 'rejected'  -- rejected opps do NOT count as covering
     AND (fo.program_id = fp.id
       OR (fo.funding_source_id = fp.source_id
           AND fo.title ILIKE '%' || fp.name || '%'))
@@ -868,6 +869,7 @@ WHERE fp.status IN ('active', 'unknown')
     SELECT 1 FROM funding_opportunities fo
     WHERE fo.status = 'Open'
     AND fo.close_date IS NOT NULL
+    AND fo.promotion_status IS DISTINCT FROM 'rejected'  -- rejected opps do NOT count as covering
     AND fo.program_id = fp.id
   )
 ORDER BY fp.source_id, fp.name;
